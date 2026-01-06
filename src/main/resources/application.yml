@@ -1,0 +1,60 @@
+server:
+    port: 8090
+    #address: 127.0.0.1
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,prometheus
+
+telegram:
+    apiId: ${TG_API_ID}
+    apiHash: ${TG_API_HASH}
+    phoneNumber: ${TG_PHONE}
+    #password: ${TG_2FA_PASSWORD:}
+    sessionDir: ${TG_SESSION_DIR:./data/tdlib}
+    systemLanguageCode: uk
+    deviceModel: "Java21-Arb"
+    appVersion: "0.1.0"
+
+    bot:
+        username: TELEGRAM_BOT_USERNAME_PLACEHOLDER
+        token: TELEGRAM_BOT_TOKEN_PLACEHOLDER
+
+arb:
+    watchlist:
+        defaultTtlMinutes: 45
+    spread:
+        minSpreadPct: 3.0
+    funding:
+        restFallbackSeconds: 60
+#    telegram:
+#        channel: @funding_watchdog
+spring:
+    web:
+        resources:
+            cache:
+                period: 0
+            chain:
+                cache: false
+
+trading:
+    binance:
+        # для USDT-маржинальных фьючерсов testnet:
+        # можно использовать demo-fapi.binance.com или testnet.binancefuture.com
+        base-url: "https://testnet.binancefuture.com"
+        api-key: BINANCE_TESTNET_API_KEY_PLACEHOLDER #spot BINANCE_SPOT_API_KEY_PLACEHOLDER
+        secret-key: BINANCE_TESTNET_SECRET_KEY_PLACEHOLDER #spot BINANCE_SPOT_SECRET_KEY_PLACEHOLDER
+        recv-window: 5000
+
+    bybit:
+        base-url: "https://api-testnet.bybit.com"
+        api-key: BYBIT_TESTNET_API_KEY_PLACEHOLDER
+        secret-key: BYBIT_TESTNET_SECRET_KEY_PLACEHOLDER
+        recv-window: 5000
+
+    gate:
+        base-url: "https://fx-api-testnet.gateio.ws/api/v4"
+        api-key: "${GATE_TESTNET_API_KEY:}"
+        secret-key: "${GATE_TESTNET_SECRET_KEY:}"

@@ -1,0 +1,129 @@
+import com.github.gradle.node.npm.task.NpmTask
+import org.gradle.api.tasks.Exec
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.7'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id("com.google.osdetector") version "1.7.3"
+
+    // эти два — важно!
+    id 'org.owasp.dependencycheck' version '12.1.8'
+    id 'com.diffplug.spotless' version '6.25.0'
+
+    id "com.github.node-gradle.node" version "7.0.2"
+}
+
+node {
+    download = true                                        // <— Gradle скачает свой Node
+    version = "22.11.0"
+    npmVersion = "10.8.2"
+    workDir = file("${buildDir}/node")
+    npmWorkDir = file("${buildDir}/npm")
+}
+
+group = 'com.crypto.funding'
+version = '0.0.1-SNAPSHOT'
+description = 'crypto'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://mvn.mchv.eu/repository/mchv/" }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+//    implementation("org.slf4j:slf4j-api:2.0.13")
+//    implementation("ch.qos.logback:logback-classic:1.5.8")
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // WebSocket клиент (универсальный)
+    implementation "org.glassfish.tyrus.bundles:tyrus-standalone-client:$tyrusVersion"
+
+    // Telegram TDLib (через tdlight)
+//    implementation "it.tdlight:tdlight-java:$tdlightVersion"
+//    runtimeOnly "it.tdlight:tdlight-natives:$tdlightVersion:${osdetector.classifier}"
+
+    implementation "org.telegram:telegrambots-spring-boot-starter:6.9.7.1"
+
+    implementation platform('it.tdlight:tdlight-java-bom:3.3.1+td.1.8.25')
+
+    // без указания версий!
+    implementation 'it.tdlight:tdlight-java'
+
+    // нативки: для Mac M1/M2 укажи macos_arm64; для Intel Mac — macos_amd64; Linux — см. релиз-ноты
+    implementation('it.tdlight:tdlight-natives') {
+        artifact { classifier = 'macos_arm64' }
+    }
+
+    // JSON
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Test
+    testImplementation "org.junit.jupiter:junit-jupiter:$junitJupiterVersion"
+    testImplementation "org.assertj:assertj-core:$assertjVersion"
+    testImplementation "org.mockito:mockito-core:$mockitoVersion"
+
+}
+
+tasks.test { useJUnitPlatform() }
+
+//OWASP Dependency-Check
+dependencyCheck {
+    failBuildOnCVSS = 7.0
+    analyzers.assemblyEnabled = false
+}
+
+tasks.register('security') { dependsOn 'dependencyCheckAnalyze' }
+
+//spotless {
+//    java {
+//        target 'src/**/*.java'
+//        importOrder('', 'java', 'javax', 'org', 'com')
+//        removeUnusedImports()
+//        googleJavaFormat('1.22.0')
+//        indentWithSpaces(4)
+//        licenseHeader('''/*\n * Crypto-Arb — MIT License\n */\n''')
+//    }
+//    format('misc') {
+//        target '*.md', '.gitignore', 'config/**/*.yml'
+//        endWithNewline()
+//        indentWithSpaces(2)
+//        trimTrailingWhitespace()
+//    }
+//}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+
+def frontendDir = "${projectDir}/frontend"
+tasks.register('frontendCi', NpmTask) {
+    workingDir = file(frontendDir)
+    args = ['ci']                                          // npm ci
+}
+
+tasks.register('frontendBuild', NpmTask) {
+    dependsOn tasks.named('frontendCi')
+    workingDir = file(frontendDir)
+    args = ['run', 'build']                                // npm run build
+}
+
+// чтобы фронт собирался перед ресурсами (кладём в src/main/resources/static)
+tasks.named('processResources') {
+    dependsOn tasks.named('frontendBuild')
+}
+
+bootRun { systemProperty 'spring.profiles.active', System.getProperty('spring.profiles.active', 'default') }

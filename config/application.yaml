@@ -1,0 +1,26 @@
+server:
+    port: 8090
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,prometheus
+
+telegram:
+    apiId: ${TG_API_ID}
+    apiHash: ${TG_API_HASH}
+    phoneNumber: ${TG_PHONE}
+    password: ${TG_2FA_PASSWORD:}
+    sessionDir: ${TG_SESSION_DIR:./data/tdlib}
+    systemLanguageCode: uk
+    deviceModel: "Java21-Arb"
+    appVersion: "0.1.0"
+
+arb:
+    watchlist:
+        defaultTtlMinutes: 45
+    spread:
+        minSpreadPct: 3.0
+    funding:
+        restFallbackSeconds: 60
