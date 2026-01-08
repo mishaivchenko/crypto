@@ -1,5 +1,7 @@
 package com.crypto.funding.telegram;
 
+import com.crypto.funding.market.MarketCache;
+import com.crypto.funding.market.model.Quote;
 import com.crypto.funding.trading.OrderSide;
 import com.crypto.funding.trading.OrderType;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
@@ -43,6 +45,11 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
     // Funding approve flow
     private static final String CB_FUND_APPROVE = "FUND:APPROVE:";           // FUND:APPROVE:<symbol>
     private static final String CB_FUND_UNAPPROVE = "FUND:UNAPPROVE:";       // FUND:UNAPPROVE:<symbol>
+
+    // NEW: multi-exchange selection
+    private static final String CB_FUND_TOGGLE_EX = "FUND:TOGEX:";           // FUND:TOGEX:<symbol>:<exchange>
+    private static final String CB_FUND_EX_NEXT = "FUND:EXNEXT:";            // FUND:EXNEXT:<symbol>
+
     private static final String CB_FUND_EX = "FUND:EX:";                     // FUND:EX:<symbol>:<exchange>
     private static final String CB_FUND_USDT = "FUND:USDT:";                 // FUND:USDT:<symbol>:<exchange>:<usdt>
 
@@ -66,10 +73,15 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
     private final TelegramSessionStore sessionStore;
     private final TestOrderEngine testOrderEngine;
     private final FundingRefresherService fundingRefresherService;
+    private final MarketCache marketCache;
 
     // approved funding storage (in-memory)
     private final Map<String, ApprovedFunding> approvedFunding = new ConcurrentHashMap<>();
-    private record ApprovedFunding(String symbol, String exchange, BigDecimal usdt) {}
+    private record ApprovedFunding(String symbol, Set<String> exchanges, BigDecimal usdt) {}
+
+    // pending funding selection per chat (when user is choosing exchanges)
+    private final Map<Long, PendingFundingSelection> pendingFundingSelection = new ConcurrentHashMap<>();
+    private record PendingFundingSelection(String symbol, Set<String> exchanges) {}
 
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                                                            .withZone(ZoneId.of("UTC"));
@@ -80,7 +92,7 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
         FundingWatchlistService fundingWatchlist,
         ArbitrageWatchlistService arbitrageWatchlist,
         TelegramSessionStore sessionStore,
-        TestOrderEngine testOrderEngine, FundingRefresherService fundingRefresherService
+        TestOrderEngine testOrderEngine, FundingRefresherService fundingRefresherService, MarketCache marketCache
     ) {
         super(token);
         this.username = username;
@@ -89,6 +101,7 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
         this.sessionStore = sessionStore;
         this.testOrderEngine = testOrderEngine;
         this.fundingRefresherService = fundingRefresherService;
+        this.marketCache = marketCache;
     }
 
     @Override public String getBotUsername() { return username; }
@@ -142,10 +155,17 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
         if (looksLikeNumber(text)) {
             if (s.state() == TelegramSessionStore.State.FUNDING_APPROVE_SET_USDT
                 && s.fundingSymbol() != null
-                && s.fundingExchange() != null
             ) {
                 BigDecimal usdt = new BigDecimal(text);
-                approvedFunding.put(s.fundingSymbol(), new ApprovedFunding(s.fundingSymbol(), s.fundingExchange(), usdt));
+
+                PendingFundingSelection p = pendingFundingSelection.get(chatId);
+                if (p == null || p.exchanges().isEmpty() || !Objects.equals(p.symbol(), s.fundingSymbol())) {
+                    ui(chatId, true, "Сначала выбери биржи для " + s.fundingSymbol(), fundingExchangeMultiKb(chatId, s.fundingSymbol()));
+                    return;
+                }
+
+                approvedFunding.put(s.fundingSymbol(), new ApprovedFunding(s.fundingSymbol(), Set.copyOf(p.exchanges()), usdt));
+                pendingFundingSelection.remove(chatId);
 
                 sessionStore.set(new TelegramSessionStore.Session(
                     chatId,
@@ -157,9 +177,12 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
                     null
                 ));
 
-                ui(chatId, true, "✅ Funding approved: " + s.fundingSymbol()
-                                 + "\nExchange: " + s.fundingExchange()
-                                 + "\nUSDT: " + usdt, menuKb());
+                ui(chatId, true,
+                    "✅ Funding approved: " + s.fundingSymbol() +
+                    "\nExchanges: " + p.exchanges().stream().sorted().collect(Collectors.joining(", ")) +
+                    "\nUSDT: " + usdt,
+                    menuKb()
+                );
                 return;
             }
 
@@ -259,17 +282,84 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
 
         if (data.startsWith(CB_FUND_APPROVE)) {
             String sym = data.substring(CB_FUND_APPROVE.length());
+
+            // init pending selection for this chat
+            pendingFundingSelection.put(chatId, new PendingFundingSelection(sym, ConcurrentHashMap.newKeySet()));
+
             var s = sessionStore.get(chatId);
             sessionStore.set(new TelegramSessionStore.Session(
                 chatId,
                 s.uiMessageId(),
                 false,
                 TelegramSessionStore.State.FUNDING_APPROVE_SELECT_EXCHANGE,
+                sym, null, // fundingExchange больше не используем
+                s.arbSymbol(), s.longExchange(), s.shortExchange(), s.leverage(), s.quantity(),
+                null
+            ));
+
+            ui(chatId, false, "Выбери биржи для funding (можно несколько): " + sym, fundingExchangeMultiKb(chatId, sym));
+            return;
+        }
+
+        if (data.startsWith(CB_FUND_TOGGLE_EX)) {
+            // FUND:TOGEX:<symbol>:<exchange>
+            String payload = data.substring(CB_FUND_TOGGLE_EX.length());
+            String[] parts = payload.split(":");
+            if (parts.length == 2) {
+                String sym = parts[0];
+                String ex = parts[1];
+
+                PendingFundingSelection p = pendingFundingSelection.computeIfAbsent(
+                    chatId,
+                    id -> new PendingFundingSelection(sym, ConcurrentHashMap.newKeySet())
+                );
+
+                // если пользователь вдруг кликнул по другому символу — переинициализируем
+                if (!Objects.equals(p.symbol(), sym)) {
+                    p = new PendingFundingSelection(sym, ConcurrentHashMap.newKeySet());
+                    pendingFundingSelection.put(chatId, p);
+                }
+
+                if (p.exchanges().contains(ex)) p.exchanges().remove(ex);
+                else p.exchanges().add(ex);
+
+                String selected = p.exchanges().isEmpty()
+                                  ? "(пока ничего не выбрано)"
+                                  : p.exchanges().stream().sorted().collect(Collectors.joining(", "));
+
+                ui(chatId, false,
+                    "Выбери биржи для funding (можно несколько): " + sym + "\nВыбрано: " + selected,
+                    fundingExchangeMultiKb(chatId, sym)
+                );
+                return;
+            }
+        }
+
+        if (data.startsWith(CB_FUND_EX_NEXT)) {
+            String sym = data.substring(CB_FUND_EX_NEXT.length());
+
+            PendingFundingSelection p = pendingFundingSelection.get(chatId);
+            if (p == null || p.exchanges().isEmpty() || !Objects.equals(p.symbol(), sym)) {
+                ui(chatId, false, "Выбери хотя бы одну биржу для " + sym, fundingExchangeMultiKb(chatId, sym));
+                return;
+            }
+
+            var s = sessionStore.get(chatId);
+            sessionStore.set(new TelegramSessionStore.Session(
+                chatId,
+                s.uiMessageId(),
+                false,
+                TelegramSessionStore.State.FUNDING_APPROVE_SET_USDT,
                 sym, null,
                 s.arbSymbol(), s.longExchange(), s.shortExchange(), s.leverage(), s.quantity(),
                 null
             ));
-            ui(chatId, false, "Выбери биржу для funding: " + sym, fundingExchangeKb(sym));
+
+            ui(chatId, false,
+                "Введи сумму USDT для funding:\nSymbol: " + sym + "\nExchanges: " +
+                p.exchanges().stream().sorted().collect(Collectors.joining(", ")),
+                fundingUsdtKb(sym)
+            );
             return;
         }
 
@@ -294,23 +384,35 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
 
                 ui(chatId, false,
                     "Введи сумму USDT для funding:\nSymbol: " + sym + "\nExchange: " + ex,
-                    fundingUsdtKb(sym, ex)
+                    fundingUsdtKb(sym)
                 );
                 return;
             }
         }
 
         if (data.startsWith(CB_FUND_USDT)) {
-            // FUND:USDT:<symbol>:<exchange>:<usdt>
+            // FUND:USDT:<symbol>:<usdt>
             String payload = data.substring(CB_FUND_USDT.length());
             String[] parts = payload.split(":");
-            if (parts.length == 3) {
+            if (parts.length == 2) {
                 String sym = parts[0];
-                String ex = parts[1];
-                BigDecimal usdt = new BigDecimal(parts[2]);
+                BigDecimal usdt = new BigDecimal(parts[1]);
 
-                approvedFunding.put(sym, new ApprovedFunding(sym, ex, usdt));
-                ui(chatId, false, "✅ Funding approved:\n" + sym + "\nExchange: " + ex + "\nUSDT: " + usdt, menuKb());
+                PendingFundingSelection p = pendingFundingSelection.get(chatId);
+                if (p == null || p.exchanges().isEmpty() || !Objects.equals(p.symbol(), sym)) {
+                    ui(chatId, false, "Сначала выбери биржи для " + sym, fundingExchangeMultiKb(chatId, sym));
+                    return;
+                }
+
+                approvedFunding.put(sym, new ApprovedFunding(sym, Set.copyOf(p.exchanges()), usdt));
+                pendingFundingSelection.remove(chatId);
+
+                ui(chatId, false,
+                    "✅ Funding approved:\n" + sym +
+                    "\nExchanges: " + p.exchanges().stream().sorted().collect(Collectors.joining(", ")) +
+                    "\nUSDT: " + usdt,
+                    menuKb()
+                );
                 return;
             }
         }
@@ -368,7 +470,7 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
                 s.arbSymbol(), s.longExchange(), s.shortExchange(), lev, null,
                 null
             ));
-            ui(chatId, false, "Выбери quantity (или введи числом):", qtyKb());
+            ui(chatId, false, "Выбери quantity (или введи числом):", qtyKb( s.arbSymbol() ));
             return;
         }
 
@@ -445,7 +547,9 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
                            .map(it -> {
                                String sym = it.symbol();
                                ApprovedFunding ap = approvedFunding.get(sym);
-                               String approved = (ap != null) ? (" ✅ " + ap.exchange() + " " + ap.usdt() + " USDT") : "";
+                               String approved = (ap != null)
+                                                 ? (" ✅ " + ap.exchanges().stream().sorted().collect(Collectors.joining(",")) + " " + ap.usdt() + " USDT")
+                                                 : "";
                                return "📌 " + sym + approved + "\n" + formatFunding(it.funding());
                            })
                            .collect(Collectors.joining("\n\n"));
@@ -461,7 +565,9 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
 
         String text = approvedFunding.values().stream()
                                      .sorted(Comparator.comparing(ApprovedFunding::symbol))
-                                     .map(a -> "✅ " + a.symbol() + " | " + a.exchange() + " | " + a.usdt() + " USDT")
+                                     .map(a -> "✅ " + a.symbol() + " | " +
+                                               a.exchanges().stream().sorted().collect(Collectors.joining(",")) +
+                                               " | " + a.usdt() + " USDT")
                                      .collect(Collectors.joining("\n"));
 
         ui(chatId, manual, text, menuKb());
@@ -561,18 +667,29 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
         return kb(rows);
     }
 
-    private InlineKeyboardMarkup fundingExchangeKb(String symbol) {
+    private InlineKeyboardMarkup fundingExchangeMultiKb(long chatId, String symbol) {
+        PendingFundingSelection p = pendingFundingSelection.get(chatId);
+        Set<String> selected = (p != null && Objects.equals(p.symbol(), symbol)) ? p.exchanges() : Set.of();
+
         return kb(List.of(
-            List.of(btn("bybit", CB_FUND_EX + symbol + ":bybit"), btn("binance", CB_FUND_EX + symbol + ":binance")),
-            List.of(btn("gate", CB_FUND_EX + symbol + ":gate")),
+            List.of(
+                btn(selected.contains("binance") ? "✅ binance" : "☐ binance", CB_FUND_TOGGLE_EX + symbol + ":binance"),
+                btn(selected.contains("bybit") ? "✅ bybit" : "☐ bybit", CB_FUND_TOGGLE_EX + symbol + ":bybit")
+            ),
+            List.of(
+                btn(selected.contains("gate") ? "✅ gate" : "☐ gate", CB_FUND_TOGGLE_EX + symbol + ":gate")
+            ),
+            List.of(
+                btn("➡️ Next", CB_FUND_EX_NEXT + symbol)
+            ),
             List.of(btn("❌ Cancel", CB_CANCEL), btn("⬅️ Menu", CB_NAV_MENU))
         ));
     }
 
-    private InlineKeyboardMarkup fundingUsdtKb(String symbol, String exchange) {
+    private InlineKeyboardMarkup fundingUsdtKb(String symbol) {
         return kb(List.of(
-            List.of(btn("25", CB_FUND_USDT + symbol + ":" + exchange + ":25"), btn("50", CB_FUND_USDT + symbol + ":" + exchange + ":50")),
-            List.of(btn("100", CB_FUND_USDT + symbol + ":" + exchange + ":100"), btn("250", CB_FUND_USDT + symbol + ":" + exchange + ":250")),
+            List.of(btn("25", CB_FUND_USDT + symbol + ":25"), btn("50", CB_FUND_USDT + symbol + ":50")),
+            List.of(btn("100", CB_FUND_USDT + symbol + ":100"), btn("250", CB_FUND_USDT + symbol + ":250")),
             List.of(btn("❌ Cancel", CB_CANCEL), btn("⬅️ Menu", CB_NAV_MENU))
         ));
     }
@@ -603,7 +720,9 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot {
         ));
     }
 
-    private InlineKeyboardMarkup qtyKb() {
+    private InlineKeyboardMarkup qtyKb( String symbol ) {
+        Quote binance = marketCache.get( "binance", symbol );
+
         return kb(List.of(
             List.of(btn("0.001", CB_ARB_QTY + "0.001"), btn("0.01", CB_ARB_QTY + "0.01")),
             List.of(btn("0.1", CB_ARB_QTY + "0.1"), btn("1", CB_ARB_QTY + "1")),

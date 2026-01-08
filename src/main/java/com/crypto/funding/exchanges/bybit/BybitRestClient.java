@@ -54,7 +54,7 @@ public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClien
 
         Map<String, Object> body = new HashMap<>();
         body.put("category", "linear"); // или "inverse" / "option" — зависит от того, что ты используешь
-        body.put("symbol", symbol);
+        body.put("symbol", SymbolMapper.toExchange( symbol ));
         body.put("side", cmd.side() == OrderSide.BUY ? "Buy" : "Sell");
         body.put("orderType", cmd.type() == OrderType.MARKET ? "Market" : "Limit");
         body.put("qty", cmd.quantity().toPlainString());

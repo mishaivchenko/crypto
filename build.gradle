@@ -108,22 +108,22 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-
-def frontendDir = "${projectDir}/frontend"
-tasks.register('frontendCi', NpmTask) {
-    workingDir = file(frontendDir)
-    args = ['ci']                                          // npm ci
-}
-
-tasks.register('frontendBuild', NpmTask) {
-    dependsOn tasks.named('frontendCi')
-    workingDir = file(frontendDir)
-    args = ['run', 'build']                                // npm run build
-}
-
-// чтобы фронт собирался перед ресурсами (кладём в src/main/resources/static)
-tasks.named('processResources') {
-    dependsOn tasks.named('frontendBuild')
-}
+//
+//def frontendDir = "${projectDir}/frontend"
+//tasks.register('frontendCi', NpmTask) {
+//    workingDir = file(frontendDir)
+//    args = ['ci']                                          // npm ci
+//}
+//
+//tasks.register('frontendBuild', NpmTask) {
+//    dependsOn tasks.named('frontendCi')
+//    workingDir = file(frontendDir)
+//    args = ['run', 'build']                                // npm run build
+//}
+//
+//// чтобы фронт собирался перед ресурсами (кладём в src/main/resources/static)
+//tasks.named('processResources') {
+//    dependsOn tasks.named('frontendBuild')
+//}
 
 bootRun { systemProperty 'spring.profiles.active', System.getProperty('spring.profiles.active', 'default') }

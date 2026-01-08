@@ -35,7 +35,7 @@ public class SubscriptionManager
         clients.put( gateArbitrageWsClient.name(), gateArbitrageWsClient );
         // старт с текущими символами
         var syms = List.copyOf( symbols() );
-        clients.values().forEach( c -> c.start( syms ) );
+        //clients.values().forEach( c -> c.start( syms ) );
     }
 
     // периодический ресаб (если телега добавила/удалила монеты)

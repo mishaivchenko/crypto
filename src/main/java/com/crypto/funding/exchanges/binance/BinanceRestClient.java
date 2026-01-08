@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.crypto.funding.utills.SymbolMapper.toExchange;
+
 @Service
 public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingClient
 {
@@ -61,7 +63,7 @@ public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingCli
         long timestamp = System.currentTimeMillis();
 
         Map<String, String> params = new LinkedHashMap<>();
-        params.put( "symbol", symbol );
+        params.put( "symbol", toExchange(symbol) );
         params.put( "side", cmd.side().name() );            // BUY / SELL
         params.put( "type", cmd.type().name() );            // MARKET / LIMIT
         params.put( "quantity", cmd.quantity().toPlainString() );
@@ -146,7 +148,7 @@ public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingCli
     public FundingInfo fetchFunding( String unifiedSymbol ) throws Exception
     {
         // Пример unifiedSymbol = "BTC/USDT"
-        String binanceSymbol = SymbolMapper.toExchange( unifiedSymbol ); // "BTCUSDT"
+        String binanceSymbol = toExchange( unifiedSymbol ); // "BTCUSDT"
         String url = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=" + binanceSymbol;
 
         HttpRequest req = HttpRequest.newBuilder()
