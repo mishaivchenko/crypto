@@ -1,0 +1,164 @@
+package com.crypto.funding.persistence.model;
+
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(
+    name = "approved_funding",
+    indexes = {
+        @Index(name = "idx_funding_symbol", columnList = "symbol"),
+        @Index(name = "idx_funding_next_time", columnList = "next_funding_at")
+    }
+)
+public class ApprovedFundingEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Version
+    private Long version;
+
+    @Column(name = "symbol", nullable = false)
+    private String symbol;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "approved_funding_exchange",
+        joinColumns = @JoinColumn(name = "funding_id")
+    )
+    @Column(name = "exchange", nullable = false)
+    private Set<String> exchanges = new HashSet<>();
+
+    @Column(name = "usdt_amount", nullable = false, precision = 19, scale = 8)
+    private BigDecimal usdtAmount;
+
+    @Column(name = "next_funding_at", nullable = false)
+    private Instant nextFundingAt;
+
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "executed", nullable = false)
+    private boolean executed = false;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt = Instant.now();
+
+    @PreUpdate
+    void onUpdate() { updatedAt = Instant.now(); }
+
+    protected ApprovedFundingEntity() {}
+
+    public ApprovedFundingEntity(
+        String symbol,
+        Set<String> exchanges,
+        BigDecimal usdtAmount,
+        Instant nextFundingAt
+    ) {
+        this.symbol = symbol;
+        this.exchanges = new HashSet<>(exchanges);
+        this.usdtAmount = usdtAmount;
+        this.nextFundingAt = nextFundingAt;
+    }
+
+    /**
+     * Hibernate expects to mutate the collection instance. Never assign immutable collections here.
+     */
+    public void setExchanges(Set<String> exchanges) {
+        this.exchanges.clear();
+        if (exchanges != null) {
+            this.exchanges.addAll(exchanges);
+        }
+    }
+
+    public String getSymbol()
+    {
+        return symbol;
+    }
+
+    public void setSymbol( String symbol )
+    {
+        this.symbol = symbol;
+    }
+
+    public Set<String> getExchanges()
+    {
+        return exchanges;
+    }
+
+    public BigDecimal getUsdtAmount()
+    {
+        return usdtAmount;
+    }
+
+    public void setUsdtAmount( BigDecimal usdtAmount )
+    {
+        this.usdtAmount = usdtAmount;
+    }
+
+    public Instant getNextFundingAt()
+    {
+        return nextFundingAt;
+    }
+
+    public void setNextFundingAt( Instant nextFundingAt )
+    {
+        this.nextFundingAt = nextFundingAt;
+    }
+
+    public boolean isActive()
+    {
+        return active;
+    }
+
+    public void setActive( boolean active )
+    {
+        this.active = active;
+    }
+
+    public boolean isExecuted()
+    {
+        return executed;
+    }
+
+    public void setExecuted( boolean executed )
+    {
+        this.executed = executed;
+    }
+
+    public Instant getCreatedAt()
+    {
+        return createdAt;
+    }
+
+    public void setCreatedAt( Instant createdAt )
+    {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt()
+    {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt( Instant updatedAt )
+    {
+        this.updatedAt = updatedAt;
+    }
+
+    public Long getId()
+    {
+        return id;
+    }
+
+    // getters / setters — без фанатизма
+}

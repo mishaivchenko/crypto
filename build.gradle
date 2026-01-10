@@ -42,8 +42,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
-//    implementation("org.slf4j:slf4j-api:2.0.13")
-//    implementation("ch.qos.logback:logback-classic:1.5.8")
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -66,6 +64,11 @@ dependencies {
     implementation('it.tdlight:tdlight-natives') {
         artifact { classifier = 'macos_arm64' }
     }
+
+    //DB
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "org.xerial:sqlite-jdbc:3.46.1.0"
+    implementation "org.hibernate.orm:hibernate-community-dialects:6.5.2.Final"
 
     // JSON
     implementation 'com.fasterxml.jackson.core:jackson-databind'

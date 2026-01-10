@@ -21,7 +21,7 @@ public class FundingWatchlistService
 {
 
     // Что мы храним по бирже
-    public static record WatchFunding(
+    public record WatchFunding(
         String exchange,          // "binance", "bybit", "gate"
         double fundingRatePct,    // уже умножено на 100
         Instant nextFundingAt,

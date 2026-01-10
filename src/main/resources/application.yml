@@ -8,6 +8,7 @@ management:
             exposure:
                 include: health,info,prometheus
 
+
 telegram:
     apiId: ${TG_API_ID}
     apiHash: ${TG_API_HASH}
@@ -38,6 +39,16 @@ spring:
                 period: 0
             chain:
                 cache: false
+    datasource:
+        url: jdbc:sqlite:./data/fundingarb.db
+        driver-class-name: org.sqlite.JDBC
+    jpa:
+        hibernate:
+            ddl-auto: create   # временно можно поставить create
+        properties:
+            hibernate:
+                dialect: org.hibernate.community.dialect.SQLiteDialect
+        show-sql: true
 
 trading:
     binance:
