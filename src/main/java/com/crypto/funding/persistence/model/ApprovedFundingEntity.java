@@ -15,69 +15,87 @@ import java.util.Set;
         @Index(name = "idx_funding_next_time", columnList = "next_funding_at")
     }
 )
-public class ApprovedFundingEntity {
+public class ApprovedFundingEntity
+{
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue( strategy = GenerationType.IDENTITY )
     private Long id;
 
     @Version
     private Long version;
 
-    @Column(name = "symbol", nullable = false)
+    @Column( name = "symbol", nullable = false )
     private String symbol;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection( fetch = FetchType.EAGER )
     @CollectionTable(
         name = "approved_funding_exchange",
-        joinColumns = @JoinColumn(name = "funding_id")
+        joinColumns = @JoinColumn( name = "funding_id" )
     )
-    @Column(name = "exchange", nullable = false)
+    @Column( name = "exchange", nullable = false )
     private Set<String> exchanges = new HashSet<>();
 
-    @Column(name = "usdt_amount", nullable = false, precision = 19, scale = 8)
+    @Column( name = "usdt_amount", nullable = false, precision = 19, scale = 8 )
     private BigDecimal usdtAmount;
 
+    @Column( name = "active", nullable = false )
+    private boolean active = true;
+
+    @Column( name = "executed", nullable = false )
+    private boolean executed = false;
+
+    @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "next_funding_at", nullable = false)
     private Instant nextFundingAt;
 
-    @Column(name = "active", nullable = false)
-    private boolean active = true;
-
-    @Column(name = "executed", nullable = false)
-    private boolean executed = false;
-
+    @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
     @PreUpdate
-    void onUpdate() { updatedAt = Instant.now(); }
+    void onUpdate()
+    {
+        updatedAt = Instant.now();
+    }
 
-    protected ApprovedFundingEntity() {}
+    protected ApprovedFundingEntity()
+    {
+    }
 
     public ApprovedFundingEntity(
         String symbol,
         Set<String> exchanges,
         BigDecimal usdtAmount,
         Instant nextFundingAt
-    ) {
+    )
+    {
         this.symbol = symbol;
-        this.exchanges = new HashSet<>(exchanges);
+        this.exchanges = new HashSet<>( exchanges );
         this.usdtAmount = usdtAmount;
         this.nextFundingAt = nextFundingAt;
     }
 
-    /**
-     * Hibernate expects to mutate the collection instance. Never assign immutable collections here.
-     */
-    public void setExchanges(Set<String> exchanges) {
-        this.exchanges.clear();
-        if (exchanges != null) {
-            this.exchanges.addAll(exchanges);
-        }
+    @PrePersist
+    void onCreate()
+    {
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    public Long getId()
+    {
+        return id;
+    }
+
+    public long getVersion()
+    {
+        return version;
     }
 
     public String getSymbol()
@@ -85,14 +103,21 @@ public class ApprovedFundingEntity {
         return symbol;
     }
 
-    public void setSymbol( String symbol )
-    {
-        this.symbol = symbol;
-    }
-
     public Set<String> getExchanges()
     {
         return exchanges;
+    }
+
+    /**
+     * Hibernate expects to mutate the collection instance. Never assign immutable collections here.
+     */
+    public void setExchanges( Set<String> exchanges )
+    {
+        this.exchanges.clear();
+        if( exchanges != null )
+        {
+            this.exchanges.addAll( exchanges );
+        }
     }
 
     public BigDecimal getUsdtAmount()
@@ -155,10 +180,20 @@ public class ApprovedFundingEntity {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId()
-    {
-        return id;
-    }
-
     // getters / setters — без фанатизма
+    @Converter( autoApply = false )
+    public static class InstantEpochMillisConverter implements AttributeConverter<Instant, Long>
+    {
+        @Override
+        public Long convertToDatabaseColumn( Instant attribute )
+        {
+            return attribute == null ? null : attribute.toEpochMilli();
+        }
+
+        @Override
+        public Instant convertToEntityAttribute( Long dbData )
+        {
+            return dbData == null ? null : Instant.ofEpochMilli( dbData );
+        }
+    }
 }

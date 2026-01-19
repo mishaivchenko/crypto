@@ -1,5 +1,6 @@
 package com.crypto.funding.telegram;
 
+import com.crypto.funding.market.MarketCache;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.service.ApprovedFundingStore;
 import com.crypto.funding.persistence.service.FundingApprovalService;
@@ -316,7 +317,7 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot
         {
             String sym = data.substring( CB_FUND_UNAPPROVE.length() );
 
-            fundingApprovalService.unapprove( fundingStore.findBySymbol( sym ).getSymbol() );
+            fundingApprovalService.unapprove( fundingStore.findBySymbol( sym ).get().getSymbol() );
             ui( chatId, false, "❌ Unapproved: " + sym, menuKb() );
             return;
         }

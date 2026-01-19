@@ -14,13 +14,25 @@ public interface ApprovedFundingRepository
     List<ApprovedFundingEntity> findByActiveTrueAndExecutedFalse();
 
     /**
-     * For scheduler: jobs that are due at or before provided time.
+     * Pending fundings whose nextFundingAt is after the given time.
+     * Useful for UI lists.
+     */
+    List<ApprovedFundingEntity> findByActiveTrueAndExecutedFalseAndNextFundingAtAfter(Instant time);
+
+    /**
+     * Pending fundings whose nextFundingAt is before the given time.
+     * Useful for scheduler "due" window.
      */
     List<ApprovedFundingEntity> findByActiveTrueAndExecutedFalseAndNextFundingAtBefore(Instant time);
 
+    /**
+     * Scheduler-friendly: all fundings in the given time window.
+     */
+    List<ApprovedFundingEntity> findByActiveTrueAndExecutedFalseAndNextFundingAtBetween(Instant from, Instant to);
+
     Optional<ApprovedFundingEntity> findBySymbol(String symbol);
 
-    Optional<ApprovedFundingEntity> findBySymbolAndActive( String symbol, boolean active );
+    Optional<ApprovedFundingEntity> findBySymbolAndActive(String symbol, boolean active);
 
-    List<ApprovedFundingEntity> findByActiveTrue();
+    Optional<ApprovedFundingEntity> findFirstByActiveTrueAndExecutedFalseOrderByNextFundingAtAsc();
 }

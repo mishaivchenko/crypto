@@ -1,5 +1,7 @@
 package com.crypto.funding.persistence.service;
 
+import com.crypto.funding.persistence.model.ApprovedFundingEntity;
+import com.crypto.funding.scheduler.FundingSchedulerService;
 import com.crypto.funding.watchlist.FundingWatchlistService;
 import com.crypto.funding.watchlist.FundingWatchlistService.Item;
 import com.crypto.funding.watchlist.FundingWatchlistService.WatchFunding;
@@ -16,24 +18,35 @@ import java.util.*;
 @Service
 public class FundingApprovalService {
 
-    private final ApprovedFundingStore approvedFundingStore;
-    private final FundingWatchlistService fundingWatchlist;
+    private final ApprovedFundingStore store;
+    private final FundingWatchlistService watchlist;
+    private final FundingSchedulerService scheduler;
 
     public FundingApprovalService(
-        ApprovedFundingStore approvedFundingStore,
-        FundingWatchlistService fundingWatchlist
+        ApprovedFundingStore store,
+        FundingWatchlistService watchlist,
+        FundingSchedulerService scheduler
     ) {
-        this.approvedFundingStore = approvedFundingStore;
-        this.fundingWatchlist = fundingWatchlist;
+        this.store = store;
+        this.watchlist = watchlist;
+        this.scheduler = scheduler;
     }
 
-    public void approve(String symbol, Set<String> exchanges, BigDecimal usdt) {
+    public void approve(String symbol, Set<String> exchanges, BigDecimal usdtAmount) {
+        Objects.requireNonNull(symbol, "symbol");
+        Objects.requireNonNull(exchanges, "exchanges");
+        Objects.requireNonNull(usdtAmount, "usdtAmount");
+
         Instant nextFundingAt = resolveNextFundingAtOrThrow(symbol, exchanges);
-        approvedFundingStore.approve(symbol, exchanges, usdt, nextFundingAt);
+        store.approve(symbol, exchanges, usdtAmount, nextFundingAt);
+
+        scheduler.wakeup("approve " + symbol);
     }
 
     public void unapprove(String symbol) {
-        approvedFundingStore.unapprove(symbol);
+        Objects.requireNonNull(symbol, "symbol");
+        store.unapprove(symbol);
+        scheduler.wakeup("unapprove " + symbol);
     }
 
     /**
@@ -47,7 +60,7 @@ public class FundingApprovalService {
             throw new IllegalArgumentException("exchanges must not be empty");
         }
 
-        Item item = fundingWatchlist.all().stream()
+        Item item = watchlist.all().stream()
             .filter(i -> Objects.equals(i.symbol(), symbol))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Funding data not found for symbol: " + symbol));

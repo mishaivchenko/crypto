@@ -44,7 +44,7 @@ spring:
         driver-class-name: org.sqlite.JDBC
     jpa:
         hibernate:
-            ddl-auto: create   # временно можно поставить create
+            ddl-auto: update   # временно можно поставить create
         properties:
             hibernate:
                 dialect: org.hibernate.community.dialect.SQLiteDialect

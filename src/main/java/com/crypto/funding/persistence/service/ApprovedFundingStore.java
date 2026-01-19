@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -91,12 +92,13 @@ public class ApprovedFundingStore {
         });
     }
 
-    public ApprovedFundingEntity findBySymbol( String symbol )
-    {
-        return repo.findBySymbol( symbol ).orElse(null);
+    @Transactional(readOnly = true)
+    public Optional<ApprovedFundingEntity> findBySymbol(String symbol) {
+        return repo.findBySymbol(symbol).stream().findAny();
     }
-    public ApprovedFundingEntity findBySymbolAndActive( String symbol )
-    {
-        return repo.findBySymbolAndActive( symbol, true ).orElse(null);
+
+    @Transactional(readOnly = true)
+    public Optional<ApprovedFundingEntity> findBySymbolAndActive(String symbol) {
+        return repo.findBySymbolAndActive(symbol, true).stream().findAny();
     }
 }
