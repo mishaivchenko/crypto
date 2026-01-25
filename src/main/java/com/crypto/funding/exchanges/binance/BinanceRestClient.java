@@ -2,7 +2,6 @@ package com.crypto.funding.exchanges.binance;
 
 import com.crypto.funding.exchanges.ExchangeRestClient;
 import com.crypto.funding.trading.*;
-import com.crypto.funding.utills.SymbolMapper;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,7 +20,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.crypto.funding.utills.SymbolMapper.toExchange;
