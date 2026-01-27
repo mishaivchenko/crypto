@@ -14,7 +14,7 @@ telegram:
     apiHash: ${TG_API_HASH}
     phoneNumber: ${TG_PHONE}
     #password: ${TG_2FA_PASSWORD:}
-    sessionDir: ${TG_SESSION_DIR:./data/tdlib}
+    sessionDir: ${TELEGRAM_SESSIONDIR:./data/tdlib}
     systemLanguageCode: uk
     deviceModel: "Java21-Arb"
     appVersion: "0.1.0"

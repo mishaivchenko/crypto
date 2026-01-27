@@ -37,6 +37,23 @@ repositories {
     maven { url "https://mvn.mchv.eu/repository/mchv/" }
 }
 
+def tdNativesClassifierValue = (project.findProperty("tdNativesClassifier") ?: System.getenv("TD_NATIVES"))?.toString()
+
+def resolveTdClassifier = {
+    if (tdNativesClassifierValue != null && !tdNativesClassifierValue.isBlank()) return tdNativesClassifierValue
+
+    def os = osdetector.os
+    def arch = osdetector.arch
+
+    if (os == "osx" && arch == "aarch_64") return "macos_arm64"
+    if (os == "osx" && arch == "x86_64")   return "macos_amd64"
+    if (os == "linux" && arch == "aarch_64") return "linux_arm64_gnu_ssl3"
+    if (os == "linux" && arch == "x86_64")  return "linux_amd64_gnu_ssl3"
+    if (os == "windows" && arch == "x86_64") return "windows_amd64"
+
+    throw new GradleException("Unsupported TDLight natives for os=${os}, arch=${arch}. Set -PtdNativesClassifier=macos_arm64|linux_amd64|linux_arm64|...")
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -55,14 +72,15 @@ dependencies {
 
     implementation "org.telegram:telegrambots-spring-boot-starter:6.9.7.1"
 
+//    // нативки: для Mac M1/M2 укажи macos_arm64; для Intel Mac — macos_amd64; Linux — см. релиз-ноты
+//    implementation('it.tdlight:tdlight-natives') {
+//        artifact { classifier = 'macos_arm64' }
+//    }
+
     implementation platform('it.tdlight:tdlight-java-bom:3.3.1+td.1.8.25')
-
-    // без указания версий!
     implementation 'it.tdlight:tdlight-java'
-
-    // нативки: для Mac M1/M2 укажи macos_arm64; для Intel Mac — macos_amd64; Linux — см. релиз-ноты
-    implementation('it.tdlight:tdlight-natives') {
-        artifact { classifier = 'macos_arm64' }
+    runtimeOnly('it.tdlight:tdlight-natives') {
+        artifact { classifier = resolveTdClassifier() }
     }
 
     //DB
@@ -78,6 +96,7 @@ dependencies {
     testImplementation "org.assertj:assertj-core:$assertjVersion"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
 
+    //implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 }
 
 tasks.test { useJUnitPlatform() }
@@ -90,43 +109,8 @@ dependencyCheck {
 
 tasks.register('security') { dependsOn 'dependencyCheckAnalyze' }
 
-//spotless {
-//    java {
-//        target 'src/**/*.java'
-//        importOrder('', 'java', 'javax', 'org', 'com')
-//        removeUnusedImports()
-//        googleJavaFormat('1.22.0')
-//        indentWithSpaces(4)
-//        licenseHeader('''/*\n * Crypto-Arb — MIT License\n */\n''')
-//    }
-//    format('misc') {
-//        target '*.md', '.gitignore', 'config/**/*.yml'
-//        endWithNewline()
-//        indentWithSpaces(2)
-//        trimTrailingWhitespace()
-//    }
-//}
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
-
-//
-//def frontendDir = "${projectDir}/frontend"
-//tasks.register('frontendCi', NpmTask) {
-//    workingDir = file(frontendDir)
-//    args = ['ci']                                          // npm ci
-//}
-//
-//tasks.register('frontendBuild', NpmTask) {
-//    dependsOn tasks.named('frontendCi')
-//    workingDir = file(frontendDir)
-//    args = ['run', 'build']                                // npm run build
-//}
-//
-//// чтобы фронт собирался перед ресурсами (кладём в src/main/resources/static)
-//tasks.named('processResources') {
-//    dependsOn tasks.named('frontendBuild')
-//}
 
 bootRun { systemProperty 'spring.profiles.active', System.getProperty('spring.profiles.active', 'default') }

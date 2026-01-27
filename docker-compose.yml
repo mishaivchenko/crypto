@@ -1,0 +1,17 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                TD_NATIVES: ${TD_NATIVES:-linux_arm64}
+        container_name: funding-app
+        env_file:
+            - .env
+        ports:
+            - "${SERVER_PORT:-8090}:8090"
+        volumes:
+            - ./data-container:/data
+        restart: unless-stopped
+        environment:
+            TELEGRAM_SESSIONDIR: /data/tdlib
