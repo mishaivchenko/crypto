@@ -7,16 +7,17 @@ import com.crypto.funding.watchlist.FundingWatchlistService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Service
-public class BybitFundingWsClient extends AbstractWsClient
+public class
+BybitFundingWsClient extends AbstractWsClient
 {
     private final FundingWatchlistService fundingWatchlistService;
 
@@ -107,7 +108,7 @@ public class BybitFundingWsClient extends AbstractWsClient
             sec = Math.max( 0, Duration.between( Instant.now(), next ).toSeconds() );
         }
 
-        fundingWatchlistService.updateFunding( new FundingInfo( name(), unified, ratePct, next, sec ) );
+        fundingWatchlistService.updateFunding( new FundingInfo( name(), unified, ratePct, next, sec, BigDecimal.ZERO ) );
     }
 
     private static double parseD( String s )

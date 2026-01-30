@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -122,7 +123,8 @@ public class GateFundingWsClient extends AbstractWsClient
                     unified,
                     ratePct,
                     null,
-                    0L
+                    0L,
+                    BigDecimal.ZERO
                 )
             );
         } catch (Exception e) {

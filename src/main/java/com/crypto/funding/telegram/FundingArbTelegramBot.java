@@ -530,40 +530,40 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot
         {
             var s = sessionStore.get( chatId );
             // ордер — отдельная история, но пусть хотя бы попытка делается
-            TestOrderResult longRes = testOrderEngine.placeTestOrder(
-                new PlaceTestOrderCommand(
-                    s.longExchange(),
-                    s.arbSymbol(),
-                    OrderSide.BUY,
-                    OrderType.MARKET,
-                    s.quantity(),
-                    null
-                )
-            );
-            TestOrderResult shortRes = testOrderEngine.placeTestOrder(
-                new PlaceTestOrderCommand(
-                    s.shortExchange(),
-                    s.arbSymbol(),
-                    OrderSide.SELL,
-                    OrderType.MARKET,
-                    s.quantity(),
-                    null
-                )
-            );
-
-            sessionStore.clear( chatId );
-
-            ui( chatId, false,
-                "✅ TEST orders sent\n" +
-                "Symbol: " + s.arbSymbol() + "\n" +
-                "LONG: " + s.longExchange() + " (BUY)\n" +
-                "SHORT: " + s.shortExchange() + " (SELL)\n" +
-                "Leverage: " + s.leverage() + "x\n" +
-                "Qty: " + s.quantity() + "\n\n" +
-                "LONG: " + longRes.status() + " id=" + longRes.exchangeOrderId() + "\n" +
-                "SHORT: " + shortRes.status() + " id=" + shortRes.exchangeOrderId(),
-                menuKb()
-            );
+//            TestOrderResult longRes = testOrderEngine.placeTestOrder(
+//                new PlaceTestOrderCommand(
+//                    s.longExchange(),
+//                    s.arbSymbol(),
+//                    OrderSide.BUY,
+//                    OrderType.MARKET,
+//                    s.quantity(),
+//                    null
+//                )
+//            );
+//            TestOrderResult shortRes = testOrderEngine.placeTestOrder(
+//                new PlaceTestOrderCommand(
+//                    s.shortExchange(),
+//                    s.arbSymbol(),
+//                    OrderSide.SELL,
+//                    OrderType.MARKET,
+//                    s.quantity(),
+//                    null
+//                )
+//            );
+//
+//            sessionStore.clear( chatId );
+//
+//            ui( chatId, false,
+//                "✅ TEST orders sent\n" +
+//                "Symbol: " + s.arbSymbol() + "\n" +
+//                "LONG: " + s.longExchange() + " (BUY)\n" +
+//                "SHORT: " + s.shortExchange() + " (SELL)\n" +
+//                "Leverage: " + s.leverage() + "x\n" +
+//                "Qty: " + s.quantity() + "\n\n" +
+//                "LONG: " + longRes.status() + " id=" + longRes.exchangeOrderId() + "\n" +
+//                "SHORT: " + shortRes.status() + " id=" + shortRes.exchangeOrderId(),
+//                menuKb()
+//            );
             return;
         }
 

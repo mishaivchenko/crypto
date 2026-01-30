@@ -1,5 +1,6 @@
 package com.crypto.funding.trading;
 
+import com.crypto.funding.exchanges.AbstractRestClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,14 +11,14 @@ import java.util.stream.Collectors;
 @Service
 public class TestOrderEngine
 {
-    private final Map<String, ExchangeTradingClient> clientsByName;
+    private final Map<String, AbstractRestClient> clientsByName;
 
     // этот конструктор соберёт Map из всех бинов ExchangeTradingClient
-    public TestOrderEngine( List<ExchangeTradingClient> clients )
+    public TestOrderEngine( List<AbstractRestClient> clients )
     {
         this.clientsByName = clients.stream()
                                     .collect( Collectors.toUnmodifiableMap(
-                                        c -> c.name().toLowerCase(),
+                                        c -> c.exchangeName().toLowerCase(),
                                         Function.identity()
                                     ) );
     }
@@ -25,7 +26,7 @@ public class TestOrderEngine
     public TestOrderResult placeTestOrder( PlaceTestOrderCommand cmd )
     {
         String ex = cmd.exchange().toLowerCase();
-        ExchangeTradingClient client = clientsByName.get( ex );
+        AbstractRestClient client = clientsByName.get( ex );
 
         if( client == null )
         {

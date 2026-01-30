@@ -38,8 +38,9 @@ public class FundingSchedulerService {
     private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
 
     private final ApprovedFundingRepository repo;
-    private final TestOrderEngine testOrderEngine;
     private final TaskScheduler scheduler;
+
+    private final OrderExecutorService orderExecutorService;
 
     private final Duration lookahead;
     private final Duration minRecheckDelay;
@@ -54,15 +55,14 @@ public class FundingSchedulerService {
 
     public FundingSchedulerService(
         ApprovedFundingRepository repo,
-        TestOrderEngine testOrderEngine,
-        TaskScheduler fundingTaskScheduler,
+        TaskScheduler fundingTaskScheduler, OrderExecutorService orderExecutorService,
         @Value("${funding.scheduler.lookahead-seconds:10}") long lookaheadSeconds,
         @Value("${funding.scheduler.min-recheck-millis:1000}") long minRecheckMillis,
         @Value("${funding.scheduler.max-lateness-seconds:120}") long maxLatenessSeconds,
         @Value("${funding.scheduler.discovery-interval-seconds:15}") long discoveryIntervalSeconds ) {
         this.repo = repo;
-        this.testOrderEngine = testOrderEngine;
         this.scheduler = fundingTaskScheduler;
+        this.orderExecutorService = orderExecutorService;
         this.lookahead = Duration.ofSeconds(Math.max(1, lookaheadSeconds));
         this.minRecheckDelay = Duration.ofMillis(Math.max(200, minRecheckMillis));
         this.maxLateness = Duration.ofSeconds(Math.max(5, maxLatenessSeconds));
@@ -97,7 +97,7 @@ public class FundingSchedulerService {
             // Если funding слишком старый — считаем "missed" и помечаем executed=true,
             // чтобы scheduler не пытался его бесконечно догонять.
             if (nextFundingAt.isBefore(now.minus(maxLateness))) {
-                markMissed(next.getId(), next.getSymbol(), nextFundingAt, now);
+                orderExecutorService.markMissed(next.getId(), next.getSymbol(), nextFundingAt, now);
                 // и снова ищем следующий (loop)
                 continue;
             }
@@ -114,21 +114,6 @@ public class FundingSchedulerService {
             logNext(next.getSymbol(), nextFundingAt, runAt, reason);
             return;
         }
-    }
-
-    @Transactional
-    void markMissed(Long id, String symbol, Instant nextFundingAt, Instant now) {
-        ApprovedFundingEntity e = repo.findById(id).orElse(null);
-        if (e == null || e.isExecuted() || !e.isActive()) return;
-
-        // если кто-то успел изменить — optimistic lock спасёт
-        e.setExecuted(true);
-        repo.save(e);
-
-        log.warn(
-            "[scheduler] funding MISSED: symbol={} id={} nextFundingAt={} (UTC) now={} (UTC). Marked executed=true",
-            symbol, id, nextFundingAt, now
-        );
     }
 
     private void logNext(String symbol, Instant nextFundingAt, Instant planned, String reason) {
@@ -183,74 +168,24 @@ public class FundingSchedulerService {
         Instant from = now.minus(maxLateness);    // ✅ теперь подхватит чуть просроченные
         Instant to = now.plus(lookahead);
 
-        List<ApprovedFundingEntity> due =
+        List<ApprovedFundingEntity> nextFundings =
             repo.findByActiveTrueAndExecutedFalseAndNextFundingAtBetween(from, to);
 
-        if (due.isEmpty())
+        if (nextFundings.isEmpty())
         {
             log.info( "Not found events for processing between {} and {}", LocalDate.ofInstant( from, ZoneId.systemDefault() ),LocalDate.ofInstant( to, ZoneId.systemDefault()  ));
             return;
         }
 
-        for (ApprovedFundingEntity e : due) {
+        for (ApprovedFundingEntity funding : nextFundings) {
             try {
-                log.info( "Approving {}", e );
-                executeOnce(e.getId());
+                log.info( "Approving {}", funding );
+                orderExecutorService.executeOnce( funding.getId() );
             } catch (Exception ex) {
-                log.error("[scheduler] execution failed for {} (id={})", e.getSymbol(), e.getId(), ex);
-                e.setActive( false );
-                repo.save( e );
+                log.error("[scheduler] execution failed for {} (id={})", funding.getSymbol(), funding.getId(), ex);
+                funding.setActive( false );
+                repo.save( funding );
             }
         }
-    }
-
-    @Transactional
-    void executeOnce(Long id) {
-
-        ApprovedFundingEntity e = repo.findById(id).orElse(null);
-        log.info( "Executing {}", e);
-        if (e == null) return;
-        if (!e.isActive() || e.isExecuted()) return;
-
-        Set<String> exchanges = e.getExchanges();
-        if (exchanges == null || exchanges.isEmpty()) {
-            log.warn("[scheduler] skip id={} symbol={} because exchanges empty", e.getId(), e.getSymbol());
-            e.setExecuted(true);
-            repo.save( e );
-            return;
-        }
-
-        String symbolUnified = unifySymbol(e.getSymbol());
-        BigDecimal qty = BigDecimal.ONE;
-
-        for (String ex : exchanges) {
-            String exchange = normalizeExchange(ex);
-
-            PlaceTestOrderCommand cmd = new PlaceTestOrderCommand(
-                exchange,
-                symbolUnified,
-                OrderSide.BUY,
-                OrderType.MARKET,
-                qty,
-                null
-            );
-
-            TestOrderResult r = testOrderEngine.placeTestOrder(cmd);
-            log.info("[scheduler] test order result: exchange={} symbol={} status={} orderId={}",
-                r.exchange(), r.symbolUnified(), r.status(), r.exchangeOrderId());
-        }
-
-        e.setExecuted(true);
-        repo.save( e );
-    }
-
-    private static String unifySymbol(String symbol) {
-        if (symbol == null) return "";
-        return symbol.replace("/", "").trim().toUpperCase( Locale.ROOT);
-    }
-
-    private static String normalizeExchange(String ex) {
-        if (ex == null) return "";
-        return ex.trim().toLowerCase(Locale.ROOT);
     }
 }

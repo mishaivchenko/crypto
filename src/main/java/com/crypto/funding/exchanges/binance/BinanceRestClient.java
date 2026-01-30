@@ -1,18 +1,22 @@
 package com.crypto.funding.exchanges.binance;
 
+import com.crypto.funding.exchanges.AbstractRestClient;
+import com.crypto.funding.exchanges.Exchange;
 import com.crypto.funding.exchanges.ExchangeRestClient;
 import com.crypto.funding.trading.*;
 import com.crypto.funding.watchlist.FundingInfo;
+import com.crypto.funding.watchlist.SymbolRules;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -25,23 +29,26 @@ import java.util.stream.Collectors;
 import static com.crypto.funding.utills.SymbolMapper.toExchange;
 
 @Service
-public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingClient
+public class BinanceRestClient extends AbstractRestClient implements ExchangeRestClient, ExchangeTradingClient
 {
 
-    private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    @Value( "${trading.binance.base-url}" )
-    private String baseUrl;
+    public BinanceRestClient(
+        @Value( "${trading.binance.base-url}" ) String baseUrl,
+        @Value( "${trading.binance.api-key:}" ) String apiKey,
+        @Value( "${trading.binance.secret-key:}" ) String secretKey,
+        @Value( "${trading.binance.recv-window:5000}" ) long recvWindow
+    )
+    {
+        super( baseUrl, apiKey, secretKey, recvWindow );
+    }
 
-    @Value( "${trading.binance.api-key:}" )
-    private String apiKey;
-
-    @Value( "${trading.binance.secret-key:}" )
-    private String secretKey;
-
-    @Value( "${trading.binance.recv-window:5000}" )
-    private long recvWindow;
+    @Override
+    public String exchangeName()
+    {
+        return Exchange.BINANCE.id();
+    }
 
     @Override
     public String name()
@@ -50,55 +57,8 @@ public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingCli
     }
 
     @Override
-    public TestOrderResult placeTestOrder( PlaceTestOrderCommand cmd ) throws Exception
+    public @NonNull TestOrderResult createOrderResult( PlaceTestOrderCommand cmd, HttpResponse<String> response ) throws JsonProcessingException
     {
-        ensureConfigured();
-
-        // Предполагаю, что cmd.symbolUnified уже в формате BINANCE (BTCUSDT и т.п.).
-        // Если нужен маппинг – сделай его ДО вызова Engine (через твой SymbolMapper).
-        String symbol = cmd.symbolUnified();
-
-        long timestamp = System.currentTimeMillis();
-
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put( "symbol", toExchange(symbol) );
-        params.put( "side", cmd.side().name() );            // BUY / SELL
-        params.put( "type", cmd.type().name() );            // MARKET / LIMIT
-        params.put( "quantity", cmd.quantity().toPlainString() );
-        if( cmd.type() == OrderType.LIMIT && cmd.price() != null )
-        {
-            params.put( "price", cmd.price().toPlainString() );
-            params.put( "timeInForce", "GTC" );
-        }
-        params.put( "timestamp", String.valueOf( timestamp ) );
-        params.put( "recvWindow", String.valueOf( recvWindow ) );
-
-        String queryString = params.entrySet().stream()
-                                   .sorted( Map.Entry.comparingByKey() )
-                                   .map( e -> e.getKey() + "=" + urlEncode( e.getValue() ) )
-                                   .collect( Collectors.joining( "&" ) );
-
-        String signature = HmacSigner.hmacSha256( secretKey, queryString );
-
-        String url = baseUrl + "/fapi/v1/order" +
-                     "?" + queryString +
-                     "&signature=" + signature;
-
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri( URI.create( url ) )
-                                         .timeout( Duration.ofSeconds( 5 ) )
-                                         .header( "X-MBX-APIKEY", apiKey )
-                                         .POST( HttpRequest.BodyPublishers.noBody() )
-                                         .build();
-
-        HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
-
-        if( response.statusCode() >= 300 )
-        {
-            throw new RuntimeException( "Binance testnet order failed: " + response.statusCode() +
-                                        " body=" + response.body() );
-        }
-
         JsonNode root = mapper.readTree( response.body() );
 
         String orderId = root.path( "orderId" ).asText( null );
@@ -119,7 +79,7 @@ public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingCli
         return new TestOrderResult(
             name(),
             orderId,
-            symbol,
+            cmd.symbolUnified(),
             cmd.side(),
             cmd.type(),
             quantity,
@@ -129,12 +89,41 @@ public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingCli
         );
     }
 
-    private void ensureConfigured()
+    @Override
+    public HttpRequest createHttpRequest( PlaceTestOrderCommand cmd )
     {
-        if( apiKey == null || apiKey.isBlank() || secretKey == null || secretKey.isBlank() )
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put( "symbol", toExchange( cmd.symbolUnified() ) );
+        params.put( "side", cmd.side().name() );            // BUY / SELL
+        params.put( "type", cmd.type().name() );            // MARKET / LIMIT
+        params.put( "quantity", cmd.quantity().toPlainString() );
+        if( cmd.type() == OrderType.LIMIT && cmd.price() != null )
         {
-            throw new IllegalStateException( "Binance testnet API key/secret not configured" );
+            params.put( "price", cmd.price().toPlainString() );
+            params.put( "timeInForce", "GTC" );
         }
+        long timestamp = System.currentTimeMillis();
+        params.put( "timestamp", String.valueOf( timestamp ) );
+        params.put( "recvWindow", String.valueOf( getRecvWindow() ) );
+
+        String queryString = params.entrySet().stream()
+                                   .sorted( Map.Entry.comparingByKey() )
+                                   .map( e -> e.getKey() + "=" + urlEncode( e.getValue() ) )
+                                   .collect( Collectors.joining( "&" ) );
+
+        String signature = HmacSigner.hmacSha256( getSecretKey(), queryString );
+
+        String url = getBaseUrl() + "/fapi/v1/order" +
+                     "?" + queryString +
+                     "&signature=" + signature;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri( URI.create( url ) )
+                                         .timeout( Duration.ofSeconds( 5 ) )
+                                         .header( "X-MBX-APIKEY", getApiKey() )
+                                         .POST( HttpRequest.BodyPublishers.noBody() )
+                                         .build();
+        return request;
     }
 
     private static String urlEncode( String value )
@@ -168,8 +157,15 @@ public class BinanceRestClient implements ExchangeRestClient, ExchangeTradingCli
             unifiedSymbol,
             fundingRatePct,
             nextFundingAt,
-            secondsToFunding
+            secondsToFunding,
+            BigDecimal.ZERO
         );
+    }
+
+    @Override
+    public SymbolRules fetchRules( String unifiedSymbol )
+    {
+        return null;
     }
 
     @JsonIgnoreProperties( ignoreUnknown = true )

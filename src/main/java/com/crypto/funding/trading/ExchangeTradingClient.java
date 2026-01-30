@@ -12,5 +12,5 @@ public interface ExchangeTradingClient
      * Тестовое открытие ордера.
      * Сейчас — MOCK, позже будет реальный testnet запрос.
      */
-    TestOrderResult placeTestOrder(PlaceTestOrderCommand cmd) throws Exception;
+    //TestOrderResult placeTestOrder(PlaceTestOrderCommand cmd) throws Exception;
 }

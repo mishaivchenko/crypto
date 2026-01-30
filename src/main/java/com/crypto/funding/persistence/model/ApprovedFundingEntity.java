@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 @Entity
@@ -101,6 +102,11 @@ public class ApprovedFundingEntity
     public String getSymbol()
     {
         return symbol;
+    }
+
+    public String getSymbolUnified()
+    {
+        return symbol.replace("/", "").trim().toUpperCase( Locale.ROOT);
     }
 
     public Set<String> getExchanges()

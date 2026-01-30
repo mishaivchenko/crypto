@@ -7,6 +7,7 @@ import com.crypto.funding.watchlist.FundingWatchlistService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -62,7 +63,7 @@ public class BinanceFundingWsClient extends AbstractWsClient
         long sec = Math.max(0, Duration.between(Instant.now(), next).toSeconds());
 
         if (ratePct != 0d && next.toEpochMilli() > 0) {
-            fundingWatchlistService.updateFunding(new FundingInfo(name(), unified, ratePct, next, sec));
+            fundingWatchlistService.updateFunding(new FundingInfo(name(), unified, ratePct, next, sec, BigDecimal.ZERO));
         }
     }
 

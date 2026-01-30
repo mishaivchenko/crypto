@@ -1,12 +1,17 @@
 package com.crypto.funding.exchanges.bybit;
 
+import com.crypto.funding.exchanges.AbstractRestClient;
+import com.crypto.funding.exchanges.Exchange;
 import com.crypto.funding.exchanges.ExchangeRestClient;
 import com.crypto.funding.trading.*;
 import com.crypto.funding.utills.SymbolMapper;
 import com.crypto.funding.watchlist.FundingInfo;
+import com.crypto.funding.watchlist.SymbolRules;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,23 +26,21 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClient
+public class BybitRestClient extends AbstractRestClient implements ExchangeRestClient, ExchangeTradingClient
 {
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    @Value("${trading.bybit.base-url}")
-    private String baseUrl;
-
-    @Value("${trading.bybit.api-key:}")
-    private String apiKey;
-
-    @Value("${trading.bybit.secret-key:}")
-    private String secretKey;
-
-    @Value("${trading.bybit.recv-window:5000}")
-    private long recvWindow;
+    public BybitRestClient(
+        @Value("${trading.bybit.base-url}") String baseUrl,
+        @Value("${trading.bybit.api-key:}") String apiKey,
+        @Value("${trading.bybit.secret-key:}") String secretKey,
+        @Value("${trading.bybit.recv-window:5000}") long recvWindow
+    )
+    {
+        super( baseUrl, apiKey, secretKey, recvWindow );
+    }
 
     @Override
     public String name() {
@@ -45,46 +48,9 @@ public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClien
     }
 
     @Override
-    public TestOrderResult placeTestOrder( PlaceTestOrderCommand cmd ) throws Exception
+    public @NonNull TestOrderResult createOrderResult( PlaceTestOrderCommand cmd, HttpResponse<String> response ) throws JsonProcessingException
     {
-        ensureConfigured();
-
-        String symbol = cmd.symbolUnified(); // пока считаем, что уже BYBIT-формат
-        long timestamp = System.currentTimeMillis();
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("category", "linear"); // или "inverse" / "option" — зависит от того, что ты используешь
-        body.put("symbol", SymbolMapper.toExchange( symbol ));
-        body.put("side", cmd.side() == OrderSide.BUY ? "Buy" : "Sell");
-        body.put("orderType", cmd.type() == OrderType.MARKET ? "Market" : "Limit");
-        body.put("qty", cmd.quantity().toPlainString());
-        if (cmd.type() == OrderType.LIMIT && cmd.price() != null) {
-            body.put("price", cmd.price().toPlainString());
-            body.put("timeInForce", "GoodTillCancel");
-        }
-
-        String bodyJson = mapper.writeValueAsString(body);
-        String signPayload = timestamp + apiKey + recvWindow + bodyJson;
-        String sign = HmacSigner.hmacSha256(secretKey, signPayload);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(baseUrl + "/v5/order/create"))
-                                         .timeout(Duration.ofSeconds(5))
-                                         .header("Content-Type", "application/json")
-                                         .header("X-BAPI-API-KEY", apiKey)
-                                         .header("X-BAPI-TIMESTAMP", String.valueOf(timestamp))
-                                         .header("X-BAPI-RECV-WINDOW", String.valueOf(recvWindow))
-                                         .header("X-BAPI-SIGN", sign)
-                                         .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
-                                         .build();
-
-        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() >= 300) {
-            throw new RuntimeException("Bybit testnet order failed: " + response.statusCode() +
-                                       " body=" + response.body());
-        }
-
-        JsonNode root = mapper.readTree(response.body());
+        JsonNode root = mapper.readTree( response.body());
         int retCode = root.path("retCode").asInt(-1);
         if (retCode != 0) {
             throw new RuntimeException("Bybit retCode=" + retCode +
@@ -105,7 +71,7 @@ public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClien
         return new TestOrderResult(
             name(),
             orderId,
-            symbol,
+            cmd.symbolUnified(),
             cmd.side(),
             cmd.type(),
             qty,
@@ -113,13 +79,43 @@ public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClien
             status,
             System.currentTimeMillis()
         );
-
     }
 
-    private void ensureConfigured() {
-        if (apiKey == null || apiKey.isBlank() || secretKey == null || secretKey.isBlank()) {
-            throw new IllegalStateException("Bybit testnet API key/secret not configured");
+    public HttpRequest createHttpRequest( PlaceTestOrderCommand cmd ) throws JsonProcessingException
+    {
+        Map<String, Object> body = new HashMap<>();
+        body.put("category", "linear"); // или "inverse" / "option" — зависит от того, что ты используешь
+        body.put("symbol", SymbolMapper.toExchange( cmd.symbolUnified() ));
+        body.put("side", cmd.side() == OrderSide.BUY ? "Buy" : "Sell");
+        body.put("orderType", cmd.type() == OrderType.MARKET ? "Market" : "Limit");
+        body.put("qty", cmd.quantity().toPlainString());
+        if ( cmd.type() == OrderType.LIMIT && cmd.price() != null) {
+            body.put("price", cmd.price().toPlainString());
+            body.put("timeInForce", "GoodTillCancel");
         }
+
+        String bodyJson = mapper.writeValueAsString(body);
+        long timestamp = System.currentTimeMillis();
+        String signPayload = timestamp + getApiKey() + getRecvWindow() + bodyJson;
+        String sign = HmacSigner.hmacSha256(getSecretKey(), signPayload);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(getBaseUrl() + "/v5/order/create"))
+                                         .timeout(Duration.ofSeconds(5))
+                                         .header("Content-Type", "application/json")
+                                         .header("X-BAPI-API-KEY", getApiKey())
+                                         .header("X-BAPI-TIMESTAMP", String.valueOf( timestamp ))
+                                         .header("X-BAPI-RECV-WINDOW", String.valueOf(getRecvWindow()))
+                                         .header("X-BAPI-SIGN", sign)
+                                         .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+                                         .build();
+        return request;
+    }
+
+    @Override
+    public String exchangeName()
+    {
+        return Exchange.BYBIT.id();
     }
 
     @Override
@@ -147,14 +143,50 @@ public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClien
         double fundingRatePct = Double.parseDouble(t.fundingRate) * 100.0;
         Instant nextFundingAt = Instant.ofEpochMilli(Long.parseLong(t.nextFundingTime));
         long secondsToFunding = Duration.between(Instant.now(), nextFundingAt).getSeconds();
+        BigDecimal price = BigDecimal.valueOf( Double.parseDouble( t.indexPrice  ));
 
         return new FundingInfo(
             name(),
             unifiedSymbol,
             fundingRatePct,
             nextFundingAt,
-            secondsToFunding
+            secondsToFunding,
+            price
         );
+    }
+
+    @Override
+    public SymbolRules fetchRules( String symbol )
+    {
+        String url = getBaseUrl() + "/v5/market/instruments-info?category=linear&symbol=" + symbol;
+
+        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                                     .GET()
+                                     .build();
+
+        try {
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            BybitInstrumentsResponse dto = mapper.readValue(resp.body(), BybitInstrumentsResponse.class);
+
+            if (dto.result == null || dto.result.list == null || dto.result.list.length == 0) {
+                throw new IllegalStateException("Empty instruments-info for " + symbol + " from Bybit");
+            }
+
+            BybitInstrument i = dto.result.list[0];
+            if (i.lotSizeFilter == null) {
+                throw new IllegalStateException("No lotSizeFilter for " + symbol + " from Bybit");
+            }
+
+            BigDecimal minQty = new BigDecimal(i.lotSizeFilter.minOrderQty);
+            BigDecimal step = new BigDecimal(i.lotSizeFilter.qtyStep);
+            BigDecimal minNotional = (i.lotSizeFilter.minNotionalValue == null || i.lotSizeFilter.minNotionalValue.isBlank())
+                                     ? null
+                                     : new BigDecimal(i.lotSizeFilter.minNotionalValue);
+
+            return new SymbolRules(minQty, step, minNotional);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch symbol rules from Bybit for " + symbol, e);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -171,7 +203,33 @@ public class BybitRestClient implements ExchangeRestClient, ExchangeTradingClien
     static class BybitTicker {
         public String symbol;
         public String fundingRate;        // "0.0001"
+        public String indexPrice;
         public String nextFundingTime;    // "1730467200000"
         public String fundingIntervalHour;// "8"
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class BybitInstrumentsResponse {
+        public BybitInstrumentsResult result;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class BybitInstrumentsResult {
+        public BybitInstrument[] list;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class BybitInstrument {
+        public String symbol;
+        public LotSizeFilter lotSizeFilter;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class LotSizeFilter {
+        public String minOrderQty;       // "0.001"
+        public String qtyStep;           // "0.001"
+        public String minNotionalValue;  // sometimes exists, depends on market
+    }
+
+
 }
