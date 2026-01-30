@@ -9,6 +9,7 @@ import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,13 +34,19 @@ public class OrderExecutorService
 
     private final List<ExchangeRestClient> exchangeRestClients;
     private final NetworkLatencyService latencyService;
+    private final boolean latencyProbeEnabled;
 
-    public OrderExecutorService( TestOrderEngine orderEngine, ApprovedFundingRepository repository, List<ExchangeRestClient> restClients, NetworkLatencyService latencyService )
+    public OrderExecutorService( TestOrderEngine orderEngine,
+                                 ApprovedFundingRepository repository,
+                                 List<ExchangeRestClient> restClients,
+                                 NetworkLatencyService latencyService,
+                                 @Value("${funding.latency-probe.enabled:true}") boolean latencyProbeEnabled )
     {
         this.testOrderEngine = orderEngine;
         this.repo = repository;
         this.exchangeRestClients = restClients;
         this.latencyService = latencyService;
+        this.latencyProbeEnabled = latencyProbeEnabled;
     }
 
     @Transactional
@@ -69,36 +76,52 @@ public class OrderExecutorService
             FundingInfo fundingInfo = ex.fetchFunding( e.getSymbolUnified() );
             SymbolRules symbolRules = ex.fetchRules( e.getSymbolUnified() );
 
-            // Предзапуск: минимальный тестовый ордер для оценки задержки сети
-            BigDecimal minQty = symbolRules.minOrderQty();
-            PlaceTestOrderCommand latencyCmd = new PlaceTestOrderCommand(
-                exchange,
-                e.getSymbolUnified(),
-                OrderSide.BUY,
-                OrderType.MARKET,
-                minQty,
-                null
-            );
-            try {
-                latencyService.measureAndRecord(exchange, () -> testOrderEngine.placeTestOrder(latencyCmd));
-            } catch (Exception probeEx) {
-                log.warn("[scheduler] latency probe failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), probeEx.getMessage());
-                continue;
-            }
-
-            Duration measuredDelay = latencyService.estimate(exchange);
-            Instant targetFundingAt = Optional.ofNullable(fundingInfo.nextFundingAt()).orElse(e.getNextFundingAt());
-            if (targetFundingAt != null && measuredDelay != null && !measuredDelay.isZero() && !measuredDelay.isNegative()) {
-                Instant sendAt = targetFundingAt.minus(measuredDelay);
-                Duration wait = Duration.between(Instant.now(), sendAt);
-                if (wait.compareTo(MAX_ALIGN_WAIT) > 0) {
-                    wait = MAX_ALIGN_WAIT;
-                }
-                if (!wait.isNegative()) {
+            if (latencyProbeEnabled) {
+                // Предзапуск: минимальный тестовый ордер для оценки задержки сети
+                BigDecimal minQty = symbolRules.minOrderQty();
+                PlaceTestOrderCommand latencyCmd = new PlaceTestOrderCommand(
+                    exchange,
+                    e.getSymbolUnified(),
+                    OrderSide.BUY,
+                    OrderType.MARKET,
+                    minQty,
+                    null
+                );
+                try {
+                    TestOrderResult probeResult = latencyService.measureAndRecord(exchange, () -> testOrderEngine.placeTestOrder(latencyCmd));
+                    // Попытка закрыть тестовый ордер тем же объёмом
+                    PlaceTestOrderCommand closeCmd = new PlaceTestOrderCommand(
+                        exchange,
+                        e.getSymbolUnified(),
+                        OrderSide.SELL,
+                        OrderType.MARKET,
+                        probeResult.quantity() != null ? probeResult.quantity() : minQty,
+                        null
+                    );
                     try {
-                        Thread.sleep(wait.toMillis());
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+                        testOrderEngine.placeTestOrder(closeCmd);
+                    } catch (Exception closeEx) {
+                        log.warn("[scheduler] latency probe close failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), closeEx.getMessage());
+                    }
+                } catch (Exception probeEx) {
+                    log.warn("[scheduler] latency probe failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), probeEx.getMessage());
+                    continue;
+                }
+
+                Duration measuredDelay = latencyService.estimate(exchange);
+                Instant targetFundingAt = Optional.ofNullable(fundingInfo.nextFundingAt()).orElse(e.getNextFundingAt());
+                if (targetFundingAt != null && measuredDelay != null && !measuredDelay.isZero() && !measuredDelay.isNegative()) {
+                    Instant sendAt = targetFundingAt.minus(measuredDelay);
+                    Duration wait = Duration.between(Instant.now(), sendAt);
+                    if (wait.compareTo(MAX_ALIGN_WAIT) > 0) {
+                        wait = MAX_ALIGN_WAIT;
+                    }
+                    if (!wait.isNegative()) {
+                        try {
+                            Thread.sleep(wait.toMillis());
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 }
             }

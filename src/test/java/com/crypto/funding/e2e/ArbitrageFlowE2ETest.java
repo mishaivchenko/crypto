@@ -70,7 +70,7 @@ class ArbitrageFlowE2ETest
         AtomicBoolean orderCalled = new AtomicBoolean( false );
         FakeRestClient fakeClient = new FakeRestClient( orderCalled );
         TestOrderEngine engine = new TestOrderEngine( List.of( fakeClient ) );
-        OrderExecutorService executorService = new OrderExecutorService( engine, repo, List.of( fakeClient ), new NetworkLatencyService() );
+        OrderExecutorService executorService = new OrderExecutorService( engine, repo, List.of( fakeClient ), new NetworkLatencyService(), true );
 
         executorService.executeOnce( approved.getId() );
 

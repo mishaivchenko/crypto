@@ -6,6 +6,8 @@ import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
 import com.crypto.funding.trading.TestOrderEngine;
 import com.crypto.funding.trading.TestOrderResult;
+import com.crypto.funding.trading.OrderSide;
+import com.crypto.funding.trading.OrderType;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
 import com.crypto.funding.scheduler.NetworkLatencyService.ThrowingSupplier;
@@ -50,7 +52,7 @@ class OrderExecutorServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new OrderExecutorService(testOrderEngine, repo, List.of(binance), latencyService);
+        service = new OrderExecutorService(testOrderEngine, repo, List.of(binance), latencyService, true);
         when(latencyService.measureAndRecord(eq("binance"), any())).thenAnswer(inv -> {
             @SuppressWarnings("unchecked")
             ThrowingSupplier<TestOrderResult> supplier = inv.getArgument(1);
@@ -83,7 +85,7 @@ class OrderExecutorServiceTest {
         service.executeOnce(1L);
 
         verify(latencyService).measureAndRecord(eq("binance"), any());
-        verify(testOrderEngine, times(2)).placeTestOrder(any()); // пинг + основной
+        verify(testOrderEngine, times(3)).placeTestOrder(any()); // пинг buy + close sell + основной
         ArgumentCaptor<ApprovedFundingEntity> captor = ArgumentCaptor.forClass(ApprovedFundingEntity.class);
         verify(repo).save(captor.capture());
         assertThat(captor.getValue().isExecuted()).isTrue();
@@ -127,12 +129,15 @@ class OrderExecutorServiceTest {
             .thenReturn(new FundingInfo("binance", "XRPUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("1")));
         when(binance.fetchRules("XRPUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("5"), new BigDecimal("0.1"), null));
+        TestOrderResult probeResult = new TestOrderResult("binance", "p1", "XRPUSDT", OrderSide.BUY, OrderType.MARKET, new BigDecimal("5"), null, "FILLED", System.currentTimeMillis());
+        when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(probeResult);
 
         assertThatThrownBy(() -> service.executeOnce(3L))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Too small");
 
         verify(latencyService).measureAndRecord(eq("binance"), any());
+        verify(testOrderEngine, times(2)).placeTestOrder(any()); // probe open/close
         verify(repo, never()).save(any());
         assertThat(entity.isExecuted()).isFalse();
     }
@@ -154,5 +159,34 @@ class OrderExecutorServiceTest {
 
         assertThat(entity.isExecuted()).isTrue();
         verify(repo).save(entity);
+    }
+
+    @Test
+    void skipsLatencyProbeWhenDisabled() throws Exception {
+        OrderExecutorService noProbeService = new OrderExecutorService(testOrderEngine, repo, List.of(binance), latencyService, false);
+
+        ApprovedFundingEntity entity = new ApprovedFundingEntity(
+            "ADA/USDT",
+            Set.of("binance"),
+            new BigDecimal("100"),
+            Instant.now().plusSeconds(60)
+        );
+        entity.setActive(true);
+        entity.setExecuted(false);
+
+        when(repo.findById(6L)).thenReturn(Optional.of(entity));
+        when(binance.name()).thenReturn("binance");
+        when(binance.fetchFunding("ADAUSDT"))
+            .thenReturn(new FundingInfo("binance", "ADAUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("0.5")));
+        when(binance.fetchRules("ADAUSDT"))
+            .thenReturn(new SymbolRules(new BigDecimal("1"), new BigDecimal("1"), null));
+
+        TestOrderResult mockResult = new TestOrderResult("binance", "123", "ADAUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis());
+        when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(mockResult);
+
+        noProbeService.executeOnce(6L);
+
+        verify(latencyService, never()).measureAndRecord(any(), any());
+        verify(testOrderEngine, times(1)).placeTestOrder(any()); // только основной
     }
 }
