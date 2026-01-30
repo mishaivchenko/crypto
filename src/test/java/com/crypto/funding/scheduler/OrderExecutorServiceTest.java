@@ -1,6 +1,6 @@
 package com.crypto.funding.scheduler;
 
-import com.crypto.funding.exchanges.ExchangeRestClient;
+import com.crypto.funding.exchanges.AbstractRestClient;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
@@ -43,7 +43,7 @@ class OrderExecutorServiceTest {
     private ApprovedFundingRepository repo;
 
     @Mock
-    private ExchangeRestClient binance;
+    private AbstractRestClient binance;
 
     @Mock
     private NetworkLatencyService latencyService;
@@ -59,6 +59,10 @@ class OrderExecutorServiceTest {
             return supplier.get();
         });
         lenient().when(latencyService.estimate("binance")).thenReturn(Duration.ZERO);
+        lenient().when(binance.exchangeName()).thenReturn("binance");
+        lenient().when(binance.getApiKey()).thenReturn("k");
+        lenient().when(binance.getSecretKey()).thenReturn("s");
+        lenient().when(binance.getBaseUrl()).thenReturn("http://localhost");
     }
 
     @Test
@@ -73,7 +77,7 @@ class OrderExecutorServiceTest {
         entity.setExecuted(false);
 
         when(repo.findById(1L)).thenReturn(Optional.of(entity));
-        when(binance.name()).thenReturn("binance");
+        when(binance.exchangeName()).thenReturn("binance");
         when(binance.fetchFunding("BTCUSDT"))
             .thenReturn(new FundingInfo("binance", "BTCUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("10")));
         when(binance.fetchRules("BTCUSDT"))
@@ -124,7 +128,7 @@ class OrderExecutorServiceTest {
         entity.setExecuted(false);
 
         when(repo.findById(3L)).thenReturn(Optional.of(entity));
-        when(binance.name()).thenReturn("binance");
+        when(binance.exchangeName()).thenReturn("binance");
         when(binance.fetchFunding("XRPUSDT"))
             .thenReturn(new FundingInfo("binance", "XRPUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("1")));
         when(binance.fetchRules("XRPUSDT"))
@@ -175,7 +179,7 @@ class OrderExecutorServiceTest {
         entity.setExecuted(false);
 
         when(repo.findById(6L)).thenReturn(Optional.of(entity));
-        when(binance.name()).thenReturn("binance");
+        when(binance.exchangeName()).thenReturn("binance");
         when(binance.fetchFunding("ADAUSDT"))
             .thenReturn(new FundingInfo("binance", "ADAUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("0.5")));
         when(binance.fetchRules("ADAUSDT"))

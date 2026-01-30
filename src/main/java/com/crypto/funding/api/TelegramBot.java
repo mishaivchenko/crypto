@@ -1,14 +1,10 @@
-package com.crypto.funding.telegram;
+package com.crypto.funding.api;
 
-import com.crypto.funding.market.MarketCache;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.service.ApprovedFundingStore;
 import com.crypto.funding.persistence.service.FundingApprovalService;
-import com.crypto.funding.trading.OrderSide;
-import com.crypto.funding.trading.OrderType;
-import com.crypto.funding.trading.PlaceTestOrderCommand;
+import com.crypto.funding.telegram.TelegramSessionStore;
 import com.crypto.funding.trading.TestOrderEngine;
-import com.crypto.funding.trading.TestOrderResult;
 import com.crypto.funding.watchlist.ArbitrageWatchlistService;
 import com.crypto.funding.watchlist.FundingRefresherService;
 import com.crypto.funding.watchlist.FundingWatchlistService;
@@ -34,10 +30,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
-public class FundingArbTelegramBot extends TelegramLongPollingBot
+public class TelegramBot extends TelegramLongPollingBot
 {
 
-    private static final Logger log = LoggerFactory.getLogger( FundingArbTelegramBot.class );
+    private static final Logger log = LoggerFactory.getLogger( TelegramBot.class );
 
     // ---- callback constants ----
     private static final String CB_NAV_MENU = "NAV:MENU";
@@ -91,7 +87,7 @@ public class FundingArbTelegramBot extends TelegramLongPollingBot
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern( "yyyy-MM-dd HH:mm:ss" )
                                                            .withZone( ZoneId.of( "UTC" ) );
 
-    public FundingArbTelegramBot(
+    public TelegramBot(
         @Value( "${telegram.bot.username}" ) String username,
         @Value( "${telegram.bot.token}" ) String token,
         FundingWatchlistService fundingWatchlist,

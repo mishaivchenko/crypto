@@ -1,7 +1,7 @@
 package com.crypto.funding.telegram;
 
-import com.crypto.funding.parser.ArbitrageSignalParser;
-import com.crypto.funding.parser.FundingSignalParser;
+import com.crypto.funding.telegram.parser.ArbitrageSignalParser;
+import com.crypto.funding.telegram.parser.FundingSignalParser;
 import com.crypto.funding.watchlist.ArbitrageWatchlistService;
 import com.crypto.funding.watchlist.FundingWatchlistService;
 import org.springframework.beans.factory.annotation.Value;

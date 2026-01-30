@@ -1,6 +1,5 @@
 package com.crypto.funding.scheduler;
 
-import com.crypto.funding.exchanges.ExchangeRestClient;
 import com.crypto.funding.exchanges.AbstractRestClient;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
@@ -32,13 +31,13 @@ public class OrderExecutorService
     private final TestOrderEngine testOrderEngine;
     private final ApprovedFundingRepository repo;
 
-    private final List<ExchangeRestClient> exchangeRestClients;
+    private final List<AbstractRestClient> exchangeRestClients;
     private final NetworkLatencyService latencyService;
     private final boolean latencyProbeEnabled;
 
     public OrderExecutorService( TestOrderEngine orderEngine,
                                  ApprovedFundingRepository repository,
-                                 List<ExchangeRestClient> restClients,
+                                 List<AbstractRestClient> restClients,
                                  NetworkLatencyService latencyService,
                                  @Value("${funding.latency-probe.enabled:true}") boolean latencyProbeEnabled )
     {
@@ -67,11 +66,11 @@ public class OrderExecutorService
             return;
         }
 
-        var restClients  = exchangeRestClients.stream().filter( restClient -> exchanges.contains( restClient.name() ) ).toList();
+        var restClients  = exchangeRestClients.stream().filter( restClient -> exchanges.contains( restClient.exchangeName() ) ).toList();
         restClients = restClients.stream().filter(this::isConfigured).toList();
 
-        for (ExchangeRestClient ex : restClients) {
-            String exchange = normalizeExchange( ex.name() );
+        for (AbstractRestClient ex : restClients) {
+            String exchange = normalizeExchange( ex.exchangeName() );
 
             FundingInfo fundingInfo = ex.fetchFunding( e.getSymbolUnified() );
             SymbolRules symbolRules = ex.fetchRules( e.getSymbolUnified() );
@@ -185,7 +184,7 @@ public class OrderExecutorService
         return ex.trim().toLowerCase( Locale.ROOT);
     }
 
-    private boolean isConfigured(ExchangeRestClient client) {
+    private boolean isConfigured(AbstractRestClient client) {
         if (client instanceof AbstractRestClient arc) {
             return isNonBlank(arc.getApiKey()) && isNonBlank(arc.getSecretKey()) && isNonBlank(arc.getBaseUrl());
         }

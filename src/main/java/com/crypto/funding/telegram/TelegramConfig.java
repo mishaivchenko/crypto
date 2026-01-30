@@ -1,5 +1,6 @@
 package com.crypto.funding.telegram;
 
+import com.crypto.funding.api.TelegramBot;
 import it.tdlight.client.APIToken;
 import it.tdlight.client.SimpleTelegramClientFactory;
 import it.tdlight.client.TDLibSettings;
@@ -39,7 +40,7 @@ public class TelegramConfig
     }
 
     @Bean
-    public TelegramBotsApi telegramBotsApi( FundingArbTelegramBot telegramBot )
+    public TelegramBotsApi telegramBotsApi( TelegramBot telegramBot )
     {
         TelegramBotsApi telegramBotsApi;
         try

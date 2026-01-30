@@ -93,7 +93,7 @@ class ArbitrageFlowE2ETest
         }
     }
 
-    private static class FakeRestClient extends AbstractRestClient implements ExchangeRestClient, com.crypto.funding.trading.ExchangeTradingClient
+    private static class FakeRestClient extends AbstractRestClient
     {
         private final AtomicBoolean called;
 
@@ -104,15 +104,9 @@ class ArbitrageFlowE2ETest
         }
 
         @Override
-        public String name()
-        {
-            return "bybit";
-        }
-
-        @Override
         public TestOrderResult createOrderResult( PlaceTestOrderCommand cmd, HttpResponse<String> response )
         {
-            return new TestOrderResult( name(), "id-1", cmd.symbolUnified(), cmd.side(), cmd.type(),
+            return new TestOrderResult( exchangeName(), "id-1", cmd.symbolUnified(), cmd.side(), cmd.type(),
                                         cmd.quantity(), cmd.price() == null ? BigDecimal.ONE : cmd.price(),
                                         "FILLED", System.currentTimeMillis() );
         }
@@ -132,7 +126,7 @@ class ArbitrageFlowE2ETest
         @Override
         public FundingInfo fetchFunding( String unifiedSymbol )
         {
-            return new FundingInfo( name(), unifiedSymbol, 0.01, Instant.now().plusSeconds( 3600 ), 3600, BigDecimal.TEN );
+            return new FundingInfo( exchangeName(), unifiedSymbol, 0.01, Instant.now().plusSeconds( 3600 ), 3600, BigDecimal.TEN );
         }
 
         @Override
@@ -145,7 +139,7 @@ class ArbitrageFlowE2ETest
         public TestOrderResult placeTestOrder( PlaceTestOrderCommand cmd )
         {
             called.set( true );
-            return new TestOrderResult( name(), "id-1", cmd.symbolUnified(), cmd.side(), cmd.type(),
+            return new TestOrderResult( exchangeName(), "id-1", cmd.symbolUnified(), cmd.side(), cmd.type(),
                                         cmd.quantity(), cmd.price() == null ? BigDecimal.ONE : cmd.price(),
                                         "FILLED", System.currentTimeMillis() );
         }

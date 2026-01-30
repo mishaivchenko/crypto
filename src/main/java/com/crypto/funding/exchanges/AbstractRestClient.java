@@ -2,6 +2,8 @@ package com.crypto.funding.exchanges;
 
 import com.crypto.funding.trading.PlaceTestOrderCommand;
 import com.crypto.funding.trading.TestOrderResult;
+import com.crypto.funding.watchlist.FundingInfo;
+import com.crypto.funding.watchlist.SymbolRules;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,4 +94,7 @@ public abstract class AbstractRestClient
     {
         return recvWindow;
     }
+
+    public abstract FundingInfo fetchFunding(String unifiedSymbol) throws Exception;
+    public abstract SymbolRules fetchRules(String unifiedSymbol);
 }

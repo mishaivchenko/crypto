@@ -1,4 +1,4 @@
-package com.crypto.funding.parser;
+package com.crypto.funding.telegram.parser;
 
 import org.springframework.stereotype.Component;
 

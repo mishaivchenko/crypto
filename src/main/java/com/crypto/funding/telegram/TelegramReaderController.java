@@ -1,6 +1,5 @@
-package com.crypto.funding.api;
+package com.crypto.funding.telegram;
 
-import com.crypto.funding.telegram.TelegramReaderService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
