@@ -3,6 +3,8 @@ package com.crypto.funding.exchanges;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
 import com.crypto.funding.trading.TestOrderResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -10,6 +12,7 @@ import java.net.http.HttpResponse;
 
 public abstract class AbstractRestClient
 {
+    private static final Logger log = LoggerFactory.getLogger( AbstractRestClient.class );
     private final String baseUrl;
 
     private final String apiKey;
@@ -35,6 +38,7 @@ public abstract class AbstractRestClient
 
         HttpRequest request = createHttpRequest( cmd );
 
+        log.info( "Sending {} {} request, quantity", cmd.symbolUnified(), cmd.side()  );
         HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
 
         validateResponse( response );
