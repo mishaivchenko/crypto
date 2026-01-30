@@ -8,6 +8,7 @@ import com.crypto.funding.trading.TestOrderEngine;
 import com.crypto.funding.trading.TestOrderResult;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
+import com.crypto.funding.scheduler.NetworkLatencyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -33,6 +34,7 @@ class SchedulerExecutionTest
     private ApprovedFundingRepository repo;
     private RecordingTaskScheduler scheduler;
     private OrderExecutorService orderExecutorService;
+    private NetworkLatencyService latencyService;
 
     @BeforeEach
     void setUp()
@@ -40,6 +42,8 @@ class SchedulerExecutionTest
         repo = Mockito.mock( ApprovedFundingRepository.class );
         scheduler = new RecordingTaskScheduler();
         orderExecutorService = Mockito.mock( OrderExecutorService.class );
+        latencyService = Mockito.mock( NetworkLatencyService.class );
+        when( latencyService.estimate( any(Set.class) ) ).thenReturn( Duration.ZERO );
     }
 
     @Test
@@ -59,6 +63,7 @@ class SchedulerExecutionTest
             repo,
             scheduler,
             orderExecutorService,
+            latencyService,
             10,
             1,      // executionDelay 1s
             200,    // minRecheckMillis

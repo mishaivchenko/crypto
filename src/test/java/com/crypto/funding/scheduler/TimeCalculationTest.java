@@ -2,6 +2,7 @@ package com.crypto.funding.scheduler;
 
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
+import com.crypto.funding.scheduler.NetworkLatencyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -13,6 +14,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,12 +24,16 @@ class TimeCalculationTest
 {
     private ApprovedFundingRepository repo;
     private CapturingTaskScheduler scheduler;
+    private NetworkLatencyService latencyService;
 
     @BeforeEach
     void setUp()
     {
         repo = Mockito.mock( ApprovedFundingRepository.class );
         scheduler = new CapturingTaskScheduler();
+        latencyService = Mockito.mock( NetworkLatencyService.class );
+        when( latencyService.currentDelay() ).thenReturn( Duration.ZERO );
+        when( latencyService.estimate( any(Set.class) ) ).thenReturn( Duration.ZERO );
     }
 
     @Test
@@ -44,6 +50,7 @@ class TimeCalculationTest
             repo,
             scheduler,
             Mockito.mock( OrderExecutorService.class ),
+            latencyService,
             10,   // lookahead seconds (не используется после ввода executionDelay)
             8,    // executionDelaySeconds
             1000, // minRecheckMillis
@@ -74,6 +81,7 @@ class TimeCalculationTest
             repo,
             scheduler,
             Mockito.mock( OrderExecutorService.class ),
+            latencyService,
             10,
             5,
             1000, // 1 секунда

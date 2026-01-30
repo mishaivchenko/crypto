@@ -8,14 +8,18 @@ import com.crypto.funding.trading.TestOrderEngine;
 import com.crypto.funding.trading.TestOrderResult;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
+import com.crypto.funding.scheduler.NetworkLatencyService.ThrowingSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +31,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class OrderExecutorServiceTest {
 
     @Mock
@@ -38,11 +43,20 @@ class OrderExecutorServiceTest {
     @Mock
     private ExchangeRestClient binance;
 
+    @Mock
+    private NetworkLatencyService latencyService;
+
     private OrderExecutorService service;
 
     @BeforeEach
-    void setUp() {
-        service = new OrderExecutorService(testOrderEngine, repo, List.of(binance));
+    void setUp() throws Exception {
+        service = new OrderExecutorService(testOrderEngine, repo, List.of(binance), latencyService);
+        when(latencyService.measureAndRecord(eq("binance"), any())).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            ThrowingSupplier<TestOrderResult> supplier = inv.getArgument(1);
+            return supplier.get();
+        });
+        lenient().when(latencyService.estimate("binance")).thenReturn(Duration.ZERO);
     }
 
     @Test
@@ -59,7 +73,7 @@ class OrderExecutorServiceTest {
         when(repo.findById(1L)).thenReturn(Optional.of(entity));
         when(binance.name()).thenReturn("binance");
         when(binance.fetchFunding("BTCUSDT"))
-            .thenReturn(new FundingInfo("binance", "BTCUSDT", 0.01, Instant.now().plusSeconds(60), 60, new BigDecimal("10")));
+            .thenReturn(new FundingInfo("binance", "BTCUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("10")));
         when(binance.fetchRules("BTCUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("0.001"), new BigDecimal("0.001"), null));
 
@@ -68,7 +82,8 @@ class OrderExecutorServiceTest {
 
         service.executeOnce(1L);
 
-        verify(testOrderEngine, times(1)).placeTestOrder(any());
+        verify(latencyService).measureAndRecord(eq("binance"), any());
+        verify(testOrderEngine, times(2)).placeTestOrder(any()); // пинг + основной
         ArgumentCaptor<ApprovedFundingEntity> captor = ArgumentCaptor.forClass(ApprovedFundingEntity.class);
         verify(repo).save(captor.capture());
         assertThat(captor.getValue().isExecuted()).isTrue();
@@ -109,7 +124,7 @@ class OrderExecutorServiceTest {
         when(repo.findById(3L)).thenReturn(Optional.of(entity));
         when(binance.name()).thenReturn("binance");
         when(binance.fetchFunding("XRPUSDT"))
-            .thenReturn(new FundingInfo("binance", "XRPUSDT", 0.01, Instant.now().plusSeconds(60), 60, new BigDecimal("1")));
+            .thenReturn(new FundingInfo("binance", "XRPUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("1")));
         when(binance.fetchRules("XRPUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("5"), new BigDecimal("0.1"), null));
 
@@ -117,6 +132,7 @@ class OrderExecutorServiceTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Too small");
 
+        verify(latencyService).measureAndRecord(eq("binance"), any());
         verify(repo, never()).save(any());
         assertThat(entity.isExecuted()).isFalse();
     }

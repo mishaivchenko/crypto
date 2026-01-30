@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Resource-friendly scheduler:
@@ -33,6 +35,7 @@ public class FundingSchedulerService {
     private final TaskScheduler scheduler;
 
     private final OrderExecutorService orderExecutorService;
+    private final NetworkLatencyService latencyService;
 
     private final Duration lookahead;
     private final Duration minRecheckDelay;
@@ -49,6 +52,7 @@ public class FundingSchedulerService {
     public FundingSchedulerService(
         ApprovedFundingRepository repo,
         TaskScheduler fundingTaskScheduler, OrderExecutorService orderExecutorService,
+        NetworkLatencyService latencyService,
         @Value("${funding.scheduler.lookahead-seconds:10}") long lookaheadSeconds,
         @Value("${funding.execution-delay-seconds:8}") long executionDelaySeconds,
         @Value("${funding.scheduler.min-recheck-millis:1000}") long minRecheckMillis,
@@ -57,6 +61,7 @@ public class FundingSchedulerService {
         this.repo = repo;
         this.scheduler = fundingTaskScheduler;
         this.orderExecutorService = orderExecutorService;
+        this.latencyService = latencyService;
         this.lookahead = Duration.ofSeconds(Math.max(1, lookaheadSeconds));
         this.executionDelay = Duration.ofSeconds(Math.max(1, executionDelaySeconds));
         this.minRecheckDelay = Duration.ofMillis(Math.max(200, minRecheckMillis));
@@ -87,6 +92,9 @@ public class FundingSchedulerService {
 
             ApprovedFundingEntity next = nextOpt.get();
             Instant nextFundingAt = next.getNextFundingAt();
+            Set<String> exchanges = next.getExchanges().stream()
+                .map(s -> s == null ? "" : s.trim().toLowerCase())
+                .collect(java.util.stream.Collectors.toSet());
 
             // 🔥 ВОТ ЭТО СНИМАЕТ БЕСКОНЕЧНЫЙ ТИК:
             // Если funding слишком старый — считаем "missed" и помечаем executed=true,
@@ -97,7 +105,10 @@ public class FundingSchedulerService {
                 continue;
             }
 
-            Instant planned = nextFundingAt.minus(executionDelay);
+            Duration networkDelay = latencyService.estimate(exchanges);
+            Duration totalDelay = executionDelay.plus(networkDelay);
+
+            Instant planned = nextFundingAt.minus(totalDelay);
             if (planned.isBefore(now.plus(minRecheckDelay))) {
                 planned = now.plus(minRecheckDelay);
             }
@@ -106,21 +117,22 @@ public class FundingSchedulerService {
             Instant runAt = planned.isBefore(discovery) ? planned : discovery;
 
             scheduleOnce(runAt, next.getId());
-            logNext(next.getSymbol(), nextFundingAt, runAt, reason);
+            logNext(next.getSymbol(), nextFundingAt, runAt, reason, networkDelay);
             return;
         }
     }
 
-    private void logNext(String symbol, Instant nextFundingAt, Instant planned, String reason) {
+    private void logNext(String symbol, Instant nextFundingAt, Instant planned, String reason, Duration networkDelay) {
         ZonedDateTime kyivFunding = nextFundingAt.atZone(KYIV);
         ZonedDateTime kyivPlanned = planned.atZone(KYIV);
 
         log.info(
-            "[scheduler] next funding {} at {} (UTC) / {} (Kyiv); executionDelay={}s; scheduling run at {} (UTC) / {} (Kyiv) ({})",
+            "[scheduler] next funding {} at {} (UTC) / {} (Kyiv); executionDelay={}s; networkDelay={}ms; scheduling run at {} (UTC) / {} (Kyiv) ({})",
             symbol,
             nextFundingAt,
             kyivFunding,
             executionDelay.toSeconds(),
+            networkDelay.toMillis(),
             planned,
             kyivPlanned,
             reason

@@ -30,6 +30,8 @@ class FundingSchedulerServiceTest {
 
     @Mock
     private OrderExecutorService orderExecutorService;
+    @Mock
+    private NetworkLatencyService latencyService;
 
     private RecordingTaskScheduler taskScheduler;
     private FundingSchedulerService service;
@@ -41,12 +43,14 @@ class FundingSchedulerServiceTest {
             repo,
             taskScheduler,
             orderExecutorService,
+            latencyService,
             5,   // lookaheadSeconds
             1,   // executionDelaySeconds
             200, // minRecheckMillis
             10,  // maxLatenessSeconds
             2    // discoveryIntervalSeconds
         );
+        lenient().when(latencyService.estimate(any(Set.class))).thenReturn(Duration.ZERO);
     }
 
     @Test
@@ -57,6 +61,7 @@ class FundingSchedulerServiceTest {
             .thenReturn(Optional.of(next));
         when(repo.findByActiveTrueAndExecutedFalseAndNextFundingAtBetween(any(), any()))
             .thenReturn(List.of(next));
+        when(latencyService.estimate(any(Set.class))).thenReturn(Duration.ofMillis(0));
 
         service.wakeup("test");
         taskScheduler.runLatest(); // вызывает tick
@@ -75,6 +80,7 @@ class FundingSchedulerServiceTest {
             .thenReturn(List.of(next));
 
         doThrow(new RuntimeException("boom")).when(orderExecutorService).executeOnce(anyLong());
+        when(latencyService.estimate(any(Set.class))).thenReturn(Duration.ofMillis(0));
 
         service.wakeup("test");
         taskScheduler.runLatest();
@@ -82,6 +88,36 @@ class FundingSchedulerServiceTest {
         ArgumentCaptor<ApprovedFundingEntity> captor = ArgumentCaptor.forClass(ApprovedFundingEntity.class);
         verify(repo).save(captor.capture());
         assertThat(captor.getValue().isActive()).isFalse();
+    }
+
+    @Test
+    void schedulesEarlierByNetworkDelay() {
+        Instant nextFunding = Instant.now().plusSeconds(20);
+        ApprovedFundingEntity next = sampleEntity("BTC/USDT", nextFunding);
+
+        // Используем увеличенный discoveryInterval, чтобы планирование опиралось на расчётное время
+        service = new FundingSchedulerService(
+            repo,
+            taskScheduler,
+            orderExecutorService,
+            latencyService,
+            5,
+            1,
+            200,
+            10,
+            30
+        );
+
+        when(repo.findFirstByActiveTrueAndExecutedFalseOrderByNextFundingAtAsc())
+            .thenReturn(Optional.of(next));
+        when(latencyService.estimate(any(Set.class))).thenReturn(Duration.ofSeconds(2)); // учесть 2с задержки
+
+        service.wakeup("test-latency");
+
+        Instant planned = taskScheduler.getLastDate().toInstant();
+        Instant expected = nextFunding.minusSeconds(1).minusSeconds(2); // executionDelay=1s + latency 2s
+        // допускаем минимальный recheck 200ms
+        assertThat(planned).isBetween(expected.minusMillis(10), expected.plusMillis(250));
     }
 
     // Helpers
@@ -117,7 +153,7 @@ class FundingSchedulerServiceTest {
         public Date getLastDate() {
             return lastDate;
         }
- 
+
         // Unused overloads
         @Override public ScheduledFuture<?> schedule(Runnable task, Instant startTime) { return schedule(task, Date.from(startTime)); }
         @Override public ScheduledFuture<?> schedule(Runnable task, Trigger trigger) { return schedule(task, new Date()); }

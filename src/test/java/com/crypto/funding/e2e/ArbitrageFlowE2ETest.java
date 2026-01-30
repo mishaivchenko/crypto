@@ -6,6 +6,7 @@ import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import com.crypto.funding.scheduler.FundingSchedulerService;
 import com.crypto.funding.scheduler.OrderExecutorService;
+import com.crypto.funding.scheduler.NetworkLatencyService;
 import com.crypto.funding.trading.OrderSide;
 import com.crypto.funding.trading.OrderType;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
@@ -69,7 +70,7 @@ class ArbitrageFlowE2ETest
         AtomicBoolean orderCalled = new AtomicBoolean( false );
         FakeRestClient fakeClient = new FakeRestClient( orderCalled );
         TestOrderEngine engine = new TestOrderEngine( List.of( fakeClient ) );
-        OrderExecutorService executorService = new OrderExecutorService( engine, repo, List.of( fakeClient ) );
+        OrderExecutorService executorService = new OrderExecutorService( engine, repo, List.of( fakeClient ), new NetworkLatencyService() );
 
         executorService.executeOnce( approved.getId() );
 

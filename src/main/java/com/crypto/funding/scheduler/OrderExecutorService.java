@@ -1,6 +1,7 @@
 package com.crypto.funding.scheduler;
 
 import com.crypto.funding.exchanges.ExchangeRestClient;
+import com.crypto.funding.exchanges.AbstractRestClient;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import com.crypto.funding.trading.*;
@@ -13,10 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,16 +27,19 @@ import java.util.stream.Collectors;
 public class OrderExecutorService
 {
     private static final Logger log = LoggerFactory.getLogger(FundingSchedulerService.class);
+    private static final Duration MAX_ALIGN_WAIT = Duration.ofSeconds(2);
     private final TestOrderEngine testOrderEngine;
     private final ApprovedFundingRepository repo;
 
     private final List<ExchangeRestClient> exchangeRestClients;
+    private final NetworkLatencyService latencyService;
 
-    public OrderExecutorService( TestOrderEngine orderEngine, ApprovedFundingRepository repository, List<ExchangeRestClient> restClients )
+    public OrderExecutorService( TestOrderEngine orderEngine, ApprovedFundingRepository repository, List<ExchangeRestClient> restClients, NetworkLatencyService latencyService )
     {
         this.testOrderEngine = orderEngine;
         this.repo = repository;
         this.exchangeRestClients = restClients;
+        this.latencyService = latencyService;
     }
 
     @Transactional
@@ -55,12 +61,47 @@ public class OrderExecutorService
         }
 
         var restClients  = exchangeRestClients.stream().filter( restClient -> exchanges.contains( restClient.name() ) ).toList();
+        restClients = restClients.stream().filter(this::isConfigured).toList();
 
         for (ExchangeRestClient ex : restClients) {
             String exchange = normalizeExchange( ex.name() );
 
             FundingInfo fundingInfo = ex.fetchFunding( e.getSymbolUnified() );
             SymbolRules symbolRules = ex.fetchRules( e.getSymbolUnified() );
+
+            // Предзапуск: минимальный тестовый ордер для оценки задержки сети
+            BigDecimal minQty = symbolRules.minOrderQty();
+            PlaceTestOrderCommand latencyCmd = new PlaceTestOrderCommand(
+                exchange,
+                e.getSymbolUnified(),
+                OrderSide.BUY,
+                OrderType.MARKET,
+                minQty,
+                null
+            );
+            try {
+                latencyService.measureAndRecord(exchange, () -> testOrderEngine.placeTestOrder(latencyCmd));
+            } catch (Exception probeEx) {
+                log.warn("[scheduler] latency probe failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), probeEx.getMessage());
+                continue;
+            }
+
+            Duration measuredDelay = latencyService.estimate(exchange);
+            Instant targetFundingAt = Optional.ofNullable(fundingInfo.nextFundingAt()).orElse(e.getNextFundingAt());
+            if (targetFundingAt != null && measuredDelay != null && !measuredDelay.isZero() && !measuredDelay.isNegative()) {
+                Instant sendAt = targetFundingAt.minus(measuredDelay);
+                Duration wait = Duration.between(Instant.now(), sendAt);
+                if (wait.compareTo(MAX_ALIGN_WAIT) > 0) {
+                    wait = MAX_ALIGN_WAIT;
+                }
+                if (!wait.isNegative()) {
+                    try {
+                        Thread.sleep(wait.toMillis());
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
 
             BigDecimal rawQty = e.getUsdtAmount().divide(fundingInfo.price(), 12, RoundingMode.DOWN);
             BigDecimal qty = floorToStep(rawQty, symbolRules.qtyStep());
@@ -119,5 +160,16 @@ public class OrderExecutorService
     private static String normalizeExchange(String ex) {
         if (ex == null) return "";
         return ex.trim().toLowerCase( Locale.ROOT);
+    }
+
+    private boolean isConfigured(ExchangeRestClient client) {
+        if (client instanceof AbstractRestClient arc) {
+            return isNonBlank(arc.getApiKey()) && isNonBlank(arc.getSecretKey()) && isNonBlank(arc.getBaseUrl());
+        }
+        return true;
+    }
+
+    private static boolean isNonBlank(String s) {
+        return s != null && !s.isBlank();
     }
 }

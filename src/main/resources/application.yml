@@ -60,7 +60,7 @@ spring:
         properties:
             hibernate:
                 dialect: org.hibernate.community.dialect.SQLiteDialect
-        show-sql: true
+        show-sql: false
 
 trading:
     binance:
