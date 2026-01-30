@@ -31,9 +31,9 @@ public class GateRestClient extends AbstractRestClient implements ExchangeRestCl
     private final GateFeignClient feignClient;
 
     public GateRestClient(
-        @Value( "${trading.gate.base-url}" ) String baseUrl,
-        @Value( "${trading.gate.api-key:}" ) String apiKey,
-        @Value( "${trading.gate.secret-key:}" ) String secretKey,
+        @Value( "${trading.gate.base-url:https://fx-api-testnet.gateio.ws/api/v4}" ) String baseUrl,
+        @Value( "${trading.gate.api-key:${GATE_API_KEY:${GATE_TESTNET_API_KEY:${GATE_PROD_API_KEY:}}}}" ) String apiKey,
+        @Value( "${trading.gate.secret-key:${GATE_SECRET_KEY:${GATE_TESTNET_SECRET_KEY:${GATE_PROD_SECRET_KEY:}}}}" ) String secretKey,
         @Value( "${trading.gate.recv-window:5000}" ) long recvWindow,
         GateFeignClient feignClient )
     {

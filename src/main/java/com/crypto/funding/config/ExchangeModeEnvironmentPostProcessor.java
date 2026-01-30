@@ -37,6 +37,20 @@ public class ExchangeModeEnvironmentPostProcessor implements EnvironmentPostProc
         setIfMissing( environment, overrides, prefix + "base-url", envPrefix + "base-url" );
         setIfMissing( environment, overrides, prefix + "api-key", envPrefix + "api-key" );
         setIfMissing( environment, overrides, prefix + "secret-key", envPrefix + "secret-key" );
+
+        String upper = exchange.toUpperCase();
+        setIfMissingFromList(
+            environment,
+            overrides,
+            prefix + "api-key",
+            upper + "_API_KEY"
+        );
+        setIfMissingFromList(
+            environment,
+            overrides,
+            prefix + "secret-key",
+            upper + "_SECRET_KEY"
+        );
     }
 
     private static void setIfMissing(
@@ -55,6 +69,29 @@ public class ExchangeModeEnvironmentPostProcessor implements EnvironmentPostProc
         if( source != null && !source.isBlank() )
         {
             overrides.put( targetKey, source );
+        }
+    }
+
+    private static void setIfMissingFromList(
+        ConfigurableEnvironment environment,
+        Map<String, Object> overrides,
+        String targetKey,
+        String... sourceKeys
+    )
+    {
+        String current = environment.getProperty( targetKey );
+        if( current != null && !current.isBlank() )
+        {
+            return;
+        }
+        for( String sourceKey : sourceKeys )
+        {
+            String source = environment.getProperty( sourceKey );
+            if( source != null && !source.isBlank() )
+            {
+                overrides.put( targetKey, source );
+                return;
+            }
         }
     }
 

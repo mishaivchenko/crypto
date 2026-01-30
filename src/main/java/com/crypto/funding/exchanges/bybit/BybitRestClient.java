@@ -31,9 +31,9 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
     private final BybitFeignClient feignClient;
 
     public BybitRestClient(
-        @Value("${trading.bybit.base-url}") String baseUrl,
-        @Value("${trading.bybit.api-key:}") String apiKey,
-        @Value("${trading.bybit.secret-key:}") String secretKey,
+        @Value("${trading.bybit.base-url:https://api-testnet.bybit.com}") String baseUrl,
+        @Value("${trading.bybit.api-key:${BYBIT_API_KEY:${BYBIT_TESTNET_API_KEY:${BYBIT_PROD_API_KEY:}}}}") String apiKey,
+        @Value("${trading.bybit.secret-key:${BYBIT_SECRET_KEY:${BYBIT_TESTNET_SECRET_KEY:${BYBIT_PROD_SECRET_KEY:}}}}") String secretKey,
         @Value("${trading.bybit.recv-window:5000}") long recvWindow,
         BybitFeignClient feignClient
     )

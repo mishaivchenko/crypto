@@ -14,7 +14,7 @@ telegram:
     apiHash: ${TG_API_HASH}
     phoneNumber: ${TG_PHONE}
     #password: ${TG_2FA_PASSWORD:}
-    sessionDir: ${TELEGRAM_SESSIONDIR:./data/tdlib}
+    sessionDir: ${TG_SESSION_DIR:./data/tdlib}
     systemLanguageCode: uk
     deviceModel: "Java21-Arb"
     appVersion: "0.1.0"
@@ -30,9 +30,21 @@ arb:
         minSpreadPct: 3.0
     funding:
         restFallbackSeconds: 60
+
+funding:
+    execution-delay-seconds: 8
+    refresh-interval-seconds: 60
+    scheduler:
+        lookahead-seconds: 10
+        min-recheck-millis: 1000
+        max-lateness-seconds: 120
+        discovery-interval-seconds: 15
 #    telegram:
 #        channel: @funding_watchdog
 spring:
+    cloud:
+        compatibility-verifier:
+            enabled: false
     web:
         resources:
             cache:

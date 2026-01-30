@@ -4,7 +4,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient( name = "gateFeign", url = "${trading.gate.base-url}" )
+@FeignClient( name = "gateFeign", url = "${trading.gate.base-url:https://fx-api-testnet.gateio.ws/api/v4}" )
 public interface GateFeignClient
 {
     @GetMapping( "/futures/usdt/contracts/{contract}" )

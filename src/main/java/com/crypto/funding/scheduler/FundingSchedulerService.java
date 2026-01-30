@@ -2,26 +2,18 @@ package com.crypto.funding.scheduler;
 
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
-import com.crypto.funding.trading.OrderSide;
-import com.crypto.funding.trading.OrderType;
-import com.crypto.funding.trading.PlaceTestOrderCommand;
-import com.crypto.funding.trading.TestOrderEngine;
-import com.crypto.funding.trading.TestOrderResult;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.*;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,6 +36,7 @@ public class FundingSchedulerService {
 
     private final Duration lookahead;
     private final Duration minRecheckDelay;
+    private final Duration executionDelay;
 
     private volatile ScheduledFuture<?> current;
     private volatile Long currentFundingId;
@@ -57,6 +50,7 @@ public class FundingSchedulerService {
         ApprovedFundingRepository repo,
         TaskScheduler fundingTaskScheduler, OrderExecutorService orderExecutorService,
         @Value("${funding.scheduler.lookahead-seconds:10}") long lookaheadSeconds,
+        @Value("${funding.execution-delay-seconds:8}") long executionDelaySeconds,
         @Value("${funding.scheduler.min-recheck-millis:1000}") long minRecheckMillis,
         @Value("${funding.scheduler.max-lateness-seconds:120}") long maxLatenessSeconds,
         @Value("${funding.scheduler.discovery-interval-seconds:15}") long discoveryIntervalSeconds ) {
@@ -64,6 +58,7 @@ public class FundingSchedulerService {
         this.scheduler = fundingTaskScheduler;
         this.orderExecutorService = orderExecutorService;
         this.lookahead = Duration.ofSeconds(Math.max(1, lookaheadSeconds));
+        this.executionDelay = Duration.ofSeconds(Math.max(1, executionDelaySeconds));
         this.minRecheckDelay = Duration.ofMillis(Math.max(200, minRecheckMillis));
         this.maxLateness = Duration.ofSeconds(Math.max(5, maxLatenessSeconds));
         this.discoveryInterval = Duration.ofSeconds(Math.max(5, discoveryIntervalSeconds));
@@ -102,7 +97,7 @@ public class FundingSchedulerService {
                 continue;
             }
 
-            Instant planned = nextFundingAt.minus(lookahead);
+            Instant planned = nextFundingAt.minus(executionDelay);
             if (planned.isBefore(now.plus(minRecheckDelay))) {
                 planned = now.plus(minRecheckDelay);
             }
@@ -121,10 +116,11 @@ public class FundingSchedulerService {
         ZonedDateTime kyivPlanned = planned.atZone(KYIV);
 
         log.info(
-            "[scheduler] next funding {} at {} (UTC) / {} (Kyiv); scheduling run at {} (UTC) / {} (Kyiv) ({})",
+            "[scheduler] next funding {} at {} (UTC) / {} (Kyiv); executionDelay={}s; scheduling run at {} (UTC) / {} (Kyiv) ({})",
             symbol,
             nextFundingAt,
             kyivFunding,
+            executionDelay.toSeconds(),
             planned,
             kyivPlanned,
             reason
@@ -142,7 +138,12 @@ public class FundingSchedulerService {
 
         currentFundingId = fundingId;
         currentPlannedAt = runAt;
-        current = scheduler.schedule( this::tick, Date.from( runAt ) );
+        try {
+            current = scheduler.schedule( this::tick, Date.from( runAt ) );
+        } catch (TaskRejectedException e) {
+            // Контекст мог начать shutdown (например, при старте с ошибкой).
+            log.warn("[scheduler] schedule rejected (shutdown in progress): {}", e.getMessage());
+        }
     }
 
     private void tick() {
@@ -165,8 +166,9 @@ public class FundingSchedulerService {
     private void processDueWindow() {
         log.info( "Start processing" );
         Instant now = Instant.now();
-        Instant from = now.minus(maxLateness);    // ✅ теперь подхватит чуть просроченные
-        Instant to = now.plus(lookahead);
+        Instant targetFundingAt = now.plus(executionDelay);
+        Instant from = targetFundingAt.minus(maxLateness);    // ✅ теперь подхватит чуть просроченные
+        Instant to = targetFundingAt.plus(lookahead);
 
         List<ApprovedFundingEntity> nextFundings =
             repo.findByActiveTrueAndExecutedFalseAndNextFundingAtBetween(from, to);

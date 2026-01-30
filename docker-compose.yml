@@ -14,4 +14,4 @@ services:
             - ./data-container:/data
         restart: unless-stopped
         environment:
-            TELEGRAM_SESSIONDIR: /data/tdlib
+            TG_SESSION_DIR: /data/tdlib
