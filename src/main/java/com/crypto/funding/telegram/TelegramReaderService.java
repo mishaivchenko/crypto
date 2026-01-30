@@ -2,6 +2,7 @@ package com.crypto.funding.telegram;
 
 import it.tdlight.client.SimpleTelegramClient;
 import it.tdlight.jni.TdApi;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -10,6 +11,7 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 @Service
+@ConditionalOnProperty(prefix = "telegram", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class TelegramReaderService
 {
     private final SimpleTelegramClient client;

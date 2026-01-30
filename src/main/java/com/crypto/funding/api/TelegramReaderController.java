@@ -1,6 +1,7 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.telegram.TelegramReaderService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -8,6 +9,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping( "/api/telegram" )
+@ConditionalOnProperty(prefix = "telegram", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class TelegramReaderController
 {
     private final TelegramReaderService reader;

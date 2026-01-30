@@ -73,6 +73,8 @@ dependencies {
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.awaitility:awaitility:4.2.2'
+    testImplementation 'org.wiremock:wiremock-standalone:3.0.1'
 
     // WebSocket клиент (универсальный)
     implementation "org.glassfish.tyrus.bundles:tyrus-standalone-client:$tyrusVersion"

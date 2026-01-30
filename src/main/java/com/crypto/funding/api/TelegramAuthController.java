@@ -1,6 +1,7 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.telegram.TelegramLoginService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -8,6 +9,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping( "/api/telegram" )
+@ConditionalOnProperty(prefix = "telegram", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class TelegramAuthController
 {
     private final TelegramLoginService login;

@@ -1,0 +1,65 @@
+package com.crypto.funding.exchanges;
+
+import com.crypto.funding.exchanges.binance.BinanceFeignClient;
+import com.crypto.funding.exchanges.binance.BinanceRestClient;
+import com.crypto.funding.trading.OrderSide;
+import com.crypto.funding.trading.OrderType;
+import com.crypto.funding.trading.PlaceTestOrderCommand;
+import com.crypto.funding.trading.TestOrderResult;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.math.BigDecimal;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class BinanceRestClientTest
+{
+    private WireMockServer server;
+
+    @BeforeEach
+    void start()
+    {
+        server = new WireMockServer( 0 );
+        server.start();
+        configureFor( "localhost", server.port() );
+    }
+
+    @AfterEach
+    void stop()
+    {
+        server.stop();
+    }
+
+    @Test
+    void placesLimitOrder() throws Exception
+    {
+        stubFor( post( urlPathEqualTo( "/fapi/v1/order" ) )
+                     .willReturn( aResponse()
+                                      .withStatus( 200 )
+                                      .withHeader( "Content-Type", "application/json" )
+                                      .withBody( """
+                                          {"orderId":"777","status":"NEW","price":"101.00"}
+                                          """ ) ) );
+
+        BinanceRestClient client = new BinanceRestClient(
+            server.baseUrl(),
+            "k",
+            "s",
+            5000
+        );
+
+        TestOrderResult result = client.placeTestOrder(
+            new PlaceTestOrderCommand( "binance", "ETH/USDT", OrderSide.SELL, OrderType.LIMIT, new BigDecimal( "0.5" ), new BigDecimal( "101.00" ) )
+        );
+
+        verify( postRequestedFor( urlPathEqualTo( "/fapi/v1/order" ) ) );
+        assertThat( result.exchangeOrderId() ).isEqualTo( "777" );
+        assertThat( result.price() ).isEqualByComparingTo( "101.00" );
+        assertThat( result.symbolUnified() ).isEqualTo( "ETH/USDT" );
+    }
+}

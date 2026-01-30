@@ -37,7 +37,7 @@ public class OrderExecutorService
     }
 
     @Transactional
-    void executeOnce(Long id) throws Exception
+    public void executeOnce(Long id) throws Exception
     {
 
         ApprovedFundingEntity e = repo.findById(id).orElse(null);

@@ -94,7 +94,7 @@ public class ApprovedFundingEntity
         return id;
     }
 
-    public long getVersion()
+    public Long getVersion()
     {
         return version;
     }
