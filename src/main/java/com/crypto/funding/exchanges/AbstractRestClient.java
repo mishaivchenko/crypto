@@ -46,6 +46,8 @@ public abstract class AbstractRestClient
 
     protected abstract HttpRequest createHttpRequest( PlaceTestOrderCommand cmd ) throws Exception;
 
+    public abstract String exchangeName();
+    //
     protected void ensureConfigured()
     {
         if (baseUrl == null || baseUrl.isEmpty() )
@@ -54,7 +56,7 @@ public abstract class AbstractRestClient
         }
         if( apiKey == null || apiKey.isBlank() || secretKey == null || secretKey.isBlank() )
         {
-            throw new IllegalStateException( "Binance testnet API key/secret not configured" );
+            throw new IllegalStateException( "API key/secret not configured for: " + exchangeName() );
         }
     }
 
@@ -62,12 +64,10 @@ public abstract class AbstractRestClient
     {
         if( response.statusCode() >= 300 )
         {
-            throw new RuntimeException( "Binance testnet order failed: " + response.statusCode() +
+            throw new RuntimeException( "Order failed: " + response.statusCode() +
                                         " body=" + response.body() );
         }
     }
-
-    public abstract String exchangeName();
 
     public String getBaseUrl()
     {

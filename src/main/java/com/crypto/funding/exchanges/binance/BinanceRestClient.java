@@ -6,7 +6,6 @@ import com.crypto.funding.exchanges.ExchangeRestClient;
 import com.crypto.funding.trading.*;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,15 +32,18 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
 {
 
     private final ObjectMapper mapper = new ObjectMapper();
+    private final BinanceFeignClient feignClient;
 
     public BinanceRestClient(
         @Value( "${trading.binance.base-url}" ) String baseUrl,
         @Value( "${trading.binance.api-key:}" ) String apiKey,
         @Value( "${trading.binance.secret-key:}" ) String secretKey,
-        @Value( "${trading.binance.recv-window:5000}" ) long recvWindow
+        @Value( "${trading.binance.recv-window:5000}" ) long recvWindow,
+        BinanceFeignClient feignClient
     )
     {
         super( baseUrl, apiKey, secretKey, recvWindow );
+        this.feignClient = feignClient;
     }
 
     @Override
@@ -136,17 +138,7 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
     {
         // Пример unifiedSymbol = "BTC/USDT"
         String binanceSymbol = toExchange( unifiedSymbol ); // "BTCUSDT"
-        String url = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=" + binanceSymbol;
-
-        HttpRequest req = HttpRequest.newBuilder()
-                                     .uri( URI.create( url ) )
-                                     .timeout( Duration.ofSeconds( 5 ) )
-                                     .GET()
-                                     .build();
-
-        HttpResponse<String> resp = http.send( req, HttpResponse.BodyHandlers.ofString() );
-
-        PremiumIndex dto = mapper.readValue( resp.body(), PremiumIndex.class );
+        BinancePremiumIndex dto = feignClient.getPremiumIndex( binanceSymbol );
 
         double fundingRatePct = Double.parseDouble( dto.lastFundingRate ) * 100.0;
         Instant nextFundingAt = Instant.ofEpochMilli( dto.nextFundingTime );
@@ -166,13 +158,5 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
     public SymbolRules fetchRules( String unifiedSymbol )
     {
         return null;
-    }
-
-    @JsonIgnoreProperties( ignoreUnknown = true )
-    static class PremiumIndex
-    {
-        public String symbol;
-        public String lastFundingRate;
-        public long nextFundingTime;
     }
 }

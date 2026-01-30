@@ -52,20 +52,39 @@ spring:
 
 trading:
     binance:
-        # для USDT-маржинальных фьючерсов testnet:
-        # можно использовать demo-fapi.binance.com или testnet.binancefuture.com
-        base-url: "https://testnet.binancefuture.com"
-        api-key: BINANCE_TESTNET_API_KEY_PLACEHOLDER #spot BINANCE_SPOT_API_KEY_PLACEHOLDER
-        secret-key: BINANCE_TESTNET_SECRET_KEY_PLACEHOLDER #spot BINANCE_SPOT_SECRET_KEY_PLACEHOLDER
+        mode: ${BINANCE_MODE:testnet}
         recv-window: 5000
+        testnet:
+            # для USDT-маржинальных фьючерсов testnet:
+            # можно использовать demo-fapi.binance.com или testnet.binancefuture.com
+            base-url: ${BINANCE_TESTNET_BASE_URL:https://testnet.binancefuture.com}
+            api-key: ${BINANCE_TESTNET_API_KEY:}
+            secret-key: ${BINANCE_TESTNET_SECRET_KEY:}
+        production:
+            base-url: ${BINANCE_PROD_BASE_URL:https://fapi.binance.com}
+            api-key: ${BINANCE_PROD_API_KEY:}
+            secret-key: ${BINANCE_PROD_SECRET_KEY:}
 
     bybit:
-        base-url: "https://api-testnet.bybit.com"
-        api-key: BYBIT_TESTNET_API_KEY_PLACEHOLDER
-        secret-key: BYBIT_TESTNET_SECRET_KEY_PLACEHOLDER
+        mode: ${BYBIT_MODE:testnet}
         recv-window: 5000
+        testnet:
+            base-url: ${BYBIT_TESTNET_BASE_URL:https://api-testnet.bybit.com}
+            api-key: ${BYBIT_TESTNET_API_KEY:}
+            secret-key: ${BYBIT_TESTNET_SECRET_KEY:}
+        production:
+            base-url: ${BYBIT_PROD_BASE_URL:https://api.bybit.com}
+            api-key: ${BYBIT_PROD_API_KEY:}
+            secret-key: ${BYBIT_PROD_SECRET_KEY:}
 
     gate:
-        base-url: "https://fx-api-testnet.gateio.ws/api/v4"
-        api-key: "${GATE_TESTNET_API_KEY:}"
-        secret-key: "${GATE_TESTNET_SECRET_KEY:}"
+        mode: ${GATE_MODE:testnet}
+        recv-window: 5000
+        testnet:
+            base-url: ${GATE_TESTNET_BASE_URL:https://fx-api-testnet.gateio.ws/api/v4}
+            api-key: ${GATE_TESTNET_API_KEY:}
+            secret-key: ${GATE_TESTNET_SECRET_KEY:}
+        production:
+            base-url: ${GATE_PROD_BASE_URL:https://api.gateio.ws/api/v4}
+            api-key: ${GATE_PROD_API_KEY:}
+            secret-key: ${GATE_PROD_SECRET_KEY:}

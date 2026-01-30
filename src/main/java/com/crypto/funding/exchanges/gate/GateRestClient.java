@@ -6,7 +6,6 @@ import com.crypto.funding.exchanges.ExchangeRestClient;
 import com.crypto.funding.trading.*;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.MessageDigest;
@@ -29,16 +27,18 @@ import java.util.Map;
 public class GateRestClient extends AbstractRestClient implements ExchangeRestClient, ExchangeTradingClient
 {
 
-    private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final GateFeignClient feignClient;
 
     public GateRestClient(
         @Value( "${trading.gate.base-url}" ) String baseUrl,
         @Value( "${trading.gate.api-key:}" ) String apiKey,
-        @Value( "" ) String secretKey,
-        @Value( "${trading.binance.recv-window:5000}" ) long recvWindow )
+        @Value( "${trading.gate.secret-key:}" ) String secretKey,
+        @Value( "${trading.gate.recv-window:5000}" ) long recvWindow,
+        GateFeignClient feignClient )
     {
         super( baseUrl, apiKey, secretKey, recvWindow );
+        this.feignClient = feignClient;
     }
 
     @Override
@@ -138,23 +138,11 @@ public class GateRestClient extends AbstractRestClient implements ExchangeRestCl
         String base = unifiedSymbol.split( "/" )[0];
         String gateContract = base + "_USDT";
 
-        String url = "https://api.gateio.ws/api/v4/futures/usdt/contracts/" + gateContract;
-
-        HttpRequest req = HttpRequest.newBuilder()
-                                     .uri( URI.create( url ) )
-                                     .timeout( Duration.ofSeconds( 5 ) )
-                                     .header( "Accept", "application/json" )
-                                     .GET()
-                                     .build();
-
-        HttpResponse<String> resp = http.send( req, HttpResponse.BodyHandlers.ofString() );
-
-        GateContract dto = mapper.readValue( resp.body(), GateContract.class );
+        GateContract dto = feignClient.getContract( gateContract );
 
         double fundingRatePct = Double.parseDouble( dto.funding_rate ) * 100.0;
 
         // Gate возвращает funding_next_apply как юникс-время следующего начисления.
-        // В публичных описаниях оно идёт в секундах Unix.  [oai_citation:5‡pkg.go.dev](https://pkg.go.dev/github.com/xyths/hs/exchange?utm_source=chatgpt.com)
         Instant nextFundingAt = Instant.ofEpochSecond( (long) dto.funding_next_apply );
 
         long secondsToFunding = java.time.Duration.between( Instant.now(), nextFundingAt ).getSeconds();
@@ -173,14 +161,5 @@ public class GateRestClient extends AbstractRestClient implements ExchangeRestCl
     public SymbolRules fetchRules( String unifiedSymbol )
     {
         return null;
-    }
-
-    @JsonIgnoreProperties( ignoreUnknown = true )
-    static class GateContract
-    {
-        public String name;                // "BTC_USDT"
-        public String funding_rate;        // "0.0001"
-        public double funding_next_apply;  // unix ts (sec)
-        public int funding_interval;       // seconds between fundings, e.g. 28800
     }
 }

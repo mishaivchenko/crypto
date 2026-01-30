@@ -7,7 +7,6 @@ import com.crypto.funding.trading.*;
 import com.crypto.funding.utills.SymbolMapper;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -29,17 +27,19 @@ import java.util.Map;
 public class BybitRestClient extends AbstractRestClient implements ExchangeRestClient, ExchangeTradingClient
 {
 
-    private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final BybitFeignClient feignClient;
 
     public BybitRestClient(
         @Value("${trading.bybit.base-url}") String baseUrl,
         @Value("${trading.bybit.api-key:}") String apiKey,
         @Value("${trading.bybit.secret-key:}") String secretKey,
-        @Value("${trading.bybit.recv-window:5000}") long recvWindow
+        @Value("${trading.bybit.recv-window:5000}") long recvWindow,
+        BybitFeignClient feignClient
     )
     {
         super( baseUrl, apiKey, secretKey, recvWindow );
+        this.feignClient = feignClient;
     }
 
     @Override
@@ -122,19 +122,9 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
     public FundingInfo fetchFunding(String unifiedSymbol) throws Exception {
         // unifiedSymbol "BTC/USDT" -> "BTCUSDT" для Bybit linear перпетуалов
         String bybitSymbol = SymbolMapper.toExchange(unifiedSymbol); // "BTCUSDT"
-        String url = "https://api.bybit.com/v5/market/tickers?category=linear&symbol=" + bybitSymbol;
+        BybitMarketTickersResponse dto = feignClient.getTickers( "linear", bybitSymbol );
 
-        HttpRequest req = HttpRequest.newBuilder()
-                                     .uri(URI.create(url))
-                                     .timeout(Duration.ofSeconds(5))
-                                     .GET()
-                                     .build();
-
-        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-
-        BybitResponse dto = mapper.readValue(resp.body(), BybitResponse.class);
-
-        if (dto.result == null || dto.result.list == null || dto.result.list.length == 0) {
+        if (dto == null || dto.result == null || dto.result.list == null || dto.result.list.length == 0) {
             throw new IllegalStateException("Empty funding data for " + unifiedSymbol + " from Bybit");
         }
 
@@ -158,17 +148,10 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
     @Override
     public SymbolRules fetchRules( String symbol )
     {
-        String url = getBaseUrl() + "/v5/market/instruments-info?category=linear&symbol=" + symbol;
-
-        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-                                     .GET()
-                                     .build();
-
         try {
-            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            BybitInstrumentsResponse dto = mapper.readValue(resp.body(), BybitInstrumentsResponse.class);
+            BybitInstrumentsResponse dto = feignClient.getInstruments( "linear", symbol );
 
-            if (dto.result == null || dto.result.list == null || dto.result.list.length == 0) {
+            if (dto == null || dto.result == null || dto.result.list == null || dto.result.list.length == 0) {
                 throw new IllegalStateException("Empty instruments-info for " + symbol + " from Bybit");
             }
 
@@ -188,48 +171,4 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
             throw new RuntimeException("Failed to fetch symbol rules from Bybit for " + symbol, e);
         }
     }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class BybitResponse {
-        public BybitResult result;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class BybitResult {
-        public BybitTicker[] list;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class BybitTicker {
-        public String symbol;
-        public String fundingRate;        // "0.0001"
-        public String indexPrice;
-        public String nextFundingTime;    // "1730467200000"
-        public String fundingIntervalHour;// "8"
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class BybitInstrumentsResponse {
-        public BybitInstrumentsResult result;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class BybitInstrumentsResult {
-        public BybitInstrument[] list;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class BybitInstrument {
-        public String symbol;
-        public LotSizeFilter lotSizeFilter;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class LotSizeFilter {
-        public String minOrderQty;       // "0.001"
-        public String qtyStep;           // "0.001"
-        public String minNotionalValue;  // sometimes exists, depends on market
-    }
-
-
 }
