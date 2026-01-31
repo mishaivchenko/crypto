@@ -20,6 +20,7 @@ import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -76,6 +77,8 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
             root.path( "price" ).asText( "0" )
         ) );
 
+        Long exchangeTs = root.hasNonNull("updateTime") ? root.get("updateTime").asLong() : null;
+
         return new TestOrderResult(
             name(),
             orderId,
@@ -85,7 +88,9 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
             quantity,
             price,
             status,
-            System.currentTimeMillis()
+            System.currentTimeMillis(),
+            exchangeTs,
+            exchangeTs == null ? OrderTimestampSource.UNKNOWN : OrderTimestampSource.RESPONSE_BODY
         );
     }
 
@@ -160,6 +165,35 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
             secondsToFunding,
             BigDecimal.ZERO
         );
+    }
+
+    @Override
+    public Long fetchOrderTimestamp(String unifiedSymbol, String exchangeOrderId) throws Exception
+    {
+        if (exchangeOrderId == null || exchangeOrderId.isBlank()) {
+            return null;
+        }
+
+        String query = "symbol=" + toExchange(unifiedSymbol) +
+                       "&orderId=" + urlEncode(exchangeOrderId) +
+                       "&recvWindow=" + getRecvWindow() +
+                       "&timestamp=" + System.currentTimeMillis();
+        String signature = HmacSigner.hmacSha256(getSecretKey(), query);
+        String url = getBaseUrl() + "/fapi/v1/order" + "?" + query + "&signature=" + signature;
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .timeout(Duration.ofSeconds(5))
+            .header("X-MBX-APIKEY", getApiKey())
+            .GET()
+            .build();
+
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        validateResponse(response);
+
+        JsonNode root = mapper.readTree(response.body());
+        long updateTime = root.path("updateTime").asLong(0L);
+        return updateTime == 0L ? null : updateTime;
     }
 
     @Override

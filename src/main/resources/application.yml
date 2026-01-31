@@ -65,7 +65,7 @@ spring:
                 PRAGMA foreign_keys=ON;
     jpa:
         hibernate:
-            ddl-auto: update   # временно можно поставить create
+            ddl-auto: create   # временно можно поставить create
         properties:
             hibernate:
                 dialect: org.hibernate.community.dialect.SQLiteDialect

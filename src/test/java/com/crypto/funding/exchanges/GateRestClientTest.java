@@ -43,7 +43,7 @@ class GateRestClientTest
                                       .withStatus( 200 )
                                       .withHeader( "Content-Type", "application/json" )
                                       .withBody( """
-                                          {"id":"g-1","status":"open","price":"10"}
+                                          {"id":"g-1","status":"open","price":"10","create_time":1700000000}
                                           """ ) ) );
 
         GateRestClient client = new GateRestClient(
@@ -61,5 +61,6 @@ class GateRestClientTest
         verify( postRequestedFor( urlEqualTo( "/futures/usdt/orders" ) ) );
         assertThat( result.exchangeOrderId() ).isEqualTo( "g-1" );
         assertThat( result.status() ).isEqualTo( "open" );
+        assertThat( result.exchangeTsMillis() ).isEqualTo( 1_700_000_000_000L );
     }
 }

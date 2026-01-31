@@ -3,9 +3,11 @@ package com.crypto.funding.scheduler;
 import com.crypto.funding.exchanges.AbstractRestClient;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
+import com.crypto.funding.persistence.service.OrderExecutionTimeStore;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
 import com.crypto.funding.trading.TestOrderEngine;
 import com.crypto.funding.trading.TestOrderResult;
+import com.crypto.funding.trading.OrderTimestampSource;
 import com.crypto.funding.trading.OrderSide;
 import com.crypto.funding.trading.OrderType;
 import com.crypto.funding.watchlist.FundingInfo;
@@ -43,6 +45,9 @@ class OrderExecutorServiceTest {
     private ApprovedFundingRepository repo;
 
     @Mock
+    private OrderExecutionTimeStore orderExecutionTimeStore;
+
+    @Mock
     private AbstractRestClient binance;
 
     @Mock
@@ -52,7 +57,7 @@ class OrderExecutorServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new OrderExecutorService(testOrderEngine, repo, List.of(binance), latencyService, true);
+        service = new OrderExecutorService(testOrderEngine, repo, orderExecutionTimeStore, List.of(binance), latencyService, true);
         when(latencyService.measureAndRecord(eq("binance"), any())).thenAnswer(inv -> {
             @SuppressWarnings("unchecked")
             ThrowingSupplier<TestOrderResult> supplier = inv.getArgument(1);
@@ -83,7 +88,7 @@ class OrderExecutorServiceTest {
         when(binance.fetchRules("BTCUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("0.001"), new BigDecimal("0.001"), null));
 
-        TestOrderResult mockResult = new TestOrderResult("binance", "123", "BTCUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis());
+        TestOrderResult mockResult = new TestOrderResult("binance", "123", "BTCUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis(), null, OrderTimestampSource.UNKNOWN);
         when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(mockResult);
 
         service.executeOnce(1L);
@@ -195,7 +200,7 @@ class OrderExecutorServiceTest {
 
     @Test
     void skipsLatencyProbeWhenDisabled() throws Exception {
-        OrderExecutorService noProbeService = new OrderExecutorService(testOrderEngine, repo, List.of(binance), latencyService, false);
+        OrderExecutorService noProbeService = new OrderExecutorService(testOrderEngine, repo, orderExecutionTimeStore, List.of(binance), latencyService, false);
 
         ApprovedFundingEntity entity = new ApprovedFundingEntity(
             "ADA/USDT",
@@ -213,7 +218,7 @@ class OrderExecutorServiceTest {
         when(binance.fetchRules("ADAUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("1"), new BigDecimal("1"), null));
 
-        TestOrderResult mockResult = new TestOrderResult("binance", "123", "ADAUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis());
+        TestOrderResult mockResult = new TestOrderResult("binance", "123", "ADAUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis(), null, OrderTimestampSource.UNKNOWN);
         when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(mockResult);
 
         noProbeService.executeOnce(6L);
@@ -241,7 +246,7 @@ class OrderExecutorServiceTest {
         when(binance.fetchRules("ATOMUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("0.001"), new BigDecimal("0.001"), null));
 
-        TestOrderResult mockResult = new TestOrderResult("binance", "777", "ATOMUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis());
+        TestOrderResult mockResult = new TestOrderResult("binance", "777", "ATOMUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis(), null, OrderTimestampSource.UNKNOWN);
         when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(mockResult);
 
         long start = System.nanoTime();

@@ -12,8 +12,10 @@ import com.crypto.funding.trading.OrderType;
 import com.crypto.funding.trading.PlaceTestOrderCommand;
 import com.crypto.funding.trading.TestOrderEngine;
 import com.crypto.funding.trading.TestOrderResult;
+import com.crypto.funding.persistence.service.OrderExecutionTimeStore;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
+import com.crypto.funding.trading.OrderTimestampSource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.scheduling.TaskScheduler;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -70,7 +73,8 @@ class ArbitrageFlowE2ETest
         AtomicBoolean orderCalled = new AtomicBoolean( false );
         FakeRestClient fakeClient = new FakeRestClient( orderCalled );
         TestOrderEngine engine = new TestOrderEngine( List.of( fakeClient ) );
-        OrderExecutorService executorService = new OrderExecutorService( engine, repo, List.of( fakeClient ), new NetworkLatencyService(), true );
+        OrderExecutionTimeStore store = mock(OrderExecutionTimeStore.class);
+        OrderExecutorService executorService = new OrderExecutorService( engine, repo, store, List.of( fakeClient ), new NetworkLatencyService(), true );
 
         executorService.executeOnce( approved.getId() );
 
@@ -108,7 +112,7 @@ class ArbitrageFlowE2ETest
         {
             return new TestOrderResult( exchangeName(), "id-1", cmd.symbolUnified(), cmd.side(), cmd.type(),
                                         cmd.quantity(), cmd.price() == null ? BigDecimal.ONE : cmd.price(),
-                                        "FILLED", System.currentTimeMillis() );
+                                        "FILLED", System.currentTimeMillis(), null, OrderTimestampSource.UNKNOWN );
         }
 
         @Override
@@ -141,7 +145,7 @@ class ArbitrageFlowE2ETest
             called.set( true );
             return new TestOrderResult( exchangeName(), "id-1", cmd.symbolUnified(), cmd.side(), cmd.type(),
                                         cmd.quantity(), cmd.price() == null ? BigDecimal.ONE : cmd.price(),
-                                        "FILLED", System.currentTimeMillis() );
+                                        "FILLED", System.currentTimeMillis(), null, OrderTimestampSource.UNKNOWN );
         }
     }
 

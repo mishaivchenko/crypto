@@ -57,6 +57,8 @@ public class GateRestClient extends AbstractRestClient implements ExchangeRestCl
                            ? cmd.price()
                            : new BigDecimal( root.path( "price" ).asText( "0" ) );
 
+        Long exchangeTs = root.hasNonNull("create_time") ? root.get("create_time").asLong() * 1000L : null;
+
         return new TestOrderResult(
             name(),
             orderId,
@@ -66,7 +68,9 @@ public class GateRestClient extends AbstractRestClient implements ExchangeRestCl
             cmd.quantity(),
             price,
             status,
-            System.currentTimeMillis()
+            System.currentTimeMillis(),
+            exchangeTs,
+            exchangeTs == null ? OrderTimestampSource.UNKNOWN : OrderTimestampSource.RESPONSE_BODY
         );
     }
 
@@ -160,6 +164,45 @@ public class GateRestClient extends AbstractRestClient implements ExchangeRestCl
     @Override
     public SymbolRules fetchRules( String unifiedSymbol )
     {
+        return null;
+    }
+
+    @Override
+    public Long fetchOrderTimestamp(String unifiedSymbol, String exchangeOrderId) throws Exception
+    {
+        if (exchangeOrderId == null || exchangeOrderId.isBlank()) {
+            return null;
+        }
+
+        String queryString = "order_id=" + exchangeOrderId;
+        long timestamp = System.currentTimeMillis() / 1000L;
+
+        String signatureString = "GET" + "\n" +
+            "/api/v4" + "/futures/usdt/orders" + "\n" +
+            queryString + "\n" +
+            "" + "\n" +
+            timestamp;
+
+        String sign = HmacSigner.hmacSha512(getSecretKey(), signatureString);
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(getBaseUrl() + "/futures/usdt/orders?" + queryString))
+            .timeout(Duration.ofSeconds(5))
+            .header("KEY", getApiKey())
+            .header("Timestamp", String.valueOf(timestamp))
+            .header("SIGN", sign)
+            .GET()
+            .build();
+
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        validateResponse(response);
+
+        JsonNode root = mapper.readTree(response.body());
+        JsonNode items = root.isArray() ? root : root.path("items");
+        JsonNode first = items.isArray() && items.size() > 0 ? items.get(0) : null;
+        if (first != null && first.has("create_time")) {
+            return first.get("create_time").asLong() * 1000L;
+        }
         return null;
     }
 }

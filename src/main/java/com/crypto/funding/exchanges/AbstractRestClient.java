@@ -42,16 +42,26 @@ public abstract class AbstractRestClient
 
         log.info( "Placing test order on {}: {} {}", cmd.exchange(), cmd.side(), cmd.symbolUnified() );
         HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
+        long serverReceivedAt = System.currentTimeMillis();
         log.info( "{} Order placed {}: with result {}", cmd.side(), cmd.symbolUnified(), response.statusCode() );
 
         validateResponse( response );
 
-        return createOrderResult( cmd, response );
+        TestOrderResult baseResult = createOrderResult( cmd, response );
+        return baseResult.withTsMillis( serverReceivedAt );
     }
 
     protected abstract TestOrderResult createOrderResult( PlaceTestOrderCommand cmd, HttpResponse<String> response ) throws JsonProcessingException;
 
     protected abstract HttpRequest createHttpRequest( PlaceTestOrderCommand cmd ) throws Exception;
+
+    /**
+     * Optionally fetch the exchange-side execution/open time via a GET request if it was not present in the initial response.
+     * Default implementation returns null to indicate no data.
+     */
+    public Long fetchOrderTimestamp(String unifiedSymbol, String exchangeOrderId) throws Exception {
+        return null;
+    }
 
     public abstract String exchangeName();
     //

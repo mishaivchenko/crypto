@@ -44,7 +44,7 @@ class BybitRestClientTest
                                       .withStatus( 200 )
                                       .withHeader( "Content-Type", "application/json" )
                                       .withBody( """
-                                          {"retCode":0,"retMsg":"OK","result":{"orderId":"oid-1","orderStatus":"Filled","avgPrice":"100.5"}}
+                                          {"retCode":0,"retMsg":"OK","result":{"orderId":"oid-1","orderStatus":"Filled","avgPrice":"100.5","createdTime":"1700000000001"}}
                                           """ ) ) );
 
         BybitRestClient client = new BybitRestClient(
@@ -62,6 +62,7 @@ class BybitRestClientTest
         assertThat( result.exchangeOrderId() ).isEqualTo( "oid-1" );
         assertThat( result.price() ).isEqualByComparingTo( "100.5" );
         assertThat( result.status() ).isEqualTo( "Filled" );
+        assertThat( result.exchangeTsMillis() ).isEqualTo( 1_700_000_000_001L );
     }
 
     @Test

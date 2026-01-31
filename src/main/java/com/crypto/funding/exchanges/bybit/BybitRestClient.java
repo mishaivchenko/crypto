@@ -68,6 +68,8 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
             result.path("price").asText("0")
         ));
 
+        Long exchangeTs = parseExchangeTimestamp(result);
+
         return new TestOrderResult(
             name(),
             orderId,
@@ -77,8 +79,24 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
             qty,
             price,
             status,
-            System.currentTimeMillis()
+            System.currentTimeMillis(),
+            exchangeTs,
+            exchangeTs == null ? OrderTimestampSource.UNKNOWN : OrderTimestampSource.RESPONSE_BODY
         );
+    }
+
+    private static Long parseExchangeTimestamp(JsonNode result)
+    {
+        // Bybit v5: createdTime or updatedTime in ms, strings
+        String created = result.path("createdTime").asText(null);
+        if (created != null && !created.isBlank()) {
+            try {
+                return Long.parseLong(created);
+            } catch (NumberFormatException ignore) {
+                return null;
+            }
+        }
+        return null;
     }
 
     public HttpRequest createHttpRequest( PlaceTestOrderCommand cmd ) throws JsonProcessingException
@@ -170,6 +188,56 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch symbol rules from Bybit for " + symbol, e);
         }
+    }
+
+    @Override
+    public Long fetchOrderTimestamp(String unifiedSymbol, String exchangeOrderId) throws Exception
+    {
+        if (exchangeOrderId == null || exchangeOrderId.isBlank()) {
+            return null;
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("category", "linear");
+        body.put("orderId", exchangeOrderId);
+        String bodyJson = mapper.writeValueAsString(body);
+
+        long timestamp = System.currentTimeMillis();
+        String signPayload = timestamp + getApiKey() + getRecvWindow() + bodyJson;
+        String sign = HmacSigner.hmacSha256(getSecretKey(), signPayload);
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(getBaseUrl() + "/v5/order/list"))
+            .timeout(Duration.ofSeconds(5))
+            .header("Content-Type", "application/json")
+            .header("X-BAPI-API-KEY", getApiKey())
+            .header("X-BAPI-TIMESTAMP", String.valueOf(timestamp))
+            .header("X-BAPI-RECV-WINDOW", String.valueOf(getRecvWindow()))
+            .header("X-BAPI-SIGN", sign)
+            .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+            .build();
+
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        validateResponse(response);
+
+        JsonNode root = mapper.readTree(response.body());
+        if (root.path("retCode").asInt(-1) != 0) {
+            throw new RuntimeException("Bybit list retCode=" + root.path("retCode").asInt() + " msg=" + root.path("retMsg").asText());
+        }
+
+        JsonNode list = root.path("result").path("list");
+        if (list.isArray() && list.size() > 0) {
+            JsonNode first = list.get(0);
+            String created = first.path("createdTime").asText(null);
+            if (created != null && !created.isBlank()) {
+                try {
+                    return Long.parseLong(created);
+                } catch (NumberFormatException ignore) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     @Override

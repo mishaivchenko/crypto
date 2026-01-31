@@ -43,7 +43,7 @@ class BinanceRestClientTest
                                       .withStatus( 200 )
                                       .withHeader( "Content-Type", "application/json" )
                                       .withBody( """
-                                          {"orderId":"777","status":"NEW","price":"101.00"}
+                                          {"orderId":"777","status":"NEW","price":"101.00","updateTime":1700000000000}
                                           """ ) ) );
 
         BinanceRestClient client = new BinanceRestClient(
@@ -61,5 +61,6 @@ class BinanceRestClientTest
         assertThat( result.exchangeOrderId() ).isEqualTo( "777" );
         assertThat( result.price() ).isEqualByComparingTo( "101.00" );
         assertThat( result.symbolUnified() ).isEqualTo( "ETH/USDT" );
+        assertThat( result.exchangeTsMillis() ).isEqualTo( 1_700_000_000_000L );
     }
 }

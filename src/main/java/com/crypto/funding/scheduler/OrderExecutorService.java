@@ -4,6 +4,7 @@ import com.crypto.funding.exchanges.AbstractRestClient;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import com.crypto.funding.trading.*;
+import com.crypto.funding.persistence.service.OrderExecutionTimeStore;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ public class OrderExecutorService
     private static final Logger log = LoggerFactory.getLogger( OrderExecutorService.class);
     private final TestOrderEngine testOrderEngine;
     private final ApprovedFundingRepository repo;
+    private final OrderExecutionTimeStore orderExecutionTimeStore;
 
     private final List<AbstractRestClient> exchangeRestClients;
     private final NetworkLatencyService latencyService;
@@ -36,12 +38,14 @@ public class OrderExecutorService
 
     public OrderExecutorService( TestOrderEngine orderEngine,
                                  ApprovedFundingRepository repository,
+                                 OrderExecutionTimeStore orderExecutionTimeStore,
                                  List<AbstractRestClient> restClients,
                                  NetworkLatencyService latencyService,
                                  @Value("${funding.latency-probe.enabled:true}") boolean latencyProbeEnabled )
     {
         this.testOrderEngine = orderEngine;
         this.repo = repository;
+        this.orderExecutionTimeStore = orderExecutionTimeStore;
         this.exchangeRestClients = restClients;
         this.latencyService = latencyService;
         this.latencyProbeEnabled = latencyProbeEnabled;
@@ -134,6 +138,36 @@ public class OrderExecutorService
             );
 
             TestOrderResult r = testOrderEngine.placeTestOrder(cmd);
+            // If exchange didn't return execution time, try follow-up GET
+            if (r.exchangeExecutedAt() == null)
+            {
+                try
+                {
+                    Long fetchedTs = ex.fetchOrderTimestamp(cmd.symbolUnified(), r.exchangeOrderId());
+                    if (fetchedTs != null)
+                    {
+                        r = r.withExchangeTimestamp(fetchedTs, OrderTimestampSource.FOLLOW_UP_QUERY);
+                    }
+                }
+                catch (Exception tsEx)
+                {
+                    log.warn("[scheduler] failed to fetch order timestamp exchange={} orderId={} : {}", exchange, r.exchangeOrderId(), tsEx.getMessage());
+                }
+            }
+
+            orderExecutionTimeStore.save(
+                r.exchange(),
+                r.exchangeOrderId(),
+                r.symbolUnified(),
+                r.tsMillis(),
+                r.exchangeTsMillis(),
+                r.timestampSource().name(),
+                e.getNextFundingAt()
+            );
+
+            log.info("[scheduler] order timestamps: exchange={} orderId={} serverTs={} exchangeTs={} source={} symbol={}",
+                r.exchange(), r.exchangeOrderId(), r.tsMillis(), r.exchangeTsMillis(), r.timestampSource(), r.symbolUnified());
+
             log.info("[scheduler] test order result: exchange={} symbol={} status={} orderId={}",
                 r.exchange(), r.symbolUnified(), r.status(), r.exchangeOrderId());
         }
