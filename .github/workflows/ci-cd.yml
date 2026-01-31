@@ -47,7 +47,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set image name
-        run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/crypto-funding" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/funding" >> $GITHUB_ENV
 
       - name: Build and push
         uses: docker/build-push-action@v6
