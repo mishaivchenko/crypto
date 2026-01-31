@@ -4,7 +4,7 @@ WORKDIR /app
 COPY gradle.properties build.gradle settings.gradle* /app/
 COPY src /app/src
 
-ARG TD_NATIVES=linux_amd64
+ARG TD_NATIVES=linux_amd64_gnu_ssl3
 RUN gradle clean bootJar -PtdNativesClassifier=${TD_NATIVES} --no-daemon
 
 FROM eclipse-temurin:21-jre

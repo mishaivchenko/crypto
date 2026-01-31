@@ -79,16 +79,7 @@ dependencies {
     // WebSocket клиент (универсальный)
     implementation "org.glassfish.tyrus.bundles:tyrus-standalone-client:$tyrusVersion"
 
-    // Telegram TDLib (через tdlight)
-//    implementation "it.tdlight:tdlight-java:$tdlightVersion"
-//    runtimeOnly "it.tdlight:tdlight-natives:$tdlightVersion:${osdetector.classifier}"
-
     implementation "org.telegram:telegrambots-spring-boot-starter:6.9.7.1"
-
-//    // нативки: для Mac M1/M2 укажи macos_arm64; для Intel Mac — macos_amd64; Linux — см. релиз-ноты
-//    implementation('it.tdlight:tdlight-natives') {
-//        artifact { classifier = 'macos_arm64' }
-//    }
 
     implementation platform('it.tdlight:tdlight-java-bom:3.3.1+td.1.8.25')
     implementation 'it.tdlight:tdlight-java'
@@ -108,8 +99,6 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter:$junitJupiterVersion"
     testImplementation "org.assertj:assertj-core:$assertjVersion"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
-
-    //implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 }
 
 tasks.test { useJUnitPlatform() }

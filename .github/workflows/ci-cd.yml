@@ -25,7 +25,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build backend (runs tests)
-        run: ./gradlew clean build --no-daemon -PtdNativesClassifier=linux_amd64
+        run: ./gradlew clean build --no-daemon
 
   docker:
     name: Build & Push Docker image
@@ -56,6 +56,6 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          build-args: TD_NATIVES=linux_amd64
+          build-args: TD_NATIVES=linux_amd64_gnu_ssl3
           cache-from: type=gha
           cache-to: type=gha,mode=max
