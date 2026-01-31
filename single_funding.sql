@@ -3,7 +3,7 @@ BEGIN TRANSACTION;
 INSERT INTO approved_funding (
     symbol, usdt_amount, next_funding_at, active, executed, created_at, updated_at, version
 ) VALUES (
-             'SOL/USDT',
+             'DOT/USDT',
              200.0,
              (CAST(strftime('%s','now') AS INTEGER) * 1000) + (30 * 1000),  -- +60 сек
              1,
