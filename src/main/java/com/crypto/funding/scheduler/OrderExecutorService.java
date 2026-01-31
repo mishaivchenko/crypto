@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 public class OrderExecutorService
 {
-    private static final Logger log = LoggerFactory.getLogger(FundingSchedulerService.class);
+    private static final Logger log = LoggerFactory.getLogger( OrderExecutorService.class);
     private static final Duration MAX_ALIGN_WAIT = Duration.ofSeconds(2);
     private final TestOrderEngine testOrderEngine;
     private final ApprovedFundingRepository repo;
@@ -75,15 +75,22 @@ public class OrderExecutorService
             FundingInfo fundingInfo = ex.fetchFunding( e.getSymbolUnified() );
             SymbolRules symbolRules = ex.fetchRules( e.getSymbolUnified() );
 
+            BigDecimal price = fundingInfo.price();
+            BigDecimal minTradeQty = minQtyRespectingNotional(symbolRules, price);
+            BigDecimal requiredUsdt = minTradeQty.multiply(price);
+
+            if (e.getUsdtAmount().compareTo(requiredUsdt) < 0) {
+                throw new IllegalArgumentException("Too small. Need >= " + requiredUsdt + " USDT for min order (includes notional & step constraints)");
+            }
+
             if (latencyProbeEnabled) {
                 // Предзапуск: минимальный тестовый ордер для оценки задержки сети
-                BigDecimal minQty = symbolRules.minOrderQty();
                 PlaceTestOrderCommand latencyCmd = new PlaceTestOrderCommand(
                     exchange,
                     e.getSymbolUnified(),
                     OrderSide.BUY,
                     OrderType.MARKET,
-                    minQty,
+                    minTradeQty,
                     null
                 );
                 try {
@@ -94,7 +101,7 @@ public class OrderExecutorService
                         e.getSymbolUnified(),
                         OrderSide.SELL,
                         OrderType.MARKET,
-                        probeResult.quantity() != null ? probeResult.quantity() : minQty,
+                        probeResult.quantity() != null ? probeResult.quantity() : minTradeQty,
                         null
                     );
                     try {
@@ -125,12 +132,12 @@ public class OrderExecutorService
                 }
             }
 
-            BigDecimal rawQty = e.getUsdtAmount().divide(fundingInfo.price(), 12, RoundingMode.DOWN);
+            BigDecimal rawQty = e.getUsdtAmount().divide(price, 12, RoundingMode.DOWN);
             BigDecimal qty = floorToStep(rawQty, symbolRules.qtyStep());
 
-            if (qty.compareTo(symbolRules.minOrderQty()) < 0) {
-                BigDecimal needAtLeast = symbolRules.minOrderQty().multiply(fundingInfo.price());
-                throw new IllegalArgumentException("Too small. Need >= " + needAtLeast + " USDT for minQty=" + symbolRules.minOrderQty());
+            if (qty.compareTo(minTradeQty) < 0) {
+                BigDecimal needAtLeast = minTradeQty.multiply(price);
+                throw new IllegalArgumentException("Too small. Need >= " + needAtLeast + " USDT for minQty/minNotional constraints");
             }
 
             PlaceTestOrderCommand cmd = new PlaceTestOrderCommand(
@@ -161,6 +168,36 @@ public class OrderExecutorService
 
         int scale = step.stripTrailingZeros().scale();
         return floored.setScale(Math.max(scale, 0), RoundingMode.DOWN);
+    }
+
+    public static BigDecimal ceilToStep(BigDecimal qty, BigDecimal step) {
+        if (step.signum() <= 0) {
+            throw new IllegalArgumentException("step must be > 0");
+        }
+
+        BigDecimal steps = qty.divide(step, 0, RoundingMode.UP);
+        BigDecimal ceiled = steps.multiply(step);
+
+        int scale = step.stripTrailingZeros().scale();
+        return ceiled.setScale(Math.max(scale, 0), RoundingMode.DOWN);
+    }
+
+    static BigDecimal minQtyRespectingNotional(SymbolRules rules, BigDecimal price) {
+        if (price == null || price.signum() <= 0) {
+            throw new IllegalArgumentException("price must be positive");
+        }
+
+        BigDecimal step = rules.qtyStep();
+        BigDecimal minQty = ceilToStep(rules.minOrderQty(), step);
+
+        if (rules.minNotionalValue() == null) {
+            return minQty;
+        }
+
+        BigDecimal qtyByNotional = rules.minNotionalValue().divide(price, 12, RoundingMode.UP);
+        BigDecimal alignedNotionalQty = ceilToStep(qtyByNotional, step);
+
+        return minQty.max(alignedNotionalQty);
     }
 
     @Transactional

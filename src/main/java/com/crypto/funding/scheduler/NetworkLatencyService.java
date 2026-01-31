@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +40,9 @@ public class NetworkLatencyService {
 
     public void record(String exchange, Duration delay) {
         if (exchange == null || delay == null) return;
-        log.info( "Calculated estimated delay {} for {} exchange", delay, exchange );
+
+        log.info( "[latency calculator] calculated estimated latency {} ", delay.get( ChronoUnit.NANOS ));
+
         perExchange.put(exchange.toLowerCase(), delay);
     }
 

@@ -40,8 +40,9 @@ public abstract class AbstractRestClient
 
         HttpRequest request = createHttpRequest( cmd );
 
-        log.info( "Sending {} {} request, quantity", cmd.symbolUnified(), cmd.side()  );
+        log.info( "Placing test order on {}: {} {}", cmd.exchange(), cmd.side(), cmd.symbolUnified() );
         HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
+        log.info( "{} Order placed {}: with result {}", cmd.side(), cmd.symbolUnified(), response.statusCode() );
 
         validateResponse( response );
 

@@ -32,7 +32,7 @@ arb:
         restFallbackSeconds: 60
 
 funding:
-    execution-delay-seconds: 8
+    execution-delay-seconds: 1
     refresh-interval-seconds: 60
     scheduler:
         lookahead-seconds: 10

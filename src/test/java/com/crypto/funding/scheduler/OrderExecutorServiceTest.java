@@ -133,17 +133,43 @@ class OrderExecutorServiceTest {
             .thenReturn(new FundingInfo("binance", "XRPUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("1")));
         when(binance.fetchRules("XRPUSDT"))
             .thenReturn(new SymbolRules(new BigDecimal("5"), new BigDecimal("0.1"), null));
-        TestOrderResult probeResult = new TestOrderResult("binance", "p1", "XRPUSDT", OrderSide.BUY, OrderType.MARKET, new BigDecimal("5"), null, "FILLED", System.currentTimeMillis());
-        when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(probeResult);
+
+        // min qty = 5, min notional not set; provided USDT=2 means we fail before hitting network
 
         assertThatThrownBy(() -> service.executeOnce(3L))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Too small");
 
-        verify(latencyService).measureAndRecord(eq("binance"), any());
-        verify(testOrderEngine, times(2)).placeTestOrder(any()); // probe open/close
+        verify(latencyService, never()).measureAndRecord(any(), any());
+        verify(testOrderEngine, never()).placeTestOrder(any());
         verify(repo, never()).save(any());
         assertThat(entity.isExecuted()).isFalse();
+    }
+
+    @Test
+    void respectsMinNotionalWhenHigherThanMinQty() throws Exception {
+        ApprovedFundingEntity entity = new ApprovedFundingEntity(
+            "DOT/USDT",
+            Set.of("binance"),
+            new BigDecimal("5"), // less than min notional 6
+            Instant.now().plusSeconds(30)
+        );
+        entity.setActive(true);
+        entity.setExecuted(false);
+
+        when(repo.findById(7L)).thenReturn(Optional.of(entity));
+        when(binance.exchangeName()).thenReturn("binance");
+        when(binance.fetchFunding("DOTUSDT"))
+            .thenReturn(new FundingInfo("binance", "DOTUSDT", 0.01, Instant.now().plusMillis(20), 1, new BigDecimal("4")));
+        when(binance.fetchRules("DOTUSDT"))
+            .thenReturn(new SymbolRules(new BigDecimal("0.1"), new BigDecimal("0.1"), new BigDecimal("6")));
+
+        assertThatThrownBy(() -> service.executeOnce(7L))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Too small");
+
+        verify(testOrderEngine, never()).placeTestOrder(any());
+        verify(repo, never()).save(any());
     }
 
     @Test
