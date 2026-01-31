@@ -20,8 +20,8 @@ telegram:
     appVersion: "0.1.0"
 
     bot:
-        username: TELEGRAM_BOT_USERNAME_PLACEHOLDER
-        token: TELEGRAM_BOT_TOKEN_PLACEHOLDER
+        username: ${TG_BOT_USERNAME}
+        token: ${TG_BOT_TOKEN}
 
 arb:
     watchlist:
