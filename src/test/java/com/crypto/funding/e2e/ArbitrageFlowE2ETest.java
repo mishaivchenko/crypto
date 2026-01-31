@@ -126,7 +126,7 @@ class ArbitrageFlowE2ETest
         @Override
         public FundingInfo fetchFunding( String unifiedSymbol )
         {
-            return new FundingInfo( exchangeName(), unifiedSymbol, 0.01, Instant.now().plusSeconds( 3600 ), 3600, BigDecimal.TEN );
+            return new FundingInfo( exchangeName(), unifiedSymbol, 0.01, Instant.now().plusMillis( 50 ), 1, BigDecimal.TEN );
         }
 
         @Override
@@ -151,6 +151,7 @@ class ArbitrageFlowE2ETest
 
         void save( ApprovedFundingEntity e )
         {
+            // emulate busy_timeout-like wait to reduce SQLITE_BUSY in tests with concurrent writes
             store.removeIf( x -> Objects.equals( x.getId(), e.getId() ) );
             store.add( e );
         }

@@ -80,6 +80,7 @@ public class ApprovedFundingStore {
     public void markExecuted(Long id) {
         repo.findById(id).ifPresent(e -> {
             e.setExecuted(true);
+            e.setExecutedAt(Instant.now());
             repo.save(e);
         });
     }

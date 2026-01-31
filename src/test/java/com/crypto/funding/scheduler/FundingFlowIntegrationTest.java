@@ -16,6 +16,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,8 +30,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
     properties = {
         "telegram.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.datasource.url=jdbc:sqlite:file:./build/funding-e2e.db",
+        "spring.datasource.url=jdbc:sqlite:file:./build/funding-e2e.db?busy_timeout=5000&journal_mode=WAL",
         "spring.datasource.driver-class-name=org.sqlite.JDBC",
+        "spring.datasource.hikari.maximum-pool-size=1",
+        "spring.datasource.hikari.connection-init-sql=PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;",
         "funding.latency-probe.enabled=false",
         "funding.scheduler.lookahead-seconds=5",
         "funding.scheduler.min-recheck-millis=50",
@@ -89,6 +93,9 @@ class FundingFlowIntegrationTest {
             .until(() -> repository.findBySymbol("BTC/USDT")
                 .map(ApprovedFundingEntity::isExecuted)
                 .orElse(false));
+
+        ApprovedFundingEntity saved = repository.findBySymbol("BTC/USDT").orElseThrow();
+        assertThat(saved.getExecutedAt()).isNotNull();
 
         verify(1, getRequestedFor(urlPathEqualTo("/v5/market/tickers"))
             .withQueryParam("category", equalTo("linear"))

@@ -32,7 +32,9 @@ arb:
         restFallbackSeconds: 60
 
 funding:
-    execution-delay-seconds: 1
+    latency-probe:
+                enabled: false
+    execution-delay-seconds: 0
     refresh-interval-seconds: 60
     scheduler:
         lookahead-seconds: 10
@@ -52,8 +54,15 @@ spring:
             chain:
                 cache: false
     datasource:
-        url: jdbc:sqlite:./data/fundingarb.db
+        url: jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000&journal_mode=WAL
         driver-class-name: org.sqlite.JDBC
+        hikari:
+            maximum-pool-size: 1
+            connection-init-sql: |
+                PRAGMA journal_mode=WAL;
+                PRAGMA busy_timeout=5000;
+                PRAGMA synchronous=NORMAL;
+                PRAGMA foreign_keys=ON;
     jpa:
         hibernate:
             ddl-auto: update   # временно можно поставить create

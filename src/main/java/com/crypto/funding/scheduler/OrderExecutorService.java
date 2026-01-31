@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 public class OrderExecutorService
 {
     private static final Logger log = LoggerFactory.getLogger( OrderExecutorService.class);
-    private static final Duration MAX_ALIGN_WAIT = Duration.ofSeconds(2);
     private final TestOrderEngine testOrderEngine;
     private final ApprovedFundingRepository repo;
 
@@ -95,20 +94,7 @@ public class OrderExecutorService
                 );
                 try {
                     TestOrderResult probeResult = latencyService.measureAndRecord(exchange, () -> testOrderEngine.placeTestOrder(latencyCmd));
-                    // Попытка закрыть тестовый ордер тем же объёмом
-                    PlaceTestOrderCommand closeCmd = new PlaceTestOrderCommand(
-                        exchange,
-                        e.getSymbolUnified(),
-                        OrderSide.SELL,
-                        OrderType.MARKET,
-                        probeResult.quantity() != null ? probeResult.quantity() : minTradeQty,
-                        null
-                    );
-                    try {
-                        testOrderEngine.placeTestOrder(closeCmd);
-                    } catch (Exception closeEx) {
-                        log.warn("[scheduler] latency probe close failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), closeEx.getMessage());
-                    }
+                    tryCloseTestOrder(ex, probeResult);
                 } catch (Exception probeEx) {
                     log.warn("[scheduler] latency probe failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), probeEx.getMessage());
                     continue;
@@ -116,12 +102,10 @@ public class OrderExecutorService
 
                 Duration measuredDelay = latencyService.estimate(exchange);
                 Instant targetFundingAt = Optional.ofNullable(fundingInfo.nextFundingAt()).orElse(e.getNextFundingAt());
-                if (targetFundingAt != null && measuredDelay != null && !measuredDelay.isZero() && !measuredDelay.isNegative()) {
-                    Instant sendAt = targetFundingAt.minus(measuredDelay);
+                Duration safeDelay = measuredDelay == null ? Duration.ZERO : measuredDelay;
+                if (targetFundingAt != null && !safeDelay.isNegative()) {
+                    Instant sendAt = targetFundingAt.minus(safeDelay);
                     Duration wait = Duration.between(Instant.now(), sendAt);
-                    if (wait.compareTo(MAX_ALIGN_WAIT) > 0) {
-                        wait = MAX_ALIGN_WAIT;
-                    }
                     if (!wait.isNegative()) {
                         try {
                             Thread.sleep(wait.toMillis());
@@ -155,6 +139,7 @@ public class OrderExecutorService
         }
 
         e.setExecuted(true);
+        e.setExecutedAt(Instant.now());
         repo.save( e );
     }
 
@@ -182,6 +167,20 @@ public class OrderExecutorService
         return ceiled.setScale(Math.max(scale, 0), RoundingMode.DOWN);
     }
 
+    private void tryCloseTestOrder(AbstractRestClient client, TestOrderResult result) {
+        try {
+            client.cancelTestOrder(result.symbolUnified(), result.exchangeOrderId());
+        } catch (Exception closeEx) {
+            String msg = closeEx.getMessage();
+            // Bybit: retCode=110001 "order not exists or too late to cancel" — считаем безопасным
+            if (msg != null && msg.contains("110001")) {
+                log.debug("[scheduler] latency probe close ignored (already filled/absent) exchange={} symbol={}", client.exchangeName(), result.symbolUnified());
+            } else {
+                log.warn("[scheduler] latency probe close failed for exchange={} symbol={} : {}", client.exchangeName(), result.symbolUnified(), msg);
+            }
+        }
+    }
+
     static BigDecimal minQtyRespectingNotional(SymbolRules rules, BigDecimal price) {
         if (price == null || price.signum() <= 0) {
             throw new IllegalArgumentException("price must be positive");
@@ -207,6 +206,7 @@ public class OrderExecutorService
 
         // если кто-то успел изменить — optimistic lock спасёт
         e.setExecuted(true);
+        e.setExecutedAt(now);
         repo.save(e);
 
         log.warn(

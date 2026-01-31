@@ -171,4 +171,40 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
             throw new RuntimeException("Failed to fetch symbol rules from Bybit for " + symbol, e);
         }
     }
+
+    @Override
+    public void cancelTestOrder(String unifiedSymbol, String exchangeOrderId) throws Exception {
+        if (exchangeOrderId == null || exchangeOrderId.isBlank()) {
+            return; // nothing to cancel
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("category", "linear");
+        body.put("symbol", SymbolMapper.toExchange(unifiedSymbol));
+        body.put("orderId", exchangeOrderId);
+
+        String bodyJson = mapper.writeValueAsString(body);
+        long timestamp = System.currentTimeMillis();
+        String signPayload = timestamp + getApiKey() + getRecvWindow() + bodyJson;
+        String sign = HmacSigner.hmacSha256(getSecretKey(), signPayload);
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(getBaseUrl() + "/v5/order/cancel"))
+            .timeout(Duration.ofSeconds(5))
+            .header("Content-Type", "application/json")
+            .header("X-BAPI-API-KEY", getApiKey())
+            .header("X-BAPI-TIMESTAMP", String.valueOf(timestamp))
+            .header("X-BAPI-RECV-WINDOW", String.valueOf(getRecvWindow()))
+            .header("X-BAPI-SIGN", sign)
+            .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+            .build();
+
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        JsonNode root = mapper.readTree(response.body());
+        int retCode = root.path("retCode").asInt(-1);
+        if (retCode != 0) {
+            throw new RuntimeException("Bybit cancel retCode=" + retCode +
+                " msg=" + root.path("retMsg").asText());
+        }
+    }
 }

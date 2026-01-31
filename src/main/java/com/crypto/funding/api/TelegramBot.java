@@ -598,9 +598,17 @@ public class TelegramBot extends TelegramLongPollingBot
 
         String text = items.stream()
                            .sorted( Comparator.comparing( ApprovedFundingEntity::getSymbol ) )
-                           .map( a -> "✅ " + a.getSymbol() + " | " +
+                           .map( a -> {
+                               String next = a.getNextFundingAt() != null ? dtf.format( a.getNextFundingAt() ) + " UTC" : "n/a";
+                               String executed = a.isExecuted() && a.getExecutedAt() != null
+                                                 ? dtf.format( a.getExecutedAt() ) + " UTC"
+                                                 : "-";
+                               return "✅ " + a.getSymbol() + " | " +
                                       a.getExchanges().stream().sorted().collect( Collectors.joining( "," ) ) +
-                                      " | " + a.getUsdtAmount() + " USDT" )
+                                      " | " + a.getUsdtAmount() + " USDT" +
+                                      " | next=" + next +
+                                      " | executed=" + executed;
+                           } )
                            .collect( Collectors.joining( "\n" ) );
 
         ui( chatId, manual, text, fundingListKb( items.stream().map( ApprovedFundingEntity::getSymbol ).toList(), true ) );

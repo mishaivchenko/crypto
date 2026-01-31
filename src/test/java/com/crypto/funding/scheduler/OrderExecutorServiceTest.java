@@ -89,10 +89,11 @@ class OrderExecutorServiceTest {
         service.executeOnce(1L);
 
         verify(latencyService).measureAndRecord(eq("binance"), any());
-        verify(testOrderEngine, times(3)).placeTestOrder(any()); // пинг buy + close sell + основной
+        verify(testOrderEngine, times(2)).placeTestOrder(any()); // пинг + основной
         ArgumentCaptor<ApprovedFundingEntity> captor = ArgumentCaptor.forClass(ApprovedFundingEntity.class);
         verify(repo).save(captor.capture());
         assertThat(captor.getValue().isExecuted()).isTrue();
+        assertThat(captor.getValue().getExecutedAt()).isNotNull();
     }
 
     @Test
@@ -188,6 +189,7 @@ class OrderExecutorServiceTest {
         service.markMissed(5L, "SOLUSDT", Instant.now().minusSeconds(50), Instant.now());
 
         assertThat(entity.isExecuted()).isTrue();
+        assertThat(entity.getExecutedAt()).isNotNull();
         verify(repo).save(entity);
     }
 
@@ -218,5 +220,35 @@ class OrderExecutorServiceTest {
 
         verify(latencyService, never()).measureAndRecord(any(), any());
         verify(testOrderEngine, times(1)).placeTestOrder(any()); // только основной
+    }
+
+    @Test
+    void waitsUntilFundingWhenNoDelay() throws Exception {
+        ApprovedFundingEntity entity = new ApprovedFundingEntity(
+            "ATOM/USDT",
+            Set.of("binance"),
+            new BigDecimal("100"),
+            Instant.now().plusSeconds(5)
+        );
+        entity.setActive(true);
+        entity.setExecuted(false);
+
+        when(repo.findById(8L)).thenReturn(Optional.of(entity));
+        when(binance.exchangeName()).thenReturn("binance");
+        Instant fundingAt = Instant.now().plusMillis(300);
+        when(binance.fetchFunding("ATOMUSDT"))
+            .thenReturn(new FundingInfo("binance", "ATOMUSDT", 0.01, fundingAt, 1, new BigDecimal("10")));
+        when(binance.fetchRules("ATOMUSDT"))
+            .thenReturn(new SymbolRules(new BigDecimal("0.001"), new BigDecimal("0.001"), null));
+
+        TestOrderResult mockResult = new TestOrderResult("binance", "777", "ATOMUSDT", null, null, BigDecimal.ONE, null, "FILLED", System.currentTimeMillis());
+        when(testOrderEngine.placeTestOrder(any(PlaceTestOrderCommand.class))).thenReturn(mockResult);
+
+        long start = System.nanoTime();
+        service.executeOnce(8L);
+        long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+        assertThat(elapsedMs).isGreaterThanOrEqualTo(80); // метод должен подождать до fundingAt
+
+        verify(testOrderEngine, times(2)).placeTestOrder(any()); // probe + main
     }
 }

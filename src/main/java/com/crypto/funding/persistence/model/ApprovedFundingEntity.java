@@ -51,6 +51,10 @@ public class ApprovedFundingEntity
     private Instant nextFundingAt;
 
     @Convert(converter = InstantEpochMillisConverter.class)
+    @Column(name = "executed_at")
+    private Instant executedAt;
+
+    @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -165,6 +169,9 @@ public class ApprovedFundingEntity
     {
         this.executed = executed;
     }
+
+    public Instant getExecutedAt() { return executedAt; }
+    public void setExecutedAt( Instant executedAt ) { this.executedAt = executedAt; }
 
     public Instant getCreatedAt()
     {

@@ -98,4 +98,12 @@ public abstract class AbstractRestClient
 
     public abstract FundingInfo fetchFunding(String unifiedSymbol) throws Exception;
     public abstract SymbolRules fetchRules(String unifiedSymbol);
+
+    /**
+     * Optional: close/cancel previously placed test order (best-effort).
+     * Default implementation is a no-op; clients may override.
+     */
+    public void cancelTestOrder(String unifiedSymbol, String exchangeOrderId) throws Exception {
+        log.debug("cancelTestOrder not implemented for {} (orderId={})", exchangeName(), exchangeOrderId);
+    }
 }

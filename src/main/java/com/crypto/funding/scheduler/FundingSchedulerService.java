@@ -63,7 +63,7 @@ public class FundingSchedulerService {
         this.orderExecutorService = orderExecutorService;
         this.latencyService = latencyService;
         this.lookahead = Duration.ofSeconds(Math.max(1, lookaheadSeconds));
-        this.executionDelay = Duration.ofSeconds(Math.max(1, executionDelaySeconds));
+        this.executionDelay = Duration.ofSeconds(Math.max(0, executionDelaySeconds));
         this.minRecheckDelay = Duration.ofMillis(Math.max(200, minRecheckMillis));
         this.maxLateness = Duration.ofSeconds(Math.max(5, maxLatenessSeconds));
         this.discoveryInterval = Duration.ofSeconds(Math.max(5, discoveryIntervalSeconds));
