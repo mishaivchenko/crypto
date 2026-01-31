@@ -1,5 +1,9 @@
 # Getting Started
 
+### Что здесь
+- Основные команды: `./gradlew clean build --no-daemon` (бэкенд + фронт), `./gradlew test` (юнит-тесты), `./gradlew frontendBuild` (Vite build).
+- CI/CD: GitHub Actions (`.github/workflows/ci-cd.yml`) собирает, тестирует и пушит Docker-образ при push в `main`.
+
 ### Reference Documentation
 
 For further reference, please consider the following sections:
@@ -27,4 +31,3 @@ The following guides illustrate how to use some features concretely:
 These additional references should also help you:
 
 * [Gradle Build Scans – insights for your project's build](https://scans.gradle.com#gradle)
-

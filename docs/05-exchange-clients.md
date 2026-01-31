@@ -9,6 +9,7 @@
     - invalid symbol
     - min notional
     - precision
+- конфиг: ключи и base-url приходят из ENV, режим `testnet`/`production` задаётся `BINANCE_MODE`/`BYBIT_MODE`/`GATE_MODE`.
 
 ## Стратегия теста latency
 - тестовый запрос/ордер на testnet

@@ -7,8 +7,8 @@
 
 ## Ограничения
 - TDLib = нативная библиотека
-- текущая реализация работает на macOS
-- цель: собрать TDLib под Linux и положить в Docker image
+- для CI/Docker используем classifier `linux_amd64_gnu_ssl3` (передаётся в build arg `TD_NATIVES`)
+- локально osdetector выберет нативки по платформе (можно override `-PtdNativesClassifier=...`)
 
 ## Хранилище сессии
 - /data/tdlib (volume)

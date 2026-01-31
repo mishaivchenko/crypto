@@ -34,3 +34,7 @@
 ## Security & Configuration Tips
 - Runtime secrets should come from environment variables (see `src/main/resources/application.yml`).
 - Avoid committing real API keys or bot tokens; use placeholders or `.env` in local setups.
+- История Git переписана для удаления утёкших ключей; новые токены храните только в секретах/ENV.
+
+## CI/CD
+- GitHub Actions workflow `.github/workflows/ci-cd.yml` собирает и тестирует проект; для `main` образ пушится в Docker Hub (`DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` secrets).

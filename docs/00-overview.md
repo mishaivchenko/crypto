@@ -14,3 +14,7 @@
 - Persistence (SQLite + JPA)
 - Scheduler (poll + due-window)
 - Execution (Exchange clients: Binance, Bybit, Gate)
+
+## Инфраструктура
+- Сборка/тесты через Gradle 8, CI — GitHub Actions.
+- Docker-образ публикуется в Docker Hub по push в `main`.

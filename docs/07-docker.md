@@ -6,18 +6,9 @@
 - TDLib native lib (libtdjson.so)
 - SQLite db file на volume /data
 
-## Вариант A (рекомендуется): Multi-stage build с компиляцией TDLib
-
-### Dockerfile outline
-1) builder stage:
-    - install build deps (cmake, g++, git, make, zlib, openssl)
-    - clone tdlib
-    - build tdjson
-2) runtime stage:
-    - JRE (temurin/jre 21)
-    - copy libtdjson.so into /usr/local/lib
-    - copy app.jar
-    - set LD_LIBRARY_PATH
+## Multi-stage build (факт)
+- Builder: образ `gradle:8.10.2-jdk21`, сборка `bootJar` с аргументом `TD_NATIVES` (по умолчанию `linux_amd64_gnu_ssl3`).
+- Runtime: `eclipse-temurin:21-jre`, копируем app.jar, создаём `/data/tdlib`, переменные `TG_SESSION_DIR` и `SPRING_DATASOURCE_URL` уже выставлены.
 
 ### Volumes
 - /data -> хранит fundingarb.db и tdlib session
@@ -25,9 +16,8 @@
 ### ENV
 см. docs/02-runtime-config.md
 
-## Вариант B: prebuilt TDLib
-Если найдём стабильный prebuilt tdjson под нужную arch (amd64), можно уменьшить время сборки,
-но меньше контроля над зависимостями.
+## TDLib / tdlight
+Используем prebuilt tdlight-natives через Maven (classifier задаётся через `TD_NATIVES`), поэтому не компилируем TDLib внутри образа.
 
 ## Проверка в контейнере
 - приложение стартует

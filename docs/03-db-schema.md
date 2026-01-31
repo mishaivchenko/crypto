@@ -20,3 +20,4 @@
 ## Invariants
 - next_funding_at хранится только как epoch millis UTC
 - exchanges для funding должны быть non-empty (иначе исполнение пропускается)
+- SQLite файл по умолчанию: `./data/fundingarb.db` (в Docker — `/data/fundingarb.db`), поэтому не хранить его в репозитории.
