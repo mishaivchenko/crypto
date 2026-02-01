@@ -41,7 +41,7 @@ public class OrderExecutorService
                                  OrderExecutionTimeStore orderExecutionTimeStore,
                                  List<AbstractRestClient> restClients,
                                  NetworkLatencyService latencyService,
-                                 @Value("${funding.latency-probe.enabled:true}") boolean latencyProbeEnabled )
+                                 @Value("${funding.latency-probe.enabled:false}") boolean latencyProbeEnabled )
     {
         this.testOrderEngine = orderEngine;
         this.repo = repository;

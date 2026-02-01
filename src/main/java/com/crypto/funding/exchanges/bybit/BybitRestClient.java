@@ -197,32 +197,44 @@ public class BybitRestClient extends AbstractRestClient implements ExchangeRestC
             return null;
         }
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("category", "linear");
-        body.put("orderId", exchangeOrderId);
-        String bodyJson = mapper.writeValueAsString(body);
+        // Try realtime endpoint first (faster, includes newest orders). Falls back to history.
+        Long ts = queryOrderTimestamp("/v5/order/realtime", unifiedSymbol, exchangeOrderId);
+        if (ts != null) {
+            return ts;
+        }
+        return queryOrderTimestamp("/v5/order/history", unifiedSymbol, exchangeOrderId);
+    }
+
+    private Long queryOrderTimestamp(String path, String unifiedSymbol, String exchangeOrderId) throws Exception
+    {
+        String bybitSymbol = SymbolMapper.toExchange(unifiedSymbol);
+        String queryString = "category=linear&symbol=" + bybitSymbol + "&orderId=" + exchangeOrderId;
 
         long timestamp = System.currentTimeMillis();
-        String signPayload = timestamp + getApiKey() + getRecvWindow() + bodyJson;
+        String signPayload = timestamp + getApiKey() + getRecvWindow() + queryString;
         String sign = HmacSigner.hmacSha256(getSecretKey(), signPayload);
 
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(getBaseUrl() + "/v5/order/list"))
+            .uri(URI.create(getBaseUrl() + path + "?" + queryString))
             .timeout(Duration.ofSeconds(5))
             .header("Content-Type", "application/json")
             .header("X-BAPI-API-KEY", getApiKey())
             .header("X-BAPI-TIMESTAMP", String.valueOf(timestamp))
             .header("X-BAPI-RECV-WINDOW", String.valueOf(getRecvWindow()))
             .header("X-BAPI-SIGN", sign)
-            .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+            .GET()
             .build();
 
         HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 404) {
+            return null; // endpoint not enabled in env
+        }
         validateResponse(response);
 
         JsonNode root = mapper.readTree(response.body());
         if (root.path("retCode").asInt(-1) != 0) {
-            throw new RuntimeException("Bybit list retCode=" + root.path("retCode").asInt() + " msg=" + root.path("retMsg").asText());
+            // treat business errors as "not found" to avoid breaking flow
+            return null;
         }
 
         JsonNode list = root.path("result").path("list");

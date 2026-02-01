@@ -33,7 +33,7 @@ arb:
 
 funding:
     latency-probe:
-                enabled: false
+        enabled: false
     execution-delay-seconds: 0
     refresh-interval-seconds: 60
     scheduler:
@@ -65,7 +65,7 @@ spring:
                 PRAGMA foreign_keys=ON;
     jpa:
         hibernate:
-            ddl-auto: create   # временно можно поставить create
+            ddl-auto: update   # временно можно поставить create
         properties:
             hibernate:
                 dialect: org.hibernate.community.dialect.SQLiteDialect
