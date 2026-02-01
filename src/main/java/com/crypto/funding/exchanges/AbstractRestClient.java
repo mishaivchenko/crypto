@@ -7,11 +7,13 @@ import com.crypto.funding.watchlist.SymbolRules;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+@Service
 public abstract class AbstractRestClient
 {
     private static final Logger log = LoggerFactory.getLogger( AbstractRestClient.class );

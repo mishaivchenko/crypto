@@ -123,10 +123,76 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
     }
 
     @Override
+    public TestOrderResult placeTestOrder( PlaceTestOrderCommand cmd ) throws Exception
+    {
+        ensureConfigured();
+
+        int attempts = 0;
+        Integer forcedScale = null;   // used to progressively reduce precision on -1111 errors
+        RuntimeException lastError = null;
+
+        while( attempts < 3 )
+        {
+            attempts++;
+            BigDecimal normalizedQty = normalizeQuantity( cmd.quantity(), cmd.symbolUnified(), forcedScale );
+            PlaceTestOrderCommand adjustedCmd = new PlaceTestOrderCommand(
+                cmd.exchange(),
+                cmd.symbolUnified(),
+                cmd.side(),
+                cmd.type(),
+                normalizedQty,
+                cmd.price()
+            );
+
+            HttpRequest request = createHttpRequest( adjustedCmd, normalizedQty );
+
+            log.debug("Placing test order on {}: {} {} qty={} (attempt {} scaleOverride={})",
+                cmd.exchange(), cmd.side(), cmd.symbolUnified(), normalizedQty, attempts, forcedScale);
+
+            HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
+            long serverReceivedAt = System.currentTimeMillis();
+
+            if( response.statusCode() < 300 )
+            {
+                TestOrderResult baseResult = createOrderResult( adjustedCmd, response );
+                return baseResult.withTsMillis( serverReceivedAt );
+            }
+
+            String body = response.body();
+            String errorMsg = "Order failed: " + response.statusCode() + " body=" + body;
+
+            // Binance returns -1111 when decimals exceed allowed precision. Retry with coarser scale.
+            if( body != null && body.contains( "\"code\":-1111" ) )
+            {
+                int nextScale = Math.max( normalizedQty.scale() - 1, 0 );
+                // keep reducing until zero decimals; if already at zero — give up
+                if( normalizedQty.scale() == 0 || (forcedScale != null && forcedScale == 0) )
+                {
+                    throw new RuntimeException( errorMsg );
+                }
+
+                forcedScale = nextScale;
+                log.warn( "[binance] precision error (-1111) for {} qty={} (scale={}); retrying with scale {}", cmd.symbolUnified(), normalizedQty, normalizedQty.scale(), forcedScale );
+                lastError = new RuntimeException( errorMsg );
+                continue;
+            }
+
+            // any other error — bubble up
+            validateResponse( response );
+        }
+
+        throw lastError != null ? lastError : new RuntimeException( "Failed to place test order on binance after retries" );
+    }
+
+    @Override
     public HttpRequest createHttpRequest( PlaceTestOrderCommand cmd )
     {
-        BigDecimal normalizedQty = normalizeQuantity( cmd.quantity(), cmd.symbolUnified() );
+        BigDecimal normalizedQty = normalizeQuantity( cmd.quantity(), cmd.symbolUnified(), null );
+        return createHttpRequest( cmd, normalizedQty );
+    }
 
+    private HttpRequest createHttpRequest( PlaceTestOrderCommand cmd, BigDecimal normalizedQty )
+    {
         Map<String, String> params = new LinkedHashMap<>();
         params.put( "symbol", toExchange( cmd.symbolUnified() ) );
         params.put( "side", cmd.side().name() );            // BUY / SELL
@@ -162,7 +228,7 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
         return request;
     }
 
-    private BigDecimal normalizeQuantity( BigDecimal qty, String unifiedSymbol )
+    private BigDecimal normalizeQuantity( BigDecimal qty, String unifiedSymbol, Integer maxScaleOverride )
     {
         try
         {
@@ -191,6 +257,12 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
             Integer qp = meta.quantityPrecision();
 
             int targetScale = ( qp != null ) ? qp : stepScale;
+            if( maxScaleOverride != null )
+            {
+                targetScale = Math.min( targetScale, Math.max( maxScaleOverride, 0 ) );
+            }
+            // Never exceed the step's scale to avoid sending cosmetic trailing zeros that may still breach precision checks
+            targetScale = Math.min( targetScale, stepScale );
             BigDecimal normalized = floored.setScale( targetScale, RoundingMode.DOWN );
             BigDecimal compact = normalized.stripTrailingZeros();
             if( compact.scale() < 0 ) compact = compact.setScale( 0 );
@@ -203,9 +275,14 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
         {
             // Fallback: trim trailing zeros and cap precision to 8 decimal places, which covers Binance futures limits.
             BigDecimal stripped = qty.stripTrailingZeros();
-            int scale = Math.min( Math.max( stripped.scale(), 0 ), 8 );
+            int scale = Math.min( Math.max( stripped.scale(), 0 ), maxScaleOverride != null ? maxScaleOverride : 8 );
             return stripped.setScale( scale, RoundingMode.DOWN );
         }
+    }
+
+    private BigDecimal normalizeQuantity( BigDecimal qty, String unifiedSymbol )
+    {
+        return normalizeQuantity( qty, unifiedSymbol, null );
     }
 
     private static String urlEncode( String value )

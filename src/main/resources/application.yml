@@ -101,6 +101,8 @@ trading:
     gate:
         mode: ${GATE_MODE:testnet}
         recv-window: 5000
+        # публичные ручки для контрактов/фандинга берём с прода, т.к. тестнет периодически отдаёт 502
+        contracts-base-url: ${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}
         testnet:
             base-url: ${GATE_TESTNET_BASE_URL:https://fx-api-testnet.gateio.ws/api/v4}
             api-key: ${GATE_TESTNET_API_KEY:}

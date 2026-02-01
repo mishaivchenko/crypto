@@ -24,7 +24,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-
 public class OrderExecutorService
 {
     private static final Logger log = LoggerFactory.getLogger( OrderExecutorService.class);
@@ -54,142 +53,164 @@ public class OrderExecutorService
     @Transactional
     public void executeOnce(Long id) throws Exception
     {
-
-        ApprovedFundingEntity e = repo.findById(id).orElse(null);
-
-        if (e == null) return;
-        if (!e.isActive() || e.isExecuted()) return;
-
-        log.info("[scheduler] executing id={} symbol={} exchanges={} amount={} nextFundingAt={}",
-            e.getId(), e.getSymbol(), e.getExchanges(), e.getUsdtAmount(), e.getNextFundingAt());
-
-        Set<String> exchanges = e.getExchanges().stream().map( OrderExecutorService::normalizeExchange ).collect( Collectors.toSet());
-        if ( exchanges.isEmpty() ) {
-            log.warn("[scheduler] skip id={} symbol={} because exchanges empty", e.getId(), e.getSymbol());
-            e.setExecuted(true);
-            repo.save( e );
+        ApprovedFundingEntity entity = repo.findById(id).orElse(null);
+        if (entity == null || !entity.isActive() || entity.isExecuted()) {
             return;
         }
 
-        var restClients  = exchangeRestClients.stream().filter( restClient -> exchanges.contains( restClient.exchangeName() ) ).toList();
-        restClients = restClients.stream().filter(this::isConfigured).toList();
+        log.info("[scheduler] executing id={} symbol={} exchanges={} amount={} nextFundingAt={}",
+            entity.getId(), entity.getSymbol(), entity.getExchanges(), entity.getUsdtAmount(), entity.getNextFundingAt());
 
-        for (AbstractRestClient ex : restClients) {
-            String exchange = normalizeExchange( ex.exchangeName() );
-
-            FundingInfo fundingInfo = ex.fetchFunding( e.getSymbolUnified() );
-            SymbolRules symbolRules = ex.fetchRules( e.getSymbolUnified() );
-
-            BigDecimal price = fundingInfo.price();
-            BigDecimal minTradeQty = minQtyRespectingNotional(symbolRules, price);
-            BigDecimal requiredUsdt = minTradeQty.multiply(price);
-
-            if (e.getUsdtAmount().compareTo(requiredUsdt) < 0) {
-                throw new IllegalArgumentException("Too small. Need >= " + requiredUsdt + " USDT for min order (includes notional & step constraints)");
-            }
-
-            if (latencyProbeEnabled) {
-                // Предзапуск: минимальный тестовый ордер для оценки задержки сети
-                PlaceTestOrderCommand latencyCmd = new PlaceTestOrderCommand(
-                    exchange,
-                    e.getSymbolUnified(),
-                    OrderSide.BUY,
-                    OrderType.MARKET,
-                    minTradeQty,
-                    null
-                );
-                try {
-                    TestOrderResult probeResult = latencyService.measureAndRecord(exchange, () -> testOrderEngine.placeTestOrder(latencyCmd));
-                    tryCloseTestOrder(ex, probeResult);
-                } catch (Exception probeEx) {
-                    log.warn("[scheduler] latency probe failed for exchange={} symbol={} : {}", exchange, e.getSymbol(), probeEx.getMessage());
-                    continue;
-                }
-
-                Duration measuredDelay = latencyService.estimate(exchange);
-                Instant targetFundingAt = Optional.ofNullable(fundingInfo.nextFundingAt()).orElse(e.getNextFundingAt());
-                Duration safeDelay = measuredDelay == null ? Duration.ZERO : measuredDelay;
-                if (targetFundingAt != null && !safeDelay.isNegative()) {
-                    Instant sendAt = targetFundingAt.minus(safeDelay);
-                    Duration wait = Duration.between(Instant.now(), sendAt);
-                    if (!wait.isNegative()) {
-                        try {
-                            Thread.sleep(wait.toMillis());
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                }
-            }
-
-            BigDecimal rawQty = e.getUsdtAmount().divide(price, 12, RoundingMode.DOWN);
-            BigDecimal qty = floorToStep(rawQty, symbolRules.qtyStep());
-
-            if (qty.compareTo(minTradeQty) < 0) {
-                BigDecimal needAtLeast = minTradeQty.multiply(price);
-                throw new IllegalArgumentException("Too small. Need >= " + needAtLeast + " USDT for minQty/minNotional constraints");
-            }
-
-            PlaceTestOrderCommand cmd = new PlaceTestOrderCommand(
-                exchange,
-                e.getSymbolUnified(),
-                OrderSide.BUY,
-                OrderType.MARKET,
-                qty,
-                null
-            );
-
-            TestOrderResult r = testOrderEngine.placeTestOrder(cmd);
-            // If exchange didn't return execution time, try follow-up GET
-            if (r.exchangeExecutedAt() == null)
-            {
-                try
-                {
-                    Long fetchedTs = ex.fetchOrderTimestamp(cmd.symbolUnified(), r.exchangeOrderId());
-                    if (fetchedTs != null)
-                    {
-                        r = r.withExchangeTimestamp(fetchedTs, OrderTimestampSource.FOLLOW_UP_QUERY);
-                    }
-                }
-                catch (Exception tsEx)
-                {
-                    log.warn("[scheduler] failed to fetch order timestamp exchange={} orderId={} : {}", exchange, r.exchangeOrderId(), tsEx.getMessage());
-                }
-            }
-
-            // Final guard: avoid 0/NULL execution timestamps (Binance test orders often omit it)
-            if (r.exchangeExecutedAt() == null || r.exchangeExecutedAt().toEpochMilli() <= 0) {
-                r = r.withExchangeTimestamp(r.tsMillis(), OrderTimestampSource.UNKNOWN);
-                if ("binance".equalsIgnoreCase(exchange)) {
-                    log.warn("[scheduler] binance missing execution time; defaulting to server timestamp orderId={}", r.exchangeOrderId());
-                } else {
-                    log.debug("[scheduler] missing execution time; defaulting to server timestamp exchange={} orderId={}", exchange, r.exchangeOrderId());
-                }
-            }
-
-            orderExecutionTimeStore.save(
-                r.exchange(),
-                r.exchangeOrderId(),
-                r.symbolUnified(),
-                r.tsMillis(),
-                r.exchangeTsMillis(),
-                r.timestampSource().name(),
-                e.getNextFundingAt()
-            );
-
-            log.debug("[scheduler] order timestamps: exchange={} orderId={} serverTs={} exchangeTs={} source={} symbol={}",
-                r.exchange(), r.exchangeOrderId(), r.tsMillis(), r.exchangeTsMillis(), r.timestampSource(), r.symbolUnified());
-
-            log.info("[scheduler] order result: exchange={} symbol={} status={} orderId={} serverTs={} exchangeTs={} source={}",
-                r.exchange(), r.symbolUnified(), r.status(), r.exchangeOrderId(), r.tsMillis(), r.exchangeTsMillis(), r.timestampSource());
+        Set<String> exchanges = normalizedExchanges(entity);
+        if (exchanges.isEmpty()) {
+            log.warn("[scheduler] skip id={} symbol={} because exchanges empty", entity.getId(), entity.getSymbol());
+            markExecuted(entity);
+            return;
         }
 
-        e.setExecuted(true);
-        e.setExecutedAt(Instant.now());
-        repo.save( e );
+        List<AbstractRestClient> clients = exchangeRestClients.stream()
+            .filter(rc -> exchanges.contains(normalizeExchange(rc.exchangeName())))
+            .filter(this::isConfigured)
+            .toList();
 
+        for (AbstractRestClient client : clients) {
+            processExchange(entity, client);
+        }
+
+        markExecuted(entity);
         log.info("[scheduler] funding executed id={} symbol={} exchanges={} executedAt={}",
-            e.getId(), e.getSymbol(), e.getExchanges(), e.getExecutedAt());
+            entity.getId(), entity.getSymbol(), entity.getExchanges(), entity.getExecutedAt());
+    }
+
+    private void processExchange(ApprovedFundingEntity entity, AbstractRestClient client) throws Exception {
+        String exchange = normalizeExchange(client.exchangeName());
+
+        FundingInfo fundingInfo = client.fetchFunding(entity.getSymbolUnified());
+        SymbolRules symbolRules = client.fetchRules(entity.getSymbolUnified());
+        BigDecimal price = fundingInfo.price();
+
+        BigDecimal minTradeQty = minQtyRespectingNotional(symbolRules, price);
+        BigDecimal requiredUsdt = minTradeQty.multiply(price);
+        if (entity.getUsdtAmount().compareTo(requiredUsdt) < 0) {
+            throw new IllegalArgumentException("Too small. Need >= " + requiredUsdt + " USDT for min order (includes notional & step constraints)");
+        }
+
+        maybeProbeLatency(entity, client, fundingInfo, minTradeQty, exchange);
+
+        BigDecimal qty = calculateOrderQty(entity, price, symbolRules);
+
+        TestOrderResult result = placeOrder(client, exchange, entity.getSymbolUnified(), qty);
+        result = ensureExecutionTimestamp(result, client, entity.getSymbolUnified(), exchange);
+
+        orderExecutionTimeStore.save(
+            result.exchange(),
+            result.exchangeOrderId(),
+            result.symbolUnified(),
+            result.tsMillis(),
+            result.exchangeTsMillis(),
+            result.timestampSource().name(),
+            entity.getNextFundingAt()
+        );
+
+        log.info("[scheduler] order result: exchange={} symbol={} status={} orderId={} serverTs={} exchangeTs={} source={}",
+            result.exchange(), result.symbolUnified(), result.status(), result.exchangeOrderId(), result.tsMillis(), result.exchangeTsMillis(), result.timestampSource());
+    }
+
+    private void maybeProbeLatency(ApprovedFundingEntity entity,
+                                   AbstractRestClient client,
+                                   FundingInfo fundingInfo,
+                                   BigDecimal minTradeQty,
+                                   String exchange) {
+        if (!latencyProbeEnabled) return;
+
+        PlaceTestOrderCommand latencyCmd = new PlaceTestOrderCommand(
+            exchange,
+            entity.getSymbolUnified(),
+            OrderSide.BUY,
+            OrderType.MARKET,
+            minTradeQty,
+            null
+        );
+
+        try {
+            TestOrderResult probeResult = latencyService.measureAndRecord(exchange, () -> testOrderEngine.placeTestOrder(latencyCmd));
+            tryCloseTestOrder(client, probeResult);
+        } catch (Exception probeEx) {
+            log.warn("[scheduler] latency probe failed for exchange={} symbol={} : {}", exchange, entity.getSymbol(), probeEx.getMessage());
+            return;
+        }
+
+        Duration measuredDelay = latencyService.estimate(exchange);
+        Instant targetFundingAt = Optional.ofNullable(fundingInfo.nextFundingAt()).orElse(entity.getNextFundingAt());
+        Duration safeDelay = measuredDelay == null ? Duration.ZERO : measuredDelay;
+        if (targetFundingAt != null && !safeDelay.isNegative()) {
+            Instant sendAt = targetFundingAt.minus(safeDelay);
+            Duration wait = Duration.between(Instant.now(), sendAt);
+            if (!wait.isNegative()) {
+                try {
+                    Thread.sleep(wait.toMillis());
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    private BigDecimal calculateOrderQty(ApprovedFundingEntity entity, BigDecimal price, SymbolRules rules) {
+        BigDecimal rawQty = entity.getUsdtAmount().divide(price, 12, RoundingMode.DOWN);
+        BigDecimal qty = floorToStep(rawQty, rules.qtyStep());
+
+        BigDecimal minTradeQty = minQtyRespectingNotional(rules, price);
+        if (qty.compareTo(minTradeQty) < 0) {
+            BigDecimal needAtLeast = minTradeQty.multiply(price);
+            throw new IllegalArgumentException("Too small. Need >= " + needAtLeast + " USDT for minQty/minNotional constraints");
+        }
+        return qty;
+    }
+
+    private TestOrderResult placeOrder(AbstractRestClient client, String exchange, String unifiedSymbol, BigDecimal qty) throws Exception {
+        PlaceTestOrderCommand cmd = new PlaceTestOrderCommand(
+            exchange,
+            unifiedSymbol,
+            OrderSide.BUY,
+            OrderType.MARKET,
+            qty,
+            null
+        );
+        return testOrderEngine.placeTestOrder(cmd);
+    }
+
+    private TestOrderResult ensureExecutionTimestamp(TestOrderResult result,
+                                                     AbstractRestClient client,
+                                                     String unifiedSymbol,
+                                                     String exchange) {
+        if (result.exchangeExecutedAt() != null && result.exchangeExecutedAt().toEpochMilli() > 0) {
+            return result;
+        }
+
+        try {
+            Long fetchedTs = client.fetchOrderTimestamp(unifiedSymbol, result.exchangeOrderId());
+            if (fetchedTs != null) {
+                return result.withExchangeTimestamp(fetchedTs, OrderTimestampSource.FOLLOW_UP_QUERY);
+            }
+        } catch (Exception tsEx) {
+            log.warn("[scheduler] failed to fetch order timestamp exchange={} orderId={} : {}", exchange, result.exchangeOrderId(), tsEx.getMessage());
+        }
+
+        log.warn("[scheduler] {} missing execution time; defaulting to server timestamp orderId={}", exchange, result.exchangeOrderId());
+        return result.withExchangeTimestamp(result.tsMillis(), OrderTimestampSource.UNKNOWN);
+    }
+
+    private Set<String> normalizedExchanges(ApprovedFundingEntity entity) {
+        return entity.getExchanges().stream()
+            .map(OrderExecutorService::normalizeExchange)
+            .collect(Collectors.toSet());
+    }
+
+    private void markExecuted(ApprovedFundingEntity entity) {
+        entity.setExecuted(true);
+        entity.setExecutedAt(Instant.now());
+        repo.save(entity);
     }
 
     public static BigDecimal floorToStep(BigDecimal qty, BigDecimal step) {

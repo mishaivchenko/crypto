@@ -31,6 +31,10 @@ public class ExchangeConfigDiagnostics implements ApplicationRunner
     {
         String mode = envOrProp( "trading." + exchange + ".mode", envPrefix + "_MODE" );
         String baseUrl = envOrProp( "trading." + exchange + ".base-url", envPrefix + "_BASE_URL" );
+        String contractsBaseUrl = envOrProp(
+            "trading." + exchange + ".contracts-base-url",
+            envPrefix + "_CONTRACTS_BASE_URL"
+        );
 
         boolean apiKeyPresent = isPresent(
             "trading." + exchange + ".api-key",
@@ -46,10 +50,11 @@ public class ExchangeConfigDiagnostics implements ApplicationRunner
         );
 
         log.info(
-            "[config] {} mode={} baseUrl={} apiKeyPresent={} secretKeyPresent={}",
+            "[config] {} mode={} baseUrl={} contractsBaseUrl={} apiKeyPresent={} secretKeyPresent={}",
             exchange,
             mode == null || mode.isBlank() ? "n/a" : mode,
             baseUrl == null || baseUrl.isBlank() ? "n/a" : baseUrl,
+            contractsBaseUrl == null || contractsBaseUrl.isBlank() ? "n/a" : contractsBaseUrl,
             apiKeyPresent,
             secretKeyPresent
         );
