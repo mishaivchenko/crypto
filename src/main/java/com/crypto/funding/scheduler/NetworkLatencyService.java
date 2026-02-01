@@ -41,7 +41,7 @@ public class NetworkLatencyService {
     public void record(String exchange, Duration delay) {
         if (exchange == null || delay == null) return;
 
-        log.info( "[latency calculator] calculated estimated latency {} ", delay.get( ChronoUnit.NANOS ));
+        log.debug("[latency] recorded estimate={}ns exchange={}", delay.get(ChronoUnit.NANOS), exchange);
 
         perExchange.put(exchange.toLowerCase(), delay);
     }

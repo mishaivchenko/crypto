@@ -57,9 +57,11 @@ public class OrderExecutorService
 
         ApprovedFundingEntity e = repo.findById(id).orElse(null);
 
-        log.info( "Executing {}", e);
         if (e == null) return;
         if (!e.isActive() || e.isExecuted()) return;
+
+        log.info("[scheduler] executing id={} symbol={} exchanges={} amount={} nextFundingAt={}",
+            e.getId(), e.getSymbol(), e.getExchanges(), e.getUsdtAmount(), e.getNextFundingAt());
 
         Set<String> exchanges = e.getExchanges().stream().map( OrderExecutorService::normalizeExchange ).collect( Collectors.toSet());
         if ( exchanges.isEmpty() ) {
@@ -155,6 +157,16 @@ public class OrderExecutorService
                 }
             }
 
+            // Final guard: avoid 0/NULL execution timestamps (Binance test orders often omit it)
+            if (r.exchangeExecutedAt() == null || r.exchangeExecutedAt().toEpochMilli() <= 0) {
+                r = r.withExchangeTimestamp(r.tsMillis(), OrderTimestampSource.UNKNOWN);
+                if ("binance".equalsIgnoreCase(exchange)) {
+                    log.warn("[scheduler] binance missing execution time; defaulting to server timestamp orderId={}", r.exchangeOrderId());
+                } else {
+                    log.debug("[scheduler] missing execution time; defaulting to server timestamp exchange={} orderId={}", exchange, r.exchangeOrderId());
+                }
+            }
+
             orderExecutionTimeStore.save(
                 r.exchange(),
                 r.exchangeOrderId(),
@@ -165,16 +177,19 @@ public class OrderExecutorService
                 e.getNextFundingAt()
             );
 
-            log.info("[scheduler] order timestamps: exchange={} orderId={} serverTs={} exchangeTs={} source={} symbol={}",
+            log.debug("[scheduler] order timestamps: exchange={} orderId={} serverTs={} exchangeTs={} source={} symbol={}",
                 r.exchange(), r.exchangeOrderId(), r.tsMillis(), r.exchangeTsMillis(), r.timestampSource(), r.symbolUnified());
 
-            log.info("[scheduler] test order result: exchange={} symbol={} status={} orderId={}",
-                r.exchange(), r.symbolUnified(), r.status(), r.exchangeOrderId());
+            log.info("[scheduler] order result: exchange={} symbol={} status={} orderId={} serverTs={} exchangeTs={} source={}",
+                r.exchange(), r.symbolUnified(), r.status(), r.exchangeOrderId(), r.tsMillis(), r.exchangeTsMillis(), r.timestampSource());
         }
 
         e.setExecuted(true);
         e.setExecutedAt(Instant.now());
         repo.save( e );
+
+        log.info("[scheduler] funding executed id={} symbol={} exchanges={} executedAt={}",
+            e.getId(), e.getSymbol(), e.getExchanges(), e.getExecutedAt());
     }
 
     public static BigDecimal floorToStep(BigDecimal qty, BigDecimal step) {

@@ -195,8 +195,8 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
             BigDecimal compact = normalized.stripTrailingZeros();
             if( compact.scale() < 0 ) compact = compact.setScale( 0 );
 
-            log.warn( "[binance] qty normalization: symbol={} orig={} floored={} step={} stepScale={} qp={} targetScale={} final={} compacted={}",
-                      unified, qty, floored, step, stepScale, qp, targetScale, normalized, compact );
+            log.debug("[binance] qty normalization: symbol={} orig={} floored={} step={} stepScale={} qp={} targetScale={} final={} compacted={}",
+                unified, qty, floored, step, stepScale, qp, targetScale, normalized, compact);
             return compact;
         }
         catch( Exception e )

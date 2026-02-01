@@ -61,7 +61,7 @@ public abstract class AbstractWsClient
                 }
                 try
                 {
-                    log.info( "[{}] connecting {}", name(), endpoint() );
+                    log.debug("[{}] connecting {}", name(), endpoint());
                     ws = http.newWebSocketBuilder()
                              .connectTimeout( Duration.ofSeconds( 10 ) )
                              .buildAsync( endpoint(), new Listener()
@@ -90,7 +90,7 @@ public abstract class AbstractWsClient
                                  public void onOpen( WebSocket webSocket )
                                  {
                                      open = true;
-                                     log.info( "[{}] open", name() );
+                                     log.info("[{}] open", name());
                                      webSocket.request( 1 );
                                      trySubscribe( unifiedSymbols );
                                  }
@@ -152,7 +152,7 @@ public abstract class AbstractWsClient
             return;
         }
         ws.sendText( sub, true );
-        log.info( "[{}] subscribed {}", name(), unifiedSymbols );
+        log.debug("[{}] subscribed {}", name(), unifiedSymbols);
     }
 
     private void safeHandle(String s) {

@@ -127,15 +127,13 @@ public class FundingSchedulerService {
         ZonedDateTime kyivPlanned = planned.atZone(KYIV);
 
         log.info(
-            "[scheduler] next funding {} at {} (UTC) / {} (Kyiv); executionDelay={}s; networkDelay={}ms; scheduling run at {} (UTC) / {} (Kyiv) ({})",
+            "[scheduler] scheduled symbol={} fundingAt={} (UTC/{}) runAt={} (UTC/{}) reason={} execDelay={}s netDelay={}ms",
             symbol,
-            nextFundingAt,
-            kyivFunding,
+            nextFundingAt, kyivFunding,
+            planned, kyivPlanned,
+            reason,
             executionDelay.toSeconds(),
-            networkDelay.toMillis(),
-            planned,
-            kyivPlanned,
-            reason
+            networkDelay.toMillis()
         );
     }
 
@@ -163,7 +161,7 @@ public class FundingSchedulerService {
             return;
         }
 
-        log.info( "new tick" );
+        log.debug("[scheduler] tick start");
         try {
             processDueWindow();
         } catch (Exception e) {
@@ -176,7 +174,7 @@ public class FundingSchedulerService {
     }
 
     private void processDueWindow() {
-        log.info( "Start processing" );
+        log.debug("[scheduler] processing due window");
         Instant now = Instant.now();
         Instant targetFundingAt = now.plus(executionDelay);
         Instant from = targetFundingAt.minus(maxLateness);    // ✅ теперь подхватит чуть просроченные
@@ -185,15 +183,23 @@ public class FundingSchedulerService {
         List<ApprovedFundingEntity> nextFundings =
             repo.findByActiveTrueAndExecutedFalseAndNextFundingAtBetween(from, to);
 
-        if (nextFundings.isEmpty())
-        {
-            log.info( "Not found events for processing between {} and {}", LocalDate.ofInstant( from, ZoneId.systemDefault() ),LocalDate.ofInstant( to, ZoneId.systemDefault()  ));
+        if (nextFundings.isEmpty()) {
+            log.debug(
+                "[scheduler] no fundings between {} and {}",
+                LocalDate.ofInstant(from, ZoneId.systemDefault()),
+                LocalDate.ofInstant(to, ZoneId.systemDefault())
+            );
             return;
         }
 
+        log.info("[scheduler] processing {} funding(s) in window {}..{}", nextFundings.size(),
+            LocalDate.ofInstant(from, ZoneId.systemDefault()),
+            LocalDate.ofInstant(to, ZoneId.systemDefault()));
+
         for (ApprovedFundingEntity funding : nextFundings) {
             try {
-                log.info( "Approving {}", funding );
+                log.info("[scheduler] executing funding id={} symbol={} exchanges={} nextAt={}",
+                    funding.getId(), funding.getSymbol(), funding.getExchanges(), funding.getNextFundingAt());
                 orderExecutorService.executeOnce( funding.getId() );
             } catch (Exception ex) {
                 log.error("[scheduler] execution failed for {} (id={})", funding.getSymbol(), funding.getId(), ex);

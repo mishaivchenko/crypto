@@ -40,10 +40,10 @@ public abstract class AbstractRestClient
 
         HttpRequest request = createHttpRequest( cmd );
 
-        log.info( "Placing test order on {}: {} {}", cmd.exchange(), cmd.side(), cmd.symbolUnified() );
+        log.debug("Placing test order on {}: {} {}", cmd.exchange(), cmd.side(), cmd.symbolUnified());
         HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
         long serverReceivedAt = System.currentTimeMillis();
-        log.info( "{} Order placed {}: with result {}", cmd.side(), cmd.symbolUnified(), response.statusCode() );
+        log.debug("{} order placed {}: status {}", cmd.side(), cmd.symbolUnified(), response.statusCode());
 
         validateResponse( response );
 
