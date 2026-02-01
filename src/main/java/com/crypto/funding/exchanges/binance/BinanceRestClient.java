@@ -11,10 +11,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpRequest;
@@ -28,10 +31,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.crypto.funding.utills.SymbolMapper.toExchange;
+import static com.crypto.funding.utills.SymbolMapper.toUnified;
 
 @Service
 public class BinanceRestClient extends AbstractRestClient implements ExchangeRestClient, ExchangeTradingClient
 {
+    private static final Logger log = LoggerFactory.getLogger( BinanceRestClient.class );
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -60,22 +65,23 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
     @Override
     public @NonNull TestOrderResult createOrderResult( PlaceTestOrderCommand cmd, HttpResponse<String> response ) throws JsonProcessingException
     {
-        JsonNode root = mapper.readTree( response.body() );
+        String body = response.body();
+        JsonNode root = (body == null || body.isBlank())
+                        ? mapper.createObjectNode()
+                        : mapper.readTree( body );
 
-        String orderId = root.path( "orderId" ).asText( null );
+        String orderId = root.path( "orderId" ).asText( "" );
         if( orderId == null || orderId.isBlank() )
         {
-            // На всякий случай — если структура поменяется
-            orderId = root.path( "clientOrderId" ).asText( "UNKNOWN" );
+            // /order/test on Binance returns {}. Fall back to a synthetic id.
+            orderId = root.path( "clientOrderId" ).asText( "TEST_ORDER" );
         }
 
         String status = root.path( "status" ).asText( "NEW" );
         BigDecimal quantity = cmd.quantity();
         BigDecimal price = cmd.price() != null
                            ? cmd.price()
-                           : new BigDecimal( root.path( "avgPrice" ).asText(
-            root.path( "price" ).asText( "0" )
-        ) );
+                           : parsePriceSafe( root );
 
         Long exchangeTs = root.hasNonNull("updateTime") ? root.get("updateTime").asLong() : null;
 
@@ -94,14 +100,38 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
         );
     }
 
+    private BigDecimal parsePriceSafe( JsonNode root )
+    {
+        String s = root.path( "avgPrice" ).asText( (String) null );
+        if( s == null || s.isBlank() || "null".equalsIgnoreCase( s ) )
+        {
+            s = root.path( "price" ).asText( (String) null );
+        }
+        if( s == null || s.isBlank() || "null".equalsIgnoreCase( s ) )
+        {
+            return BigDecimal.ZERO;
+        }
+        try
+        {
+            return new BigDecimal( s );
+        }
+        catch( Exception ex )
+        {
+            log.warn( "[binance] price parse failed from response; defaulting to 0. raw={}", s );
+            return BigDecimal.ZERO;
+        }
+    }
+
     @Override
     public HttpRequest createHttpRequest( PlaceTestOrderCommand cmd )
     {
+        BigDecimal normalizedQty = normalizeQuantity( cmd.quantity(), cmd.symbolUnified() );
+
         Map<String, String> params = new LinkedHashMap<>();
         params.put( "symbol", toExchange( cmd.symbolUnified() ) );
         params.put( "side", cmd.side().name() );            // BUY / SELL
         params.put( "type", cmd.type().name() );            // MARKET / LIMIT
-        params.put( "quantity", cmd.quantity().toPlainString() );
+        params.put( "quantity", normalizedQty.toPlainString() );
         if( cmd.type() == OrderType.LIMIT && cmd.price() != null )
         {
             params.put( "price", cmd.price().toPlainString() );
@@ -118,7 +148,7 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
 
         String signature = HmacSigner.hmacSha256( getSecretKey(), queryString );
 
-        String url = getBaseUrl() + "/fapi/v1/order" +
+        String url = getBaseUrl() + "/fapi/v1/order/test" +
                      "?" + queryString +
                      "&signature=" + signature;
 
@@ -128,7 +158,54 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
                                          .header( "X-MBX-APIKEY", getApiKey() )
                                          .POST( HttpRequest.BodyPublishers.noBody() )
                                          .build();
+        log.debug("[binance] normalizedQty={} for {}", normalizedQty, cmd.symbolUnified());
         return request;
+    }
+
+    private BigDecimal normalizeQuantity( BigDecimal qty, String unifiedSymbol )
+    {
+        try
+        {
+            BinanceSymbolMeta meta = fetchSymbolMeta( unifiedSymbol );
+            BigDecimal step = meta.stepSize();
+
+            String unified = toUnified( unifiedSymbol );
+            String flat = unified.replace( "/", "" );
+            // Temporary safety overrides for assets that reject 3dp quantities on testnet despite metadata.
+            if( "SOLUSDT".equalsIgnoreCase( flat ) || "DOTUSDT".equalsIgnoreCase( flat ) )
+            {
+                step = new BigDecimal( "0.1" );
+                meta = new BinanceSymbolMeta( step, step, meta.minNotional(), 1 );
+                // also cap size to avoid margin errors on testnet
+                BigDecimal cap = new BigDecimal( "5" );
+                if( qty.compareTo( cap ) > 0 )
+                {
+                    qty = cap;
+                }
+            }
+
+            BigDecimal steps = qty.divide( step, 0, RoundingMode.DOWN );
+            BigDecimal floored = steps.multiply( step );
+
+            int stepScale = Math.max( step.stripTrailingZeros().scale(), 0 );
+            Integer qp = meta.quantityPrecision();
+
+            int targetScale = ( qp != null ) ? qp : stepScale;
+            BigDecimal normalized = floored.setScale( targetScale, RoundingMode.DOWN );
+            BigDecimal compact = normalized.stripTrailingZeros();
+            if( compact.scale() < 0 ) compact = compact.setScale( 0 );
+
+            log.warn( "[binance] qty normalization: symbol={} orig={} floored={} step={} stepScale={} qp={} targetScale={} final={} compacted={}",
+                      unified, qty, floored, step, stepScale, qp, targetScale, normalized, compact );
+            return compact;
+        }
+        catch( Exception e )
+        {
+            // Fallback: trim trailing zeros and cap precision to 8 decimal places, which covers Binance futures limits.
+            BigDecimal stripped = qty.stripTrailingZeros();
+            int scale = Math.min( Math.max( stripped.scale(), 0 ), 8 );
+            return stripped.setScale( scale, RoundingMode.DOWN );
+        }
     }
 
     private static String urlEncode( String value )
@@ -156,6 +233,7 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
         double fundingRatePct = Double.parseDouble( dto.lastFundingRate ) * 100.0;
         Instant nextFundingAt = Instant.ofEpochMilli( dto.nextFundingTime );
         long secondsToFunding = Duration.between( Instant.now(), nextFundingAt ).getSeconds();
+        BigDecimal price = BigDecimal.valueOf( Double.parseDouble( dto.indexPrice  ));
 
         return new FundingInfo(
             name(),
@@ -163,7 +241,7 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
             fundingRatePct,
             nextFundingAt,
             secondsToFunding,
-            BigDecimal.ZERO
+            price
         );
     }
 
@@ -199,8 +277,111 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
     @Override
     public SymbolRules fetchRules( String unifiedSymbol )
     {
-        return null;
+        try
+        {
+            BinanceSymbolMeta meta = fetchSymbolMeta( unifiedSymbol );
+            return new SymbolRules( meta.minQty(), meta.stepSize(), meta.minNotional() );
+        }
+        catch( Exception e )
+        {
+            throw new RuntimeException( "Failed to fetch symbol rules from Binance for " + unifiedSymbol, e );
+        }
     }
+
+    private BinanceSymbolMeta fetchSymbolMeta( String unifiedSymbol ) throws Exception
+    {
+        String binanceSymbol = toExchange( unifiedSymbol );
+        String url = getBaseUrl() + "/fapi/v1/exchangeInfo?symbol=" + binanceSymbol;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri( URI.create( url ) )
+                                         .timeout( Duration.ofSeconds( 5 ) )
+                                         .GET()
+                                         .build();
+
+        HttpResponse<String> response = http.send( request, HttpResponse.BodyHandlers.ofString() );
+        validateResponse( response );
+
+        JsonNode root = mapper.readTree( response.body() );
+        JsonNode symbols = root.path( "symbols" );
+
+        if( !symbols.isArray() || symbols.isEmpty() )
+        {
+            throw new IllegalStateException( "Empty exchangeInfo.symbols for " + unifiedSymbol );
+        }
+
+        JsonNode symbolNode = symbols.get( 0 );
+        JsonNode filters = symbolNode.path( "filters" );
+
+        if( !filters.isArray() || filters.isEmpty() )
+        {
+            throw new IllegalStateException( "No filters for " + unifiedSymbol + " in exchangeInfo" );
+        }
+
+        BigDecimal minQty = null;
+        BigDecimal stepSize = null;
+        BigDecimal minNotional = null;
+        Integer quantityPrecision = symbolNode.hasNonNull( "quantityPrecision" ) ? symbolNode.get( "quantityPrecision" ).asInt() : null;
+
+        for( JsonNode f : filters )
+        {
+            String type = f.path( "filterType" ).asText( "" );
+            switch( type )
+            {
+                case "LOT_SIZE" -> {
+                    if( f.hasNonNull( "minQty" ) )
+                    {
+                        minQty = new BigDecimal( f.get( "minQty" ).asText() );
+                    }
+                    if( f.hasNonNull( "stepSize" ) )
+                    {
+                        stepSize = new BigDecimal( f.get( "stepSize" ).asText() );
+                    }
+                }
+                case "MARKET_LOT_SIZE" -> {
+                    // fallback if LOT_SIZE is absent
+                    if( minQty == null && f.hasNonNull( "minQty" ) )
+                    {
+                        minQty = new BigDecimal( f.get( "minQty" ).asText() );
+                    }
+                    if( stepSize == null && f.hasNonNull( "stepSize" ) )
+                    {
+                        stepSize = new BigDecimal( f.get( "stepSize" ).asText() );
+                    }
+                }
+                case "MIN_NOTIONAL" -> {
+                    String value = null;
+                    if( f.hasNonNull( "notional" ) )
+                    {
+                        value = f.get( "notional" ).asText();
+                    }
+                    else if( f.hasNonNull( "minNotional" ) )
+                    {
+                        value = f.get( "minNotional" ).asText();
+                    }
+
+                    if( value != null && !value.isBlank() )
+                    {
+                        minNotional = new BigDecimal( value );
+                    }
+                }
+            }
+        }
+
+        if( minQty == null || stepSize == null )
+        {
+            throw new IllegalStateException( "LOT_SIZE filter missing for " + unifiedSymbol );
+        }
+
+        return new BinanceSymbolMeta( minQty, stepSize, minNotional, quantityPrecision );
+    }
+
+    private record BinanceSymbolMeta(
+        BigDecimal minQty,
+        BigDecimal stepSize,
+        BigDecimal minNotional,
+        Integer quantityPrecision
+    ) {}
 
     @JsonIgnoreProperties( ignoreUnknown = true )
     static class PremiumIndex
@@ -208,5 +389,6 @@ public class BinanceRestClient extends AbstractRestClient implements ExchangeRes
         public String symbol;
         public String lastFundingRate;
         public long nextFundingTime;
+        public String indexPrice;
     }
 }

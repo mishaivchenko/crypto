@@ -37,7 +37,7 @@ class ExchangeClientErrorHandlingTest
     @Test
     void throwsOnHttp500()
     {
-        stubFor( post( urlPathEqualTo( "/fapi/v1/order" ) )
+        stubFor( post( urlPathEqualTo( "/fapi/v1/order/test" ) )
                      .willReturn( aResponse().withStatus( 500 ).withBody( "boom" ) ) );
 
         BinanceRestClient client = new BinanceRestClient(
