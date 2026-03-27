@@ -102,7 +102,7 @@ class OrderExecutorServiceTest {
     }
 
     @Test
-    void skipsWhenExchangesEmptyAndMarksExecuted() throws Exception {
+    void skipsWhenExchangesEmptyWithoutMutatingLegacyState() throws Exception {
         ApprovedFundingEntity entity = new ApprovedFundingEntity(
             "ETH/USDT",
             Set.of(), // пусто
@@ -117,9 +117,8 @@ class OrderExecutorServiceTest {
         service.executeOnce(2L);
 
         verify(testOrderEngine, never()).placeTestOrder(any());
-        ArgumentCaptor<ApprovedFundingEntity> captor = ArgumentCaptor.forClass(ApprovedFundingEntity.class);
-        verify(repo).save(captor.capture());
-        assertThat(captor.getValue().isExecuted()).isTrue();
+        verify(repo, never()).save(any());
+        assertThat(entity.isExecuted()).isFalse();
     }
 
     @Test

@@ -18,3 +18,11 @@ telegram:
   bot:
     username: dummy
     token: dummy
+
+trading:
+  execution:
+    mode: DISABLED
+    legacy-enabled: false
+    live-venues: []
+    blocked-venues:
+      - gate

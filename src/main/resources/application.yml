@@ -72,6 +72,11 @@ spring:
         show-sql: false
 
 trading:
+    execution:
+        mode: ${TRADING_EXECUTION_MODE:DISABLED}
+        legacy-enabled: ${TRADING_LEGACY_EXECUTION_ENABLED:false}
+        live-venues: ${TRADING_LIVE_VENUES:}
+        blocked-venues: ${TRADING_BLOCKED_VENUES:gate}
     binance:
         mode: ${BINANCE_MODE:testnet}
         recv-window: 5000

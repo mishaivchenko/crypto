@@ -4,7 +4,6 @@ import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.service.ApprovedFundingStore;
 import com.crypto.funding.persistence.service.FundingApprovalService;
 import com.crypto.funding.telegram.TelegramSessionStore;
-import com.crypto.funding.trading.TestOrderEngine;
 import com.crypto.funding.watchlist.ArbitrageWatchlistService;
 import com.crypto.funding.watchlist.FundingRefresherService;
 import com.crypto.funding.watchlist.FundingWatchlistService;
@@ -70,7 +69,6 @@ public class TelegramBot extends TelegramLongPollingBot
     private final FundingWatchlistService fundingWatchlist;
     private final ArbitrageWatchlistService arbitrageWatchlist;
     private final TelegramSessionStore sessionStore;
-    private final TestOrderEngine testOrderEngine;
     private final FundingRefresherService fundingRefresherService;
 
     // approved funding storage (in-memory)
@@ -93,7 +91,7 @@ public class TelegramBot extends TelegramLongPollingBot
         FundingWatchlistService fundingWatchlist,
         ArbitrageWatchlistService arbitrageWatchlist,
         TelegramSessionStore sessionStore,
-        TestOrderEngine testOrderEngine, FundingRefresherService fundingRefresherService, ApprovedFundingStore fundingStore, FundingApprovalService fundingApprovalService
+        FundingRefresherService fundingRefresherService, ApprovedFundingStore fundingStore, FundingApprovalService fundingApprovalService
     )
     {
         super( token );
@@ -101,7 +99,6 @@ public class TelegramBot extends TelegramLongPollingBot
         this.fundingWatchlist = fundingWatchlist;
         this.arbitrageWatchlist = arbitrageWatchlist;
         this.sessionStore = sessionStore;
-        this.testOrderEngine = testOrderEngine;
         this.fundingRefresherService = fundingRefresherService;
         this.fundingStore = fundingStore;
         this.fundingApprovalService = fundingApprovalService;
@@ -255,7 +252,7 @@ public class TelegramBot extends TelegramLongPollingBot
             }
             case "/funding" -> showFunding( chatId, manual );
             case "/funding_approved" -> showFundingApproved( chatId, manual );
-            case "/arb" -> showArbSymbols( chatId, manual );
+            case "/arb" -> ui( chatId, manual, legacyBotControlsDisabledText(), menuKb() );
             default -> ui( chatId, manual, "Неизвестная команда: " + cmd + "\n\n" + helpText(), menuKb() );
         }
     }
@@ -306,6 +303,14 @@ public class TelegramBot extends TelegramLongPollingBot
                 ui( chatId, false, "Отменено.\n\n" + helpText(), menuKb() );
                 return;
             }
+        }
+
+        if( isLegacyBotControlCallback( data ) )
+        {
+            sessionStore.clear( chatId );
+            pendingFundingSelection.remove( chatId );
+            ui( chatId, false, legacyBotControlsDisabledText(), menuKb() );
+            return;
         }
 
         // ---- Funding approve flow ----
@@ -584,7 +589,7 @@ public class TelegramBot extends TelegramLongPollingBot
                            .map( it -> formatFunding( it.funding() ) )
                            .collect( Collectors.joining( "\n\n" ) );
 
-        ui( chatId, manual, text, fundingListKb( items.stream().map( Item::symbol ).toList(), false ) );
+        ui( chatId, manual, text, menuKb() );
     }
 
     private void showFundingApproved( long chatId, boolean manual )
@@ -611,7 +616,7 @@ public class TelegramBot extends TelegramLongPollingBot
                            } )
                            .collect( Collectors.joining( "\n" ) );
 
-        ui( chatId, manual, text, fundingListKb( items.stream().map( ApprovedFundingEntity::getSymbol ).toList(), true ) );
+        ui( chatId, manual, text, menuKb() );
     }
 
     private void showArbSymbols( long chatId, boolean manual )
@@ -707,7 +712,6 @@ public class TelegramBot extends TelegramLongPollingBot
         return kb( List.of(
             List.of( btn( TXT_BTN_FUNDING, "/funding" ) ),
             List.of( btn( TXT_BTN_FUNDING_APPROVED, "/funding_approved" ) ),
-            List.of( btn( TXT_BTN_ARB, "/arb" ) ),
             List.of( btn( TXT_BTN_CANCEL, "/cancel" ) )
         ) );
     }
@@ -825,9 +829,31 @@ public class TelegramBot extends TelegramLongPollingBot
     {
         return "Команды:\n" +
                "/funding — показать watchlist фандинга\n" +
-               "/funding_approved — утвержденные пары (биржа + USDT)\n" +
-               "/arb — арбитраж: symbol → LONG/SHORT биржи → leverage → qty → confirm\n" +
+               "/funding_approved — показать legacy funding-записи (read-only)\n" +
+               "/arb — legacy control отключён\n" +
                "/cancel — сброс";
+    }
+
+    private boolean isLegacyBotControlCallback( String data )
+    {
+        return data.startsWith( CB_FUND_UNAPPROVE )
+               || data.startsWith( CB_FUND_APPROVE )
+               || data.startsWith( CB_FUND_TOGGLE_EX )
+               || data.startsWith( CB_FUND_EX_NEXT )
+               || data.startsWith( CB_FUND_USDT )
+               || data.startsWith( CB_ARB_PICK )
+               || data.startsWith( CB_ARB_LONG )
+               || data.startsWith( CB_ARB_SHORT )
+               || data.startsWith( CB_ARB_LEV )
+               || data.startsWith( CB_ARB_QTY )
+               || CB_ARB_CONFIRM.equals( data );
+    }
+
+    private String legacyBotControlsDisabledText()
+    {
+        return "Legacy trading controls in Telegram disabled.\n" +
+               "Telegram remains ingest/diagnostic only in Phase 0-1.\n" +
+               "Use internal REST API for the new domain flow.";
     }
 
     private String formatFunding( Map<String, WatchFunding> map )

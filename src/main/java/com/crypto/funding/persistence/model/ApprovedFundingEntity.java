@@ -16,6 +16,10 @@ import java.util.Set;
         @Index(name = "idx_funding_next_time", columnList = "next_funding_at")
     }
 )
+/**
+ * Legacy approval aggregate retained only for backward-compatible scheduling and diagnostics.
+ * New trading development must use the Phase 1 funding-event domain model instead.
+ */
 public class ApprovedFundingEntity
 {
 

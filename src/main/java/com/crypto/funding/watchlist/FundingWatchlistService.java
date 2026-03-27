@@ -13,8 +13,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Хранит пары, по которым мы хотим фармить funding.
- * Здесь же накапливаются fundingRate/nextFundingTime по биржам.
+ * Candidate watchlist populated by Telegram ingest and exchange refreshers.
+ * It is an observation layer, not the target trading domain model.
  */
 @Service
 public class FundingWatchlistService
@@ -54,8 +54,7 @@ public class FundingWatchlistService
     private final Map<String, Item> items = new ConcurrentHashMap<>();
 
     /**
-     * Добавить символ (сигнал на фарм фандинга).
-     * Обновляем/создаём слот под него с новым TTL, но funding не трогаем.
+     * Add or refresh an observed funding-event candidate symbol.
      */
     public void addSymbol( String rawSymbol )
     {

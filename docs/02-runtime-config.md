@@ -1,4 +1,4 @@
-# Runtime Config (ENV) — актуализировано 2026-01-31
+# Runtime Config (ENV)
 
 ## Telegram
 TG_API_ID=...  
@@ -10,6 +10,18 @@ TG_SESSION_DIR=/data/tdlib
 
 ## Modes
 - `BINANCE_MODE`/`BYBIT_MODE`/`GATE_MODE`: `testnet` (default) или `production`.
+
+## Execution Safety
+TRADING_EXECUTION_MODE=DISABLED  
+TRADING_LEGACY_EXECUTION_ENABLED=false  
+TRADING_LIVE_VENUES=bybit  
+TRADING_BLOCKED_VENUES=gate  
+
+Правила:
+- `DISABLED`: никаких legacy ордеров
+- `SHADOW`: только passive/shadow поведение без order placement
+- `LIVE`: legacy execution только при явном opt-in и только для venue из allowlist
+- `gate` должен оставаться заблокированным до отдельной реализации venue-specific execution path
 
 ## Exchanges (testnet)
 BINANCE_TESTNET_API_KEY=...  
@@ -50,3 +62,4 @@ SCHED_MIN_RECHECK_MS=1000
 - Все ключи только через ENV/secret manager (GitHub Secrets, Docker secrets).
 - Логи не должны содержать токены/ключи.
 - Timezone: next_funding_at хранить в UTC, UI — Europe/Kyiv.
+- Если нужен реальный запуск legacy execution для controlled testing, это должно быть отдельным осознанным включением, а не “случайным наличием ключей”.
