@@ -18,3 +18,26 @@ telegram:
   bot:
     username: dummy
     token: dummy
+
+trading:
+  candidates:
+    dedupe-window-minutes: 15
+  metadata:
+    enabled-venues:
+      - binance
+      - bybit
+      - gate
+    sync-on-startup: false
+    schedule-enabled: false
+    require-credentials-on-startup: false
+    bootstrap-fallback-enabled: true
+  http:
+    connect-timeout-ms: 100
+    request-timeout-ms: 100
+    prefer-http2: false
+  execution:
+    mode: DISABLED
+    legacy-enabled: false
+    live-venues: []
+    blocked-venues:
+      - gate

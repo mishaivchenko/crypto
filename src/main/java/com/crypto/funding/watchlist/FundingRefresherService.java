@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Периодически обновляет funding по тем символам,
- * которые помечены как интересные для фарма фандинга.
+ * которые сейчас наблюдаются как funding-event candidates.
  */
 @Service
 public class FundingRefresherService {

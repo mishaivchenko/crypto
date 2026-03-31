@@ -1,6 +1,8 @@
 package com.crypto.funding.scheduler;
 
 import com.crypto.funding.exchanges.AbstractRestClient;
+import com.crypto.funding.legacy.execution.LegacyExecutionDecision;
+import com.crypto.funding.legacy.execution.LegacyExecutionGuard;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import com.crypto.funding.trading.*;
@@ -9,6 +11,7 @@ import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.SymbolRules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,10 @@ import java.util.Set;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Legacy funding executor kept only as a transitional component during the Phase 0-1 rewrite.
+ * Real trading evolution must happen through the new domain/application layers.
+ */
 @Service
 public class OrderExecutorService
 {
@@ -34,20 +41,42 @@ public class OrderExecutorService
     private final List<AbstractRestClient> exchangeRestClients;
     private final NetworkLatencyService latencyService;
     private final boolean latencyProbeEnabled;
+    private final LegacyExecutionGuard legacyExecutionGuard;
 
+    @Autowired
     public OrderExecutorService( TestOrderEngine orderEngine,
                                  ApprovedFundingRepository repository,
                                  OrderExecutionTimeStore orderExecutionTimeStore,
-                                 List<AbstractRestClient> restClients,
+                                 List<? extends AbstractRestClient> restClients,
                                  NetworkLatencyService latencyService,
-                                 @Value("${funding.latency-probe.enabled:false}") boolean latencyProbeEnabled )
+                                 @Value("${funding.latency-probe.enabled:false}") boolean latencyProbeEnabled,
+                                 LegacyExecutionGuard legacyExecutionGuard )
     {
         this.testOrderEngine = orderEngine;
         this.repo = repository;
         this.orderExecutionTimeStore = orderExecutionTimeStore;
-        this.exchangeRestClients = restClients;
+        this.exchangeRestClients = List.copyOf( restClients );
         this.latencyService = latencyService;
         this.latencyProbeEnabled = latencyProbeEnabled;
+        this.legacyExecutionGuard = legacyExecutionGuard;
+    }
+
+    public OrderExecutorService( TestOrderEngine orderEngine,
+                                 ApprovedFundingRepository repository,
+                                 OrderExecutionTimeStore orderExecutionTimeStore,
+                                 List<? extends AbstractRestClient> restClients,
+                                 NetworkLatencyService latencyService,
+                                 boolean latencyProbeEnabled )
+    {
+        this(
+            orderEngine,
+            repository,
+            orderExecutionTimeStore,
+            restClients,
+            latencyService,
+            latencyProbeEnabled,
+            LegacyExecutionGuard.permissive()
+        );
     }
 
     @Transactional
@@ -63,15 +92,36 @@ public class OrderExecutorService
 
         Set<String> exchanges = normalizedExchanges(entity);
         if (exchanges.isEmpty()) {
-            log.warn("[scheduler] skip id={} symbol={} because exchanges empty", entity.getId(), entity.getSymbol());
-            markExecuted(entity);
+            log.warn("[scheduler] passive skip id={} symbol={} because exchanges empty", entity.getId(), entity.getSymbol());
+            return;
+        }
+
+        LegacyExecutionDecision decision = legacyExecutionGuard.evaluate(exchanges, "legacy-funding-scheduler");
+        if (!decision.allowed()) {
+            log.info(
+                "[scheduler] passive execution skip id={} symbol={} mode={} reason={}",
+                entity.getId(),
+                entity.getSymbol(),
+                decision.mode(),
+                decision.reason()
+            );
             return;
         }
 
         List<AbstractRestClient> clients = exchangeRestClients.stream()
-            .filter(rc -> exchanges.contains(normalizeExchange(rc.exchangeName())))
+            .filter(rc -> decision.executableVenues().contains(normalizeExchange(rc.exchangeName())))
             .filter(this::isConfigured)
             .toList();
+
+        if (clients.isEmpty()) {
+            log.warn(
+                "[scheduler] passive execution skip id={} symbol={} because no executable configured clients matched requestedExchanges={}",
+                entity.getId(),
+                entity.getSymbol(),
+                decision.executableVenues()
+            );
+            return;
+        }
 
         for (AbstractRestClient client : clients) {
             processExchange(entity, client);
@@ -271,6 +321,18 @@ public class OrderExecutorService
 
     @Transactional
     void markMissed(Long id, String symbol, Instant nextFundingAt, Instant now) {
+        if (!legacyExecutionGuard.canMutateLegacyState()) {
+            log.warn(
+                "[scheduler] passive stale funding detected: symbol={} id={} nextFundingAt={} now={} mode={}",
+                symbol,
+                id,
+                nextFundingAt,
+                now,
+                legacyExecutionGuard.mode()
+            );
+            return;
+        }
+
         ApprovedFundingEntity e = repo.findById(id).orElse(null);
         if (e == null || e.isExecuted() || !e.isActive()) return;
 

@@ -72,6 +72,24 @@ spring:
         show-sql: false
 
 trading:
+    candidates:
+        dedupe-window-minutes: ${TRADING_CANDIDATES_DEDUPE_WINDOW_MINUTES:15}
+    metadata:
+        enabled-venues: ${TRADING_METADATA_ENABLED_VENUES:binance,bybit,gate}
+        sync-on-startup: ${TRADING_METADATA_SYNC_ON_STARTUP:true}
+        schedule-enabled: ${TRADING_METADATA_SCHEDULE_ENABLED:false}
+        sync-interval-minutes: ${TRADING_METADATA_SYNC_INTERVAL_MINUTES:240}
+        require-credentials-on-startup: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:true}
+        bootstrap-fallback-enabled: ${TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED:false}
+    http:
+        connect-timeout-ms: ${TRADING_HTTP_CONNECT_TIMEOUT_MS:1000}
+        request-timeout-ms: ${TRADING_HTTP_REQUEST_TIMEOUT_MS:5000}
+        prefer-http2: ${TRADING_HTTP_PREFER_HTTP2:true}
+    execution:
+        mode: ${TRADING_EXECUTION_MODE:DISABLED}
+        legacy-enabled: ${TRADING_LEGACY_EXECUTION_ENABLED:false}
+        live-venues: ${TRADING_LIVE_VENUES:}
+        blocked-venues: ${TRADING_BLOCKED_VENUES:gate}
     binance:
         mode: ${BINANCE_MODE:testnet}
         recv-window: 5000

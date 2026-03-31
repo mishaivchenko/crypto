@@ -9,7 +9,8 @@ import org.springframework.test.context.TestPropertySource;
     "spring.datasource.url=jdbc:sqlite:./build/test-db.sqlite",
     "spring.datasource.driver-class-name=org.sqlite.JDBC",
     "spring.jpa.properties.hibernate.dialect=org.hibernate.community.dialect.SQLiteDialect",
-    "spring.jpa.hibernate.ddl-auto=update"
+    "spring.jpa.hibernate.ddl-auto=update",
+    "telegram.enabled=false"
 })
 class CryptoApplicationTests
 {

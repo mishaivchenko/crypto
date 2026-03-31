@@ -1,0 +1,194 @@
+package com.crypto.funding.application.candidate;
+
+import com.crypto.funding.application.DomainValidationException;
+import com.crypto.funding.application.ResourceNotFoundException;
+import com.crypto.funding.application.event.CreateFundingEventCommand;
+import com.crypto.funding.application.event.FundingEventCommandService;
+import com.crypto.funding.domain.candidate.ReviewDecision;
+import com.crypto.funding.domain.candidate.SignalCandidate;
+import com.crypto.funding.domain.candidate.SignalCandidateStatus;
+import com.crypto.funding.domain.event.FundingEvent;
+import com.crypto.funding.domain.trade.TradeJournalActorType;
+import com.crypto.funding.domain.trade.TradeJournalEntityType;
+import com.crypto.funding.domain.trade.TradeJournalEventCode;
+import com.crypto.funding.application.trade.TradeJournalService;
+import com.crypto.funding.infrastructure.persistence.mapper.SignalCandidateMapper;
+import com.crypto.funding.infrastructure.persistence.model.SignalCandidateEntity;
+import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
+import com.crypto.funding.watchlist.FundingWatchlistService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
+
+@Service
+public class SignalCandidateReviewService
+{
+    private final SignalCandidateJpaRepository candidateRepository;
+    private final FundingEventCommandService fundingEventCommandService;
+    private final FundingWatchlistService fundingWatchlistService;
+    private final TradeJournalService tradeJournalService;
+
+    public SignalCandidateReviewService(
+        SignalCandidateJpaRepository candidateRepository,
+        FundingEventCommandService fundingEventCommandService,
+        FundingWatchlistService fundingWatchlistService,
+        TradeJournalService tradeJournalService
+    )
+    {
+        this.candidateRepository = candidateRepository;
+        this.fundingEventCommandService = fundingEventCommandService;
+        this.fundingWatchlistService = fundingWatchlistService;
+        this.tradeJournalService = tradeJournalService;
+    }
+
+    @Transactional
+    public SignalCandidate approve( ApproveSignalCandidateCommand command )
+    {
+        SignalCandidateEntity entity = loadCandidate( command.candidateId() );
+        SignalCandidateStatus oldStatus = entity.getStatus();
+        validateReviewable( entity );
+
+        String symbol = resolveSymbol( entity, command.symbol() );
+        String venue = resolveVenue( entity, command.venue() );
+
+        FundingWatchlistService.WatchFunding watchFunding = fundingWatchlistService.findFunding( symbol, venue )
+                                                                                   .orElse( null );
+        Instant fundingTime = command.fundingTime() != null
+                              ? command.fundingTime()
+                              : watchFunding == null ? null : watchFunding.nextFundingAt();
+        BigDecimal fundingRatePct = command.fundingRatePct() != null
+                                    ? command.fundingRatePct()
+                                    : watchFunding == null
+                                      ? null
+                                      : BigDecimal.valueOf( watchFunding.fundingRatePct() );
+
+        if( fundingTime == null )
+        {
+            throw new DomainValidationException(
+                "fundingTime must be provided explicitly or available in funding watchlist for " + symbol + " on " + venue
+            );
+        }
+
+        FundingEvent fundingEvent = fundingEventCommandService.create(
+            new CreateFundingEventCommand(
+                venue,
+                symbol,
+                fundingTime,
+                fundingRatePct,
+                entity.getSourceType().toLowerCase( Locale.ROOT ),
+                buildSourceRef( entity ),
+                entity.getId()
+            )
+        );
+
+        entity.setStatus( SignalCandidateStatus.EVENT_CREATED );
+        entity.setReviewDecision( ReviewDecision.APPROVE );
+        entity.setReviewedAt( Instant.now() );
+        entity.setReviewNotes( normalizeNullable( command.reviewNotes() ) );
+        entity.setFundingEventId( fundingEvent.id() );
+
+        SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
+        tradeJournalService.append(
+            TradeJournalEntityType.SIGNAL_CANDIDATE,
+            saved.id(),
+            TradeJournalEventCode.CANDIDATE_APPROVED,
+            oldStatus.name(),
+            SignalCandidateStatus.EVENT_CREATED.name(),
+            TradeJournalActorType.OPERATOR,
+            "api",
+            saved.reviewNotes()
+        );
+        return saved;
+    }
+
+    @Transactional
+    public SignalCandidate reject( RejectSignalCandidateCommand command )
+    {
+        SignalCandidateEntity entity = loadCandidate( command.candidateId() );
+        SignalCandidateStatus oldStatus = entity.getStatus();
+        validateReviewable( entity );
+
+        entity.setStatus( SignalCandidateStatus.REJECTED );
+        entity.setReviewDecision( ReviewDecision.REJECT );
+        entity.setReviewedAt( Instant.now() );
+        entity.setReviewNotes( command.reviewNotes().trim() );
+
+        SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
+        tradeJournalService.append(
+            TradeJournalEntityType.SIGNAL_CANDIDATE,
+            saved.id(),
+            TradeJournalEventCode.CANDIDATE_REJECTED,
+            oldStatus.name(),
+            SignalCandidateStatus.REJECTED.name(),
+            TradeJournalActorType.OPERATOR,
+            "api",
+            saved.reviewNotes()
+        );
+        return saved;
+    }
+
+    private SignalCandidateEntity loadCandidate( Long candidateId )
+    {
+        return candidateRepository.findById( candidateId )
+                                  .orElseThrow( () -> new ResourceNotFoundException(
+                                      "SignalCandidate not found: " + candidateId
+                                  ) );
+    }
+
+    private void validateReviewable( SignalCandidateEntity entity )
+    {
+        if( entity.getStatus() == SignalCandidateStatus.REJECTED || entity.getStatus() == SignalCandidateStatus.EVENT_CREATED )
+        {
+            throw new DomainValidationException( "SignalCandidate " + entity.getId() + " is already in terminal status " + entity.getStatus() );
+        }
+    }
+
+    private String resolveSymbol( SignalCandidateEntity entity, String overrideSymbol )
+    {
+        if( overrideSymbol != null && !overrideSymbol.isBlank() )
+        {
+            return overrideSymbol.trim().toUpperCase( Locale.ROOT );
+        }
+        if( entity.getNormalizedSymbol() == null || entity.getNormalizedSymbol().isBlank() )
+        {
+            throw new DomainValidationException( "symbol override is required because candidate is not normalized" );
+        }
+        return entity.getNormalizedSymbol();
+    }
+
+    private String resolveVenue( SignalCandidateEntity entity, String overrideVenue )
+    {
+        if( overrideVenue != null && !overrideVenue.isBlank() )
+        {
+            return overrideVenue.trim().toLowerCase( Locale.ROOT );
+        }
+        List<String> venueHints = entity.getVenueHints();
+        if( venueHints.size() != 1 )
+        {
+            throw new DomainValidationException( "venue override is required because candidate does not resolve to exactly one venue" );
+        }
+        return venueHints.getFirst();
+    }
+
+    private String buildSourceRef( SignalCandidateEntity entity )
+    {
+        if( entity.getSourceChatId() != null && entity.getSourceMessageId() != null )
+        {
+            return entity.getSourceType().toLowerCase( Locale.ROOT ) + ":" + entity.getSourceChatId() + ":" + entity.getSourceMessageId();
+        }
+        if( entity.getSourceChatId() != null )
+        {
+            return entity.getSourceType().toLowerCase( Locale.ROOT ) + ":" + entity.getSourceChatId();
+        }
+        return entity.getSourceType().toLowerCase( Locale.ROOT ) + ":candidate:" + entity.getId();
+    }
+
+    private static String normalizeNullable( String value )
+    {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+}

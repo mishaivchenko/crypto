@@ -40,6 +40,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
         "funding.scheduler.discovery-interval-seconds=1",
         "funding.scheduler.max-lateness-seconds=120",
         "funding.execution-delay-seconds=1",
+        "trading.execution.mode=LIVE",
+        "trading.execution.legacy-enabled=true",
+        "trading.execution.live-venues=bybit",
         "trading.bybit.api-key=test-key",
         "trading.bybit.secret-key=test-secret"
     }
@@ -77,7 +80,7 @@ class FundingFlowIntegrationTest {
     }
 
     @Test
-    void fundingStoredInDbTriggersExchangeOrder() {
+    void fundingStoredInDbTriggersExchangeOrderWhenExplicitlyEnabled() {
         wireMock.resetAll();
 
         Instant nextFundingAt = Instant.now().plusSeconds(2);

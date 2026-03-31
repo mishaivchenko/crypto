@@ -35,4 +35,6 @@ public interface ApprovedFundingRepository
     Optional<ApprovedFundingEntity> findBySymbolAndActive(String symbol, boolean active);
 
     Optional<ApprovedFundingEntity> findFirstByActiveTrueAndExecutedFalseOrderByNextFundingAtAsc();
+
+    Optional<ApprovedFundingEntity> findFirstByActiveTrueAndExecutedFalseAndNextFundingAtAfterOrderByNextFundingAtAsc(Instant time);
 }

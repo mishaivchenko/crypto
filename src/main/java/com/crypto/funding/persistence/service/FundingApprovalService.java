@@ -12,8 +12,8 @@ import java.time.Instant;
 import java.util.*;
 
 /**
- * Single place for funding approve/unapprove rules and validations.
- * Bot/UI should call only this service.
+ * Legacy approval service kept for backward-compatible read/approve flows.
+ * New trading development must not treat this as the target domain entry point.
  */
 @Service
 public class FundingApprovalService {

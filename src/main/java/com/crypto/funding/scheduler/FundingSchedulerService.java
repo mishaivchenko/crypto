@@ -1,10 +1,14 @@
 package com.crypto.funding.scheduler;
 
+import com.crypto.funding.legacy.execution.LegacyExecutionBlockedException;
+import com.crypto.funding.legacy.execution.LegacyExecutionGuard;
 import com.crypto.funding.persistence.model.ApprovedFundingEntity;
 import com.crypto.funding.persistence.repository.ApprovedFundingRepository;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.TaskScheduler;
@@ -20,10 +24,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Resource-friendly scheduler:
+ * Legacy resource-friendly scheduler:
  * - keeps only ONE scheduled task at a time
  * - re-schedules itself to the next nearest funding
  * - executes a small "due" window to avoid missing events
+ *
+ * This service is transitional and intentionally fail-closed in safe execution modes.
  */
 @Service
 public class FundingSchedulerService {
@@ -36,6 +42,7 @@ public class FundingSchedulerService {
 
     private final OrderExecutorService orderExecutorService;
     private final NetworkLatencyService latencyService;
+    private final LegacyExecutionGuard legacyExecutionGuard;
 
     private final Duration lookahead;
     private final Duration minRecheckDelay;
@@ -48,11 +55,14 @@ public class FundingSchedulerService {
     private final Duration discoveryInterval;
 
     private final AtomicBoolean tickRunning = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
 
+    @Autowired
     public FundingSchedulerService(
         ApprovedFundingRepository repo,
         TaskScheduler fundingTaskScheduler, OrderExecutorService orderExecutorService,
         NetworkLatencyService latencyService,
+        LegacyExecutionGuard legacyExecutionGuard,
         @Value("${funding.scheduler.lookahead-seconds:10}") long lookaheadSeconds,
         @Value("${funding.execution-delay-seconds:8}") long executionDelaySeconds,
         @Value("${funding.scheduler.min-recheck-millis:1000}") long minRecheckMillis,
@@ -62,6 +72,7 @@ public class FundingSchedulerService {
         this.scheduler = fundingTaskScheduler;
         this.orderExecutorService = orderExecutorService;
         this.latencyService = latencyService;
+        this.legacyExecutionGuard = legacyExecutionGuard;
         this.lookahead = Duration.ofSeconds(Math.max(1, lookaheadSeconds));
         this.executionDelay = Duration.ofSeconds(Math.max(0, executionDelaySeconds));
         this.minRecheckDelay = Duration.ofMillis(Math.max(200, minRecheckMillis));
@@ -69,16 +80,60 @@ public class FundingSchedulerService {
         this.discoveryInterval = Duration.ofSeconds(Math.max(5, discoveryIntervalSeconds));
     }
 
+    FundingSchedulerService(
+        ApprovedFundingRepository repo,
+        TaskScheduler fundingTaskScheduler, OrderExecutorService orderExecutorService,
+        NetworkLatencyService latencyService,
+        long lookaheadSeconds,
+        long executionDelaySeconds,
+        long minRecheckMillis,
+        long maxLatenessSeconds,
+        long discoveryIntervalSeconds ) {
+        this(
+            repo,
+            fundingTaskScheduler,
+            orderExecutorService,
+            latencyService,
+            LegacyExecutionGuard.permissive(),
+            lookaheadSeconds,
+            executionDelaySeconds,
+            minRecheckMillis,
+            maxLatenessSeconds,
+            discoveryIntervalSeconds
+        );
+    }
+
     @PostConstruct
     public void start() {
         wakeup("startup");
     }
 
+    @PreDestroy
+    void stop()
+    {
+        shuttingDown.set( true );
+        synchronized( this )
+        {
+            if( current != null )
+            {
+                current.cancel( false );
+            }
+        }
+    }
+
     public synchronized void wakeup(String reason) {
+        if( shuttingDown.get() )
+        {
+            return;
+        }
         reschedule(reason);
     }
 
     private synchronized void reschedule(String reason) {
+        if( shuttingDown.get() )
+        {
+            return;
+        }
         Instant now = Instant.now();
 
         while (true) {
@@ -100,9 +155,27 @@ public class FundingSchedulerService {
             // Если funding слишком старый — считаем "missed" и помечаем executed=true,
             // чтобы scheduler не пытался его бесконечно догонять.
             if (nextFundingAt.isBefore(now.minus(maxLateness))) {
-                orderExecutorService.markMissed(next.getId(), next.getSymbol(), nextFundingAt, now);
-                // и снова ищем следующий (loop)
-                continue;
+                if (legacyExecutionGuard.canMutateLegacyState()) {
+                    orderExecutorService.markMissed(next.getId(), next.getSymbol(), nextFundingAt, now);
+                    // и снова ищем следующий (loop)
+                    continue;
+                }
+
+                Optional<ApprovedFundingEntity> nextEligible =
+                    repo.findFirstByActiveTrueAndExecutedFalseAndNextFundingAtAfterOrderByNextFundingAtAsc(now.minus(maxLateness));
+
+                if (nextEligible.isEmpty()) {
+                    log.info(
+                        "[scheduler] passive mode detected stale legacy funding id={} symbol={} and found no newer schedulable items",
+                        next.getId(),
+                        next.getSymbol()
+                    );
+                    scheduleOnce(now.plus(discoveryInterval), null);
+                    return;
+                }
+
+                next = nextEligible.get();
+                nextFundingAt = next.getNextFundingAt();
             }
 
             Duration networkDelay = latencyService.estimate(exchanges);
@@ -138,6 +211,10 @@ public class FundingSchedulerService {
     }
 
     private void scheduleOnce(Instant runAt, Long fundingId) {
+        if( shuttingDown.get() )
+        {
+            return;
+        }
         if (current != null && !current.isDone() && !current.isCancelled()) {
             // если уже запланировано раньше или точно так же — не трогаем
             if (fundingId != null && fundingId.equals(currentFundingId) && runAt.equals(currentPlannedAt)) {
@@ -157,6 +234,10 @@ public class FundingSchedulerService {
     }
 
     private void tick() {
+        if( shuttingDown.get() )
+        {
+            return;
+        }
         if (!tickRunning.compareAndSet(false, true)) {
             return;
         }
@@ -201,6 +282,9 @@ public class FundingSchedulerService {
                 log.info("[scheduler] executing funding id={} symbol={} exchanges={} nextAt={}",
                     funding.getId(), funding.getSymbol(), funding.getExchanges(), funding.getNextFundingAt());
                 orderExecutorService.executeOnce( funding.getId() );
+            } catch (LegacyExecutionBlockedException ex) {
+                log.info("[scheduler] passive execution blocked for {} (id={}): {}",
+                    funding.getSymbol(), funding.getId(), ex.getMessage());
             } catch (Exception ex) {
                 log.error("[scheduler] execution failed for {} (id={})", funding.getSymbol(), funding.getId(), ex);
                 funding.setActive( false );
