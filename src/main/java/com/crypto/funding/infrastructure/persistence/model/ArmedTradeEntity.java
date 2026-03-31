@@ -1,6 +1,7 @@
 package com.crypto.funding.infrastructure.persistence.model;
 
 import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.trade.TradeArmSource;
 import com.crypto.funding.domain.trade.TradeSide;
 import com.crypto.funding.infrastructure.persistence.converter.InstantEpochMillisConverter;
 import jakarta.persistence.Column;
@@ -48,6 +49,23 @@ public class ArmedTradeEntity extends AuditableEntity
     @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "planned_exit_at")
     private Instant plannedExitAt;
+
+    @Convert(converter = InstantEpochMillisConverter.class)
+    @Column(name = "armed_at", nullable = false)
+    private Instant armedAt;
+
+    @Column(name = "event_age_ms_at_arm")
+    private Long eventAgeMsAtArm;
+
+    @Column(name = "entry_lead_ms")
+    private Long entryLeadMs;
+
+    @Column(name = "exit_lead_ms")
+    private Long exitLeadMs;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "arm_source")
+    private TradeArmSource armSource;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false)
@@ -109,6 +127,56 @@ public class ArmedTradeEntity extends AuditableEntity
     public void setPlannedExitAt( Instant plannedExitAt )
     {
         this.plannedExitAt = plannedExitAt;
+    }
+
+    public Instant getArmedAt()
+    {
+        return armedAt;
+    }
+
+    public void setArmedAt( Instant armedAt )
+    {
+        this.armedAt = armedAt;
+    }
+
+    public Long getEventAgeMsAtArm()
+    {
+        return eventAgeMsAtArm;
+    }
+
+    public void setEventAgeMsAtArm( Long eventAgeMsAtArm )
+    {
+        this.eventAgeMsAtArm = eventAgeMsAtArm;
+    }
+
+    public Long getEntryLeadMs()
+    {
+        return entryLeadMs;
+    }
+
+    public void setEntryLeadMs( Long entryLeadMs )
+    {
+        this.entryLeadMs = entryLeadMs;
+    }
+
+    public Long getExitLeadMs()
+    {
+        return exitLeadMs;
+    }
+
+    public void setExitLeadMs( Long exitLeadMs )
+    {
+        this.exitLeadMs = exitLeadMs;
+    }
+
+    public TradeArmSource getArmSource()
+    {
+        return armSource;
+    }
+
+    public void setArmSource( TradeArmSource armSource )
+    {
+        this.armSource = armSource;
     }
 
     public ArmedTradeState getState()

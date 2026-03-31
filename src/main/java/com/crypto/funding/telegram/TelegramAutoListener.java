@@ -1,5 +1,7 @@
 package com.crypto.funding.telegram;
 
+import com.crypto.funding.application.candidate.IngestSignalCandidateCommand;
+import com.crypto.funding.application.candidate.SignalCandidateIngestService;
 import com.crypto.funding.telegram.parser.ArbitrageSignalParser;
 import com.crypto.funding.telegram.parser.FundingSignalParser;
 import com.crypto.funding.watchlist.ArbitrageWatchlistService;
@@ -20,19 +22,25 @@ public class TelegramAutoListener
     private final TelegramReaderService reader;
     private final ArbitrageWatchlistService arbitrageWatchlist;
     private final FundingWatchlistService fundingWatchlist;
+    private final SignalCandidateIngestService signalCandidateIngestService;
     private final ArbitrageSignalParser arbitrageSignalParser;
     private final FundingSignalParser fundingSignalParser;
     private final String channel;
     private final int defaultTtlMinutes;
 
     public TelegramAutoListener( TelegramReaderService reader,
-        ArbitrageWatchlistService watchlist, FundingWatchlistService fundingWatchlist, ArbitrageSignalParser arbitrageSignalParser, FundingSignalParser fundingSignalParser,
+        ArbitrageWatchlistService watchlist,
+        FundingWatchlistService fundingWatchlist,
+        SignalCandidateIngestService signalCandidateIngestService,
+        ArbitrageSignalParser arbitrageSignalParser,
+        FundingSignalParser fundingSignalParser,
         @Value( "${arb.telegram.channel:@funding_watchdog}" ) String channel,
         @Value( "${arb.watchlist.defaultTtlMinutes:45}" ) int defaultTtlMinutes )
     {
         this.reader = reader;
         this.arbitrageWatchlist = watchlist;
         this.fundingWatchlist = fundingWatchlist;
+        this.signalCandidateIngestService = signalCandidateIngestService;
         this.arbitrageSignalParser = arbitrageSignalParser;
         this.fundingSignalParser = fundingSignalParser;
         this.channel = channel;
@@ -52,7 +60,8 @@ public class TelegramAutoListener
 
         System.out.println( "[TG] Listening channel " + channel + " (chatId=" + chatId + ")" );
 
-        reader.onNewMessages( chatId, text -> {
+        reader.onNewMessages( chatId, message -> {
+            String text = message.text();
 
             List<String> arbSymbols = arbitrageSignalParser.extractSymbols(text);
             for (String sym : arbSymbols) {
@@ -63,6 +72,14 @@ public class TelegramAutoListener
             List<String> fundSymbols = fundingSignalParser.extractSymbols( text );
             for (String sym : fundSymbols) {
                 fundingWatchlist.addSymbol(sym);
+                signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
+                    "TELEGRAM",
+                    message.chatId(),
+                    message.messageId(),
+                    text,
+                    sym,
+                    message.receivedAt()
+                ) );
             }
 
         } );

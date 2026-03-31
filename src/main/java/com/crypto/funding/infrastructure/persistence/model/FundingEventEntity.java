@@ -54,6 +54,9 @@ public class FundingEventEntity extends AuditableEntity
     @Column(name = "source_ref")
     private String sourceRef;
 
+    @Column(name = "signal_candidate_id")
+    private Long signalCandidateId;
+
     @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "discovered_at", nullable = false)
     private Instant discoveredAt;
@@ -140,6 +143,16 @@ public class FundingEventEntity extends AuditableEntity
     public void setSourceRef( String sourceRef )
     {
         this.sourceRef = sourceRef;
+    }
+
+    public Long getSignalCandidateId()
+    {
+        return signalCandidateId;
+    }
+
+    public void setSignalCandidateId( Long signalCandidateId )
+    {
+        this.signalCandidateId = signalCandidateId;
     }
 
     public Instant getDiscoveredAt()

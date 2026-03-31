@@ -2,10 +2,14 @@ package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.ArmedTradeResponse;
 import com.crypto.funding.api.dto.CreateArmedTradeRequest;
+import com.crypto.funding.api.dto.TradeJournalEntryResponse;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
+import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.domain.trade.ArmedTrade;
+import com.crypto.funding.domain.trade.TradeJournalEntry;
+import com.crypto.funding.domain.trade.TradeJournalEntityType;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,14 +28,17 @@ public class ArmedTradeController
 {
     private final ArmedTradeCommandService armedTradeCommandService;
     private final TradeQueryService tradeQueryService;
+    private final TradeJournalService tradeJournalService;
 
     public ArmedTradeController(
         ArmedTradeCommandService armedTradeCommandService,
-        TradeQueryService tradeQueryService
+        TradeQueryService tradeQueryService,
+        TradeJournalService tradeJournalService
     )
     {
         this.armedTradeCommandService = armedTradeCommandService;
         this.tradeQueryService = tradeQueryService;
+        this.tradeJournalService = tradeJournalService;
     }
 
     @PostMapping
@@ -63,6 +70,12 @@ public class ArmedTradeController
         return toResponse( tradeQueryService.getArmedTrade( id ) );
     }
 
+    @GetMapping("/{id}/journal")
+    public List<TradeJournalEntryResponse> journal( @PathVariable Long id )
+    {
+        return tradeJournalService.list( TradeJournalEntityType.ARMED_TRADE, id ).stream().map( this::toJournalResponse ).toList();
+    }
+
     private ArmedTradeResponse toResponse( ArmedTrade trade )
     {
         return new ArmedTradeResponse(
@@ -72,10 +85,31 @@ public class ArmedTradeController
             trade.intendedSide(),
             trade.plannedEntryAt(),
             trade.plannedExitAt(),
+            trade.armedAt(),
+            trade.eventAgeMsAtArm(),
+            trade.entryLeadMs(),
+            trade.exitLeadMs(),
+            trade.armSource(),
             trade.state(),
             trade.notes(),
             trade.createdAt(),
             trade.updatedAt()
+        );
+    }
+
+    private TradeJournalEntryResponse toJournalResponse( TradeJournalEntry entry )
+    {
+        return new TradeJournalEntryResponse(
+            entry.id(),
+            entry.entityType(),
+            entry.entityId(),
+            entry.eventCode(),
+            entry.oldState(),
+            entry.newState(),
+            entry.actorType(),
+            entry.actorRef(),
+            entry.note(),
+            entry.createdAt()
         );
     }
 }

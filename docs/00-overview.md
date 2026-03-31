@@ -8,7 +8,10 @@
 - Telegram/TDLib ingest продолжает работать;
 - legacy funding approve/scheduler/execution flow сохранён только как transitional code;
 - новый домен funding-event trading уже введён параллельно legacy-коду;
-- новый control plane начинается с internal REST API, а не с Telegram bot UI.
+- новый control plane начинается с internal REST API, а не с Telegram bot UI;
+- поверх ingest добавлен review-driven candidate flow `SignalCandidate -> FundingEvent`.
+- поверх `FundingEvent` добавлен operator arm flow `FundingEvent -> ArmedTrade`.
+- появился multi-venue metadata registry и diagnostics layer для venue sync/request timing.
 
 ## Legacy vs New
 ### Legacy
@@ -33,6 +36,7 @@ Legacy-контур больше не является целевой архит
 - TDLib ingestion остаётся активным источником кандидатов и наблюдаемого состояния.
 - Telegram signal трактуется как `candidate observation`, а не как команда на создание сделки.
 - Telegram bot в этой фазе — ingest/diagnostic слой, а не торговый control plane.
+- На Phase 2 ingest также создаёт persisted `SignalCandidate`, а на Phase 3 operator arm workflow остаётся только в REST.
 
 ## Safety model
 - Default runtime: `DISABLED`
@@ -46,3 +50,8 @@ Legacy-контур больше не является целевой архит
   - `signal-ingest`
   - `control-api`
   - `execution-engine`
+- Control plane уже состоит из:
+  - candidate review
+  - funding event management
+  - armed trade preparation
+  - venue diagnostics

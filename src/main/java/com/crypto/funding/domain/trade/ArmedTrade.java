@@ -10,6 +10,11 @@ public record ArmedTrade(
     TradeSide intendedSide,
     Instant plannedEntryAt,
     Instant plannedExitAt,
+    Instant armedAt,
+    Long eventAgeMsAtArm,
+    Long entryLeadMs,
+    Long exitLeadMs,
+    TradeArmSource armSource,
     ArmedTradeState state,
     String notes,
     Instant createdAt,
@@ -29,6 +34,10 @@ public record ArmedTrade(
         if( state == null )
         {
             throw new IllegalArgumentException( "state must not be null" );
+        }
+        if( armedAt == null )
+        {
+            throw new IllegalArgumentException( "armedAt must not be null" );
         }
         if( plannedEntryAt != null && plannedExitAt != null && plannedExitAt.isBefore( plannedEntryAt ) )
         {

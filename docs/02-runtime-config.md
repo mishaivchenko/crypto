@@ -11,6 +11,29 @@ TG_SESSION_DIR=/data/tdlib
 ## Modes
 - `BINANCE_MODE`/`BYBIT_MODE`/`GATE_MODE`: `testnet` (default) или `production`.
 
+## Metadata / Venue Registry
+TRADING_METADATA_ENABLED_VENUES=binance,bybit,gate  
+TRADING_METADATA_SYNC_ON_STARTUP=true  
+TRADING_METADATA_SCHEDULE_ENABLED=false  
+TRADING_METADATA_SYNC_INTERVAL_MINUTES=240  
+TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=true  
+TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED=false  
+
+Правила:
+- registry sync-ится по enabled venues;
+- при `REQUIRE_CREDENTIALS_ON_STARTUP=true` приложение падает, если для активного mode у биржи нет ключей/секретов;
+- это сделано специально, чтобы multi-venue конфигурация была честной уже на старте.
+
+## HTTP / Request Timing
+TRADING_HTTP_CONNECT_TIMEOUT_MS=1000  
+TRADING_HTTP_REQUEST_TIMEOUT_MS=5000  
+TRADING_HTTP_PREFER_HTTP2=true  
+
+Практика:
+- для Singapore deployment request timeouts лучше держать низкими и измеримыми;
+- metadata и в будущем execution path должны использовать заранее прогретые HTTP clients;
+- request timing можно смотреть через `/api/v1/venues/timings`.
+
 ## Execution Safety
 TRADING_EXECUTION_MODE=DISABLED  
 TRADING_LEGACY_EXECUTION_ENABLED=false  
@@ -63,3 +86,7 @@ SCHED_MIN_RECHECK_MS=1000
 - Логи не должны содержать токены/ключи.
 - Timezone: next_funding_at хранить в UTC, UI — Europe/Kyiv.
 - Если нужен реальный запуск legacy execution для controlled testing, это должно быть отдельным осознанным включением, а не “случайным наличием ключей”.
+- Для проверки venue metadata и сетевого пути используйте:
+  - `POST /api/v1/venues/{venue}/sync`
+  - `GET /api/v1/venues`
+  - `GET /api/v1/venues/timings`

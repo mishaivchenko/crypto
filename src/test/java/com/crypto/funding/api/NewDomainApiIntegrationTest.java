@@ -1,7 +1,10 @@
 package com.crypto.funding.api;
 
+import com.crypto.funding.application.candidate.IngestSignalCandidateCommand;
+import com.crypto.funding.application.candidate.SignalCandidateIngestService;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,11 +39,18 @@ class NewDomainApiIntegrationTest
     @Autowired
     private ArmedTradeJpaRepository armedTradeRepository;
 
+    @Autowired
+    private SignalCandidateJpaRepository signalCandidateRepository;
+
+    @Autowired
+    private SignalCandidateIngestService signalCandidateIngestService;
+
     @BeforeEach
     void clean()
     {
         armedTradeRepository.deleteAll();
         fundingEventRepository.deleteAll();
+        signalCandidateRepository.deleteAll();
     }
 
     @Test
@@ -69,27 +79,42 @@ class NewDomainApiIntegrationTest
         Long fundingEventId = fundingEventRepository.findAll().getFirst().getId();
         assertThat( response ).contains( "\"id\":" + fundingEventId );
 
-        String armedTradeBody = """
+        mockMvc.perform( get( "/api/v1/funding-events" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.content[0].id" ).value( fundingEventId ) )
+            .andExpect( jsonPath( "$.content[0].status" ).value( "DISCOVERED" ) );
+
+        String armFundingEventBody = """
             {
-              "fundingEventId": %d,
               "notionalUsd": 25,
               "intendedSide": "LONG",
               "plannedEntryAt": "2030-01-01T00:00:10Z",
               "plannedExitAt": "2030-01-01T00:01:00Z",
               "notes": "manual arm"
             }
-            """.formatted( fundingEventId );
+            """;
 
-        mockMvc.perform( post( "/api/v1/armed-trades" )
+        mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
                 .contentType( MediaType.APPLICATION_JSON )
-                .content( armedTradeBody ) )
+                .content( armFundingEventBody ) )
             .andExpect( status().isCreated() )
             .andExpect( jsonPath( "$.state" ).value( "ARMED" ) )
-            .andExpect( jsonPath( "$.fundingEventId" ).value( fundingEventId ) );
+            .andExpect( jsonPath( "$.fundingEventId" ).value( fundingEventId ) )
+            .andExpect( jsonPath( "$.armSource" ).value( "EVENT_API" ) );
 
         mockMvc.perform( get( "/api/v1/armed-trades" ) )
             .andExpect( status().isOk() )
             .andExpect( jsonPath( "$[0].fundingEventId" ).value( fundingEventId ) );
+
+        Long armedTradeId = armedTradeRepository.findAll().getFirst().getId();
+        mockMvc.perform( get( "/api/v1/funding-events/{id}/journal", fundingEventId ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$[0].eventCode" ).value( "FUNDING_EVENT_CREATED" ) )
+            .andExpect( jsonPath( "$[1].eventCode" ).value( "FUNDING_EVENT_ARMED" ) );
+
+        mockMvc.perform( get( "/api/v1/armed-trades/{id}/journal", armedTradeId ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$[0].eventCode" ).value( "ARMED_TRADE_CREATED" ) );
 
         assertThat( armedTradeRepository.findAll() ).hasSize( 1 );
         assertThat( fundingEventRepository.findById( fundingEventId ) ).get().extracting( "status" ).isEqualTo( com.crypto.funding.domain.event.FundingEventStatus.ARMED );
@@ -126,5 +151,62 @@ class NewDomainApiIntegrationTest
                     """ ) )
             .andExpect( status().isConflict() )
             .andExpect( jsonPath( "$.message" ).value( org.hamcrest.Matchers.containsString( "legacy execution blocked" ) ) );
+    }
+
+    @Test
+    void listsAndReviewsCandidatesViaApi() throws Exception
+    {
+        Long candidateId = signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
+            "TELEGRAM",
+            123L,
+            456L,
+            "coin: KERNEL/USDT:USDT",
+            "KERNEL/USDT",
+            java.time.Instant.parse( "2030-01-01T00:00:00Z" )
+        ) ).id();
+
+        mockMvc.perform( get( "/api/v1/candidates" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.content[0].id" ).value( candidateId ) )
+            .andExpect( jsonPath( "$.content[0].status" ).value( "NORMALIZED" ) );
+
+        mockMvc.perform( post( "/api/v1/candidates/{id}/approve", candidateId )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "venue":"gate",
+                      "fundingTime":"2030-01-01T08:00:00Z",
+                      "fundingRatePct":0.0125,
+                      "reviewNotes":"looks valid"
+                    }
+                    """ ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.status" ).value( "EVENT_CREATED" ) )
+            .andExpect( jsonPath( "$.fundingEventId" ).isNumber() );
+
+        mockMvc.perform( get( "/api/v1/funding-events" ).param( "candidateId", candidateId.toString() ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.content[0].signalCandidateId" ).value( candidateId ) )
+            .andExpect( jsonPath( "$.content[0].venue" ).value( "gate" ) );
+
+        Long rejectedCandidateId = signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
+            "TELEGRAM",
+            123L,
+            789L,
+            "coin: ME/USDT:USDT",
+            "ME/USDT",
+            java.time.Instant.parse( "2030-01-01T00:01:00Z" )
+        ) ).id();
+
+        mockMvc.perform( post( "/api/v1/candidates/{id}/reject", rejectedCandidateId )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "reviewNotes":"low confidence"
+                    }
+                    """ ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.status" ).value( "REJECTED" ) )
+            .andExpect( jsonPath( "$.reviewDecision" ).value( "REJECT" ) );
     }
 }

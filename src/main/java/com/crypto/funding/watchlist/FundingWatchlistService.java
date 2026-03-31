@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -157,6 +158,22 @@ public class FundingWatchlistService
     public Set<String> symbols()
     {
         return items.keySet();
+    }
+
+    public Optional<WatchFunding> findFunding( String rawSymbol, String rawExchange )
+    {
+        if( rawSymbol == null || rawExchange == null )
+        {
+            return Optional.empty();
+        }
+        String symbol = SymbolMapper.toUnified( rawSymbol );
+        String exchange = rawExchange.trim().toLowerCase();
+        Item item = items.get( symbol );
+        if( item == null )
+        {
+            return Optional.empty();
+        }
+        return Optional.ofNullable( item.funding().get( exchange ) );
     }
 
     @Scheduled( fixedDelay = 60_000 )

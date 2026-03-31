@@ -9,7 +9,8 @@ public record CreateFundingEventCommand(
     Instant fundingTime,
     BigDecimal fundingRatePct,
     String sourceType,
-    String sourceRef
+    String sourceRef,
+    Long signalCandidateId
 )
 {
 }

@@ -1,21 +1,32 @@
 package com.crypto.funding.persistence;
 
 import com.crypto.funding.domain.event.FundingEventStatus;
+import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.domain.execution.ExecutionType;
 import com.crypto.funding.domain.execution.OrderAttemptStatus;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.PositionState;
+import com.crypto.funding.domain.trade.TradeArmSource;
+import com.crypto.funding.domain.trade.TradeJournalActorType;
+import com.crypto.funding.domain.trade.TradeJournalEntityType;
+import com.crypto.funding.domain.trade.TradeJournalEventCode;
 import com.crypto.funding.domain.trade.TradeSide;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
+import com.crypto.funding.infrastructure.persistence.model.InstrumentMetadataEntity;
 import com.crypto.funding.infrastructure.persistence.model.OrderAttemptEntity;
 import com.crypto.funding.infrastructure.persistence.model.PositionEntity;
+import com.crypto.funding.infrastructure.persistence.model.SignalCandidateEntity;
+import com.crypto.funding.infrastructure.persistence.model.TradeJournalEntryEntity;
 import com.crypto.funding.infrastructure.persistence.model.TradeOutcomeEntity;
 import com.crypto.funding.infrastructure.persistence.model.VenueTimingProfileEntity;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.OrderAttemptJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.PositionJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.TradeJournalEntryJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.TradeOutcomeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
 import org.junit.jupiter.api.Test;
@@ -58,9 +69,30 @@ class NewDomainPersistenceTest
     @Autowired
     private VenueTimingProfileJpaRepository venueTimingProfileRepository;
 
+    @Autowired
+    private SignalCandidateJpaRepository signalCandidateRepository;
+
+    @Autowired
+    private TradeJournalEntryJpaRepository tradeJournalEntryRepository;
+
+    @Autowired
+    private InstrumentMetadataJpaRepository instrumentMetadataRepository;
+
     @Test
     void storesNewDomainEntities()
     {
+        SignalCandidateEntity candidate = new SignalCandidateEntity();
+        candidate.setSourceType( "TELEGRAM" );
+        candidate.setSourceChatId( 1L );
+        candidate.setSourceMessageId( 2L );
+        candidate.setRawPayload( "coin: BTC/USDT:USDT" );
+        candidate.setRawSymbol( "BTC/USDT" );
+        candidate.setNormalizedSymbol( "BTC/USDT" );
+        candidate.setVenueHints( java.util.List.of( "gate", "bybit" ) );
+        candidate.setDetectedAt( Instant.now() );
+        candidate.setStatus( SignalCandidateStatus.NORMALIZED );
+        SignalCandidateEntity savedCandidate = signalCandidateRepository.save( candidate );
+
         FundingEventEntity fundingEvent = new FundingEventEntity();
         fundingEvent.setVenue( "gate" );
         fundingEvent.setSymbol( "BTC/USDT" );
@@ -69,6 +101,7 @@ class NewDomainPersistenceTest
         fundingEvent.setStatus( FundingEventStatus.DISCOVERED );
         fundingEvent.setSourceType( "telegram" );
         fundingEvent.setSourceRef( "@funding_watchdog" );
+        fundingEvent.setSignalCandidateId( savedCandidate.getId() );
         fundingEvent.setDiscoveredAt( Instant.now() );
         FundingEventEntity savedEvent = fundingEventRepository.save( fundingEvent );
 
@@ -78,6 +111,8 @@ class NewDomainPersistenceTest
         armedTrade.setIntendedSide( TradeSide.LONG );
         armedTrade.setPlannedEntryAt( Instant.now().plusSeconds( 300 ) );
         armedTrade.setPlannedExitAt( Instant.now().plusSeconds( 900 ) );
+        armedTrade.setArmedAt( Instant.now() );
+        armedTrade.setArmSource( TradeArmSource.EVENT_API );
         armedTrade.setState( ArmedTradeState.ARMED );
         ArmedTradeEntity savedTrade = armedTradeRepository.save( armedTrade );
 
@@ -109,16 +144,38 @@ class NewDomainPersistenceTest
         profile.setObservedLagMs( 120L );
         profile.setSampledAt( Instant.now() );
 
+        TradeJournalEntryEntity journalEntry = new TradeJournalEntryEntity();
+        journalEntry.setEntityType( TradeJournalEntityType.ARMED_TRADE );
+        journalEntry.setEntityId( savedTrade.getId() );
+        journalEntry.setEventCode( TradeJournalEventCode.ARMED_TRADE_CREATED );
+        journalEntry.setActorType( TradeJournalActorType.OPERATOR );
+        journalEntry.setActorRef( "api" );
+        journalEntry.setNewState( ArmedTradeState.ARMED.name() );
+
+        InstrumentMetadataEntity instrument = new InstrumentMetadataEntity();
+        instrument.setVenue( "gate" );
+        instrument.setCanonicalSymbol( "BTC/USDT" );
+        instrument.setVenueSymbol( "BTC_USDT" );
+        instrument.setBaseAsset( "BTC" );
+        instrument.setQuoteAsset( "USDT" );
+        instrument.setInstrumentType( "PERPETUAL" );
+        instrument.setLastSyncedAt( Instant.now() );
+
         assertThat( orderAttemptRepository.save( orderAttempt ).getId() ).isNotNull();
         assertThat( positionRepository.save( position ).getId() ).isNotNull();
         assertThat( tradeOutcomeRepository.save( outcome ).getId() ).isNotNull();
         assertThat( venueTimingProfileRepository.save( profile ).getId() ).isNotNull();
+        assertThat( tradeJournalEntryRepository.save( journalEntry ).getId() ).isNotNull();
+        assertThat( instrumentMetadataRepository.save( instrument ).getId() ).isNotNull();
 
+        assertThat( signalCandidateRepository.findAll() ).hasSize( 1 );
         assertThat( fundingEventRepository.findAll() ).hasSize( 1 );
         assertThat( armedTradeRepository.findAll() ).hasSize( 1 );
         assertThat( orderAttemptRepository.findAll() ).hasSize( 1 );
         assertThat( positionRepository.findAll() ).hasSize( 1 );
         assertThat( tradeOutcomeRepository.findAll() ).hasSize( 1 );
         assertThat( venueTimingProfileRepository.findAll() ).hasSize( 1 );
+        assertThat( tradeJournalEntryRepository.findAll() ).hasSize( 1 );
+        assertThat( instrumentMetadataRepository.findAll() ).hasSize( 1 );
     }
 }

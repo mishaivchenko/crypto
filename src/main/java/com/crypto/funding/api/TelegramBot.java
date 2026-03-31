@@ -852,8 +852,8 @@ public class TelegramBot extends TelegramLongPollingBot
     private String legacyBotControlsDisabledText()
     {
         return "Legacy trading controls in Telegram disabled.\n" +
-               "Telegram remains ingest/diagnostic only in Phase 0-1.\n" +
-               "Use internal REST API for the new domain flow.";
+               "Telegram remains ingest/diagnostic only in Phase 2.\n" +
+               "Review candidates and create funding events via /api/v1/candidates and /api/v1/funding-events.";
     }
 
     private String formatFunding( Map<String, WatchFunding> map )

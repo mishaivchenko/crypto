@@ -4,6 +4,7 @@ import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.trade.TradeArmSource;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -25,6 +26,7 @@ class DomainModelInvariantTest
             FundingEventStatus.DISCOVERED,
             null,
             null,
+            null,
             Instant.now(),
             null,
             null
@@ -44,6 +46,11 @@ class DomainModelInvariantTest
             null,
             entry,
             exit,
+            Instant.now(),
+            1L,
+            2L,
+            3L,
+            TradeArmSource.EVENT_API,
             ArmedTradeState.ARMED,
             null,
             null,

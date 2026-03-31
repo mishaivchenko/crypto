@@ -12,6 +12,7 @@ public record FundingEvent(
     FundingEventStatus status,
     String sourceType,
     String sourceRef,
+    Long signalCandidateId,
     Instant discoveredAt,
     Instant createdAt,
     Instant updatedAt

@@ -5,6 +5,7 @@ import it.tdlight.jni.TdApi;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -15,7 +16,7 @@ import java.util.regex.Pattern;
 public class TelegramReaderService
 {
     private final SimpleTelegramClient client;
-    private final ConcurrentHashMap<Long, Consumer<String>> listeners = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Consumer<TelegramIncomingMessage>> listeners = new ConcurrentHashMap<>();
 
     private static final Pattern P_TICKERS = Pattern.compile(
         "(?i)\\b([A-Z0-9]{2,15})\\s*[/\\-_]?\\s*(USDT|USDC|BTC|ETH)(?::\\2)?\\b"
@@ -27,12 +28,26 @@ public class TelegramReaderService
 
         client.addUpdateHandler( TdApi.UpdateNewMessage.class, upd -> {
             String text = normalize( extractText( upd.message ) );
-            Consumer<String> cb = listeners.get( upd.message.chatId );
+            Consumer<TelegramIncomingMessage> cb = listeners.get( upd.message.chatId );
             if( cb != null && text != null && !text.isBlank() )
             {
-                cb.accept( text );
+                cb.accept( new TelegramIncomingMessage(
+                    upd.message.chatId,
+                    upd.message.id,
+                    text,
+                    Instant.ofEpochSecond( upd.message.date )
+                ) );
             }
         } );
+    }
+
+    public record TelegramIncomingMessage(
+        long chatId,
+        long messageId,
+        String text,
+        Instant receivedAt
+    )
+    {
     }
 
     /** Разрешить @username/ссылку → chatId и гарантировать, что мы участники. */
@@ -61,8 +76,14 @@ public class TelegramReaderService
     }
 
     /** Подписать callback на новые сообщения конкретного чата. */
-    public void onNewMessages(long chatId, Consumer<String> handler) {
-        listeners.put(chatId, handler);
+    public void onNewMessages( long chatId, Consumer<TelegramIncomingMessage> handler )
+    {
+        listeners.put( chatId, handler );
+    }
+
+    public void onNewTexts( long chatId, Consumer<String> handler )
+    {
+        listeners.put( chatId, message -> handler.accept( message.text() ) );
     }
 //
 //    /** Вытащить тикеры из произвольного текста/капшена. Нормализация к BASE/QUOTE. */

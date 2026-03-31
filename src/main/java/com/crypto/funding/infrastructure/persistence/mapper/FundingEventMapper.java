@@ -20,6 +20,7 @@ public final class FundingEventMapper
             entity.getStatus(),
             entity.getSourceType(),
             entity.getSourceRef(),
+            entity.getSignalCandidateId(),
             entity.getDiscoveredAt(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
