@@ -10,6 +10,7 @@ management:
 
 
 telegram:
+    enabled: ${TELEGRAM_ENABLED:true}
     apiId: ${TG_API_ID}
     apiHash: ${TG_API_HASH}
     phoneNumber: ${TG_PHONE}
@@ -20,6 +21,7 @@ telegram:
     appVersion: "0.1.0"
 
     bot:
+        enabled: ${TELEGRAM_BOT_ENABLED:false}
         username: ${TG_BOT_USERNAME}
         token: ${TG_BOT_TOKEN}
 

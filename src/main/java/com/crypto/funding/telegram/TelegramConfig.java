@@ -40,6 +40,7 @@ public class TelegramConfig
     }
 
     @Bean
+    @ConditionalOnProperty(prefix = "telegram.bot", name = "enabled", havingValue = "true")
     public TelegramBotsApi telegramBotsApi( TelegramBot telegramBot )
     {
         TelegramBotsApi telegramBotsApi;

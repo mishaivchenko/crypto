@@ -11,6 +11,7 @@ import com.crypto.funding.watchlist.FundingWatchlistService.Item;
 import com.crypto.funding.watchlist.FundingWatchlistService.WatchFunding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnProperty(prefix = "telegram.bot", name = "enabled", havingValue = "true")
 public class TelegramBot extends TelegramLongPollingBot
 {
 
