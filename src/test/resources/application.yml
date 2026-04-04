@@ -13,15 +13,16 @@ spring:
       enabled: false
 
 telegram:
-  enabled: false
-  sessionDir: ./build/tdlib
   bot:
+    enabled: false
     username: dummy
     token: dummy
 
 trading:
   candidates:
     dedupe-window-minutes: 15
+  candidate-source:
+    enabled: false
   metadata:
     enabled-venues:
       - binance

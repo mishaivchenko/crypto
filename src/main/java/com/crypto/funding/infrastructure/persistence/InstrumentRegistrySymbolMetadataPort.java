@@ -42,4 +42,42 @@ public class InstrumentRegistrySymbolMetadataPort implements SymbolMetadataPort
                              entity.getMinNotionalValue()
                          ) );
     }
+
+    @Override
+    public Optional<SymbolMetadata> findByVenueSymbol( String venue, String venueSymbol )
+    {
+        if( venue == null || venueSymbol == null )
+        {
+            return Optional.empty();
+        }
+
+        String normalizedVenue = venue.trim().toLowerCase( Locale.ROOT );
+        String normalizedVenueSymbol = normalizeVenueSymbol( venueSymbol );
+
+        return repository.findAllByVenueOrderByCanonicalSymbolAsc( normalizedVenue )
+                         .stream()
+                         .filter( entity -> entity.getStatus() == InstrumentStatus.ACTIVE )
+                         .filter( entity -> normalizeVenueSymbol( entity.getVenueSymbol() ).equals( normalizedVenueSymbol ) )
+                         .findFirst()
+                         .map( entity -> new SymbolMetadata(
+                             entity.getVenue(),
+                             entity.getCanonicalSymbol(),
+                             entity.getMinOrderQty(),
+                             entity.getQtyStep(),
+                             entity.getMinNotionalValue()
+                         ) );
+    }
+
+    private static String normalizeVenueSymbol( String value )
+    {
+        if( value == null )
+        {
+            return "";
+        }
+        return value.replace( "-", "" )
+                    .replace( "_", "" )
+                    .replace( "/", "" )
+                    .trim()
+                    .toUpperCase( Locale.ROOT );
+    }
 }

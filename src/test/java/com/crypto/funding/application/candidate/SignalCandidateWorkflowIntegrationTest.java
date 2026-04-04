@@ -17,7 +17,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
-    "telegram.enabled=false",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.datasource.url=jdbc:sqlite:./build/test-signal-candidate-workflow.sqlite",
     "spring.datasource.driver-class-name=org.sqlite.JDBC",

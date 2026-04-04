@@ -20,7 +20,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-    "telegram.enabled=false",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.datasource.url=jdbc:sqlite:./build/test-new-domain-api.sqlite",
     "spring.datasource.driver-class-name=org.sqlite.JDBC",

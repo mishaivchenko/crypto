@@ -10,20 +10,10 @@ management:
 
 
 telegram:
-    enabled: ${TELEGRAM_ENABLED:true}
-    apiId: ${TG_API_ID}
-    apiHash: ${TG_API_HASH}
-    phoneNumber: ${TG_PHONE}
-    #password: ${TG_2FA_PASSWORD:}
-    sessionDir: ${TG_SESSION_DIR:./data/tdlib}
-    systemLanguageCode: uk
-    deviceModel: "Java21-Arb"
-    appVersion: "0.1.0"
-
     bot:
         enabled: ${TELEGRAM_BOT_ENABLED:false}
-        username: ${TG_BOT_USERNAME}
-        token: ${TG_BOT_TOKEN}
+        username: ${TG_BOT_USERNAME:}
+        token: ${TG_BOT_TOKEN:}
 
 arb:
     watchlist:
@@ -76,6 +66,11 @@ spring:
 trading:
     candidates:
         dedupe-window-minutes: ${TRADING_CANDIDATES_DEDUPE_WINDOW_MINUTES:15}
+    candidate-source:
+        enabled: ${TRADING_CANDIDATE_SOURCE_ENABLED:true}
+        url: ${TRADING_CANDIDATE_SOURCE_URL:https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30}
+        refresh-interval-seconds: ${TRADING_CANDIDATE_SOURCE_REFRESH_INTERVAL_SECONDS:60}
+        source-type: ${TRADING_CANDIDATE_SOURCE_TYPE:FUNDING_API}
     metadata:
         enabled-venues: ${TRADING_METADATA_ENABLED_VENUES:binance,bybit,gate}
         sync-on-startup: ${TRADING_METADATA_SYNC_ON_STARTUP:true}

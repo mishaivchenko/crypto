@@ -1,11 +1,8 @@
 import com.github.gradle.node.npm.task.NpmTask
-import org.gradle.api.tasks.Exec
-
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.7'
     id 'io.spring.dependency-management' version '1.1.7'
-    id("com.google.osdetector") version "1.7.3"
 
     // эти два — важно!
     id 'org.owasp.dependencycheck' version '12.1.8'
@@ -38,24 +35,6 @@ java {
 
 repositories {
     mavenCentral()
-    maven { url "https://mvn.mchv.eu/repository/mchv/" }
-}
-
-def tdNativesClassifierValue = (project.findProperty("tdNativesClassifier") ?: System.getenv("TD_NATIVES"))?.toString()
-
-def resolveTdClassifier = {
-    if (tdNativesClassifierValue != null && !tdNativesClassifierValue.isBlank()) return tdNativesClassifierValue
-
-    def os = osdetector.os
-    def arch = osdetector.arch
-
-    if (os == "osx" && arch == "aarch_64") return "macos_arm64"
-    if (os == "osx" && arch == "x86_64")   return "macos_amd64"
-    if (os == "linux" && arch == "aarch_64") return "linux_arm64_gnu_ssl3"
-    if (os == "linux" && arch == "x86_64")  return "linux_amd64_gnu_ssl3"
-    if (os == "windows" && arch == "x86_64") return "windows_amd64"
-
-    throw new GradleException("Unsupported TDLight natives for os=${os}, arch=${arch}. Set -PtdNativesClassifier=macos_arm64|linux_amd64|linux_arm64|...")
 }
 
 dependencyManagement {
@@ -81,12 +60,6 @@ dependencies {
     implementation "org.glassfish.tyrus.bundles:tyrus-standalone-client:$tyrusVersion"
 
     implementation "org.telegram:telegrambots-spring-boot-starter:6.9.7.1"
-
-    implementation platform('it.tdlight:tdlight-java-bom:3.3.1+td.1.8.25')
-    implementation 'it.tdlight:tdlight-java'
-    runtimeOnly('it.tdlight:tdlight-natives') {
-        artifact { classifier = resolveTdClassifier() }
-    }
 
     //DB
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"

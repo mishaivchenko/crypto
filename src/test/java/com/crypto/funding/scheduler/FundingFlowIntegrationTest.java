@@ -28,7 +28,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 @SpringBootTest(
     classes = CryptoApplication.class,
     properties = {
-        "telegram.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.datasource.url=jdbc:sqlite:file:./build/funding-e2e.db?busy_timeout=5000&journal_mode=WAL",
         "spring.datasource.driver-class-name=org.sqlite.JDBC",

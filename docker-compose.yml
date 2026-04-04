@@ -3,8 +3,6 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-            args:
-                TD_NATIVES: ${TD_NATIVES:-linux_arm64}
         container_name: funding-app
         env_file:
             - .env
@@ -13,5 +11,3 @@ services:
         volumes:
             - ./data-container:/data
         restart: unless-stopped
-        environment:
-            TG_SESSION_DIR: /data/tdlib
