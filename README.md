@@ -3,7 +3,10 @@
 Java 21 / Spring Boot монолит, который проходит контролируемый takeover и разворот домена от legacy funding-bot логики к funding-event trading системе.
 
 ## Что это сегодня
-- Telegram/TDLib ingest остаётся рабочим: сигналы из канала продолжают читаться и обновлять наблюдаемые watchlists.
+- Основной источник кандидатов — внешний funding API:
+  - `https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30`
+- Сервис poll-ит funding API, обновляет наблюдаемые watchlists и формирует `SignalCandidate` без TDLib.
+- Telegram bot, если включён, остаётся только operator/diagnostic интерфейсом и больше не участвует в candidate ingestion.
 - Legacy funding flow всё ещё присутствует в коде для совместимости и диагностики.
 - Новый домен уже введён параллельно legacy-коду:
   - `FundingEvent`
@@ -49,7 +52,8 @@ Java 21 / Spring Boot монолит, который проходит контр
 Если в системе несколько JDK, запускай Gradle с Java 21.
 
 ## Основные контуры
-- `telegram` / `watchlist`: ingest и наблюдаемое состояние
+- `candidate-source` / `watchlist`: внешний funding ingest и наблюдаемое состояние
+- `telegram.bot`: необязательный operator/diagnostic интерфейс
 - legacy scheduler/execution: transitional code path, жёстко guard'ится
 - `domain.*`: новый funding-event / trade / execution / profile домен
 - `application.*`: command/query services и порты
@@ -77,6 +81,7 @@ Java 21 / Spring Boot монолит, который проходит контр
 ## Документация
 - [Overview](docs/00-overview.md)
 - [Runtime config](docs/02-runtime-config.md)
+- [Funding candidate source](docs/06-telegram-tdlib.md)
 - [DB schema](docs/03-db-schema.md)
 - [Phase 0-1 foundation](docs/phase0-phase1-foundation.md)
 - [Phase 2 candidate review flow](docs/10-candidate-review-flow.md)

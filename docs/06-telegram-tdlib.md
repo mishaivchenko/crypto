@@ -1,15 +1,22 @@
-# Telegram via TDLib
+# Funding Candidate Source
 
-## Что делает
-- читает сообщения из канала
-- извлекает символы (например BTC/USDT)
-- кладёт в watchlist
+## Что изменилось
+- TDLib полностью убран из runtime candidate ingestion.
+- Новый источник кандидатов:
+  - `https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30`
+- Сервис poll-ит внешний funding API, а не Telegram-канал.
 
-## Ограничения
-- TDLib = нативная библиотека
-- для CI/Docker используем classifier `linux_amd64_gnu_ssl3` (передаётся в build arg `TD_NATIVES`)
-- локально osdetector выберет нативки по платформе (можно override `-PtdNativesClassifier=...`)
+## Что делает источник
+- получает funding entries по нескольким биржам;
+- фильтрует их по enabled venues;
+- нормализует символ через instrument registry;
+- обновляет `FundingWatchlistService`;
+- создаёт `SignalCandidate` через существующий application flow.
 
-## Хранилище сессии
-- /data/tdlib (volume)
-- в контейнере должен сохраняться state (иначе каждую перезагрузку login)
+## Дедупликация
+- один funding window для одного символа дедуплицируется synthetic source id;
+- следующий funding cycle для того же символа создаёт новый candidate.
+
+## Telegram
+- Telegram bot может остаться включённым как operator/diagnostic интерфейс;
+- но кандидатный поток и наблюдаемое состояние больше не зависят от TDLib.

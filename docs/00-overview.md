@@ -5,7 +5,8 @@
 
 Текущий shape:
 - один Spring Boot сервис;
-- Telegram/TDLib ingest продолжает работать;
+- внешний funding API является источником candidate ingestion;
+- Telegram bot остаётся только опциональным operator/diagnostic интерфейсом;
 - legacy funding approve/scheduler/execution flow сохранён только как transitional code;
 - новый домен funding-event trading уже введён параллельно legacy-коду;
 - новый control plane начинается с internal REST API, а не с Telegram bot UI;
@@ -32,11 +33,11 @@ Legacy-контур больше не является целевой архит
 - `application.*`: command/query services и порты
 - `infrastructure.persistence.*`: новая persistence-модель
 
-## Telegram
-- TDLib ingestion остаётся активным источником кандидатов и наблюдаемого состояния.
-- Telegram signal трактуется как `candidate observation`, а не как команда на создание сделки.
-- Telegram bot в этой фазе — ingest/diagnostic слой, а не торговый control plane.
-- На Phase 2 ingest также создаёт persisted `SignalCandidate`, а на Phase 3 operator arm workflow остаётся только в REST.
+## Candidate Source and Telegram
+- Кандидаты теперь формируются из внешнего funding API, а не из TDLib.
+- Funding source обновляет `FundingWatchlistService` и создаёт persisted `SignalCandidate`.
+- Telegram bot в этой фазе не участвует в candidate creation и остаётся только UI-слоем для оператора.
+- Operator arm workflow и review по-прежнему остаются только в REST.
 
 ## Safety model
 - Default runtime: `DISABLED`

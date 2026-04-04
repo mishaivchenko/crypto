@@ -1,12 +1,20 @@
 # Runtime Config (ENV)
 
-## Telegram
-TG_API_ID=...  
-TG_API_HASH=...  
-TG_PHONE=+380...  
+## Candidate Source
+TRADING_CANDIDATE_SOURCE_ENABLED=true  
+TRADING_CANDIDATE_SOURCE_URL=https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30  
+TRADING_CANDIDATE_SOURCE_REFRESH_INTERVAL_SECONDS=60  
+TRADING_CANDIDATE_SOURCE_TYPE=FUNDING_API  
+
+Правила:
+- funding API стал единственным runtime-источником кандидатов;
+- polling source обновляет watchlist и создаёт `SignalCandidate`;
+- если источник нужно временно отключить для отладки или тестов, используйте `TRADING_CANDIDATE_SOURCE_ENABLED=false`.
+
+## Telegram Bot (optional UI)
+TELEGRAM_BOT_ENABLED=false  
 TG_BOT_USERNAME=...  
 TG_BOT_TOKEN=...  
-TG_SESSION_DIR=/data/tdlib  
 
 ## Modes
 - `BINANCE_MODE`/`BYBIT_MODE`/`GATE_MODE`: `testnet` (default) или `production`.
@@ -86,6 +94,7 @@ SCHED_MIN_RECHECK_MS=1000
 - Логи не должны содержать токены/ключи.
 - Timezone: next_funding_at хранить в UTC, UI — Europe/Kyiv.
 - Если нужен реальный запуск legacy execution для controlled testing, это должно быть отдельным осознанным включением, а не “случайным наличием ключей”.
+- Для изолированных тестов и локальных интеграционных прогонов отключайте funding API polling через `TRADING_CANDIDATE_SOURCE_ENABLED=false`.
 - Для проверки venue metadata и сетевого пути используйте:
   - `POST /api/v1/venues/{venue}/sync`
   - `GET /api/v1/venues`
