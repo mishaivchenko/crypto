@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funding Monitor 2.0.0</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="shell">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">Funding Platform 2.0.0</p>
+            <h1>Monitor Console</h1>
+        </div>
+        <div class="topbar-meta">
+            <span class="chip">Candidate Source: Funding API</span>
+            <button id="refresh-all-button" class="button secondary" type="button">Refresh All</button>
+        </div>
+    </header>
+
+    <main class="layout">
+        <aside class="sidebar">
+            <nav class="nav" id="nav">
+                <button class="nav-link is-active" data-screen="dashboard">Dashboard</button>
+                <button class="nav-link" data-screen="candidates">Candidates</button>
+                <button class="nav-link" data-screen="events">Funding Events</button>
+                <button class="nav-link" data-screen="trades">Armed Trades</button>
+                <button class="nav-link" data-screen="venues">Venues</button>
+            </nav>
+            <section class="sidebar-card">
+                <h2>Flow</h2>
+                <p>Funding API → SignalCandidate → FundingEvent → ArmedTrade</p>
+            </section>
+        </aside>
+
+        <section class="content">
+            <section id="global-error" class="banner hidden"></section>
+            <section id="global-success" class="banner success hidden"></section>
+
+            <section class="screen is-visible" id="screen-dashboard">
+                <div class="section-header">
+                    <div>
+                        <p class="eyebrow">Overview</p>
+                        <h2>Operational Snapshot</h2>
+                    </div>
+                </div>
+                <div id="dashboard-summary" class="summary-grid"></div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Venue Activity</h3>
+                    </div>
+                    <div id="dashboard-venues" class="list-stack"></div>
+                </div>
+            </section>
+
+            <section class="screen" id="screen-candidates">
+                <div class="section-header">
+                    <div>
+                        <p class="eyebrow">Signals</p>
+                        <h2>Candidates</h2>
+                    </div>
+                    <form id="candidate-filters" class="filters">
+                        <input name="symbol" type="text" placeholder="Symbol">
+                        <input name="venue" type="text" placeholder="Venue">
+                        <select name="status">
+                            <option value="">All statuses</option>
+                            <option value="NEW">NEW</option>
+                            <option value="NORMALIZED">NORMALIZED</option>
+                            <option value="FAILED">FAILED</option>
+                            <option value="REJECTED">REJECTED</option>
+                            <option value="EVENT_CREATED">EVENT_CREATED</option>
+                        </select>
+                        <button class="button secondary" type="submit">Apply</button>
+                    </form>
+                </div>
+                <div id="candidates-list" class="list-stack"></div>
+            </section>
+
+            <section class="screen" id="screen-events">
+                <div class="section-header">
+                    <div>
+                        <p class="eyebrow">Confirmed</p>
+                        <h2>Funding Events</h2>
+                    </div>
+                    <form id="event-filters" class="filters">
+                        <input name="symbol" type="text" placeholder="Symbol">
+                        <input name="venue" type="text" placeholder="Venue">
+                        <select name="status">
+                            <option value="">All statuses</option>
+                            <option value="DISCOVERED">DISCOVERED</option>
+                            <option value="ARMED">ARMED</option>
+                            <option value="EXPIRED">EXPIRED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                        <button class="button secondary" type="submit">Apply</button>
+                    </form>
+                </div>
+                <div id="events-list" class="list-stack"></div>
+            </section>
+
+            <section class="screen" id="screen-trades">
+                <div class="section-header">
+                    <div>
+                        <p class="eyebrow">Prepared</p>
+                        <h2>Armed Trades</h2>
+                    </div>
+                </div>
+                <div id="trades-list" class="list-stack"></div>
+            </section>
+
+            <section class="screen" id="screen-venues">
+                <div class="section-header">
+                    <div>
+                        <p class="eyebrow">Connectivity</p>
+                        <h2>Venue Diagnostics</h2>
+                    </div>
+                </div>
+                <div id="venues-list" class="list-stack"></div>
+            </section>
+        </section>
+
+        <aside class="drawer" id="detail-drawer">
+            <div class="drawer-header">
+                <div>
+                    <p class="eyebrow" id="drawer-type">Detail</p>
+                    <h2 id="drawer-title">Select an item</h2>
+                </div>
+                <button id="drawer-close" class="icon-button" type="button">×</button>
+            </div>
+            <div id="drawer-content" class="drawer-body">
+                <p class="muted">Pick a candidate, event, trade, or venue to inspect details.</p>
+            </div>
+        </aside>
+    </main>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

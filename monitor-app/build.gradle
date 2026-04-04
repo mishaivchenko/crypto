@@ -1,0 +1,17 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':platform-core')
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+}
+
+springBoot {
+    mainClass = 'com.crypto.funding.monitor.MonitorApplication'
+}
+
+bootJar {
+    archiveClassifier = 'monitor'
+}

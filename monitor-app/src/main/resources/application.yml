@@ -1,0 +1,7 @@
+spring:
+    application:
+        name: funding-monitor
+
+monitor:
+    ui:
+        version: 2.0.0

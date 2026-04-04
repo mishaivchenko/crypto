@@ -1,0 +1,26 @@
+spring:
+    application:
+        name: funding-engine
+    cloud:
+        compatibility-verifier:
+            enabled: false
+
+server:
+    port: ${ENGINE_SERVER_PORT:8091}
+
+telegram:
+    bot:
+        enabled: false
+
+trading:
+    candidate-source:
+        enabled: false
+    metadata:
+        sync-on-startup: false
+        schedule-enabled: false
+        require-credentials-on-startup: false
+
+engine:
+    lookahead-minutes: ${ENGINE_LOOKAHEAD_MINUTES:120}
+    overdue-grace-seconds: ${ENGINE_OVERDUE_GRACE_SECONDS:30}
+    include-closed-trades: ${ENGINE_INCLUDE_CLOSED_TRADES:false}

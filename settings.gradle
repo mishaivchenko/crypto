@@ -1,1 +1,5 @@
-rootProject.name = 'funding'
+rootProject.name = 'funding-platform'
+
+include 'platform-core'
+include 'monitor-app'
+include 'engine-app'

@@ -1,94 +1,127 @@
-# Funding-Event Trading Platform (Phase 3 Venue-Aware Control Plane)
+# Funding Platform 2.0.0
 
-Java 21 / Spring Boot монолит, который проходит контролируемый takeover и разворот домена от legacy funding-bot логики к funding-event trading системе.
+`2.0.0` — это новая основная линия проекта с явным split на `monitor` и `engine`.
 
-## Что это сегодня
-- Основной источник кандидатов — внешний funding API:
-  - `https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30`
-- Сервис poll-ит funding API, обновляет наблюдаемые watchlists и формирует `SignalCandidate` без TDLib.
-- Telegram bot, если включён, остаётся только operator/diagnostic интерфейсом и больше не участвует в candidate ingestion.
-- Legacy funding flow всё ещё присутствует в коде для совместимости и диагностики.
-- Новый домен уже введён параллельно legacy-коду:
-  - `FundingEvent`
-  - `ArmedTrade`
-  - `OrderAttempt`
-  - `Position`
-  - `TradeOutcome`
-  - `VenueTimingProfile`
-- Phase 2 добавляет review-driven candidate flow:
-  - `Telegram signal -> SignalCandidate -> Review -> FundingEvent`
-- Phase 3 добавляет venue-aware preparation flow:
-  - `FundingEvent -> ArmedTrade -> Trade Journal`
-- Появился multi-venue metadata registry для Binance / Bybit / Gate с диагностикой sync/request timing.
-- Внутренний REST API `/api/v1/**` стал первым правильным входом в новый домен.
+Текущий бизнес-flow:
 
-## Чего это пока НЕ делает
-- Это ещё не production trading engine для ловли funding-движения.
-- Это не Gate MVP и не live execution orchestration нового домена.
-- Это не подписочный multi-user продукт.
-- Telegram bot больше не считается control plane для торговли.
+`Funding API -> SignalCandidate -> Review -> FundingEvent -> ArmedTrade -> Trade Journal`
 
-## Safety by Default
-- Runtime по умолчанию работает в `trading.execution.mode=DISABLED`.
-- Legacy execution выключен по умолчанию через `trading.execution.legacy-enabled=false`.
-- Реальное legacy execution возможно только при явном opt-in:
-  - `trading.execution.mode=LIVE`
-  - `trading.execution.legacy-enabled=true`
-  - venue должен быть в `trading.execution.live-venues`
-- `gate` намеренно заблокирован по умолчанию через `trading.execution.blocked-venues`.
-- В safe-mode scheduler может работать как passive detector, но не должен ставить ордера и не должен молча помечать legacy funding как `executed`.
+## Что входит в 2.0.0
 
-## Локальный запуск
+### `platform-core`
+Общий backend-контур:
+- домен `SignalCandidate / FundingEvent / ArmedTrade`
+- persistence и SQLite schema
+- candidate review
+- event creation
+- armed trade lifecycle
+- journal
+- venue metadata registry
+- venue diagnostics
+- execution safety guards
+
+### `monitor-app`
+Операторский модуль:
+- основной UI
+- dashboard
+- candidates review
+- funding events
+- armed trades
+- venue diagnostics
+- journal access
+
+### `engine-app`
+Лёгкий execution-preparation модуль:
+- отдельный Spring Boot runtime
+- отдельный порт
+- no bot UI
+- no candidate polling
+- no metadata auto-sync on startup
+- lightweight read/planning API for armed trades
+
+Текущий engine не исполняет live orders. Его задача в `2.0.0` — быть минимальным и пригодным как будущая база для execution runtime.
+
+## Источник кандидатов
+
+TDLib больше не используется для формирования кандидатов.
+
+Основной источник:
+- [uainvest funding API](https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30)
+
+Telegram, если включён, остаётся только как optional bot surface для summary/launcher и не участвует в candidate ingestion.
+
+## Запуск
+
 Требования:
 - JDK 21
-- при необходимости Node будет скачан Gradle plugin'ом, но активного frontend pipeline в текущем состоянии репозитория нет
-- SQLite runtime директория создаётся автоматически, если путь из `spring.datasource.url` указывает на отсутствующую папку
 
-Команды:
-- `./gradlew bootRun`
+Основные команды:
 - `./gradlew test`
 - `./gradlew build`
+- `./gradlew bootRunMonitor`
+- `./gradlew bootRunEngine`
 
-Если в системе несколько JDK, запускай Gradle с Java 21.
+Артефакты:
+- monitor jar: `monitor-app/build/libs/*-monitor.jar`
+- engine jar: `engine-app/build/libs/*-engine.jar`
 
-## Основные контуры
-- `candidate-source` / `watchlist`: внешний funding ingest и наблюдаемое состояние
-- `telegram.bot`: необязательный operator/diagnostic интерфейс
-- legacy scheduler/execution: transitional code path, жёстко guard'ится
-- `domain.*`: новый funding-event / trade / execution / profile домен
-- `application.*`: command/query services и порты
-- `infrastructure.persistence.*`: новая persistence-модель для core skeleton
-- `api`: legacy endpoints + новый internal REST API
+Порты по умолчанию:
+- monitor: `8090`
+- engine: `8091`
 
-## Внутренний API нового домена
-- `GET /api/v1/candidates`
-- `GET /api/v1/candidates/{id}`
-- `POST /api/v1/candidates/{id}/approve`
-- `POST /api/v1/candidates/{id}/reject`
-- `POST /api/v1/funding-events`
-- `GET /api/v1/funding-events`
-- `GET /api/v1/funding-events/{id}`
-- `POST /api/v1/funding-events/{id}/arm`
-- `POST /api/v1/armed-trades`
-- `GET /api/v1/armed-trades`
-- `GET /api/v1/armed-trades/{id}`
-- `GET /api/v1/venues`
-- `GET /api/v1/venues/{venue}`
-- `POST /api/v1/venues/{venue}/sync`
-- `GET /api/v1/venues/{venue}/instruments`
-- `GET /api/v1/venues/timings`
+## UI
 
-## Документация
-- [Overview](docs/00-overview.md)
-- [Runtime config](docs/02-runtime-config.md)
-- [Funding candidate source](docs/06-telegram-tdlib.md)
-- [DB schema](docs/03-db-schema.md)
-- [Phase 0-1 foundation](docs/phase0-phase1-foundation.md)
-- [Phase 2 candidate review flow](docs/10-candidate-review-flow.md)
-- [Phase 3 venue-aware arming](docs/11-phase3-venue-aware-arming.md)
+Рабочий операторский интерфейс находится в `monitor-app`.
 
-## Статус направления
-Репозиторий развивается как modular rewrite inside the repo:
-- сейчас это всё ещё один deployable сервис,
-- дальше возможен split на `signal-ingest`, `control-api`, `execution-engine`,
-- но на текущей фазе приоритет — безопасный runtime, честные границы и чистый доменный фундамент.
+Что уже есть:
+- Dashboard
+- Candidates
+- Funding Events
+- Armed Trades
+- Venues
+- Journal drawer
+
+UI рассчитан на operator workflow, а не на маркетинговую витрину:
+- low-noise
+- mobile-friendly
+- чёткое различие между candidate / event / trade
+- быстрые действия approve / reject / arm / sync
+
+## Engine API
+
+`engine-app` предоставляет lightweight internal API:
+- `GET /internal/engine/summary`
+- `GET /internal/engine/plans`
+- `GET /internal/engine/plans/{armedTradeId}`
+
+Это read-side слой для подготовки исполнения и operator visibility.
+
+## Safety
+
+По умолчанию:
+- `trading.execution.mode=DISABLED`
+- legacy execution выключен
+- `gate` заблокирован в legacy execution path
+
+То есть `2.0.0` можно запускать локально без риска случайного live execution.
+
+## Тесты
+
+Важные свойства текущей линии:
+- core business flow покрыт тестами
+- engine flow покрыт отдельными тестами
+- multi-module build проходит целиком
+
+Проверено:
+- `./gradlew --no-daemon test build`
+
+## Архитектурный смысл версии
+
+`2.0.0` — это не “ещё один бот”.
+
+Это новая модульная база для следующих фаз:
+- monitor как operator/control plane
+- engine как будущий lightweight execution runtime
+- shared core как доменный и persistence фундамент
+
+Следующий шаг после этой версии — развивать `engine-app` в сторону реального execution orchestration, не раздувая его UI- и monitor-зависимостями.

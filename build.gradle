@@ -1,92 +1,68 @@
-import com.github.gradle.node.npm.task.NpmTask
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.7'
-    id 'io.spring.dependency-management' version '1.1.7'
-
-    // эти два — важно!
-    id 'org.owasp.dependencycheck' version '12.1.8'
-    id 'com.diffplug.spotless' version '6.25.0'
-
-    id "com.github.node-gradle.node" version "7.0.2"
+    id 'base'
+    id 'org.springframework.boot' version '3.5.7' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'org.owasp.dependencycheck' version '12.1.8' apply false
+    id 'com.diffplug.spotless' version '6.25.0' apply false
 }
 
 ext {
     springCloudVersion = '2024.0.1'
 }
 
-node {
-    download = true                                        // <— Gradle скачает свой Node
-    version = "22.11.0"
-    npmVersion = "10.8.2"
-    workDir = file("${buildDir}/node")
-    npmWorkDir = file("${buildDir}/npm")
-}
+allprojects {
+    group = 'com.crypto.funding'
+    version = '2.0.0'
 
-group = 'com.crypto.funding'
-version = '0.0.1-SNAPSHOT'
-description = 'crypto'
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+    repositories {
+        mavenCentral()
     }
 }
 
-repositories {
-    mavenCentral()
-}
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
 
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.7"
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        }
+    }
+
+    dependencies {
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        testImplementation 'org.awaitility:awaitility:4.2.2'
+        testImplementation 'org.assertj:assertj-core:3.25.3'
+        testImplementation 'org.mockito:mockito-core:5.12.0'
+        testImplementation 'org.wiremock:wiremock-standalone:3.0.1'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-parameters']
     }
 }
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
-    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'org.awaitility:awaitility:4.2.2'
-    testImplementation 'org.wiremock:wiremock-standalone:3.0.1'
-
-    // WebSocket клиент (универсальный)
-    implementation "org.glassfish.tyrus.bundles:tyrus-standalone-client:$tyrusVersion"
-
-    implementation "org.telegram:telegrambots-spring-boot-starter:6.9.7.1"
-
-    //DB
-    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
-    implementation "org.xerial:sqlite-jdbc:3.46.1.0"
-    implementation "org.hibernate.orm:hibernate-community-dialects:6.5.2.Final"
-
-    // JSON
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-
-    // Test
-    testImplementation "org.junit.jupiter:junit-jupiter:$junitJupiterVersion"
-    testImplementation "org.assertj:assertj-core:$assertjVersion"
-    testImplementation "org.mockito:mockito-core:$mockitoVersion"
+tasks.register('bootRunMonitor') {
+    group = 'application'
+    description = 'Run the monitor application'
+    dependsOn ':monitor-app:bootRun'
 }
 
-tasks.test { useJUnitPlatform() }
-
-//OWASP Dependency-Check
-dependencyCheck {
-    failBuildOnCVSS = 7.0
-    analyzers.assemblyEnabled = false
+tasks.register('bootRunEngine') {
+    group = 'application'
+    description = 'Run the engine application'
+    dependsOn ':engine-app:bootRun'
 }
-
-tasks.register('security') { dependsOn 'dependencyCheckAnalyze' }
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-}
-
-bootRun { systemProperty 'spring.profiles.active', System.getProperty('spring.profiles.active', 'default') }

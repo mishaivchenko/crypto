@@ -29,10 +29,12 @@ import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJ
 import com.crypto.funding.infrastructure.persistence.repository.TradeJournalEntryJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.TradeOutcomeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
+import com.crypto.funding.support.JpaSliceTestConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
@@ -42,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ContextConfiguration(classes = JpaSliceTestConfiguration.class)
 @TestPropertySource(properties = {
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.show-sql=false",
