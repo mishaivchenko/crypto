@@ -12,6 +12,8 @@ class SymbolMapperTest
         assertThat(SymbolMapper.toUnified("BTCUSDT")).isEqualTo("BTC/USDT");
         assertThat( SymbolMapper.toUnified("btc-usdt")).isEqualTo("BTC/USDT");
         assertThat(SymbolMapper.toUnified("ETH")).isEqualTo("ETH/USDT");
+        assertThat(SymbolMapper.toUnified("SAHARAPERP")).isEqualTo("SAHARA/USDT");
+        assertThat(SymbolMapper.toUnified("DOTUSDM")).isEqualTo("DOT/USDT");
     }
 
     @Test

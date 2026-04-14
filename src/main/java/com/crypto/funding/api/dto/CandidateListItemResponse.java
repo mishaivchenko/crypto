@@ -11,13 +11,15 @@ public record CandidateListItemResponse(
     String sourceType,
     Long sourceChatId,
     Long sourceMessageId,
+    String sourceVenue,
     String rawSymbol,
     String normalizedSymbol,
     List<String> venueHints,
     Instant detectedAt,
     SignalCandidateStatus status,
     ReviewDecision reviewDecision,
-    Long fundingEventId
+    Long fundingEventId,
+    String normalizationFailureReason
 )
 {
 }

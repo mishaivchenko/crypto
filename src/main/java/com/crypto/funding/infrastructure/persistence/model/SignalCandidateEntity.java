@@ -48,6 +48,9 @@ public class SignalCandidateEntity extends AuditableEntity
     @Column(name = "raw_payload", columnDefinition = "TEXT")
     private String rawPayload;
 
+    @Column(name = "source_venue")
+    private String sourceVenue;
+
     @Column(name = "raw_symbol", nullable = false)
     private String rawSymbol;
 
@@ -139,6 +142,16 @@ public class SignalCandidateEntity extends AuditableEntity
     public String getRawSymbol()
     {
         return rawSymbol;
+    }
+
+    public String getSourceVenue()
+    {
+        return sourceVenue;
+    }
+
+    public void setSourceVenue( String sourceVenue )
+    {
+        this.sourceVenue = sourceVenue;
     }
 
     public void setRawSymbol( String rawSymbol )

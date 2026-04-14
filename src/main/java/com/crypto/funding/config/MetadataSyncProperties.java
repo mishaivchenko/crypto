@@ -12,7 +12,7 @@ public class MetadataSyncProperties
     private int syncIntervalMinutes = 240;
     private boolean requireCredentialsOnStartup = true;
     private boolean bootstrapFallbackEnabled = false;
-    private List<String> enabledVenues = List.of( "binance", "bybit", "gate" );
+    private List<String> enabledVenues = List.of( "bybit", "gate", "bitget", "okx", "kucoin" );
 
     public boolean isSyncOnStartup()
     {

@@ -6,6 +6,9 @@ import com.crypto.funding.application.port.SymbolMetadataPort;
 import com.crypto.funding.config.FundingCandidateSourceProperties;
 import com.crypto.funding.config.MetadataSyncProperties;
 import com.crypto.funding.config.VenueHttpProperties;
+import com.crypto.funding.domain.candidate.SignalCandidateStatus;
+import com.crypto.funding.infrastructure.persistence.model.SignalCandidateEntity;
+import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import com.crypto.funding.utills.SymbolMapper;
 import com.crypto.funding.watchlist.FundingInfo;
@@ -15,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -30,6 +34,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -61,7 +66,10 @@ public class FundingApiCandidateSourceService
     private final FundingWatchlistService fundingWatchlistService;
     private final SymbolMetadataPort symbolMetadataPort;
     private final VenueRequestTimingService venueRequestTimingService;
+    private final SignalCandidateJpaRepository signalCandidateRepository;
+    private final Clock clock;
 
+    @Autowired
     public FundingApiCandidateSourceService(
         HttpClient httpClient,
         VenueHttpProperties venueHttpProperties,
@@ -70,7 +78,35 @@ public class FundingApiCandidateSourceService
         SignalCandidateIngestService signalCandidateIngestService,
         FundingWatchlistService fundingWatchlistService,
         SymbolMetadataPort symbolMetadataPort,
-        VenueRequestTimingService venueRequestTimingService
+        VenueRequestTimingService venueRequestTimingService,
+        SignalCandidateJpaRepository signalCandidateRepository
+    )
+    {
+        this(
+            httpClient,
+            venueHttpProperties,
+            sourceProperties,
+            metadataSyncProperties,
+            signalCandidateIngestService,
+            fundingWatchlistService,
+            symbolMetadataPort,
+            venueRequestTimingService,
+            signalCandidateRepository,
+            Clock.systemUTC()
+        );
+    }
+
+    FundingApiCandidateSourceService(
+        HttpClient httpClient,
+        VenueHttpProperties venueHttpProperties,
+        FundingCandidateSourceProperties sourceProperties,
+        MetadataSyncProperties metadataSyncProperties,
+        SignalCandidateIngestService signalCandidateIngestService,
+        FundingWatchlistService fundingWatchlistService,
+        SymbolMetadataPort symbolMetadataPort,
+        VenueRequestTimingService venueRequestTimingService,
+        SignalCandidateJpaRepository signalCandidateRepository,
+        Clock clock
     )
     {
         this.httpClient = httpClient;
@@ -81,6 +117,8 @@ public class FundingApiCandidateSourceService
         this.fundingWatchlistService = fundingWatchlistService;
         this.symbolMetadataPort = symbolMetadataPort;
         this.venueRequestTimingService = venueRequestTimingService;
+        this.signalCandidateRepository = signalCandidateRepository;
+        this.clock = clock;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -102,6 +140,7 @@ public class FundingApiCandidateSourceService
         {
             FundingApiResponse response = fetchPayload();
             int processed = 0;
+            Set<Long> activeSourceMessageIds = new LinkedHashSet<>();
             for( FundingApiEntry entry : response.data() )
             {
                 if( entry == null )
@@ -125,17 +164,21 @@ public class FundingApiCandidateSourceService
                 FundingInfo fundingInfo = observation.fundingInfo();
                 fundingWatchlistService.updateFunding( fundingInfo );
 
-                long syntheticMessageId = syntheticMessageId( fundingInfo.symbolUnified(), fundingInfo.nextFundingAt() );
+                long syntheticMessageId = syntheticMessageId( entry, fundingInfo.symbolUnified() );
+                activeSourceMessageIds.add( syntheticMessageId );
                 signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
                     sourceProperties.getSourceType(),
                     SOURCE_STREAM_ID,
                     syntheticMessageId,
                     objectMapper.writeValueAsString( entry ),
+                    entry.exchange(),
                     resolvedSymbol.get().candidateRawSymbol(),
                     observation.detectedAt()
                 ) );
                 processed++;
             }
+
+            cleanupStalePendingCandidates( activeSourceMessageIds );
 
             venueRequestTimingService.recordSuccess(
                 TIMING_VENUE,
@@ -224,7 +267,7 @@ public class FundingApiCandidateSourceService
     {
         Instant referenceTime = parseUpdatedAt( entry.updatedAt() );
         Instant nextFundingAt = computeNextFundingAt( referenceTime, entry.fundingInterval() );
-        long secondsToFunding = Math.max( 0L, Duration.between( Instant.now(), nextFundingAt ).getSeconds() );
+        long secondsToFunding = Math.max( 0L, Duration.between( Instant.now( clock ), nextFundingAt ).getSeconds() );
         BigDecimal price = decimalOrNull( entry.price() );
 
         return new FundingObservation(
@@ -240,11 +283,28 @@ public class FundingApiCandidateSourceService
         );
     }
 
+    private void cleanupStalePendingCandidates( Set<Long> activeSourceMessageIds )
+    {
+        String sourceType = sourceProperties.getSourceType().trim().toUpperCase( Locale.ROOT );
+        List<SignalCandidateEntity> staleCandidates = signalCandidateRepository
+            .findAllBySourceTypeAndSourceChatIdAndFundingEventIdIsNullOrderByDetectedAtDesc( sourceType, SOURCE_STREAM_ID )
+            .stream()
+            .filter( candidate -> candidate.getSourceMessageId() != null )
+            .filter( candidate -> !activeSourceMessageIds.contains( candidate.getSourceMessageId() ) )
+            .filter( candidate -> candidate.getStatus() != SignalCandidateStatus.REJECTED )
+            .filter( candidate -> candidate.getStatus() != SignalCandidateStatus.EVENT_CREATED )
+            .toList();
+        if( !staleCandidates.isEmpty() )
+        {
+            signalCandidateRepository.deleteAll( staleCandidates );
+        }
+    }
+
     private Instant parseUpdatedAt( String rawUpdatedAt )
     {
         if( rawUpdatedAt == null || rawUpdatedAt.isBlank() )
         {
-            return Instant.now();
+            return Instant.now( clock );
         }
         try
         {
@@ -253,7 +313,7 @@ public class FundingApiCandidateSourceService
         catch( DateTimeParseException ex )
         {
             log.debug( "[candidate-source] failed to parse updated_at='{}', fallback to now", rawUpdatedAt, ex );
-            return Instant.now();
+            return Instant.now( clock );
         }
     }
 
@@ -265,16 +325,25 @@ public class FundingApiCandidateSourceService
         int currentHour = utc.getHour();
         int nextBucketHour = ( ( currentHour / intervalHours ) + 1 ) * intervalHours;
         ZonedDateTime nextFunding = midnight.plusHours( nextBucketHour );
+        Instant now = Instant.now( clock );
         if( !nextFunding.isAfter( utc ) )
+        {
+            nextFunding = nextFunding.plusHours( intervalHours );
+        }
+        while( !nextFunding.toInstant().isAfter( now ) )
         {
             nextFunding = nextFunding.plusHours( intervalHours );
         }
         return nextFunding.toInstant();
     }
 
-    private long syntheticMessageId( String symbol, Instant nextFundingAt )
+    private long syntheticMessageId( FundingApiEntry entry, String symbol )
     {
-        return Integer.toUnsignedLong( ( symbol + ":" + nextFundingAt.getEpochSecond() ).hashCode() );
+        if( entry.id() != null )
+        {
+            return Integer.toUnsignedLong( ( entry.exchange() + ":" + entry.id() ).hashCode() );
+        }
+        return Integer.toUnsignedLong( ( entry.exchange() + ":" + symbol ).hashCode() );
     }
 
     private void addCandidate( List<String> candidates, String value )

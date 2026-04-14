@@ -1,5 +1,20 @@
 import { api } from "/api.js";
-import { emptyState, formatBadge, formatInstant, formatNumber, journalMarkup, metaRow } from "/ui.js";
+import {
+    emptyState,
+    escapeHtml,
+    formatBadge,
+    formatConnectionBadge,
+    formatDecimal,
+    formatDurationMs,
+    formatFundingCountdown,
+    formatInstant,
+    formatNumber,
+    formatRelative,
+    journalMarkup,
+    kv,
+    metaRow,
+    section
+} from "/ui.js";
 
 const state = {
     screen: "dashboard",
@@ -10,6 +25,8 @@ const state = {
 const nodes = {
     nav: document.getElementById("nav"),
     refreshAllButton: document.getElementById("refresh-all-button"),
+    globalModeForm: document.getElementById("global-mode-form"),
+    globalModeSelect: document.getElementById("global-mode-select"),
     globalError: document.getElementById("global-error"),
     globalSuccess: document.getElementById("global-success"),
     screens: {
@@ -27,18 +44,38 @@ const nodes = {
     venuesList: document.getElementById("venues-list"),
     candidateFilters: document.getElementById("candidate-filters"),
     eventFilters: document.getElementById("event-filters"),
-    drawer: document.getElementById("detail-drawer"),
     drawerType: document.getElementById("drawer-type"),
     drawerTitle: document.getElementById("drawer-title"),
     drawerContent: document.getElementById("drawer-content"),
     drawerClose: document.getElementById("drawer-close")
 };
 
+function sourceLabel(value) {
+    if (!value) {
+        return "—";
+    }
+    const normalized = String(value).toLowerCase();
+    if (normalized === "funding_api" || normalized === "funding-api") {
+        return "API фандинга";
+    }
+    if (normalized === "manual") {
+        return "manual";
+    }
+    return String(value);
+}
+
+function sideLabel(value) {
+    if (!value) {
+        return "Side не задан";
+    }
+    return value === "LONG" ? "Long" : value === "SHORT" ? "Short" : value;
+}
+
 function showBanner(target, message) {
     target.textContent = message;
     target.classList.remove("hidden");
     window.clearTimeout(target._timeoutId);
-    target._timeoutId = window.setTimeout(() => target.classList.add("hidden"), 4000);
+    target._timeoutId = window.setTimeout(() => target.classList.add("hidden"), 4200);
 }
 
 function showError(message) {
@@ -49,8 +86,8 @@ function showSuccess(message) {
     showBanner(nodes.globalSuccess, message);
 }
 
-function setLoading(target, label = "Loading…") {
-    target.innerHTML = emptyState(label);
+function setLoading(target, label = "Загрузка…") {
+    target.innerHTML = emptyState(label, "Подожди, desk обновляет состояние.");
 }
 
 function switchScreen(screen) {
@@ -64,180 +101,226 @@ function switchScreen(screen) {
     refreshCurrentScreen();
 }
 
-function renderDashboard(overview) {
-    nodes.dashboardSummary.innerHTML = `
-        ${summaryCard("Pending Candidates", overview.pendingCandidates, "Needs review before event creation")}
-        ${summaryCard("Funding Events", overview.fundingEvents, `${overview.discoveredEvents} still discovered`)}
-        ${summaryCard("Armed Trades", overview.armedTrades, "Prepared and waiting for engine")}
-        ${summaryCard("Active Venues", overview.activeVenues, `Version ${overview.version}`)}
-    `;
-    nodes.dashboardVenues.innerHTML = overview.venues.length
-        ? overview.venues.map((venue) => venueCard(venue)).join("")
-        : emptyState("No venue diagnostics available yet.");
-
-    nodes.dashboardVenues.querySelectorAll("[data-open-venue]").forEach((button) => {
-        button.addEventListener("click", () => openVenue(button.dataset.openVenue));
-    });
+function credentialsBadge(venue) {
+    if (venue.credentialsConfigured) {
+        return formatBadge("venue", "Keys OK", "good");
+    }
+    return formatBadge("venue", venue.credentialsRequired ? "Нет keys" : "Keys empty", "warning");
 }
 
-function summaryCard(title, value, detail) {
+function venueHealthBadge(venue) {
+    if (!venue.activeInstrumentCount) {
+        return formatBadge("venue", "No instruments", "warning");
+    }
+    if (!venue.lastSyncedAt) {
+        return formatBadge("venue", "No sync", "warning");
+    }
+    return formatBadge("venue", "Registry ready", "good");
+}
+
+function modeLabel(mode) {
+    if (!mode) {
+        return "mode не задан";
+    }
+    return mode === "testnet" ? "Testnet" : mode === "production" ? "Production" : String(mode);
+}
+
+function connectionLine(venue) {
+    const message = venue.connectionMessage ? escapeHtml(venue.connectionMessage) : "Проверка ещё не запускалась.";
+    const http = venue.lastConnectionHttpStatus ? ` · HTTP ${venue.lastConnectionHttpStatus}` : "";
+    return `${message}${http}`;
+}
+
+function summaryCard(title, value, detail, tone = "neutral", rawValue = false) {
     return `
-        <article class="summary-card">
-            <span class="eyebrow">${title}</span>
-            <strong>${formatNumber(value)}</strong>
-            <p class="muted">${detail}</p>
+        <article class="summary-card tone-${tone}">
+            <span class="eyebrow">${escapeHtml(title)}</span>
+            <strong>${rawValue ? escapeHtml(value) : formatNumber(value)}</strong>
+            <p class="muted">${escapeHtml(detail)}</p>
         </article>
     `;
 }
 
 function venueCard(venue) {
     return `
-        <article class="list-item">
+        <article class="list-item venue-card">
             <header>
                 <div>
-                    <h3 class="item-title">${venue.venue}</h3>
-                    <p class="muted">mode ${venue.mode} · ${venue.activeInstrumentCount} active instruments</p>
+                    <h3 class="item-title">${escapeHtml(venue.venue)}</h3>
+                    <p class="muted">${escapeHtml(modeLabel(venue.mode ?? venue.configuredMode))} · ${formatNumber(venue.activeInstrumentCount)} active instruments</p>
                 </div>
                 <div class="actions">
-                    ${formatBadge("event", venue.credentialsConfigured ? "credentials ok" : "credentials missing", venue.credentialsConfigured ? "" : "warn")}
-                    <button class="button secondary" type="button" data-open-venue="${venue.venue}">Inspect</button>
+                    ${credentialsBadge(venue)}
+                    ${formatConnectionBadge(venue.connectionStatus)}
+                    ${venueHealthBadge(venue)}
+                    <button class="button secondary" type="button" data-open-venue="${escapeHtml(venue.venue)}">Открыть</button>
                 </div>
             </header>
             <div class="item-row">
-                <span class="muted">Last sync ${formatInstant(venue.lastSyncedAt)}</span>
-                <span class="muted">${venue.averageRequestTimeMs ?? "—"} ms avg · ${venue.requests ?? 0} req</span>
+                <span class="muted">${connectionLine(venue)}</span>
+                <span class="muted">Last sync ${formatInstant(venue.lastSyncedAt)} · avg ${formatDurationMs(venue.averageRequestTimeMs)} · req ${formatNumber(venue.requests ?? 0)}</span>
             </div>
         </article>
     `;
 }
 
+function candidateStateLine(candidate) {
+    if (candidate.fundingEventId) {
+        return `Связан с Funding Event #${candidate.fundingEventId}`;
+    }
+    if (candidate.normalizationFailureReason) {
+        return candidate.normalizationFailureReason;
+    }
+    if (candidate.venueHints?.length) {
+        return `Venue hints: ${candidate.venueHints.join(", ")}`;
+    }
+    return "Ожидает operator review";
+}
+
+function candidateCard(candidate) {
+    return `
+        <article class="list-item signal-card">
+            <header>
+                <div>
+                    <h3 class="item-title">${escapeHtml(candidate.normalizedSymbol ?? candidate.rawSymbol)}</h3>
+                    <p class="muted">source ${escapeHtml(candidate.sourceVenue ?? sourceLabel(candidate.sourceType))} · raw ${escapeHtml(candidate.rawSymbol)}</p>
+                </div>
+                <div class="actions">
+                    ${formatBadge("candidate", candidate.status)}
+                    <button class="button secondary" type="button" data-open-candidate="${candidate.id}">Inspect</button>
+                </div>
+            </header>
+            <div class="item-row">
+                <span class="muted">${escapeHtml(candidateStateLine(candidate))}</span>
+                <span class="muted">${formatInstant(candidate.detectedAt)} · ${formatRelative(candidate.detectedAt)}</span>
+            </div>
+        </article>
+    `;
+}
+
+function eventCard(event) {
+    return `
+        <article class="list-item event-card">
+            <header>
+                <div>
+                    <h3 class="item-title">${escapeHtml(event.symbol)}</h3>
+                    <p class="muted">${escapeHtml(event.venue)} · funding ${formatInstant(event.fundingTime)}</p>
+                </div>
+                <div class="actions">
+                    ${formatBadge("event", event.status)}
+                    <button class="button secondary" type="button" data-open-event="${event.id}">Inspect</button>
+                </div>
+            </header>
+            <div class="item-row">
+                <span class="muted">signal ${event.signalCandidateId ?? "manual"} · rate ${formatDecimal(event.fundingRatePct, 6)}</span>
+                <span class="muted">${formatFundingCountdown(event.fundingTime)}</span>
+            </div>
+        </article>
+    `;
+}
+
+function tradeCard(trade) {
+    return `
+        <article class="list-item trade-card">
+            <header>
+                <div>
+                    <h3 class="item-title">${escapeHtml(trade.symbol ?? `Сделка #${trade.id}`)}</h3>
+                    <p class="muted">${escapeHtml(trade.venue ?? "venue не задана")} · event ${trade.fundingEventId} · ${formatDecimal(trade.notionalUsd, 2)} USD</p>
+                </div>
+                <div class="actions">
+                    ${formatBadge("trade", trade.state)}
+                    <button class="button secondary" type="button" data-open-trade="${trade.id}">Inspect</button>
+                </div>
+            </header>
+            <div class="item-row">
+                <span class="muted">${escapeHtml(sideLabel(trade.intendedSide))} · source ${escapeHtml(trade.armSource ?? "—")}</span>
+                <span class="muted">entry ${formatInstant(trade.plannedEntryAt)} · exit ${formatInstant(trade.plannedExitAt)}</span>
+            </div>
+        </article>
+    `;
+}
+
+function renderDashboard(overview) {
+    nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
+    nodes.dashboardSummary.innerHTML = `
+        ${summaryCard("Signal Queue", overview.pendingCandidates, "Очередь на operator review", "info")}
+        ${summaryCard("Funding Events", overview.fundingEvents, `${overview.discoveredEvents} ещё не armed`, "warning")}
+        ${summaryCard("Prepared Trades", overview.armedTrades, "Подготовлены для engine", "good")}
+        ${summaryCard("Access mode", String(overview.globalAccessMode ?? "testnet").toUpperCase(), `${overview.activeVenues} venues · build ${overview.version}`, "neutral", true)}
+    `;
+
+    nodes.dashboardVenues.innerHTML = overview.venues.length
+        ? overview.venues.map((venue) => venueCard(venue)).join("")
+        : emptyState("Venue diagnostics пока пуст.", "Сделай sync, чтобы подтянуть instrument metadata.");
+
+    wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", openVenue);
+}
+
 function renderCandidates(page) {
     const candidates = page?.content ?? [];
     nodes.candidatesList.innerHTML = candidates.length
-        ? candidates.map((candidate) => `
-            <article class="list-item">
-                <header>
-                    <div>
-                        <h3 class="item-title">${candidate.normalizedSymbol ?? candidate.rawSymbol}</h3>
-                        <p class="muted">raw ${candidate.rawSymbol}</p>
-                    </div>
-                    ${formatBadge("candidate", candidate.status)}
-                </header>
-                <div class="item-row">
-                    <span class="muted">${candidate.venueHints?.join(", ") || "No venue hints"}</span>
-                    <span class="muted">${formatInstant(candidate.detectedAt)}</span>
-                </div>
-                <div class="actions">
-                    ${candidate.fundingEventId ? formatBadge("event", `event #${candidate.fundingEventId}`) : ""}
-                    <button class="button secondary" type="button" data-open-candidate="${candidate.id}">Review</button>
-                </div>
-            </article>
-        `).join("")
-        : emptyState("No candidates match the current filters.");
+        ? candidates.map(candidateCard).join("")
+        : emptyState("Signal Queue пуста.", "Новые candidates из Funding API появятся здесь.");
 
-    nodes.candidatesList.querySelectorAll("[data-open-candidate]").forEach((button) => {
-        button.addEventListener("click", () => openCandidate(button.dataset.openCandidate));
-    });
+    wireOpenButtons(nodes.candidatesList, "[data-open-candidate]", openCandidate);
 }
 
 function renderFundingEvents(page) {
     const events = page?.content ?? [];
     nodes.eventsList.innerHTML = events.length
-        ? events.map((event) => `
-            <article class="list-item">
-                <header>
-                    <div>
-                        <h3 class="item-title">${event.symbol}</h3>
-                        <p class="muted">${event.venue} · funding ${formatInstant(event.fundingTime)}</p>
-                    </div>
-                    ${formatBadge("event", event.status)}
-                </header>
-                <div class="item-row">
-                    <span class="muted">candidate ${event.signalCandidateId ?? "manual"}</span>
-                    <span class="muted">rate ${event.fundingRatePct ?? "—"}</span>
-                </div>
-                <div class="actions">
-                    <button class="button secondary" type="button" data-open-event="${event.id}">Inspect</button>
-                </div>
-            </article>
-        `).join("")
-        : emptyState("No funding events match the current filters.");
+        ? events.map(eventCard).join("")
+        : emptyState("Funding Events пока нет.", "Approve signal, чтобы создать первое событие.");
 
-    nodes.eventsList.querySelectorAll("[data-open-event]").forEach((button) => {
-        button.addEventListener("click", () => openEvent(button.dataset.openEvent));
-    });
+    wireOpenButtons(nodes.eventsList, "[data-open-event]", openEvent);
 }
 
 function renderTrades(trades) {
     nodes.tradesList.innerHTML = trades.length
-        ? trades.map((trade) => `
-            <article class="list-item">
-                <header>
-                    <div>
-                        <h3 class="item-title">Trade #${trade.id}</h3>
-                        <p class="muted">event ${trade.fundingEventId} · ${trade.notionalUsd} USD</p>
-                    </div>
-                    ${formatBadge("trade", trade.state)}
-                </header>
-                <div class="item-row">
-                    <span class="muted">${trade.intendedSide ?? "No side"} · arm ${trade.armSource ?? "—"}</span>
-                    <span class="muted">entry ${formatInstant(trade.plannedEntryAt)}</span>
-                </div>
-                <div class="actions">
-                    <button class="button secondary" type="button" data-open-trade="${trade.id}">Inspect</button>
-                </div>
-            </article>
-        `).join("")
-        : emptyState("No armed trades yet.");
+        ? trades.map(tradeCard).join("")
+        : emptyState("Prepared Trades пока нет.", "Arm Funding Event, чтобы создать первую подготовленную сделку.");
 
-    nodes.tradesList.querySelectorAll("[data-open-trade]").forEach((button) => {
-        button.addEventListener("click", () => openTrade(button.dataset.openTrade));
-    });
+    wireOpenButtons(nodes.tradesList, "[data-open-trade]", openTrade);
 }
 
 function renderVenues(venues) {
     nodes.venuesList.innerHTML = venues.length
-        ? venues.map((venue) => venueCard({
-            venue: venue.venue,
-            mode: venue.configuredMode,
-            credentialsConfigured: venue.credentialsConfigured,
-            activeInstrumentCount: venue.activeInstrumentCount,
-            lastSyncedAt: venue.lastSyncedAt,
-            averageRequestTimeMs: null,
-            requests: null
-        })).join("")
-        : emptyState("No venues configured.");
+        ? venues.map(venueCard).join("")
+        : emptyState("Venue Access пуст.", "Проверь enabled venues и registry sync.");
 
-    nodes.venuesList.querySelectorAll("[data-open-venue]").forEach((button) => {
-        button.addEventListener("click", () => openVenue(button.dataset.openVenue));
+    wireOpenButtons(nodes.venuesList, "[data-open-venue]", openVenue);
+}
+
+function wireOpenButtons(container, selector, handler) {
+    container.querySelectorAll(selector).forEach((button) => {
+        button.addEventListener("click", () => handler(button.dataset.openCandidate || button.dataset.openEvent || button.dataset.openTrade || button.dataset.openVenue));
     });
 }
 
 async function refreshCurrentScreen() {
     try {
         if (state.screen === "dashboard") {
-            setLoading(nodes.dashboardSummary, "Loading overview…");
-            setLoading(nodes.dashboardVenues, "Loading venue activity…");
+            setLoading(nodes.dashboardSummary, "Собираю срез контура…");
+            setLoading(nodes.dashboardVenues, "Собираю пульс площадок…");
             renderDashboard(await api.getOverview());
             return;
         }
         if (state.screen === "candidates") {
-            setLoading(nodes.candidatesList, "Loading candidates…");
+            setLoading(nodes.candidatesList, "Загружаю входящие сигналы…");
             renderCandidates(await api.listCandidates(state.candidateFilters));
             return;
         }
         if (state.screen === "events") {
-            setLoading(nodes.eventsList, "Loading funding events…");
+            setLoading(nodes.eventsList, "Загружаю подтверждённые события…");
             renderFundingEvents(await api.listFundingEvents(state.eventFilters));
             return;
         }
         if (state.screen === "trades") {
-            setLoading(nodes.tradesList, "Loading armed trades…");
+            setLoading(nodes.tradesList, "Загружаю подготовленные сделки…");
             renderTrades(await api.listArmedTrades());
             return;
         }
         if (state.screen === "venues") {
-            setLoading(nodes.venuesList, "Loading venues…");
+            setLoading(nodes.venuesList, "Загружаю диагностику площадок…");
             renderVenues(await api.listVenues());
         }
     } catch (error) {
@@ -245,44 +328,158 @@ async function refreshCurrentScreen() {
     }
 }
 
+function recommendationRows(candidate) {
+    return [
+        kv("Source", candidate.sourceVenue ?? sourceLabel(candidate.sourceType)),
+        kv("Canonical symbol", candidate.normalizedSymbol ?? "Не определён"),
+        kv("Suggested venue", candidate.suggestedVenue ?? candidate.sourceVenue ?? "Manual select"),
+        kv("Suggested funding time", formatInstant(candidate.suggestedFundingTime)),
+        kv("Funding rate", formatDecimal(candidate.suggestedFundingRatePct, 6))
+    ].join("");
+}
+
+function buildApproveSection(candidate) {
+    if (candidate.status === "EVENT_CREATED") {
+        return section(
+            "Funding Event уже создан",
+            `
+                <div class="action-card primary">
+                    <p class="helper-text">Этот signal уже переведён в Funding Event #${escapeHtml(candidate.fundingEventId)}.</p>
+                </div>
+            `
+        );
+    }
+    if (candidate.status === "REJECTED") {
+        return section(
+            "Candidate закрыт",
+            `
+                <div class="action-card">
+                    <p class="helper-text">Signal уже отклонён и больше не участвует в operator flow.</p>
+                </div>
+            `
+        );
+    }
+
+    const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0] ?? "";
+    const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
+    const fundingTime = toLocalInputValue(candidate.suggestedFundingTime);
+    const fundingRatePct = candidate.suggestedFundingRatePct ?? "";
+    const actionLabel = candidate.status === "FAILED" ? "Исправить и create Event" : "Approve → Funding Event";
+    const helper = candidate.status === "FAILED"
+        ? "Signal нужно поправить вручную, прежде чем переводить его в Funding Event."
+        : "Используй suggested venue и funding snapshot или переопредели поля перед approve.";
+
+    return section(
+        candidate.status === "FAILED" ? "Repair candidate" : "Approve to Funding Event",
+        `
+            <div class="action-card primary">
+                <p class="helper-text">${escapeHtml(helper)}</p>
+                <div class="detail-grid action-note">
+                    ${recommendationRows(candidate)}
+                </div>
+                <form class="drawer-form" data-action="approve-candidate" data-id="${candidate.id}">
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>Venue</span>
+                            <input name="venue" type="text" placeholder="Например, gate" value="${escapeHtml(venue)}">
+                        </label>
+                        <label class="field">
+                            <span>Canonical symbol</span>
+                            <input name="symbol" type="text" placeholder="Например, NOM/USDT" value="${escapeHtml(symbol)}">
+                        </label>
+                    </div>
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>Funding time</span>
+                            <input name="fundingTime" type="datetime-local" value="${escapeHtml(fundingTime)}">
+                        </label>
+                        <label class="field">
+                            <span>Funding rate, %</span>
+                            <input name="fundingRatePct" type="number" step="0.000001" placeholder="-0.012500" value="${escapeHtml(fundingRatePct)}">
+                        </label>
+                    </div>
+                    <label class="field">
+                        <span>Operator note</span>
+                        <textarea name="reviewNotes" placeholder="Почему этот signal стоит двигать дальше">${escapeHtml(candidate.reviewNotes ?? "")}</textarea>
+                    </label>
+                    <div class="actions">
+                        <button class="button" type="submit">${escapeHtml(actionLabel)}</button>
+                    </div>
+                </form>
+            </div>
+        `
+    );
+}
+
+function buildRejectSection(candidate) {
+    if (candidate.status === "REJECTED" || candidate.status === "EVENT_CREATED") {
+        return "";
+    }
+    return section(
+        "Отклонить сигнал",
+        `
+            <div class="action-card">
+                <p class="helper-text">Reject только если signal точно не должен становиться Funding Event.</p>
+                <form class="drawer-form" data-action="reject-candidate" data-id="${candidate.id}">
+                    <label class="field">
+                        <span>Reject note</span>
+                        <textarea name="reviewNotes" placeholder="Коротко зафиксируй причину отказа"></textarea>
+                    </label>
+                    <div class="actions">
+                        <button class="button danger" type="submit">Reject candidate</button>
+                    </div>
+                </form>
+            </div>
+        `
+    );
+}
+
+function buildDeleteCandidateSection(candidate, label = "Delete candidate") {
+    return section(
+        "Очистка pipeline",
+        `
+            <div class="action-card danger-zone">
+                <p class="helper-text">Удаление candidate чистит связанный Funding Event, Prepared Trade и связанные journal entries. Source signal при этом не исполняется и не уходит в engine.</p>
+                <form class="drawer-form" data-action="delete-candidate" data-id="${candidate.id}">
+                    <label class="field">
+                        <span>Delete note</span>
+                        <textarea name="deleteNote" placeholder="Например: false signal / duplicate / operator cleanup">operator cleanup</textarea>
+                    </label>
+                    <div class="actions">
+                        <button class="button danger" type="submit">${escapeHtml(label)}</button>
+                    </div>
+                </form>
+            </div>
+        `
+    );
+}
+
 async function openCandidate(id) {
     try {
         const candidate = await api.getCandidate(id);
-        nodes.drawerType.textContent = "Candidate";
+        nodes.drawerType.textContent = "Signal";
         nodes.drawerTitle.textContent = candidate.normalizedSymbol ?? candidate.rawSymbol;
         nodes.drawerContent.innerHTML = `
-            <section class="meta-grid">
-                ${metaRow("Status", formatBadge("candidate", candidate.status))}
-                ${metaRow("Raw Symbol", candidate.rawSymbol)}
-                ${metaRow("Normalized", candidate.normalizedSymbol)}
-                ${metaRow("Detected", formatInstant(candidate.detectedAt))}
-                ${metaRow("Venue Hints", candidate.venueHints?.join(", ") || "—")}
-                ${metaRow("Review Decision", candidate.reviewDecision ?? "Pending")}
-                ${metaRow("Funding Event", candidate.fundingEventId ? `#${candidate.fundingEventId}` : "—")}
-                ${metaRow("Failure", candidate.normalizationFailureReason ?? "—")}
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Approve Candidate</h3></div>
-                <form class="drawer-form" data-action="approve-candidate" data-id="${candidate.id}">
-                    <input name="venue" type="text" placeholder="Venue" value="${candidate.venueHints?.[0] ?? ""}">
-                    <input name="symbol" type="text" placeholder="Symbol override (optional)" value="${candidate.normalizedSymbol ?? ""}">
-                    <input name="fundingTime" type="datetime-local" placeholder="Funding time">
-                    <input name="fundingRatePct" type="number" step="0.0001" placeholder="Funding rate pct">
-                    <textarea name="reviewNotes" placeholder="Review notes"></textarea>
-                    <div class="actions">
-                        <button class="button" type="submit">Approve → Event</button>
-                    </div>
-                </form>
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Reject Candidate</h3></div>
-                <form class="drawer-form" data-action="reject-candidate" data-id="${candidate.id}">
-                    <textarea name="reviewNotes" placeholder="Why reject this candidate?"></textarea>
-                    <div class="actions">
-                        <button class="button danger" type="submit">Reject</button>
-                    </div>
-                </form>
-            </section>
+            ${section("Signal snapshot", `
+                <div class="meta-grid">
+                    ${metaRow("Статус", formatBadge("candidate", candidate.status))}
+                    ${metaRow("Detected at", formatInstant(candidate.detectedAt), formatRelative(candidate.detectedAt))}
+                    ${metaRow("Source venue", escapeHtml(candidate.sourceVenue ?? "—"))}
+                    ${metaRow("Raw symbol", escapeHtml(candidate.rawSymbol))}
+                    ${metaRow("Canonical symbol", escapeHtml(candidate.normalizedSymbol ?? "—"))}
+                    ${metaRow("Venue hints", escapeHtml(candidate.venueHints?.join(", ") || "—"))}
+                    ${metaRow("Review", escapeHtml(candidate.reviewDecision ?? "Pending"))}
+                    ${metaRow("Funding Event", candidate.fundingEventId ? `#${candidate.fundingEventId}` : "—")}
+                </div>
+            `)}
+            ${candidate.normalizationFailureReason ? section("Normalization note", `
+                <div class="action-card">
+                    <p class="helper-text">${escapeHtml(candidate.normalizationFailureReason)}</p>
+                </div>
+            `) : ""}
+            ${buildApproveSection(candidate)}
+            ${buildRejectSection(candidate)}
+            ${candidate.status !== "DELETED" ? buildDeleteCandidateSection(candidate) : ""}
         `;
     } catch (error) {
         showError(error.message);
@@ -295,36 +492,67 @@ async function openEvent(id) {
             api.getFundingEvent(id),
             api.listFundingEventJournal(id)
         ]);
+
+        const defaultEntry = toLocalInputValue(offsetIso(event.fundingTime, -45));
+        const defaultExit = toLocalInputValue(offsetIso(event.fundingTime, 90));
+        const canArm = event.status === "DISCOVERED";
+
         nodes.drawerType.textContent = "Funding Event";
         nodes.drawerTitle.textContent = `${event.symbol} · ${event.venue}`;
         nodes.drawerContent.innerHTML = `
-            <section class="meta-grid">
-                ${metaRow("Status", formatBadge("event", event.status))}
-                ${metaRow("Funding Time", formatInstant(event.fundingTime))}
-                ${metaRow("Funding Rate", event.fundingRatePct ?? "—")}
-                ${metaRow("Source", event.sourceType)}
-                ${metaRow("Candidate", event.signalCandidateId ? `#${event.signalCandidateId}` : "Manual")}
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Arm Trade</h3></div>
-                <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
-                    <input name="notionalUsd" type="number" step="0.01" placeholder="Notional USD" value="25">
-                    <select name="intendedSide">
-                        <option value="LONG">LONG</option>
-                        <option value="SHORT">SHORT</option>
-                    </select>
-                    <input name="plannedEntryAt" type="datetime-local">
-                    <input name="plannedExitAt" type="datetime-local">
-                    <textarea name="notes" placeholder="Trade preparation notes"></textarea>
-                    <div class="actions">
-                        <button class="button" type="submit">Arm Trade</button>
-                    </div>
-                </form>
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Journal</h3></div>
-                ${journalMarkup(journal)}
-            </section>
+            ${section("Event snapshot", `
+                <div class="meta-grid">
+                    ${metaRow("Статус", formatBadge("event", event.status))}
+                    ${metaRow("Funding time", formatInstant(event.fundingTime), formatFundingCountdown(event.fundingTime))}
+                    ${metaRow("Funding rate", formatDecimal(event.fundingRatePct, 6))}
+                    ${metaRow("Venue", escapeHtml(event.venue))}
+                    ${metaRow("Source", escapeHtml(sourceLabel(event.sourceType)))}
+                    ${metaRow("Linked signal", event.signalCandidateId ? `#${event.signalCandidateId}` : "manual")}
+                </div>
+            `)}
+            ${section("Arm Prepared Trade", canArm ? `
+                <div class="action-card primary">
+                    <p class="helper-text">Создай Prepared Trade для engine flow. Реальный order здесь не ставится.</p>
+                    <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Notional, USD</span>
+                                <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="25">
+                            </label>
+                            <label class="field">
+                                <span>Side</span>
+                                <select name="intendedSide">
+                                    <option value="LONG">Long</option>
+                                    <option value="SHORT">Short</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Planned entry</span>
+                                <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(defaultEntry)}">
+                            </label>
+                            <label class="field">
+                                <span>Planned exit</span>
+                                <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(defaultExit)}">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>Preparation note</span>
+                            <textarea name="notes" placeholder="Почему этот Event должен перейти в Prepared Trade"></textarea>
+                        </label>
+                        <div class="actions">
+                            <button class="button" type="submit">Create Prepared Trade</button>
+                        </div>
+                    </form>
+                </div>
+            ` : `
+                <div class="action-card">
+                    <p class="helper-text">Event уже находится в статусе ${escapeHtml(event.status.toLowerCase())} и больше не может быть armed из этого desk.</p>
+                </div>
+            `)}
+            ${event.signalCandidateId ? buildDeleteCandidateSection({ id: event.signalCandidateId }, "Delete source signal") : ""}
+            ${section("Journal", journalMarkup(journal))}
         `;
     } catch (error) {
         showError(error.message);
@@ -337,26 +565,30 @@ async function openTrade(id) {
             api.getArmedTrade(id),
             api.listArmedTradeJournal(id)
         ]);
-        nodes.drawerType.textContent = "Armed Trade";
-        nodes.drawerTitle.textContent = `Trade #${trade.id}`;
+        nodes.drawerType.textContent = "Prepared Trade";
+        nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Сделка #${trade.id}`;
         nodes.drawerContent.innerHTML = `
-            <section class="meta-grid">
-                ${metaRow("State", formatBadge("trade", trade.state))}
-                ${metaRow("Funding Event", `#${trade.fundingEventId}`)}
-                ${metaRow("Notional", `${trade.notionalUsd} USD`)}
-                ${metaRow("Side", trade.intendedSide ?? "—")}
-                ${metaRow("Planned Entry", formatInstant(trade.plannedEntryAt))}
-                ${metaRow("Planned Exit", formatInstant(trade.plannedExitAt))}
-                ${metaRow("Armed At", formatInstant(trade.armedAt))}
-                ${metaRow("Entry Lead", trade.entryLeadMs ?? "—")}
-                ${metaRow("Exit Lead", trade.exitLeadMs ?? "—")}
-                ${metaRow("Arm Source", trade.armSource ?? "—")}
-                ${metaRow("Notes", trade.notes ?? "—")}
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Journal</h3></div>
-                ${journalMarkup(journal)}
-            </section>
+            ${section("Trade parameters", `
+                <div class="meta-grid">
+                    ${metaRow("Статус", formatBadge("trade", trade.state))}
+                    ${metaRow("Funding Event", `#${trade.fundingEventId}`)}
+                    ${metaRow("Source signal", trade.signalCandidateId ? `#${trade.signalCandidateId}` : "manual")}
+                    ${metaRow("Venue", escapeHtml(trade.venue ?? "—"))}
+                    ${metaRow("Instrument", escapeHtml(trade.symbol ?? "—"))}
+                    ${metaRow("Funding time", formatInstant(trade.fundingTime), formatFundingCountdown(trade.fundingTime))}
+                    ${metaRow("Notional", `${formatDecimal(trade.notionalUsd, 2)} USD`)}
+                    ${metaRow("Side", escapeHtml(sideLabel(trade.intendedSide)))}
+                    ${metaRow("Planned entry", formatInstant(trade.plannedEntryAt))}
+                    ${metaRow("Planned exit", formatInstant(trade.plannedExitAt))}
+                    ${metaRow("Armed at", formatInstant(trade.armedAt))}
+                    ${metaRow("Entry lead", formatDurationMs(trade.entryLeadMs))}
+                    ${metaRow("Exit lead", formatDurationMs(trade.exitLeadMs))}
+                    ${metaRow("Arm source", escapeHtml(trade.armSource ?? "—"))}
+                    ${metaRow("Note", escapeHtml(trade.notes ?? "—"))}
+                </div>
+            `)}
+            ${trade.signalCandidateId ? buildDeleteCandidateSection({ id: trade.signalCandidateId }, "Delete source signal") : ""}
+            ${section("Journal", journalMarkup(journal))}
         `;
     } catch (error) {
         showError(error.message);
@@ -370,43 +602,43 @@ async function openVenue(venueName) {
             api.listVenueInstruments(venueName),
             api.listVenueTimings(venueName)
         ]);
-        nodes.drawerType.textContent = "Venue";
+        nodes.drawerType.textContent = "Venue Access";
         nodes.drawerTitle.textContent = venue.venue;
         nodes.drawerContent.innerHTML = `
-            <section class="meta-grid">
-                ${metaRow("Mode", venue.configuredMode)}
-                ${metaRow("Credentials", venue.credentialsConfigured ? "Configured" : "Missing")}
-                ${metaRow("Metadata URL", venue.metadataBaseUrl ?? "—")}
-                ${metaRow("Active Instruments", venue.activeInstrumentCount)}
-                ${metaRow("Last Synced", formatInstant(venue.lastSyncedAt))}
-            </section>
-            <section class="panel">
-                <div class="panel-header">
-                    <h3>Actions</h3>
-                    <button class="button secondary" type="button" data-action="sync-venue" data-venue="${venue.venue}">Sync Now</button>
+            ${section("Venue profile", `
+                <div class="meta-grid">
+                    ${metaRow("Mode", escapeHtml(modeLabel(venue.configuredMode)))}
+                    ${metaRow("Keys", credentialsBadge(venue))}
+                    ${metaRow("Connection", formatConnectionBadge(venue.connectionStatus))}
+                    ${metaRow("Connection note", escapeHtml(venue.connectionMessage ?? "Проверка ещё не запускалась."))}
+                    ${metaRow("Metadata", venueHealthBadge(venue))}
+                    ${metaRow("Metadata URL", escapeHtml(venue.metadataBaseUrl ?? "—"))}
+                    ${metaRow("Contracts URL", escapeHtml(venue.contractsBaseUrl ?? "—"))}
+                    ${metaRow("Active instruments", formatNumber(venue.activeInstrumentCount))}
+                    ${metaRow("Last sync", formatInstant(venue.lastSyncedAt))}
+                    ${metaRow("Last credential check", formatInstant(venue.lastCheckedAt))}
                 </div>
-                <p class="muted">Manual sync refreshes instrument metadata and updates venue diagnostics.</p>
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Instruments</h3></div>
-                ${instruments.length ? instruments.map((instrument) => `
-                    <div class="meta-row">
-                        <span class="eyebrow">${instrument.venueSymbol}</span>
-                        <strong>${instrument.canonicalSymbol}</strong>
-                        <span class="muted">${instrument.status} · step ${instrument.qtyStep ?? "—"} · min ${instrument.minOrderQty ?? "—"}</span>
-                    </div>
-                `).join("") : emptyState("No synced instruments yet.")}
-            </section>
-            <section class="panel">
-                <div class="panel-header"><h3>Request Timings</h3></div>
-                ${timings.length ? timings.map((timing) => `
-                    <div class="meta-row">
-                        <span class="eyebrow">${timing.operation}</span>
-                        <strong>${timing.averageDurationMs} ms avg</strong>
-                        <span class="muted">${timing.requests} req · ${timing.successes} ok · last ${formatInstant(timing.lastOccurredAt)}</span>
-                    </div>
-                `).join("") : emptyState("No timing samples for this venue yet.")}
-            </section>
+            `)}
+            ${section("Actions", `
+                <div class="actions">
+                    <button class="button secondary" type="button" data-action="check-venue" data-venue="${escapeHtml(venue.venue)}">Check keys</button>
+                    <button class="button secondary" type="button" data-action="sync-venue" data-venue="${escapeHtml(venue.venue)}">Sync instruments</button>
+                </div>
+            `)}
+            ${section("Request timings", timings.length ? timings.map((timing) => `
+                <div class="meta-row">
+                    <span class="meta-label">${escapeHtml(timing.operation)}</span>
+                    <strong class="meta-value">${formatDurationMs(timing.averageDurationMs)}</strong>
+                    <span class="meta-helper">${formatNumber(timing.requests)} req · ${formatNumber(timing.successes)} ok · ${formatNumber(timing.failures)} fail · last ${formatInstant(timing.lastOccurredAt)}</span>
+                </div>
+            `).join("") : emptyState("Timings пока пусты."))}
+            ${section("Synced instruments", instruments.length ? instruments.map((instrument) => `
+                <div class="meta-row">
+                    <span class="meta-label">${escapeHtml(instrument.venueSymbol)}</span>
+                    <strong class="meta-value">${escapeHtml(instrument.canonicalSymbol)}</strong>
+                    <span class="meta-helper">${escapeHtml(instrument.status)} · step ${escapeHtml(instrument.qtyStep ?? "—")} · min qty ${escapeHtml(instrument.minOrderQty ?? "—")}</span>
+                </div>
+            `).join("") : emptyState("Instrument metadata пока нет.", "Сначала запусти sync по площадке."))}
         `;
     } catch (error) {
         showError(error.message);
@@ -431,7 +663,7 @@ async function handleDrawerAction(event) {
                     fundingRatePct: numberOrNull(data.get("fundingRatePct")),
                     reviewNotes: data.get("reviewNotes") || null
                 });
-                showSuccess("Candidate approved and converted into FundingEvent.");
+                showSuccess("Кандидат переведён в событие фандинга.");
                 await Promise.all([refreshCurrentScreen(), openCandidate(form.dataset.id)]);
                 return;
             }
@@ -443,6 +675,18 @@ async function handleDrawerAction(event) {
                 await Promise.all([refreshCurrentScreen(), openCandidate(form.dataset.id)]);
                 return;
             }
+            if (action === "delete-candidate") {
+                if (!window.confirm("Удалить candidate и очистить связанный pipeline?")) {
+                    return;
+                }
+                await api.deleteCandidate(form.dataset.id, data.get("deleteNote") || null);
+                showSuccess("Candidate deleted and pipeline cleaned.");
+                await refreshCurrentScreen();
+                nodes.drawerType.textContent = "Inspector";
+                nodes.drawerTitle.textContent = "Выбери объект";
+                nodes.drawerContent.innerHTML = `<p class="muted">Открой signal, Funding Event, Prepared Trade или venue, чтобы посмотреть детали и следующее действие.</p>`;
+                return;
+            }
             if (action === "arm-event") {
                 await api.armFundingEvent(form.dataset.id, {
                     notionalUsd: numberOrNull(data.get("notionalUsd")),
@@ -451,8 +695,9 @@ async function handleDrawerAction(event) {
                     plannedExitAt: toIsoOrNull(data.get("plannedExitAt")),
                     notes: data.get("notes") || null
                 });
-                showSuccess("Funding event armed successfully.");
+                showSuccess("Prepared Trade created.");
                 await Promise.all([refreshCurrentScreen(), openEvent(form.dataset.id)]);
+                return;
             }
         } catch (error) {
             showError(error.message);
@@ -469,6 +714,18 @@ async function handleDrawerAction(event) {
         } catch (error) {
             showError(error.message);
         }
+        return;
+    }
+
+    const checkButton = event.target.closest("[data-action='check-venue']");
+    if (checkButton) {
+        try {
+            await api.checkVenueCredentials(checkButton.dataset.venue);
+            showSuccess(`Credential check completed for ${checkButton.dataset.venue}.`);
+            await Promise.all([refreshCurrentScreen(), openVenue(checkButton.dataset.venue)]);
+        } catch (error) {
+            showError(error.message);
+        }
     }
 }
 
@@ -477,6 +734,22 @@ function toIsoOrNull(value) {
         return null;
     }
     return new Date(value).toISOString();
+}
+
+function toLocalInputValue(value) {
+    if (!value) {
+        return "";
+    }
+    const date = new Date(value);
+    const pad = (part) => String(part).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function offsetIso(value, seconds) {
+    if (!value) {
+        return null;
+    }
+    return new Date(new Date(value).getTime() + seconds * 1000).toISOString();
 }
 
 function numberOrNull(value) {
@@ -496,13 +769,28 @@ nodes.nav.addEventListener("click", (event) => {
 });
 
 nodes.refreshAllButton.addEventListener("click", async () => {
-    await refreshCurrentScreen();
-    showSuccess("Screen refreshed.");
+    await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
+    showSuccess("Контур обновлён.");
+});
+
+nodes.globalModeForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+        await api.setGlobalVenueMode(nodes.globalModeSelect.value);
+        await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
+        showSuccess("Global access mode обновлён.");
+    } catch (error) {
+        showError(error.message);
+    }
 });
 
 nodes.candidateFilters.addEventListener("submit", async (event) => {
     event.preventDefault();
-    state.candidateFilters = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const entries = Object.fromEntries(new FormData(event.currentTarget).entries());
+    state.candidateFilters = {
+        ...entries,
+        detectedFrom: toIsoOrNull(entries.detectedFrom)
+    };
     await refreshCurrentScreen();
 });
 
@@ -513,12 +801,22 @@ nodes.eventFilters.addEventListener("submit", async (event) => {
 });
 
 nodes.drawerClose.addEventListener("click", () => {
-    nodes.drawerType.textContent = "Detail";
-    nodes.drawerTitle.textContent = "Select an item";
-    nodes.drawerContent.innerHTML = `<p class="muted">Pick a candidate, event, trade, or venue to inspect details.</p>`;
+    nodes.drawerType.textContent = "Inspector";
+    nodes.drawerTitle.textContent = "Выбери объект";
+    nodes.drawerContent.innerHTML = `<p class="muted">Выбери объект из списка.</p>`;
 });
 
 nodes.drawerContent.addEventListener("submit", handleDrawerAction);
 nodes.drawerContent.addEventListener("click", handleDrawerAction);
 
+async function loadGlobalMode() {
+    try {
+        const globalMode = await api.getGlobalVenueMode();
+        nodes.globalModeSelect.value = String(globalMode.mode ?? "TESTNET").toUpperCase();
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+await loadGlobalMode();
 await refreshCurrentScreen();

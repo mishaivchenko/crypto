@@ -1,5 +1,6 @@
 package com.crypto.funding.application.event;
 
+import com.crypto.funding.application.DomainValidationException;
 import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.domain.trade.TradeJournalActorType;
@@ -33,6 +34,11 @@ public class FundingEventCommandService
     @Transactional
     public FundingEvent create( CreateFundingEventCommand command )
     {
+        if( !command.fundingTime().isAfter( Instant.now() ) )
+        {
+            throw new DomainValidationException( "Время фандинга должно быть в будущем." );
+        }
+
         FundingEventEntity entity = new FundingEventEntity();
         entity.setVenue( normalizeVenue( command.venue() ) );
         entity.setSymbol( normalizeSymbol( command.symbol() ) );

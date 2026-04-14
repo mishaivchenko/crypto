@@ -26,6 +26,8 @@ public class MonitorOverviewController
         MonitorOverviewService.Overview overview = monitorOverviewService.load();
         return new MonitorOverviewResponse(
             overview.version(),
+            overview.globalAccessMode(),
+            overview.globalModeOverridden(),
             overview.pendingCandidates(),
             overview.fundingEvents(),
             overview.discoveredEvents(),
@@ -35,8 +37,16 @@ public class MonitorOverviewController
                 venue.venue(),
                 venue.mode(),
                 venue.credentialsConfigured(),
+                venue.apiKeyLoaded(),
+                venue.secretKeyLoaded(),
+                venue.passphraseLoaded(),
+                venue.credentialsRequired(),
+                venue.modeOverridden(),
+                venue.connectionStatus(),
+                venue.connectionMessage(),
                 venue.activeInstrumentCount(),
                 venue.lastSyncedAt(),
+                venue.lastCheckedAt(),
                 venue.averageRequestTimeMs(),
                 venue.requests()
             ) ).toList(),

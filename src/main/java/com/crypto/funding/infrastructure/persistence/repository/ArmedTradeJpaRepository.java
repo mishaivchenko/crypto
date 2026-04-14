@@ -10,5 +10,7 @@ public interface ArmedTradeJpaRepository extends JpaRepository<ArmedTradeEntity,
 {
     List<ArmedTradeEntity> findAllByOrderByCreatedAtDesc();
 
+    List<ArmedTradeEntity> findAllByFundingEventIdOrderByCreatedAtDesc( Long fundingEventId );
+
     boolean existsByFundingEventIdAndStateIn( Long fundingEventId, Set<com.crypto.funding.domain.trade.ArmedTradeState> states );
 }

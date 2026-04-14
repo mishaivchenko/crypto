@@ -17,7 +17,7 @@ class VenueCredentialStartupValidatorTest
     {
         MetadataSyncProperties properties = new MetadataSyncProperties();
         properties.setRequireCredentialsOnStartup( false );
-        properties.setEnabledVenues( List.of( "binance" ) );
+        properties.setEnabledVenues( List.of( "bybit" ) );
 
         VenueCredentialStartupValidator validator = new VenueCredentialStartupValidator( properties, new MockEnvironment() );
 
@@ -29,19 +29,20 @@ class VenueCredentialStartupValidatorTest
     {
         MetadataSyncProperties properties = new MetadataSyncProperties();
         properties.setRequireCredentialsOnStartup( true );
-        properties.setEnabledVenues( List.of( "binance", "gate" ) );
+        properties.setEnabledVenues( List.of( "bybit", "gate" ) );
 
         MockEnvironment environment = new MockEnvironment()
-            .withProperty( "trading.binance.mode", "production" )
-            .withProperty( "trading.binance.production.api-key", "key" )
-            .withProperty( "trading.binance.production.secret-key", "secret" )
-            .withProperty( "trading.gate.mode", "testnet" );
+            .withProperty( "trading.venue-access.mode", "production" )
+            .withProperty( "trading.bybit.production.api-key", "key" )
+            .withProperty( "trading.bybit.production.secret-key", "secret" )
+            .withProperty( "trading.gate.production.api-key", "" )
+            .withProperty( "trading.gate.production.secret-key", "" );
 
         VenueCredentialStartupValidator validator = new VenueCredentialStartupValidator( properties, environment );
 
         assertThatThrownBy( () -> validator.run( new DefaultApplicationArguments( new String[0] ) ) )
             .isInstanceOf( IllegalStateException.class )
             .hasMessageContaining( "gate" )
-            .hasMessageNotContaining( "binance" );
+            .hasMessageNotContaining( "bybit" );
     }
 }

@@ -9,6 +9,7 @@ public record SignalCandidate(
     Long sourceChatId,
     Long sourceMessageId,
     String rawPayload,
+    String sourceVenue,
     String rawSymbol,
     String normalizedSymbol,
     List<String> venueHints,

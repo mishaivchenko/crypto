@@ -57,7 +57,7 @@ class EnginePlanServiceTest
 
         assertThat( plan.status() ).isEqualTo( EnginePlanStatus.WAITING_ENTRY );
         assertThat( plan.nextActionAt() ).isEqualTo( now.plusSeconds( 300 ) );
-        assertThat( plan.summary() ).contains( "Waiting to enter" );
+        assertThat( plan.summary() ).contains( "Ожидаем вход" );
     }
 
     @Test
@@ -69,7 +69,7 @@ class EnginePlanServiceTest
         EngineExecutionPlan plan = service.listPlans().getFirst();
 
         assertThat( plan.status() ).isEqualTo( EnginePlanStatus.ENTRY_WINDOW );
-        assertThat( plan.summary() ).contains( "Entry window active" );
+        assertThat( plan.summary() ).contains( "Окно входа активно" );
     }
 
     @Test
@@ -93,7 +93,7 @@ class EnginePlanServiceTest
         EngineExecutionPlan plan = service.listPlans().getFirst();
 
         assertThat( plan.status() ).isEqualTo( EnginePlanStatus.OVERDUE );
-        assertThat( plan.summary() ).contains( "requires operator attention" );
+        assertThat( plan.summary() ).contains( "нужен разбор оператора" );
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.crypto.funding.engine;
 
 import com.crypto.funding.api.ApiExceptionHandler;
+import com.crypto.funding.application.event.FundingEventLifecycleService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.TradeJournalService;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -17,6 +18,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackages = "com.crypto.funding.infrastructure.persistence.repository")
 @Import({
     ApiExceptionHandler.class,
+    FundingEventLifecycleService.class,
     TradeQueryService.class,
     TradeJournalService.class,
     EnginePlanService.class,

@@ -30,15 +30,33 @@ public class SymbolNormalizationService
 
     public CandidateNormalizationResult normalize( String rawSymbol )
     {
+        return normalize( rawSymbol, null );
+    }
+
+    public CandidateNormalizationResult normalize( String rawSymbol, String sourceVenue )
+    {
         if( rawSymbol == null || rawSymbol.isBlank() )
         {
-            return new CandidateNormalizationResult( null, List.of(), "raw symbol is blank" );
+            return new CandidateNormalizationResult( null, List.of(), "Символ сигнала пустой." );
         }
 
         String normalized = SymbolMapper.toUnified( rawSymbol );
         if( normalized == null || !CANONICAL_SYMBOL.matcher( normalized ).matches() )
         {
-            return new CandidateNormalizationResult( null, List.of(), "unable to normalize symbol into canonical perp form" );
+            return new CandidateNormalizationResult( null, List.of(), "Не удалось привести символ к каноническому виду perpetual-контракта." );
+        }
+
+        String lockedVenue = normalizeVenue( sourceVenue );
+        if( lockedVenue != null )
+        {
+            if( symbolMetadataPort.findByVenueSymbol( lockedVenue, rawSymbol ).isPresent()
+                || symbolMetadataPort.findSymbolMetadata( lockedVenue, normalized ).isPresent()
+                || metadataSyncProperties.isBootstrapFallbackEnabled() )
+            {
+                return new CandidateNormalizationResult( normalized, List.of( lockedVenue ), null );
+            }
+
+            return new CandidateNormalizationResult( normalized, List.of( lockedVenue ), null );
         }
 
         List<String> venueHints = metadataSyncProperties.getEnabledVenues()
@@ -65,9 +83,25 @@ public class SymbolNormalizationService
 
         if( venueHints.isEmpty() )
         {
-            return new CandidateNormalizationResult( normalized, List.of(), "no supported venues found for normalized symbol" );
+            return new CandidateNormalizationResult( normalized, List.of(), "Для нормализованного символа не найдено поддерживаемых площадок." );
         }
 
         return new CandidateNormalizationResult( normalized, venueHints, null );
+    }
+
+    private String normalizeVenue( String rawVenue )
+    {
+        if( rawVenue == null || rawVenue.isBlank() )
+        {
+            return null;
+        }
+
+        String venue = rawVenue.trim().toLowerCase( Locale.ROOT );
+        boolean enabled = metadataSyncProperties.getEnabledVenues()
+                                               .stream()
+                                               .filter( Objects::nonNull )
+                                               .map( value -> value.trim().toLowerCase( Locale.ROOT ) )
+                                               .anyMatch( venue::equals );
+        return enabled ? venue : null;
     }
 }

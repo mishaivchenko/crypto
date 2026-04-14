@@ -23,7 +23,7 @@ public class FundingWatchlistService
 
     // Что мы храним по бирже
     public record WatchFunding(
-        String exchange,          // "binance", "bybit", "gate"
+        String exchange,
         double fundingRatePct,    // уже умножено на 100
         Instant nextFundingAt,
         long secondsToFunding,
@@ -99,26 +99,14 @@ public class FundingWatchlistService
 
                 Instant reusedNext = null;
 
-                // 1) приоритет — binance, если есть
-                WatchFunding binanceFunding = existing.funding().get( "binance" );
-                if( binanceFunding != null
-                    && binanceFunding.nextFundingAt() != null
-                    && binanceFunding.nextFundingAt().toEpochMilli() > 0L )
+                for( WatchFunding wf : existing.funding().values() )
                 {
-                    reusedNext = binanceFunding.nextFundingAt();
-                }
-
-                // 2) иначе — любая другая биржа с валидным nextFundingAt
-                if( reusedNext == null )
-                {
-                    for( WatchFunding wf : existing.funding().values() )
+                    if( wf.nextFundingAt() != null
+                        && wf.nextFundingAt().toEpochMilli() > 0L
+                        && wf.nextFundingAt().isAfter( Instant.now() ) )
                     {
-                        if( wf.nextFundingAt() != null
-                            && wf.nextFundingAt().toEpochMilli() > 0L )
-                        {
-                            reusedNext = wf.nextFundingAt();
-                            break;
-                        }
+                        reusedNext = wf.nextFundingAt();
+                        break;
                     }
                 }
 
@@ -173,7 +161,16 @@ public class FundingWatchlistService
         {
             return Optional.empty();
         }
-        return Optional.ofNullable( item.funding().get( exchange ) );
+        WatchFunding funding = item.funding().get( exchange );
+        if( funding == null )
+        {
+            return Optional.empty();
+        }
+        if( funding.nextFundingAt() == null || !funding.nextFundingAt().isAfter( Instant.now() ) )
+        {
+            return Optional.empty();
+        }
+        return Optional.of( funding );
     }
 
     @Scheduled( fixedDelay = 60_000 )

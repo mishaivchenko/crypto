@@ -6,16 +6,19 @@ import com.crypto.funding.api.dto.CandidateResponse;
 import com.crypto.funding.api.dto.RejectCandidateRequest;
 import com.crypto.funding.application.candidate.ApproveSignalCandidateCommand;
 import com.crypto.funding.application.candidate.RejectSignalCandidateCommand;
+import com.crypto.funding.application.candidate.SignalCandidateLifecycleService;
 import com.crypto.funding.application.candidate.SignalCandidateQueryService;
 import com.crypto.funding.application.candidate.SignalCandidateReviewService;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
+import com.crypto.funding.watchlist.FundingWatchlistService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.List;
 
 @RestController
@@ -33,14 +37,20 @@ public class SignalCandidateController
 {
     private final SignalCandidateQueryService queryService;
     private final SignalCandidateReviewService reviewService;
+    private final SignalCandidateLifecycleService lifecycleService;
+    private final FundingWatchlistService fundingWatchlistService;
 
     public SignalCandidateController(
         SignalCandidateQueryService queryService,
-        SignalCandidateReviewService reviewService
+        SignalCandidateReviewService reviewService,
+        SignalCandidateLifecycleService lifecycleService,
+        FundingWatchlistService fundingWatchlistService
     )
     {
         this.queryService = queryService;
         this.reviewService = reviewService;
+        this.lifecycleService = lifecycleService;
+        this.fundingWatchlistService = fundingWatchlistService;
     }
 
     @GetMapping
@@ -86,6 +96,13 @@ public class SignalCandidateController
         return toResponse( reviewService.reject( new RejectSignalCandidateCommand( id, request.reviewNotes() ) ) );
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public CandidateResponse delete( @PathVariable Long id, @RequestParam(required = false) String note )
+    {
+        return toResponse( lifecycleService.deleteCandidate( id, note ) );
+    }
+
     private CandidateListItemResponse toListItem( SignalCandidate candidate )
     {
         return new CandidateListItemResponse(
@@ -93,24 +110,28 @@ public class SignalCandidateController
             candidate.sourceType(),
             candidate.sourceChatId(),
             candidate.sourceMessageId(),
+            candidate.sourceVenue(),
             candidate.rawSymbol(),
             candidate.normalizedSymbol(),
             candidate.venueHints(),
             candidate.detectedAt(),
             candidate.status(),
             candidate.reviewDecision(),
-            candidate.fundingEventId()
+            candidate.fundingEventId(),
+            candidate.normalizationFailureReason()
         );
     }
 
     private CandidateResponse toResponse( SignalCandidate candidate )
     {
+        CandidateSuggestion suggestion = buildSuggestion( candidate );
         return new CandidateResponse(
             candidate.id(),
             candidate.sourceType(),
             candidate.sourceChatId(),
             candidate.sourceMessageId(),
             candidate.rawPayload(),
+            candidate.sourceVenue(),
             candidate.rawSymbol(),
             candidate.normalizedSymbol(),
             candidate.venueHints(),
@@ -121,8 +142,49 @@ public class SignalCandidateController
             candidate.reviewNotes(),
             candidate.normalizationFailureReason(),
             candidate.fundingEventId(),
+            suggestion.venue(),
+            suggestion.fundingTime(),
+            suggestion.fundingRatePct(),
             candidate.createdAt(),
             candidate.updatedAt()
         );
+    }
+
+    private CandidateSuggestion buildSuggestion( SignalCandidate candidate )
+    {
+        List<String> preferredVenues = new java.util.ArrayList<>();
+        if( candidate.sourceVenue() != null && !candidate.sourceVenue().isBlank() )
+        {
+            preferredVenues.add( candidate.sourceVenue() );
+        }
+        preferredVenues.addAll( candidate.venueHints() );
+
+        for( String venue : preferredVenues.stream().filter( value -> value != null && !value.isBlank() ).distinct().toList() )
+        {
+            Optional<FundingWatchlistService.WatchFunding> watchFunding = fundingWatchlistService.findFunding(
+                candidate.normalizedSymbol() == null || candidate.normalizedSymbol().isBlank() ? candidate.rawSymbol() : candidate.normalizedSymbol(),
+                venue
+            );
+            if( watchFunding.isPresent() )
+            {
+                FundingWatchlistService.WatchFunding funding = watchFunding.get();
+                return new CandidateSuggestion(
+                    venue,
+                    funding.nextFundingAt(),
+                    java.math.BigDecimal.valueOf( funding.fundingRatePct() )
+                );
+            }
+        }
+
+        String fallbackVenue = preferredVenues.stream().filter( value -> value != null && !value.isBlank() ).findFirst().orElse( null );
+        return new CandidateSuggestion( fallbackVenue, null, null );
+    }
+
+    private record CandidateSuggestion(
+        String venue,
+        Instant fundingTime,
+        java.math.BigDecimal fundingRatePct
+    )
+    {
     }
 }

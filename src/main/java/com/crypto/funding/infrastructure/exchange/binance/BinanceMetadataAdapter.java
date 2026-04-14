@@ -141,7 +141,9 @@ public class BinanceMetadataAdapter implements VenueMetadataPort
 
     private String baseUrl()
     {
-        String mode = environment.getProperty( "trading.binance.mode", "testnet" ).trim().toLowerCase( Locale.ROOT );
-        return environment.getProperty( "trading.binance." + mode + ".base-url", "https://testnet.binancefuture.com" );
+        return environment.getProperty(
+            "trading.binance.metadata-base-url",
+            environment.getProperty( "trading.binance.production.base-url", "https://fapi.binance.com" )
+        );
     }
 }

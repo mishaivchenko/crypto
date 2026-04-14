@@ -55,14 +55,14 @@ public class ArmedTradeCommandService
     {
         FundingEventEntity fundingEvent = fundingEventRepository.findById( command.fundingEventId() )
                                                                .orElseThrow( () -> new ResourceNotFoundException(
-                                                                   "FundingEvent not found: " + command.fundingEventId()
+                                                                   "Событие фандинга не найдено: " + command.fundingEventId()
                                                                ) );
         FundingEventStatus previousFundingEventStatus = fundingEvent.getStatus();
 
         if( fundingEvent.getStatus() == FundingEventStatus.CANCELLED || fundingEvent.getStatus() == FundingEventStatus.EXPIRED )
         {
             throw new DomainValidationException(
-                "FundingEvent " + command.fundingEventId() + " is not armable from status " + fundingEvent.getStatus()
+                "Событие фандинга " + command.fundingEventId() + " нельзя подготовить из статуса " + fundingEvent.getStatus()
             );
         }
         if( armedTradeRepository.existsByFundingEventIdAndStateIn(
@@ -70,7 +70,7 @@ public class ArmedTradeCommandService
             Set.of( ArmedTradeState.ARMED, ArmedTradeState.ENTRY_PENDING, ArmedTradeState.ENTRY_ATTEMPTED, ArmedTradeState.OPEN, ArmedTradeState.EXIT_PENDING )
         ) )
         {
-            throw new DomainValidationException( "FundingEvent " + command.fundingEventId() + " already has an active ArmedTrade" );
+            throw new DomainValidationException( "У события фандинга " + command.fundingEventId() + " уже есть активная подготовленная сделка." );
         }
 
         ArmedTradeEntity entity = new ArmedTradeEntity();
@@ -82,8 +82,8 @@ public class ArmedTradeCommandService
         Instant armedAt = Instant.now();
         entity.setArmedAt( armedAt );
         entity.setEventAgeMsAtArm( Duration.between( fundingEvent.getDiscoveredAt(), armedAt ).toMillis() );
-        entity.setEntryLeadMs( command.plannedEntryAt() == null ? null : Duration.between( fundingEvent.getFundingTime(), command.plannedEntryAt() ).toMillis() );
-        entity.setExitLeadMs( command.plannedExitAt() == null ? null : Duration.between( fundingEvent.getFundingTime(), command.plannedExitAt() ).toMillis() );
+        entity.setEntryLeadMs( command.plannedEntryAt() == null ? null : Duration.between( command.plannedEntryAt(), fundingEvent.getFundingTime() ).toMillis() );
+        entity.setExitLeadMs( command.plannedExitAt() == null ? null : Duration.between( command.plannedExitAt(), fundingEvent.getFundingTime() ).toMillis() );
         entity.setArmSource( armSource );
         entity.setState( ArmedTradeState.ARMED );
         entity.setNotes( command.notes() == null || command.notes().isBlank() ? null : command.notes().trim() );

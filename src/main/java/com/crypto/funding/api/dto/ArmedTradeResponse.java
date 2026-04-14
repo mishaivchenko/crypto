@@ -9,6 +9,10 @@ import java.time.Instant;
 public record ArmedTradeResponse(
     Long id,
     Long fundingEventId,
+    Long signalCandidateId,
+    String venue,
+    String symbol,
+    Instant fundingTime,
     BigDecimal notionalUsd,
     TradeSide intendedSide,
     Instant plannedEntryAt,

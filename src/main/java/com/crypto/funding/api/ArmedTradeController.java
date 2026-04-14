@@ -7,6 +7,8 @@ import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
 import com.crypto.funding.application.trade.TradeJournalService;
+import com.crypto.funding.application.event.FundingEventQueryService;
+import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.TradeJournalEntry;
 import com.crypto.funding.domain.trade.TradeJournalEntityType;
@@ -29,16 +31,19 @@ public class ArmedTradeController
     private final ArmedTradeCommandService armedTradeCommandService;
     private final TradeQueryService tradeQueryService;
     private final TradeJournalService tradeJournalService;
+    private final FundingEventQueryService fundingEventQueryService;
 
     public ArmedTradeController(
         ArmedTradeCommandService armedTradeCommandService,
         TradeQueryService tradeQueryService,
-        TradeJournalService tradeJournalService
+        TradeJournalService tradeJournalService,
+        FundingEventQueryService fundingEventQueryService
     )
     {
         this.armedTradeCommandService = armedTradeCommandService;
         this.tradeQueryService = tradeQueryService;
         this.tradeJournalService = tradeJournalService;
+        this.fundingEventQueryService = fundingEventQueryService;
     }
 
     @PostMapping
@@ -78,9 +83,14 @@ public class ArmedTradeController
 
     private ArmedTradeResponse toResponse( ArmedTrade trade )
     {
+        FundingEvent fundingEvent = fundingEventQueryService.getFundingEvent( trade.fundingEventId() );
         return new ArmedTradeResponse(
             trade.id(),
             trade.fundingEventId(),
+            fundingEvent.signalCandidateId(),
+            fundingEvent.venue(),
+            fundingEvent.symbol(),
+            fundingEvent.fundingTime(),
             trade.notionalUsd(),
             trade.intendedSide(),
             trade.plannedEntryAt(),

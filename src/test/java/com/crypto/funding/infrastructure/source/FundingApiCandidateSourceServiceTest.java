@@ -10,14 +10,18 @@ import com.crypto.funding.config.VenueHttpProperties;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
+import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.watchlist.FundingWatchlistService;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -27,6 +31,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -56,12 +61,12 @@ class FundingApiCandidateSourceServiceTest
                                           "id": 1,
                                           "symbol": "BTCUSDT",
                                           "coin": "BTC",
-                                          "exchange": "binance",
-                                          "exchange_name": "Binance",
+                                          "exchange": "bybit",
+                                          "exchange_name": "Bybit",
                                           "price": "65000.5",
                                           "funding": "0.0125",
                                           "funding_interval": 8,
-                                          "updated_at": "2026-04-04 07:30:00"
+                                          "updated_at": "2030-04-04 07:30:00"
                                         }
                                       ]
                                     }
@@ -71,10 +76,11 @@ class FundingApiCandidateSourceServiceTest
         SignalCandidateIngestService ingestService = mock( SignalCandidateIngestService.class );
         SymbolMetadataPort symbolMetadataPort = mock( SymbolMetadataPort.class );
         VenueRequestTimingService timingService = new VenueRequestTimingService();
+        SignalCandidateJpaRepository candidateRepository = mock( SignalCandidateJpaRepository.class );
 
-        when( symbolMetadataPort.findByVenueSymbol( "binance", "BTCUSDT" ) )
+        when( symbolMetadataPort.findByVenueSymbol( "bybit", "BTCUSDT" ) )
             .thenReturn( java.util.Optional.of( new SymbolMetadata(
-                "binance",
+                "bybit",
                 "BTC/USDT",
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
@@ -87,10 +93,11 @@ class FundingApiCandidateSourceServiceTest
                 1L,
                 10L,
                 "{}",
+                "bybit",
                 "BTCUSDT",
                 "BTC/USDT",
-                List.of( "binance" ),
-                Instant.parse( "2026-04-04T07:30:00Z" ),
+                List.of( "bybit" ),
+                Instant.parse( "2030-04-04T07:30:00Z" ),
                 SignalCandidateStatus.NORMALIZED,
                 null,
                 null,
@@ -105,24 +112,27 @@ class FundingApiCandidateSourceServiceTest
             HttpClient.newHttpClient(),
             httpProperties(),
             sourceProperties( fundingApi.baseUrl() + "/api/funding?sort_by=funding&sort_dir=asc&limit=30" ),
-            metadataProperties( "binance" ),
+            metadataProperties( "bybit" ),
             ingestService,
             watchlistService,
             symbolMetadataPort,
-            timingService
+            timingService,
+            candidateRepository,
+            fixedClock( "2030-04-04T11:35:00Z" )
         );
 
         service.refreshCandidates();
 
-        assertThat( watchlistService.findFunding( "BTC/USDT", "binance" ) )
+        assertThat( watchlistService.findFunding( "BTC/USDT", "bybit" ) )
             .get()
             .satisfies( funding -> {
                 assertThat( funding.fundingRatePct() ).isEqualTo( 0.0125d );
-                assertThat( funding.nextFundingAt() ).isEqualTo( Instant.parse( "2026-04-04T08:00:00Z" ) );
+                assertThat( funding.nextFundingAt() ).isEqualTo( Instant.parse( "2030-04-04T16:00:00Z" ) );
                 assertThat( funding.secondsToFunding() ).isGreaterThanOrEqualTo( 0L );
             } );
 
         verify( ingestService ).ingest( any( IngestSignalCandidateCommand.class ) );
+        verify( candidateRepository ).findAllBySourceTypeAndSourceChatIdAndFundingEventIdIsNullOrderByDetectedAtDesc( "FUNDING_API", 1L );
         assertThat( timingService.snapshots( "candidate-source" ) )
             .singleElement()
             .satisfies( snapshot -> {
@@ -160,22 +170,108 @@ class FundingApiCandidateSourceServiceTest
         SignalCandidateIngestService ingestService = mock( SignalCandidateIngestService.class );
         SymbolMetadataPort symbolMetadataPort = mock( SymbolMetadataPort.class );
         VenueRequestTimingService timingService = new VenueRequestTimingService();
+        SignalCandidateJpaRepository candidateRepository = mock( SignalCandidateJpaRepository.class );
 
         FundingApiCandidateSourceService service = new FundingApiCandidateSourceService(
             HttpClient.newHttpClient(),
             httpProperties(),
             sourceProperties( fundingApi.baseUrl() + "/api/funding?sort_by=funding&sort_dir=asc&limit=30" ),
-            metadataProperties( "binance" ),
+            metadataProperties( "bybit" ),
             ingestService,
             watchlistService,
             symbolMetadataPort,
-            timingService
+            timingService,
+            candidateRepository,
+            fixedClock( "2026-04-04T11:35:00Z" )
         );
 
         service.refreshCandidates();
 
         verifyNoInteractions( ingestService );
+        verify( candidateRepository, never() ).deleteAll( any() );
         assertThat( watchlistService.all() ).isEmpty();
+    }
+
+    @Test
+    void refreshCandidatesUsesStableSourceMessageIdForSameFundingApiEntry()
+    {
+        fundingApi.start();
+        fundingApi.stubFor( get( urlEqualTo( "/api/funding?sort_by=funding&sort_dir=asc&limit=30" ) )
+            .willReturn( okJson( """
+                {
+                  "data": [
+                    {
+                      "id": 42,
+                      "symbol": "NOMUSDT",
+                      "coin": "NOM",
+                      "exchange": "gate",
+                      "exchange_name": "Gate",
+                      "price": "0.15",
+                      "funding": "-0.0125",
+                      "funding_interval": 4,
+                      "updated_at": "2026-04-04 07:30:00"
+                    }
+                  ]
+                }
+                """ ) ) );
+
+        FundingWatchlistService watchlistService = new FundingWatchlistService();
+        SignalCandidateIngestService ingestService = mock( SignalCandidateIngestService.class );
+        SymbolMetadataPort symbolMetadataPort = mock( SymbolMetadataPort.class );
+        VenueRequestTimingService timingService = new VenueRequestTimingService();
+        SignalCandidateJpaRepository candidateRepository = mock( SignalCandidateJpaRepository.class );
+
+        when( symbolMetadataPort.findByVenueSymbol( "gate", "NOMUSDT" ) )
+            .thenReturn( java.util.Optional.of( new SymbolMetadata(
+                "gate",
+                "NOM/USDT",
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO
+            ) ) );
+        when( ingestService.ingest( any( IngestSignalCandidateCommand.class ) ) )
+            .thenReturn( new SignalCandidate(
+                1L,
+                "FUNDING_API",
+                1L,
+                0L,
+                "{}",
+                "gate",
+                "NOMUSDT",
+                "NOM/USDT",
+                List.of( "gate" ),
+                Instant.parse( "2026-04-04T07:30:00Z" ),
+                SignalCandidateStatus.NORMALIZED,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.now(),
+                Instant.now()
+            ) );
+
+        FundingApiCandidateSourceService service = new FundingApiCandidateSourceService(
+            HttpClient.newHttpClient(),
+            httpProperties(),
+            sourceProperties( fundingApi.baseUrl() + "/api/funding?sort_by=funding&sort_dir=asc&limit=30" ),
+            metadataProperties( "gate" ),
+            ingestService,
+            watchlistService,
+            symbolMetadataPort,
+            timingService,
+            candidateRepository,
+            fixedClock( "2026-04-04T12:35:00Z" )
+        );
+
+        service.refreshCandidates();
+        service.refreshCandidates();
+
+        ArgumentCaptor<IngestSignalCandidateCommand> captor = ArgumentCaptor.forClass( IngestSignalCandidateCommand.class );
+        verify( ingestService, org.mockito.Mockito.times( 2 ) ).ingest( captor.capture() );
+        assertThat( captor.getAllValues() )
+            .extracting( IngestSignalCandidateCommand::sourceMessageId )
+            .containsExactly( captor.getAllValues().getFirst().sourceMessageId(), captor.getAllValues().getFirst().sourceMessageId() );
     }
 
     private static VenueHttpProperties httpProperties()
@@ -205,5 +301,10 @@ class FundingApiCandidateSourceServiceTest
         properties.setSyncOnStartup( false );
         properties.setScheduleEnabled( false );
         return properties;
+    }
+
+    private static Clock fixedClock( String instant )
+    {
+        return Clock.fixed( Instant.parse( instant ), ZoneOffset.UTC );
     }
 }

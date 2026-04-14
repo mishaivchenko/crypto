@@ -2,10 +2,9 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.application.ResourceNotFoundException;
 import com.crypto.funding.application.query.TradeQueryService;
-import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.ArmedTradeState;
-import com.crypto.funding.infrastructure.persistence.mapper.FundingEventMapper;
+import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -116,26 +115,25 @@ public class EnginePlanService
 
     private EngineExecutionPlan toPlan( ArmedTrade trade, Instant now )
     {
-        FundingEvent fundingEvent = fundingEventRepository.findById( trade.fundingEventId() )
-                                                          .map( FundingEventMapper::toDomain )
-                                                          .orElseThrow( () -> new ResourceNotFoundException(
-                                                              "FundingEvent not found for ArmedTrade: " + trade.id()
-                                                          ) );
+        FundingEventEntity fundingEvent = fundingEventRepository.findById( trade.fundingEventId() )
+                                                               .orElseThrow( () -> new ResourceNotFoundException(
+                                                                   "Событие фандинга не найдено для подготовленной сделки: " + trade.id()
+                                                               ) );
 
         EnginePlanStatus status = deriveStatus( trade, now );
         Instant nextActionAt = nextActionAt( trade, status );
         Long millisUntilAction = nextActionAt == null ? null : Duration.between( now, nextActionAt ).toMillis();
-        Long millisUntilFunding = Duration.between( now, fundingEvent.fundingTime() ).toMillis();
+        Long millisUntilFunding = Duration.between( now, fundingEvent.getFundingTime() ).toMillis();
 
         return new EngineExecutionPlan(
             trade.id(),
             trade.fundingEventId(),
-            fundingEvent.venue(),
-            fundingEvent.symbol(),
+            fundingEvent.getVenue(),
+            fundingEvent.getSymbol(),
             trade.intendedSide(),
             trade.notionalUsd(),
             trade.state(),
-            fundingEvent.fundingTime(),
+            fundingEvent.getFundingTime(),
             trade.plannedEntryAt(),
             trade.plannedExitAt(),
             status,
@@ -222,17 +220,17 @@ public class EnginePlanService
         return plan.millisUntilAction() <= lookaheadMillis;
     }
 
-    private String summaryText( ArmedTrade trade, FundingEvent fundingEvent, EnginePlanStatus status )
+    private String summaryText( ArmedTrade trade, FundingEventEntity fundingEvent, EnginePlanStatus status )
     {
         return switch( status )
         {
-            case WAITING_ENTRY -> "Waiting to enter " + fundingEvent.symbol() + " on " + fundingEvent.venue();
-            case ENTRY_WINDOW -> "Entry window active for " + fundingEvent.symbol() + " (" + trade.intendedSide() + ")";
-            case WAITING_EXIT -> "Position should be monitored until planned exit";
-            case EXIT_WINDOW -> "Exit window active for " + fundingEvent.symbol();
-            case OVERDUE -> "Entry window missed and requires operator attention";
-            case CLOSED -> "Trade already closed";
-            case INVALID -> "Trade plan is incomplete for execution";
+            case WAITING_ENTRY -> "Ожидаем вход по " + fundingEvent.getSymbol() + " на " + fundingEvent.getVenue();
+            case ENTRY_WINDOW -> "Окно входа активно для " + fundingEvent.getSymbol() + " (" + trade.intendedSide() + ")";
+            case WAITING_EXIT -> "Сделка ждёт планового выхода";
+            case EXIT_WINDOW -> "Окно выхода активно для " + fundingEvent.getSymbol();
+            case OVERDUE -> "Окно входа пропущено, нужен разбор оператора";
+            case CLOSED -> "Сделка уже закрыта";
+            case INVALID -> "План сделки неполный и не готов к исполнению";
         };
     }
 }

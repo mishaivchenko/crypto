@@ -7,5 +7,6 @@ public enum SignalCandidateStatus
     REJECTED,
     APPROVED,
     EVENT_CREATED,
-    FAILED
+    FAILED,
+    DELETED
 }

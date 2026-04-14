@@ -22,14 +22,16 @@ public class ExchangeConfigDiagnostics implements ApplicationRunner
     @Override
     public void run( ApplicationArguments args )
     {
-        logExchange( "binance", "BINANCE" );
         logExchange( "bybit", "BYBIT" );
         logExchange( "gate", "GATE" );
+        logExchange( "bitget", "BITGET" );
+        logExchange( "okx", "OKX" );
+        logExchange( "kucoin", "KUCOIN" );
     }
 
     private void logExchange( String exchange, String envPrefix )
     {
-        String mode = envOrProp( "trading." + exchange + ".mode", envPrefix + "_MODE" );
+        String mode = resolveMode( exchange );
         String baseUrl = envOrProp( "trading." + exchange + ".base-url", envPrefix + "_BASE_URL" );
         String contractsBaseUrl = envOrProp(
             "trading." + exchange + ".contracts-base-url",
@@ -81,5 +83,18 @@ public class ExchangeConfigDiagnostics implements ApplicationRunner
             return propValue;
         }
         return environment.getProperty( envKey );
+    }
+
+    private String resolveMode( String exchange )
+    {
+        String globalMode = environment.getProperty(
+            "trading.venue-access.mode",
+            environment.getProperty( "trading." + exchange + ".mode", "production" )
+        );
+        if( "bybit".equalsIgnoreCase( exchange ) || "gate".equalsIgnoreCase( exchange ) )
+        {
+            return globalMode == null || globalMode.isBlank() ? "production" : globalMode;
+        }
+        return "production";
     }
 }

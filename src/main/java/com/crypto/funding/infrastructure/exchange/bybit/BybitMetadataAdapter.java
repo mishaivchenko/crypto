@@ -1,6 +1,7 @@
 package com.crypto.funding.infrastructure.exchange.bybit;
 
 import com.crypto.funding.application.port.VenueMetadataPort;
+import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.config.VenueHttpProperties;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
 import com.crypto.funding.domain.venue.InstrumentStatus;
@@ -22,7 +23,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 @Component
 public class BybitMetadataAdapter implements VenueMetadataPort
@@ -31,16 +31,19 @@ public class BybitMetadataAdapter implements VenueMetadataPort
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final VenueHttpProperties venueHttpProperties;
     private final Environment environment;
+    private final VenueProfileService venueProfileService;
 
     public BybitMetadataAdapter(
         HttpClient httpClient,
         VenueHttpProperties venueHttpProperties,
-        Environment environment
+        Environment environment,
+        VenueProfileService venueProfileService
     )
     {
         this.httpClient = httpClient;
         this.venueHttpProperties = venueHttpProperties;
         this.environment = environment;
+        this.venueProfileService = venueProfileService;
     }
 
     @Override
@@ -139,7 +142,9 @@ public class BybitMetadataAdapter implements VenueMetadataPort
 
     private String baseUrl()
     {
-        String mode = environment.getProperty( "trading.bybit.mode", "testnet" ).trim().toLowerCase( Locale.ROOT );
-        return environment.getProperty( "trading.bybit." + mode + ".base-url", "https://api-testnet.bybit.com" );
+        return environment.getProperty(
+            "trading.bybit.metadata-base-url",
+            venueProfileService.resolveCredentials( venue() ).baseUrl()
+        );
     }
 }

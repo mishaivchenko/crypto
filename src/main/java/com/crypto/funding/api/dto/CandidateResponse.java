@@ -3,6 +3,7 @@ package com.crypto.funding.api.dto;
 import com.crypto.funding.domain.candidate.ReviewDecision;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -12,6 +13,7 @@ public record CandidateResponse(
     Long sourceChatId,
     Long sourceMessageId,
     String rawPayload,
+    String sourceVenue,
     String rawSymbol,
     String normalizedSymbol,
     List<String> venueHints,
@@ -22,6 +24,9 @@ public record CandidateResponse(
     String reviewNotes,
     String normalizationFailureReason,
     Long fundingEventId,
+    String suggestedVenue,
+    Instant suggestedFundingTime,
+    BigDecimal suggestedFundingRatePct,
     Instant createdAt,
     Instant updatedAt
 )

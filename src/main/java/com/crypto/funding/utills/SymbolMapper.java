@@ -5,9 +5,16 @@ public final class SymbolMapper {
     public static String toUnified(String raw) {
         if (raw == null) return null;
         String s = raw.trim().toUpperCase().replace('-', '/');
+        if (s.endsWith("PERP") && !s.contains("/")) {
+            s = s.substring(0, s.length() - 4);
+        }
         if (!s.contains("/")) {
             if (s.endsWith("USDT")) {
                 s = s.replace("USDT", "/USDT");
+            } else if (s.endsWith("USDC")) {
+                s = s.replace("USDC", "/USDC");
+            } else if (s.endsWith("USDM")) {
+                s = s.replace("USDM", "/USDT");
             } else {
                 s = s + "/USDT";
             }

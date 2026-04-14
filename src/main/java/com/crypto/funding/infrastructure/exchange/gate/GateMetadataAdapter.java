@@ -1,6 +1,7 @@
 package com.crypto.funding.infrastructure.exchange.gate;
 
 import com.crypto.funding.application.port.VenueMetadataPort;
+import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.config.VenueHttpProperties;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
 import com.crypto.funding.domain.venue.InstrumentStatus;
@@ -28,16 +29,19 @@ public class GateMetadataAdapter implements VenueMetadataPort
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final VenueHttpProperties venueHttpProperties;
     private final String contractsBaseUrl;
+    private final VenueProfileService venueProfileService;
 
     public GateMetadataAdapter(
         HttpClient httpClient,
         VenueHttpProperties venueHttpProperties,
-        @Value( "${trading.gate.contracts-base-url:${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}}" ) String contractsBaseUrl
+        @Value( "${trading.gate.contracts-base-url:${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}}" ) String contractsBaseUrl,
+        VenueProfileService venueProfileService
     )
     {
         this.httpClient = httpClient;
         this.venueHttpProperties = venueHttpProperties;
         this.contractsBaseUrl = contractsBaseUrl;
+        this.venueProfileService = venueProfileService;
     }
 
     @Override
@@ -49,6 +53,7 @@ public class GateMetadataAdapter implements VenueMetadataPort
     @Override
     public List<InstrumentMetadata> fetchPerpetualInstruments() throws IOException, InterruptedException
     {
+        venueProfileService.resolveCredentials( venue() );
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri( URI.create( contractsBaseUrl + "/futures/usdt/contracts" ) )
                                          .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )

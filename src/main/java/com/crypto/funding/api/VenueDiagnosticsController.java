@@ -1,14 +1,19 @@
 package com.crypto.funding.api;
 
+import com.crypto.funding.api.dto.GlobalVenueModeResponse;
 import com.crypto.funding.api.dto.InstrumentMetadataResponse;
+import com.crypto.funding.api.dto.SetGlobalVenueModeRequest;
+import com.crypto.funding.api.dto.SetVenueModeRequest;
 import com.crypto.funding.api.dto.VenueRequestTimingResponse;
 import com.crypto.funding.api.dto.VenueSummaryResponse;
 import com.crypto.funding.application.venue.VenueDiagnosticsService;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +37,18 @@ public class VenueDiagnosticsController
         return venueDiagnosticsService.listVenues().stream().map( this::toResponse ).toList();
     }
 
+    @GetMapping("/access-mode")
+    public GlobalVenueModeResponse getGlobalMode()
+    {
+        return toResponse( venueDiagnosticsService.getGlobalMode() );
+    }
+
+    @PostMapping("/access-mode")
+    public GlobalVenueModeResponse setGlobalMode( @Valid @RequestBody SetGlobalVenueModeRequest request )
+    {
+        return toResponse( venueDiagnosticsService.setGlobalMode( request.mode() ) );
+    }
+
     @GetMapping("/{venue}")
     public VenueSummaryResponse get( @PathVariable String venue )
     {
@@ -42,6 +59,18 @@ public class VenueDiagnosticsController
     public VenueSummaryResponse sync( @PathVariable String venue )
     {
         return toResponse( venueDiagnosticsService.syncVenue( venue ) );
+    }
+
+    @PostMapping("/{venue}/mode")
+    public VenueSummaryResponse setMode( @PathVariable String venue, @Valid @RequestBody SetVenueModeRequest request )
+    {
+        return toResponse( venueDiagnosticsService.setMode( venue, request.mode() ) );
+    }
+
+    @PostMapping("/{venue}/check")
+    public VenueSummaryResponse checkCredentials( @PathVariable String venue )
+    {
+        return toResponse( venueDiagnosticsService.checkCredentials( venue ) );
     }
 
     @GetMapping("/{venue}/instruments")
@@ -70,10 +99,29 @@ public class VenueDiagnosticsController
             summary.metadataBaseUrl(),
             summary.contractsBaseUrl(),
             summary.credentialsConfigured(),
+            summary.apiKeyLoaded(),
+            summary.secretKeyLoaded(),
+            summary.passphraseLoaded(),
+            summary.credentialsRequired(),
+            summary.modeOverridden(),
+            summary.availableModes(),
+            summary.connectionStatus(),
+            summary.connectionMessage(),
+            summary.lastConnectionHttpStatus(),
+            summary.lastCheckedAt(),
             summary.enabledForMetadata(),
             summary.metadataProviderAvailable(),
             summary.activeInstrumentCount(),
             summary.lastSyncedAt()
+        );
+    }
+
+    private GlobalVenueModeResponse toResponse( com.crypto.funding.application.venue.VenueProfileService.GlobalAccessProfile profile )
+    {
+        return new GlobalVenueModeResponse(
+            profile.mode(),
+            profile.modeOverridden(),
+            profile.availableModes()
         );
     }
 

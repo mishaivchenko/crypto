@@ -44,6 +44,12 @@ export const api = {
             body: JSON.stringify(payload)
         });
     },
+    deleteCandidate(id, note = null) {
+        const suffix = note ? `?note=${encodeURIComponent(note)}` : "";
+        return request(`/api/v1/candidates/${id}${suffix}`, {
+            method: "DELETE"
+        });
+    },
     listFundingEvents(filters = {}) {
         const params = new URLSearchParams({ page: "0", size: "50" });
         Object.entries(filters).forEach(([key, value]) => {
@@ -78,11 +84,24 @@ export const api = {
     listVenues() {
         return request("/api/v1/venues");
     },
+    getGlobalVenueMode() {
+        return request("/api/v1/venues/access-mode");
+    },
+    setGlobalVenueMode(mode) {
+        return request("/api/v1/venues/access-mode", {
+            method: "POST",
+            headers: jsonHeaders,
+            body: JSON.stringify({ mode })
+        });
+    },
     getVenue(venue) {
         return request(`/api/v1/venues/${venue}`);
     },
     syncVenue(venue) {
         return request(`/api/v1/venues/${venue}/sync`, { method: "POST" });
+    },
+    checkVenueCredentials(venue) {
+        return request(`/api/v1/venues/${venue}/check`, { method: "POST" });
     },
     listVenueInstruments(venue) {
         return request(`/api/v1/venues/${venue}/instruments?activeOnly=true`);

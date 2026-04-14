@@ -51,4 +51,18 @@ class SqliteDataDirectoryEnvironmentPostProcessorTest
         assertThatCode( () -> processor.postProcessEnvironment( environment, new SpringApplication() ) ).doesNotThrowAnyException();
         assertThat( Files.isDirectory( Path.of( "./build" ) ) ).isTrue();
     }
+
+    @Test
+    void rewritesRelativeDatasourceUrlsAgainstProjectRoot()
+    {
+        Path root = tempDir.resolve( "repo" );
+        String rewritten = SqliteDataDirectoryEnvironmentPostProcessor.rewriteRelativeSqliteUrl(
+            "jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000",
+            root
+        );
+
+        assertThat( rewritten ).isEqualTo(
+            "jdbc:sqlite:" + root.resolve( "data/fundingarb.db" ).normalize() + "?busy_timeout=5000"
+        );
+    }
 }

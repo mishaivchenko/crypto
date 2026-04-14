@@ -17,6 +17,7 @@ public final class SignalCandidateMapper
             entity.getSourceChatId(),
             entity.getSourceMessageId(),
             entity.getRawPayload(),
+            entity.getSourceVenue(),
             entity.getRawSymbol(),
             entity.getNormalizedSymbol(),
             entity.getVenueHints(),

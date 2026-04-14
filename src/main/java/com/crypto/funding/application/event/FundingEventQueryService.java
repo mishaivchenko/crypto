@@ -21,13 +21,18 @@ import java.util.Locale;
 public class FundingEventQueryService
 {
     private final FundingEventJpaRepository fundingEventRepository;
+    private final FundingEventLifecycleService fundingEventLifecycleService;
 
-    public FundingEventQueryService( FundingEventJpaRepository fundingEventRepository )
+    public FundingEventQueryService(
+        FundingEventJpaRepository fundingEventRepository,
+        FundingEventLifecycleService fundingEventLifecycleService
+    )
     {
         this.fundingEventRepository = fundingEventRepository;
+        this.fundingEventLifecycleService = fundingEventLifecycleService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<FundingEvent> listFundingEvents(
         FundingEventStatus status,
         String venue,
@@ -37,16 +42,18 @@ public class FundingEventQueryService
         Pageable pageable
     )
     {
+        fundingEventLifecycleService.expirePastEvents();
         return fundingEventRepository.findAll( specification( status, venue, symbol, sourceType, candidateId ), pageable )
                                      .map( FundingEventMapper::toDomain );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public FundingEvent getFundingEvent( Long id )
     {
+        fundingEventLifecycleService.expirePastEvents();
         return fundingEventRepository.findById( id )
                                      .map( FundingEventMapper::toDomain )
-                                     .orElseThrow( () -> new ResourceNotFoundException( "FundingEvent not found: " + id ) );
+                                     .orElseThrow( () -> new ResourceNotFoundException( "Событие фандинга не найдено: " + id ) );
     }
 
     private Specification<FundingEventEntity> specification(
@@ -62,6 +69,10 @@ public class FundingEventQueryService
             if( status != null )
             {
                 predicates.add( cb.equal( root.get( "status" ), status ) );
+            }
+            else
+            {
+                predicates.add( root.get( "status" ).in( FundingEventStatus.DISCOVERED, FundingEventStatus.ARMED ) );
             }
             if( venue != null && !venue.isBlank() )
             {

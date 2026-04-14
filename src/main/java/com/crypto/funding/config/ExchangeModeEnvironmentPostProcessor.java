@@ -17,9 +17,11 @@ public class ExchangeModeEnvironmentPostProcessor implements EnvironmentPostProc
     {
         Map<String, Object> overrides = new HashMap<>();
 
-        resolveExchange( environment, overrides, "binance" );
         resolveExchange( environment, overrides, "bybit" );
         resolveExchange( environment, overrides, "gate" );
+        resolveExchange( environment, overrides, "bitget" );
+        resolveExchange( environment, overrides, "okx" );
+        resolveExchange( environment, overrides, "kucoin" );
 
         if( !overrides.isEmpty() )
         {
@@ -29,14 +31,18 @@ public class ExchangeModeEnvironmentPostProcessor implements EnvironmentPostProc
 
     private static void resolveExchange( ConfigurableEnvironment environment, Map<String, Object> overrides, String exchange )
     {
-        String mode = environment.getProperty( "trading." + exchange + ".mode", "testnet" );
-        boolean production = "prod".equalsIgnoreCase( mode ) || "production".equalsIgnoreCase( mode );
+        String globalMode = environment.getProperty(
+            "trading.venue-access.mode",
+            environment.getProperty( "trading." + exchange + ".mode", "production" )
+        );
+        boolean production = !supportsTestnet( exchange ) || "prod".equalsIgnoreCase( globalMode ) || "production".equalsIgnoreCase( globalMode );
         String prefix = "trading." + exchange + ".";
         String envPrefix = prefix + ( production ? "production." : "testnet." );
 
         setIfMissing( environment, overrides, prefix + "base-url", envPrefix + "base-url" );
         setIfMissing( environment, overrides, prefix + "api-key", envPrefix + "api-key" );
         setIfMissing( environment, overrides, prefix + "secret-key", envPrefix + "secret-key" );
+        setIfMissing( environment, overrides, prefix + "passphrase", envPrefix + "passphrase" );
 
         String upper = exchange.toUpperCase();
         setIfMissingFromList(
@@ -51,6 +57,19 @@ public class ExchangeModeEnvironmentPostProcessor implements EnvironmentPostProc
             prefix + "secret-key",
             upper + "_SECRET_KEY"
         );
+        setIfMissingFromList(
+            environment,
+            overrides,
+            prefix + "passphrase",
+            upper + "_PASSPHRASE",
+            upper + "_TESTNET_PASSPHRASE",
+            upper + "_PROD_PASSPHRASE"
+        );
+    }
+
+    private static boolean supportsTestnet( String exchange )
+    {
+        return "bybit".equalsIgnoreCase( exchange ) || "gate".equalsIgnoreCase( exchange );
     }
 
     private static void setIfMissing(

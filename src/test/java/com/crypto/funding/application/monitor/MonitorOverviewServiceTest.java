@@ -1,6 +1,8 @@
 package com.crypto.funding.application.monitor;
 
 import com.crypto.funding.application.venue.VenueDiagnosticsService;
+import com.crypto.funding.application.venue.VenueProfileService;
+import com.crypto.funding.application.event.FundingEventLifecycleService;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
@@ -11,6 +13,7 @@ import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaR
 import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +31,8 @@ class MonitorOverviewServiceTest
         FundingEventJpaRepository fundingEventRepository = mock( FundingEventJpaRepository.class );
         ArmedTradeJpaRepository armedTradeRepository = mock( ArmedTradeJpaRepository.class );
         VenueDiagnosticsService venueDiagnosticsService = mock( VenueDiagnosticsService.class );
+        FundingEventLifecycleService fundingEventLifecycleService = mock( FundingEventLifecycleService.class );
+        VenueProfileService venueProfileService = mock( VenueProfileService.class );
 
         SignalCandidateEntity pending = new SignalCandidateEntity();
         pending.setStatus( SignalCandidateStatus.NORMALIZED );
@@ -42,15 +47,33 @@ class MonitorOverviewServiceTest
         when( fundingEventRepository.count() ).thenReturn( 2L );
         when( fundingEventRepository.findAll() ).thenReturn( List.of( discovered, armed ) );
 
-        when( armedTradeRepository.count() ).thenReturn( 3L );
+        ArmedTradeEntity tradeOne = new ArmedTradeEntity();
+        tradeOne.setFundingEventId( 1L );
+        ArmedTradeEntity tradeTwo = new ArmedTradeEntity();
+        tradeTwo.setFundingEventId( 2L );
+        ArmedTradeEntity staleTrade = new ArmedTradeEntity();
+        staleTrade.setFundingEventId( 999L );
+        ReflectionTestUtils.setField( discovered, "id", 1L );
+        ReflectionTestUtils.setField( armed, "id", 2L );
+        when( armedTradeRepository.findAll() ).thenReturn( List.of( tradeOne, tradeTwo, staleTrade ) );
 
         when( venueDiagnosticsService.listVenues() ).thenReturn( List.of(
             new VenueDiagnosticsService.VenueSummary(
-                "binance",
+                "bybit",
                 "production",
-                "https://fapi.binance.com",
+                "https://api.bybit.com",
                 null,
                 true,
+                true,
+                true,
+                false,
+                true,
+                false,
+                List.of( com.crypto.funding.domain.venue.VenueAccessMode.TESTNET, com.crypto.funding.domain.venue.VenueAccessMode.PRODUCTION ),
+                com.crypto.funding.domain.venue.VenueConnectionStatus.NOT_CONNECTED,
+                "Ключи не подключены.",
+                null,
+                null,
                 true,
                 true,
                 12,
@@ -59,7 +82,7 @@ class MonitorOverviewServiceTest
         ) );
         when( venueDiagnosticsService.listTimings() ).thenReturn( List.of(
             new VenueRequestTimingService.Snapshot(
-                "binance",
+                "bybit",
                 "metadata-sync",
                 3,
                 3,
@@ -72,24 +95,37 @@ class MonitorOverviewServiceTest
                 12
             )
         ) );
+        when( venueProfileService.getGlobalAccessProfile() ).thenReturn(
+            new VenueProfileService.GlobalAccessProfile(
+                com.crypto.funding.domain.venue.VenueAccessMode.TESTNET,
+                true,
+                List.of(
+                    com.crypto.funding.domain.venue.VenueAccessMode.TESTNET,
+                    com.crypto.funding.domain.venue.VenueAccessMode.PRODUCTION
+                )
+            )
+        );
 
         MonitorOverviewService service = new MonitorOverviewService(
             candidateRepository,
             fundingEventRepository,
             armedTradeRepository,
-            venueDiagnosticsService
+            venueDiagnosticsService,
+            fundingEventLifecycleService,
+            venueProfileService
         );
 
         MonitorOverviewService.Overview overview = service.load();
 
         assertThat( overview.version() ).isEqualTo( "2.0.0" );
+        assertThat( overview.globalAccessMode() ).isEqualTo( "testnet" );
         assertThat( overview.pendingCandidates() ).isEqualTo( 1 );
         assertThat( overview.fundingEvents() ).isEqualTo( 2 );
         assertThat( overview.discoveredEvents() ).isEqualTo( 1 );
-        assertThat( overview.armedTrades() ).isEqualTo( 3 );
+        assertThat( overview.armedTrades() ).isEqualTo( 2 );
         assertThat( overview.activeVenues() ).isEqualTo( 1 );
         assertThat( overview.venues() ).singleElement().satisfies( venue -> {
-            assertThat( venue.venue() ).isEqualTo( "binance" );
+            assertThat( venue.venue() ).isEqualTo( "bybit" );
             assertThat( venue.averageRequestTimeMs() ).isEqualTo( 120 );
             assertThat( venue.requests() ).isEqualTo( 3 );
         } );

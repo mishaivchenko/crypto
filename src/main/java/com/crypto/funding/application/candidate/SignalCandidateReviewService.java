@@ -69,8 +69,12 @@ public class SignalCandidateReviewService
         if( fundingTime == null )
         {
             throw new DomainValidationException(
-                "fundingTime must be provided explicitly or available in funding watchlist for " + symbol + " on " + venue
+                "Время funding нужно передать явно или получить из funding-watchlist для " + symbol + " на " + venue
             );
+        }
+        if( !fundingTime.isAfter( Instant.now() ) )
+        {
+            throw new DomainValidationException( "Нельзя подтвердить событие с funding в прошлом." );
         }
 
         FundingEvent fundingEvent = fundingEventCommandService.create(
@@ -135,15 +139,17 @@ public class SignalCandidateReviewService
     {
         return candidateRepository.findById( candidateId )
                                   .orElseThrow( () -> new ResourceNotFoundException(
-                                      "SignalCandidate not found: " + candidateId
+                                      "Сигнал не найден: " + candidateId
                                   ) );
     }
 
     private void validateReviewable( SignalCandidateEntity entity )
     {
-        if( entity.getStatus() == SignalCandidateStatus.REJECTED || entity.getStatus() == SignalCandidateStatus.EVENT_CREATED )
+        if( entity.getStatus() == SignalCandidateStatus.REJECTED
+            || entity.getStatus() == SignalCandidateStatus.EVENT_CREATED
+            || entity.getStatus() == SignalCandidateStatus.DELETED )
         {
-            throw new DomainValidationException( "SignalCandidate " + entity.getId() + " is already in terminal status " + entity.getStatus() );
+            throw new DomainValidationException( "Кандидат " + entity.getId() + " уже находится в терминальном статусе " + entity.getStatus() );
         }
     }
 
@@ -155,7 +161,7 @@ public class SignalCandidateReviewService
         }
         if( entity.getNormalizedSymbol() == null || entity.getNormalizedSymbol().isBlank() )
         {
-            throw new DomainValidationException( "symbol override is required because candidate is not normalized" );
+            throw new DomainValidationException( "Нужно явно указать символ, потому что кандидат не нормализован." );
         }
         return entity.getNormalizedSymbol();
     }
@@ -169,7 +175,7 @@ public class SignalCandidateReviewService
         List<String> venueHints = entity.getVenueHints();
         if( venueHints.size() != 1 )
         {
-            throw new DomainValidationException( "venue override is required because candidate does not resolve to exactly one venue" );
+            throw new DomainValidationException( "Нужно явно указать площадку, потому что кандидат не резолвится в одну venue." );
         }
         return venueHints.getFirst();
     }

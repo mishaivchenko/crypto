@@ -18,27 +18,31 @@ public class FundingEventArmService
 {
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeCommandService armedTradeCommandService;
+    private final FundingEventLifecycleService fundingEventLifecycleService;
 
     public FundingEventArmService(
         FundingEventJpaRepository fundingEventRepository,
-        ArmedTradeCommandService armedTradeCommandService
+        ArmedTradeCommandService armedTradeCommandService,
+        FundingEventLifecycleService fundingEventLifecycleService
     )
     {
         this.fundingEventRepository = fundingEventRepository;
         this.armedTradeCommandService = armedTradeCommandService;
+        this.fundingEventLifecycleService = fundingEventLifecycleService;
     }
 
     @Transactional
     public ArmedTrade arm( Long fundingEventId, ArmFundingEventCommand command )
     {
+        fundingEventLifecycleService.expirePastEvents();
         FundingEventEntity fundingEvent = fundingEventRepository.findById( fundingEventId )
                                                                .orElseThrow( () -> new ResourceNotFoundException(
-                                                                   "FundingEvent not found: " + fundingEventId
+                                                                   "Событие фандинга не найдено: " + fundingEventId
                                                                ) );
 
         if( fundingEvent.getStatus() == FundingEventStatus.CANCELLED || fundingEvent.getStatus() == FundingEventStatus.EXPIRED )
         {
-            throw new DomainValidationException( "FundingEvent " + fundingEventId + " cannot be armed from status " + fundingEvent.getStatus() );
+            throw new DomainValidationException( "Событие " + fundingEventId + " нельзя подготовить из статуса " + fundingEvent.getStatus() );
         }
 
         ArmedTrade armedTrade = armedTradeCommandService.create(

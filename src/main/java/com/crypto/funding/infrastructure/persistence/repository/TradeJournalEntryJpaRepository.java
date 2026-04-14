@@ -12,4 +12,6 @@ public interface TradeJournalEntryJpaRepository extends JpaRepository<TradeJourn
         TradeJournalEntityType entityType,
         Long entityId
     );
+
+    void deleteAllByEntityTypeAndEntityId( TradeJournalEntityType entityType, Long entityId );
 }

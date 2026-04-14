@@ -1,6 +1,14 @@
 spring:
     application:
         name: funding-monitor
+    config:
+        import: optional:classpath:/platform-core.yml
+    cloud:
+        compatibility-verifier:
+            enabled: false
+
+server:
+    port: ${MONITOR_SERVER_PORT:8090}
 
 monitor:
     ui:

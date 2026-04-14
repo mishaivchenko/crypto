@@ -1,0 +1,141 @@
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,prometheus
+
+
+telegram:
+    bot:
+        enabled: ${TELEGRAM_BOT_ENABLED:false}
+        username: ${TG_BOT_USERNAME:}
+        token: ${TG_BOT_TOKEN:}
+
+arb:
+    watchlist:
+        defaultTtlMinutes: 45
+    spread:
+        minSpreadPct: 3.0
+    funding:
+        restFallbackSeconds: 60
+
+funding:
+    latency-probe:
+        enabled: false
+    execution-delay-seconds: 0
+    refresh-interval-seconds: 60
+    scheduler:
+        lookahead-seconds: 10
+        min-recheck-millis: 1000
+        max-lateness-seconds: 120
+        discovery-interval-seconds: 15
+
+spring:
+    cloud:
+        compatibility-verifier:
+            enabled: false
+    web:
+        resources:
+            cache:
+                period: 0
+            chain:
+                cache: false
+    datasource:
+        url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000&journal_mode=WAL}
+        driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.sqlite.JDBC}
+        hikari:
+            maximum-pool-size: 1
+            connection-init-sql: |
+                PRAGMA journal_mode=WAL;
+                PRAGMA busy_timeout=5000;
+                PRAGMA synchronous=NORMAL;
+                PRAGMA foreign_keys=ON;
+    jpa:
+        hibernate:
+            ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+        properties:
+            hibernate:
+                dialect: org.hibernate.community.dialect.SQLiteDialect
+        show-sql: false
+
+trading:
+    venue-access:
+        mode: ${TRADING_VENUE_ACCESS_MODE:production}
+    candidates:
+        dedupe-window-minutes: ${TRADING_CANDIDATES_DEDUPE_WINDOW_MINUTES:15}
+    candidate-source:
+        enabled: ${TRADING_CANDIDATE_SOURCE_ENABLED:true}
+        url: ${TRADING_CANDIDATE_SOURCE_URL:https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30}
+        refresh-interval-seconds: ${TRADING_CANDIDATE_SOURCE_REFRESH_INTERVAL_SECONDS:60}
+        source-type: ${TRADING_CANDIDATE_SOURCE_TYPE:FUNDING_API}
+    metadata:
+        enabled-venues: ${TRADING_METADATA_ENABLED_VENUES:bybit,gate,bitget,okx,kucoin}
+        sync-on-startup: ${TRADING_METADATA_SYNC_ON_STARTUP:true}
+        schedule-enabled: ${TRADING_METADATA_SCHEDULE_ENABLED:false}
+        sync-interval-minutes: ${TRADING_METADATA_SYNC_INTERVAL_MINUTES:240}
+        require-credentials-on-startup: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:true}
+        bootstrap-fallback-enabled: ${TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED:false}
+    http:
+        connect-timeout-ms: ${TRADING_HTTP_CONNECT_TIMEOUT_MS:1000}
+        request-timeout-ms: ${TRADING_HTTP_REQUEST_TIMEOUT_MS:5000}
+        prefer-http2: ${TRADING_HTTP_PREFER_HTTP2:true}
+    execution:
+        mode: ${TRADING_EXECUTION_MODE:DISABLED}
+        legacy-enabled: ${TRADING_LEGACY_EXECUTION_ENABLED:false}
+        live-venues: ${TRADING_LIVE_VENUES:}
+        blocked-venues: ${TRADING_BLOCKED_VENUES:gate}
+    bybit:
+        mode: ${BYBIT_MODE:testnet}
+        recv-window: 5000
+        metadata-base-url: ${BYBIT_METADATA_BASE_URL:https://api.bybit.com}
+        testnet:
+            base-url: ${BYBIT_TESTNET_BASE_URL:https://api-testnet.bybit.com}
+            api-key: ${BYBIT_TESTNET_API_KEY:}
+            secret-key: ${BYBIT_TESTNET_SECRET_KEY:}
+        production:
+            base-url: ${BYBIT_PROD_BASE_URL:https://api.bybit.com}
+            api-key: ${BYBIT_PROD_API_KEY:}
+            secret-key: ${BYBIT_PROD_SECRET_KEY:}
+
+    gate:
+        mode: ${GATE_MODE:testnet}
+        recv-window: 5000
+        contracts-base-url: ${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}
+        testnet:
+            base-url: ${GATE_TESTNET_BASE_URL:https://fx-api-testnet.gateio.ws/api/v4}
+            api-key: ${GATE_TESTNET_API_KEY:}
+            secret-key: ${GATE_TESTNET_SECRET_KEY:}
+        production:
+            base-url: ${GATE_PROD_BASE_URL:https://api.gateio.ws/api/v4}
+            api-key: ${GATE_PROD_API_KEY:}
+            secret-key: ${GATE_PROD_SECRET_KEY:}
+
+    bitget:
+        mode: ${BITGET_MODE:production}
+        recv-window: 5000
+        metadata-base-url: ${BITGET_METADATA_BASE_URL:https://api.bitget.com}
+        production:
+            base-url: ${BITGET_PROD_BASE_URL:https://api.bitget.com}
+            api-key: ${BITGET_PROD_API_KEY:}
+            secret-key: ${BITGET_PROD_SECRET_KEY:}
+            passphrase: ${BITGET_PROD_PASSPHRASE:}
+
+    okx:
+        mode: ${OKX_MODE:production}
+        recv-window: 5000
+        metadata-base-url: ${OKX_METADATA_BASE_URL:https://www.okx.com}
+        production:
+            base-url: ${OKX_PROD_BASE_URL:https://www.okx.com}
+            api-key: ${OKX_PROD_API_KEY:}
+            secret-key: ${OKX_PROD_SECRET_KEY:}
+            passphrase: ${OKX_PROD_PASSPHRASE:}
+
+    kucoin:
+        mode: ${KUCOIN_MODE:production}
+        recv-window: 5000
+        metadata-base-url: ${KUCOIN_METADATA_BASE_URL:https://api-futures.kucoin.com}
+        production:
+            base-url: ${KUCOIN_PROD_BASE_URL:https://api-futures.kucoin.com}
+            api-key: ${KUCOIN_PROD_API_KEY:}
+            secret-key: ${KUCOIN_PROD_SECRET_KEY:}
+            passphrase: ${KUCOIN_PROD_PASSPHRASE:}

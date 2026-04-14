@@ -7,6 +7,7 @@ public record IngestSignalCandidateCommand(
     Long sourceChatId,
     Long sourceMessageId,
     String rawPayload,
+    String sourceVenue,
     String rawSymbol,
     Instant detectedAt
 )

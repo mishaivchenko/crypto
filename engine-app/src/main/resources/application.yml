@@ -1,9 +1,14 @@
 spring:
     application:
         name: funding-engine
+    config:
+        import: optional:classpath:/platform-core.yml
     cloud:
         compatibility-verifier:
             enabled: false
+    jpa:
+        hibernate:
+            ddl-auto: none
 
 server:
     port: ${ENGINE_SERVER_PORT:8091}

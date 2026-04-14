@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -140,14 +142,20 @@ public class InstrumentRegistryService
 
     private void upsertVenueSnapshot( String venue, List<InstrumentMetadata> fetched, Instant syncedAt )
     {
-        Map<String, InstrumentMetadataEntity> existing = repository.findAllByVenueOrderByCanonicalSymbolAsc( venue )
-                                                                   .stream()
-                                                                   .collect( Collectors.toMap(
-                                                                       InstrumentMetadataEntity::getCanonicalSymbol,
-                                                                       Function.identity()
-                                                                   ) );
+        List<InstrumentMetadataEntity> duplicateExisting = new ArrayList<>();
+        Map<String, InstrumentMetadataEntity> existing = new LinkedHashMap<>();
+        for( InstrumentMetadataEntity entity : repository.findAllByVenueOrderByCanonicalSymbolAsc( venue ) )
+        {
+            InstrumentMetadataEntity previous = existing.putIfAbsent( entity.getCanonicalSymbol(), entity );
+            if( previous != null )
+            {
+                duplicateExisting.add( entity );
+            }
+        }
 
-        for( InstrumentMetadata instrument : fetched )
+        Map<String, InstrumentMetadata> deduplicatedFetched = deduplicateFetched( venue, fetched );
+
+        for( InstrumentMetadata instrument : deduplicatedFetched.values() )
         {
             InstrumentMetadataEntity entity = existing.remove( instrument.canonicalSymbol() );
             if( entity == null )
@@ -169,12 +177,50 @@ public class InstrumentRegistryService
             repository.save( entity );
         }
 
-        for( InstrumentMetadataEntity stale : existing.values() )
+        List<InstrumentMetadataEntity> staleEntities = new ArrayList<>( existing.values() );
+        staleEntities.addAll( duplicateExisting );
+        for( InstrumentMetadataEntity stale : staleEntities )
         {
             stale.setStatus( InstrumentStatus.INACTIVE );
             stale.setLastSyncedAt( syncedAt );
             repository.save( stale );
         }
+    }
+
+    private Map<String, InstrumentMetadata> deduplicateFetched( String venue, List<InstrumentMetadata> fetched )
+    {
+        Map<String, InstrumentMetadata> deduplicated = new LinkedHashMap<>();
+        int duplicateCount = 0;
+        for( InstrumentMetadata instrument : fetched )
+        {
+            InstrumentMetadata previous = deduplicated.putIfAbsent( instrument.canonicalSymbol(), instrument );
+            if( previous != null )
+            {
+                duplicateCount++;
+                deduplicated.put(
+                    instrument.canonicalSymbol(),
+                    preferredInstrument( previous, instrument )
+                );
+            }
+        }
+        if( duplicateCount > 0 )
+        {
+            log.warn( "[metadata] venue={} dropped duplicate canonical symbols count={}", venue, duplicateCount );
+        }
+        return deduplicated;
+    }
+
+    private static InstrumentMetadata preferredInstrument( InstrumentMetadata left, InstrumentMetadata right )
+    {
+        if( left.status() != right.status() )
+        {
+            return left.status() == InstrumentStatus.ACTIVE ? left : right;
+        }
+        if( left.venueSymbol().length() != right.venueSymbol().length() )
+        {
+            return left.venueSymbol().length() <= right.venueSymbol().length() ? left : right;
+        }
+        return left.venueSymbol().compareTo( right.venueSymbol() ) <= 0 ? left : right;
     }
 
     private static String normalizeVenue( String rawVenue )

@@ -106,9 +106,14 @@ public class FundingEventController
                 request.notes()
             )
         );
+        FundingEvent event = fundingEventQueryService.getFundingEvent( trade.fundingEventId() );
         return new com.crypto.funding.api.dto.ArmedTradeResponse(
             trade.id(),
             trade.fundingEventId(),
+            event.signalCandidateId(),
+            event.venue(),
+            event.symbol(),
+            event.fundingTime(),
             trade.notionalUsd(),
             trade.intendedSide(),
             trade.plannedEntryAt(),

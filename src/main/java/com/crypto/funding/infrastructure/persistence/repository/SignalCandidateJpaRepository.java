@@ -22,5 +22,10 @@ public interface SignalCandidateJpaRepository extends JpaRepository<SignalCandid
         Instant detectedAt
     );
 
+    List<SignalCandidateEntity> findAllBySourceTypeAndSourceChatIdAndFundingEventIdIsNullOrderByDetectedAtDesc(
+        String sourceType,
+        Long sourceChatId
+    );
+
     List<SignalCandidateEntity> findAllByOrderByDetectedAtDesc();
 }

@@ -47,7 +47,7 @@ public class SignalCandidateQueryService
     {
         return candidateRepository.findById( id )
                                    .map( SignalCandidateMapper::toDomain )
-                                   .orElseThrow( () -> new ResourceNotFoundException( "SignalCandidate not found: " + id ) );
+                                   .orElseThrow( () -> new ResourceNotFoundException( "Сигнал не найден: " + id ) );
     }
 
     private Specification<SignalCandidateEntity> specification(
@@ -63,6 +63,16 @@ public class SignalCandidateQueryService
             if( status != null )
             {
                 predicates.add( cb.equal( root.get( "status" ), status ) );
+            }
+            else
+            {
+                predicates.add( root.get( "status" ).in(
+                    SignalCandidateStatus.NEW,
+                    SignalCandidateStatus.NORMALIZED,
+                    SignalCandidateStatus.FAILED,
+                    SignalCandidateStatus.REJECTED,
+                    SignalCandidateStatus.EVENT_CREATED
+                ) );
             }
             if( venue != null && !venue.isBlank() )
             {

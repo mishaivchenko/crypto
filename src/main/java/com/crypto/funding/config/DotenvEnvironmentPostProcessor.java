@@ -12,8 +12,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered
 {
@@ -47,9 +49,70 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
     static Map<String, Object> loadDotenvProperties( Path directory )
     {
         Map<String, Object> properties = new LinkedHashMap<>();
-        mergeFile( properties, directory.resolve( ".env" ) );
-        mergeFile( properties, directory.resolve( ".env.local" ) );
+        for( Path candidateDirectory : directoriesToScan( directory ) )
+        {
+            mergeFile( properties, candidateDirectory.resolve( ".env" ) );
+            mergeFile( properties, candidateDirectory.resolve( ".env.local" ) );
+        }
         return properties;
+    }
+
+    private static List<Path> directoriesToScan( Path start )
+    {
+        Set<Path> ordered = new LinkedHashSet<>();
+        Path current = start;
+        while( current != null )
+        {
+            ordered.add( current );
+            current = current.getParent();
+        }
+        detectGitRepositoryRoot( start ).ifPresent( repoRoot -> {
+            Path repoCurrent = repoRoot;
+            while( repoCurrent != null )
+            {
+                ordered.add( repoCurrent );
+                repoCurrent = repoCurrent.getParent();
+            }
+        } );
+        return ordered.stream().toList().reversed();
+    }
+
+    private static java.util.Optional<Path> detectGitRepositoryRoot( Path start )
+    {
+        Path current = start;
+        while( current != null )
+        {
+            Path gitPath = current.resolve( ".git" );
+            if( Files.isDirectory( gitPath ) )
+            {
+                return java.util.Optional.of( current );
+            }
+            if( Files.isRegularFile( gitPath ) )
+            {
+                try
+                {
+                    String raw = Files.readString( gitPath ).trim();
+                    String prefix = "gitdir:";
+                    if( raw.startsWith( prefix ) )
+                    {
+                        Path gitDir = Path.of( raw.substring( prefix.length() ).trim() );
+                        String marker = gitDir.getFileSystem().getSeparator() + ".git" + gitDir.getFileSystem().getSeparator() + "worktrees" + gitDir.getFileSystem().getSeparator();
+                        String gitDirText = gitDir.normalize().toString();
+                        int markerIndex = gitDirText.indexOf( marker );
+                        if( markerIndex > 0 )
+                        {
+                            return java.util.Optional.of( Path.of( gitDirText.substring( 0, markerIndex ) ) );
+                        }
+                    }
+                }
+                catch( IOException ex )
+                {
+                    throw new IllegalStateException( "Failed to inspect git metadata: " + gitPath, ex );
+                }
+            }
+            current = current.getParent();
+        }
+        return java.util.Optional.empty();
     }
 
     private static void mergeFile( Map<String, Object> properties, Path file )

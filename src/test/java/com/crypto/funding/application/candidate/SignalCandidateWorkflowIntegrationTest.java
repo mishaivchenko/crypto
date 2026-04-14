@@ -55,6 +55,7 @@ class SignalCandidateWorkflowIntegrationTest
             100L,
             200L,
             "coin: KERNEL/USDT:USDT",
+            "bybit",
             "KERNEL/USDT",
             Instant.parse( "2030-01-01T00:00:00Z" )
         );
@@ -65,7 +66,7 @@ class SignalCandidateWorkflowIntegrationTest
         assertThat( firstId ).isEqualTo( secondId );
         assertThat( candidateRepository.findAll() ).hasSize( 1 );
         assertThat( candidateRepository.findAll().getFirst().getStatus() ).isEqualTo( SignalCandidateStatus.NORMALIZED );
-        assertThat( candidateRepository.findAll().getFirst().getVenueHints() ).contains( "binance", "bybit", "gate" );
+        assertThat( candidateRepository.findAll().getFirst().getVenueHints() ).containsExactly( "bybit" );
     }
 
     @Test
@@ -86,6 +87,7 @@ class SignalCandidateWorkflowIntegrationTest
             100L,
             300L,
             "coin: KERNEL/USDT:USDT",
+            "gate",
             "KERNEL/USDT",
             Instant.parse( "2030-01-01T00:00:00Z" )
         ) ).id();
@@ -118,6 +120,7 @@ class SignalCandidateWorkflowIntegrationTest
             100L,
             400L,
             "coin: ???",
+            null,
             "???",
             Instant.parse( "2030-01-01T00:00:00Z" )
         ) ).id();
@@ -131,6 +134,6 @@ class SignalCandidateWorkflowIntegrationTest
             "needs override"
         ) ) )
             .isInstanceOf( RuntimeException.class )
-            .hasMessageContaining( "symbol override is required" );
+            .hasMessageContaining( "Нужно явно указать символ" );
     }
 }

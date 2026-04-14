@@ -1,7 +1,9 @@
 package com.crypto.funding.application.venue;
 
 import com.crypto.funding.application.ResourceNotFoundException;
+import com.crypto.funding.application.port.VenueCredentialCheckPort;
 import com.crypto.funding.config.MetadataSyncProperties;
+import com.crypto.funding.domain.venue.VenueAccessMode;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
 import com.crypto.funding.domain.venue.InstrumentStatus;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
@@ -24,6 +26,16 @@ public class VenueDiagnosticsService
         String metadataBaseUrl,
         String contractsBaseUrl,
         boolean credentialsConfigured,
+        boolean apiKeyLoaded,
+        boolean secretKeyLoaded,
+        boolean passphraseLoaded,
+        boolean credentialsRequired,
+        boolean modeOverridden,
+        List<VenueAccessMode> availableModes,
+        com.crypto.funding.domain.venue.VenueConnectionStatus connectionStatus,
+        String connectionMessage,
+        Integer lastConnectionHttpStatus,
+        Instant lastCheckedAt,
         boolean enabledForMetadata,
         boolean metadataProviderAvailable,
         long activeInstrumentCount,
@@ -35,18 +47,21 @@ public class VenueDiagnosticsService
     private final MetadataSyncProperties metadataSyncProperties;
     private final InstrumentRegistryService instrumentRegistryService;
     private final VenueRequestTimingService venueRequestTimingService;
+    private final VenueProfileService venueProfileService;
     private final Environment environment;
 
     public VenueDiagnosticsService(
         MetadataSyncProperties metadataSyncProperties,
         InstrumentRegistryService instrumentRegistryService,
         VenueRequestTimingService venueRequestTimingService,
+        VenueProfileService venueProfileService,
         Environment environment
     )
     {
         this.metadataSyncProperties = metadataSyncProperties;
         this.instrumentRegistryService = instrumentRegistryService;
         this.venueRequestTimingService = venueRequestTimingService;
+        this.venueProfileService = venueProfileService;
         this.environment = environment;
     }
 
@@ -55,8 +70,13 @@ public class VenueDiagnosticsService
     {
         Set<String> venues = new LinkedHashSet<>();
         venues.addAll( normalizedEnabledVenues() );
-        venues.addAll( instrumentRegistryService.supportedVenues() );
         return venues.stream().sorted().map( this::buildSummary ).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public VenueProfileService.GlobalAccessProfile getGlobalMode()
+    {
+        return venueProfileService.getGlobalAccessProfile();
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +84,7 @@ public class VenueDiagnosticsService
     {
         String venue = normalizeVenue( rawVenue );
         VenueSummary summary = buildSummary( venue );
-        if( !summary.enabledForMetadata() && !summary.metadataProviderAvailable() )
+        if( !summary.enabledForMetadata() )
         {
             throw new ResourceNotFoundException( "Venue not configured: " + rawVenue );
         }
@@ -75,8 +95,81 @@ public class VenueDiagnosticsService
     public VenueSummary syncVenue( String rawVenue )
     {
         String venue = normalizeVenue( rawVenue );
+        ensureEnabledVenue( venue );
         instrumentRegistryService.syncVenue( venue );
         return buildSummary( venue );
+    }
+
+    @Transactional
+    public VenueSummary setMode( String rawVenue, VenueAccessMode mode )
+    {
+        String venue = normalizeVenue( rawVenue );
+        ensureEnabledVenue( venue );
+        venueProfileService.setMode( venue, mode );
+        return buildSummary( venue );
+    }
+
+    @Transactional
+    public VenueProfileService.GlobalAccessProfile setGlobalMode( VenueAccessMode mode )
+    {
+        return venueProfileService.setGlobalMode( mode );
+    }
+
+    @Transactional
+    public VenueSummary checkCredentials( String rawVenue )
+    {
+        String venue = normalizeVenue( rawVenue );
+        ensureEnabledVenue( venue );
+        if( !venueProfileService.hasChecker( venue ) )
+        {
+            throw new ResourceNotFoundException( "Проверка ключей не поддерживается для площадки: " + rawVenue );
+        }
+
+        VenueProfileService.ResolvedCredentials credentials = venueProfileService.resolveCredentials( venue );
+        if( !credentials.credentialsLoaded() )
+        {
+            venueProfileService.saveCheckResult(
+                venue,
+                new VenueCredentialCheckPort.Result(
+                    com.crypto.funding.domain.venue.VenueConnectionStatus.NOT_CONNECTED,
+                    "Ключи не подключены.",
+                    null
+                )
+            );
+            return buildSummary( venue );
+        }
+
+        VenueCredentialCheckPort.Result result;
+        try
+        {
+            result = venueProfileService.checker( venue ).check( new VenueCredentialCheckPort.Credentials(
+                credentials.venue(),
+                credentials.mode(),
+                credentials.baseUrl(),
+                credentials.apiKey(),
+                credentials.secretKey(),
+                credentials.passphrase()
+            ) );
+        }
+        catch( Exception ex )
+        {
+            result = new VenueCredentialCheckPort.Result(
+                com.crypto.funding.domain.venue.VenueConnectionStatus.ERROR,
+                ex.getMessage() == null || ex.getMessage().isBlank() ? "Ошибка проверки ключей." : ex.getMessage(),
+                null
+            );
+        }
+
+        venueProfileService.saveCheckResult( venue, result );
+        return buildSummary( venue );
+    }
+
+    private void ensureEnabledVenue( String venue )
+    {
+        if( !normalizedEnabledVenues().contains( venue ) )
+        {
+            throw new ResourceNotFoundException( "Venue not configured: " + venue );
+        }
     }
 
     @Transactional(readOnly = true)
@@ -102,7 +195,8 @@ public class VenueDiagnosticsService
 
     private VenueSummary buildSummary( String venue )
     {
-        String mode = configuredMode( venue );
+        VenueProfileService.VenueAccessProfile accessProfile = venueProfileService.getProfile( venue );
+        String mode = accessProfile.mode().propertyValue();
         List<InstrumentMetadata> instruments = instrumentRegistryService.listVenueInstruments( venue );
         Instant lastSyncedAt = instruments.stream()
                                           .map( InstrumentMetadata::lastSyncedAt )
@@ -112,9 +206,22 @@ public class VenueDiagnosticsService
         return new VenueSummary(
             venue,
             mode,
-            environment.getProperty( "trading." + venue + "." + mode + ".base-url" ),
+            environment.getProperty(
+                "trading." + venue + ".metadata-base-url",
+                environment.getProperty( "trading." + venue + "." + mode + ".base-url" )
+            ),
             environment.getProperty( "trading." + venue + ".contracts-base-url" ),
-            credentialsConfigured( venue, mode ),
+            accessProfile.credentialsLoaded(),
+            accessProfile.apiKeyLoaded(),
+            accessProfile.secretKeyLoaded(),
+            accessProfile.passphraseLoaded(),
+            credentialsRequired(),
+            accessProfile.modeOverridden(),
+            accessProfile.availableModes(),
+            accessProfile.connectionStatus(),
+            accessProfile.connectionMessage(),
+            accessProfile.lastConnectionHttpStatus(),
+            accessProfile.lastCheckedAt(),
             normalizedEnabledVenues().contains( venue ),
             instrumentRegistryService.hasProvider( venue ),
             instrumentRegistryService.countActiveInstruments( venue ),
@@ -127,29 +234,14 @@ public class VenueDiagnosticsService
         return metadataSyncProperties.getEnabledVenues().stream().map( this::normalizeVenue ).distinct().toList();
     }
 
-    private String configuredMode( String venue )
+    private boolean credentialsRequired()
     {
-        return normalizeMode( environment.getProperty( "trading." + venue + ".mode", "production" ) );
-    }
-
-    private boolean credentialsConfigured( String venue, String mode )
-    {
-        return hasText( environment.getProperty( "trading." + venue + "." + mode + ".api-key" ) )
-               && hasText( environment.getProperty( "trading." + venue + "." + mode + ".secret-key" ) );
-    }
-
-    private static boolean hasText( String value )
-    {
-        return value != null && !value.isBlank();
-    }
-
-    private String normalizeMode( String rawMode )
-    {
-        if( rawMode == null || rawMode.isBlank() )
+        if( metadataSyncProperties.isRequireCredentialsOnStartup() )
         {
-            return "production";
+            return true;
         }
-        return rawMode.trim().toLowerCase( Locale.ROOT );
+        String executionMode = environment.getProperty( "trading.execution.mode", "DISABLED" );
+        return executionMode != null && "LIVE".equalsIgnoreCase( executionMode.trim() );
     }
 
     private String normalizeVenue( String rawVenue )

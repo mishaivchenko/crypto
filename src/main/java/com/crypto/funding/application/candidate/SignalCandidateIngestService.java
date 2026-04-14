@@ -43,7 +43,7 @@ public class SignalCandidateIngestService
             ).orElse( null );
             if( existing != null )
             {
-                return SignalCandidateMapper.toDomain( existing );
+                return refreshExistingCandidate( existing, command );
             }
         }
         else
@@ -57,25 +57,44 @@ public class SignalCandidateIngestService
             ).orElse( null );
             if( existing != null )
             {
-                return SignalCandidateMapper.toDomain( existing );
+                return refreshExistingCandidate( existing, command );
             }
         }
-
-        CandidateNormalizationResult normalizationResult = symbolNormalizationService.normalize( command.rawSymbol() );
 
         SignalCandidateEntity entity = new SignalCandidateEntity();
         entity.setSourceType( normalizeSourceType( command.sourceType() ) );
         entity.setSourceChatId( command.sourceChatId() );
         entity.setSourceMessageId( command.sourceMessageId() );
+        applyObservation( entity, command );
+
+        return SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
+    }
+
+    private SignalCandidate refreshExistingCandidate( SignalCandidateEntity existing, IngestSignalCandidateCommand command )
+    {
+        if( existing.getStatus() == SignalCandidateStatus.REJECTED
+            || existing.getStatus() == SignalCandidateStatus.EVENT_CREATED
+            || existing.getStatus() == SignalCandidateStatus.DELETED )
+        {
+            return SignalCandidateMapper.toDomain( existing );
+        }
+
+        applyObservation( existing, command );
+        return SignalCandidateMapper.toDomain( candidateRepository.save( existing ) );
+    }
+
+    private void applyObservation( SignalCandidateEntity entity, IngestSignalCandidateCommand command )
+    {
+        CandidateNormalizationResult normalizationResult = symbolNormalizationService.normalize( command.rawSymbol(), command.sourceVenue() );
+
         entity.setRawPayload( normalizeNullable( command.rawPayload() ) );
+        entity.setSourceVenue( normalizeVenue( command.sourceVenue() ) );
         entity.setRawSymbol( normalizeRawSymbol( command.rawSymbol() ) );
         entity.setNormalizedSymbol( normalizationResult.normalizedSymbol() );
         entity.setVenueHints( normalizationResult.venueHints() );
         entity.setDetectedAt( command.detectedAt() );
         entity.setStatus( normalizationResult.isNormalized() ? SignalCandidateStatus.NORMALIZED : SignalCandidateStatus.FAILED );
         entity.setNormalizationFailureReason( normalizationResult.failureReason() );
-
-        return SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
     }
 
     private static String normalizeSourceType( String sourceType )
@@ -99,5 +118,10 @@ public class SignalCandidateIngestService
     private static String normalizeNullable( String value )
     {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String normalizeVenue( String rawVenue )
+    {
+        return rawVenue == null || rawVenue.isBlank() ? null : rawVenue.trim().toLowerCase( Locale.ROOT );
     }
 }
