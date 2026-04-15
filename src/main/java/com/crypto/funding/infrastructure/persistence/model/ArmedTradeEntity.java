@@ -63,10 +63,10 @@ public class ArmedTradeEntity extends AuditableEntity
     @Column(name = "exit_lead_ms")
     private Long exitLeadMs;
 
-    @Column(name = "entry_attempt_count", nullable = false)
+    @Column(name = "entry_attempt_count")
     private Integer entryAttemptCount = 1;
 
-    @Column(name = "entry_spacing_ms", nullable = false)
+    @Column(name = "entry_spacing_ms")
     private Long entrySpacingMs = 0L;
 
     @Column(name = "measured_entry_latency_ms")
