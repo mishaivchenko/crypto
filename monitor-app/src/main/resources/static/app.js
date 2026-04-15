@@ -1,5 +1,10 @@
 import { api } from "/api.js";
 import {
+    filterHistoryTrades,
+    historyTradeRow,
+    tradeHistoryDetailMarkup
+} from "/history.js";
+import {
     emptyState,
     escapeHtml,
     formatBadge,
@@ -20,7 +25,8 @@ import {
 const state = {
     screen: "dashboard",
     candidateFilters: {},
-    eventFilters: {}
+    eventFilters: {},
+    historyFilters: {}
 };
 
 const nodes = {
@@ -35,6 +41,7 @@ const nodes = {
         candidates: document.getElementById("screen-candidates"),
         events: document.getElementById("screen-events"),
         trades: document.getElementById("screen-trades"),
+        history: document.getElementById("screen-history"),
         venues: document.getElementById("screen-venues")
     },
     dashboardSummary: document.getElementById("dashboard-summary"),
@@ -42,9 +49,12 @@ const nodes = {
     candidatesList: document.getElementById("candidates-list"),
     eventsList: document.getElementById("events-list"),
     tradesList: document.getElementById("trades-list"),
+    historyList: document.getElementById("history-list"),
+    historyCount: document.getElementById("history-count"),
     venuesList: document.getElementById("venues-list"),
     candidateFilters: document.getElementById("candidate-filters"),
     eventFilters: document.getElementById("event-filters"),
+    historyFilters: document.getElementById("history-filters"),
     drawerType: document.getElementById("drawer-type"),
     drawerTitle: document.getElementById("drawer-title"),
     drawerContent: document.getElementById("drawer-content"),
@@ -283,6 +293,18 @@ function renderTrades(trades) {
     wireOpenButtons(nodes.tradesList, "[data-open-trade]", openTrade);
 }
 
+function renderHistory(trades) {
+    const filtered = filterHistoryTrades(trades, state.historyFilters);
+    nodes.historyCount.textContent = `${formatNumber(filtered.length)} / ${formatNumber(trades.length)} trades`;
+    nodes.historyList.innerHTML = filtered.length
+        ? filtered.map(historyTradeRow).join("")
+        : emptyState("История сделок пуста.", "Когда появятся Prepared Trades, здесь будет разбор Signal -> Decision -> Plan -> Attempts -> Outcome.");
+
+    nodes.historyList.querySelectorAll("[data-open-history-trade]").forEach((row) => {
+        row.addEventListener("click", () => openHistoryTrade(row.dataset.openHistoryTrade));
+    });
+}
+
 function renderVenues(venues) {
     nodes.venuesList.innerHTML = venues.length
         ? venues.map(venueCard).join("")
@@ -318,6 +340,11 @@ async function refreshCurrentScreen() {
         if (state.screen === "trades") {
             setLoading(nodes.tradesList, "Загружаю подготовленные сделки…");
             renderTrades(await api.listArmedTrades());
+            return;
+        }
+        if (state.screen === "history") {
+            setLoading(nodes.historyList, "Собираю историю сделок…");
+            renderHistory(await api.listArmedTrades());
             return;
         }
         if (state.screen === "venues") {
@@ -613,6 +640,23 @@ async function openTrade(id) {
     }
 }
 
+async function openHistoryTrade(id) {
+    try {
+        const trade = await api.getArmedTrade(id);
+        const [event, candidate, journal] = await Promise.all([
+            api.getFundingEvent(trade.fundingEventId),
+            trade.signalCandidateId ? optionalRequest(() => api.getCandidate(trade.signalCandidateId)) : Promise.resolve(null),
+            api.listArmedTradeJournal(id)
+        ]);
+
+        nodes.drawerType.textContent = "Trade History";
+        nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Trade #${trade.id}`;
+        nodes.drawerContent.innerHTML = tradeHistoryDetailMarkup({ trade, event, candidate, journal });
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
 async function openVenue(venueName) {
     try {
         const [venue, instruments, timings] = await Promise.all([
@@ -660,6 +704,14 @@ async function openVenue(venueName) {
         `;
     } catch (error) {
         showError(error.message);
+    }
+}
+
+async function optionalRequest(loader) {
+    try {
+        return await loader();
+    } catch (_error) {
+        return null;
     }
 }
 
@@ -818,6 +870,19 @@ nodes.candidateFilters.addEventListener("submit", async (event) => {
 nodes.eventFilters.addEventListener("submit", async (event) => {
     event.preventDefault();
     state.eventFilters = Object.fromEntries(new FormData(event.currentTarget).entries());
+    await refreshCurrentScreen();
+});
+
+nodes.historyFilters.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const entries = Object.fromEntries(new FormData(event.currentTarget).entries());
+    state.historyFilters = {
+        ...entries,
+        dateFrom: toIsoOrNull(entries.dateFrom),
+        dateTo: toIsoOrNull(entries.dateTo),
+        onlyFailed: Boolean(entries.onlyFailed),
+        onlyManual: Boolean(entries.onlyManual)
+    };
     await refreshCurrentScreen();
 });
 

@@ -186,6 +186,29 @@ planned trigger | submitted | ack | filled
 - attempt plan block.
 - placeholder for execution attempts until real execution exists.
 
+## Implemented First Slice
+
+В monitor UI добавлен tab `Trade History`.
+
+Реализовано:
+
+- фильтры по symbol, venue, state, health, funding date range, failed/manual-only;
+- операторская строка trade history вместо generic cards;
+- health badge: `clean`, `burst plan`, `latency watch`, `manual override`, `failed`, `cancelled`;
+- detail drawer по story sequence `Source -> Event -> Plan -> Attempts -> Position -> Outcome`;
+- attempt ladder строится из `entryAttemptCount`, `entrySpacingMs`, `plannedEntryAt`, `effectiveEntryLatencyMs`;
+- latency strip показывает planned trigger и честные pending stages для submitted/ack/filled;
+- journal timeline подключён к существующему `ArmedTrade` journal endpoint;
+- frontend view-model покрыт `node:test` и подключён к Gradle `monitor-app:check`.
+
+Пока не реализовано:
+
+- реальные execution attempts из `OrderAttempt`;
+- фактические submitted/ack/filled timestamps;
+- position snapshot;
+- outcome/PnL/capture quality;
+- replay mode.
+
 ## Why This Matters
 
 История сделок станет главным инструментом обучения системы. Если мы не видим, почему сделка была успешной или провальной, мы не сможем улучшать latency, timing и venue selection.
@@ -198,4 +221,3 @@ planned trigger | submitted | ack | filled
 - Какой attempt поймал движение?
 - Venue был проблемой или идея была плохой?
 - Что нужно изменить перед следующей сделкой?
-

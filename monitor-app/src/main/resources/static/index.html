@@ -35,6 +35,7 @@
                 <button class="nav-link" data-screen="candidates">Signal Queue</button>
                 <button class="nav-link" data-screen="events">Funding Events</button>
                 <button class="nav-link" data-screen="trades">Prepared Trades</button>
+                <button class="nav-link" data-screen="history">Trade History</button>
                 <button class="nav-link" data-screen="venues">Venue Access</button>
             </nav>
         </aside>
@@ -114,6 +115,74 @@
                     </div>
                 </div>
                 <div id="trades-list" class="list-stack"></div>
+            </section>
+
+            <section class="screen" id="screen-history">
+                <div class="section-header">
+                    <div>
+                        <p class="eyebrow">Trade History</p>
+                        <h2>История сделок</h2>
+                    </div>
+                    <span id="history-count" class="chip">0 trades</span>
+                </div>
+                <div class="history-board">
+                    <aside class="history-filter-rail">
+                        <form id="history-filters" class="history-filters">
+                            <label class="field">
+                                <span>Symbol</span>
+                                <input name="symbol" type="text" placeholder="WET/USDT">
+                            </label>
+                            <label class="field">
+                                <span>Venue</span>
+                                <input name="venue" type="text" placeholder="gate">
+                            </label>
+                            <label class="field">
+                                <span>State</span>
+                                <select name="state">
+                                    <option value="">Все states</option>
+                                    <option value="ARMED">Prepared</option>
+                                    <option value="ENTRY_PENDING">Entry pending</option>
+                                    <option value="ENTRY_ATTEMPTED">Entry attempted</option>
+                                    <option value="OPEN">Open</option>
+                                    <option value="EXIT_PENDING">Exit pending</option>
+                                    <option value="CLOSED">Closed</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                    <option value="FAILED">Failed</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Health</span>
+                                <select name="health">
+                                    <option value="">Все health</option>
+                                    <option value="clean">clean</option>
+                                    <option value="burst plan">burst plan</option>
+                                    <option value="latency watch">latency watch</option>
+                                    <option value="manual override">manual override</option>
+                                    <option value="failed">failed</option>
+                                    <option value="cancelled">cancelled</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Funding from</span>
+                                <input name="dateFrom" type="datetime-local">
+                            </label>
+                            <label class="field">
+                                <span>Funding to</span>
+                                <input name="dateTo" type="datetime-local">
+                            </label>
+                            <label class="toggle-row">
+                                <input name="onlyFailed" type="checkbox">
+                                <span>Only failed/cancelled</span>
+                            </label>
+                            <label class="toggle-row">
+                                <input name="onlyManual" type="checkbox">
+                                <span>Only manual latency</span>
+                            </label>
+                            <button class="button" type="submit">Apply filters</button>
+                        </form>
+                    </aside>
+                    <div id="history-list" class="history-list"></div>
+                </div>
             </section>
 
             <section class="screen" id="screen-venues">
