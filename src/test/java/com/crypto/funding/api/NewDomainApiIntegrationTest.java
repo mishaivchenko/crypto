@@ -11,6 +11,7 @@ import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
+import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import com.crypto.funding.support.ManualSignalTestSupport;
 import com.crypto.funding.watchlist.FundingInfo;
 import com.crypto.funding.watchlist.FundingWatchlistService;
@@ -60,12 +61,16 @@ class NewDomainApiIntegrationTest
     @Autowired
     private FundingWatchlistService fundingWatchlistService;
 
+    @Autowired
+    private VenueRequestTimingService venueRequestTimingService;
+
     @BeforeEach
     void clean()
     {
         armedTradeRepository.deleteAll();
         fundingEventRepository.deleteAll();
         signalCandidateRepository.deleteAll();
+        venueRequestTimingService.clear();
     }
 
     @Test
@@ -102,12 +107,17 @@ class NewDomainApiIntegrationTest
         String armFundingEventBody = """
             {
               "notionalUsd": 25,
-              "intendedSide": "LONG",
+              "intendedSide": "SHORT",
               "plannedEntryAt": "2029-12-31T23:59:50Z",
               "plannedExitAt": "2030-01-01T00:01:00Z",
+              "entryAttemptCount": 4,
+              "entrySpacingMs": 125,
+              "manualLatencyAdjustmentMs": 15,
               "notes": "manual arm"
             }
             """;
+
+        venueRequestTimingService.recordSuccess( "gate", "credential-check", 50_000_000L, 0L, 200 );
 
         mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
                 .contentType( MediaType.APPLICATION_JSON )
@@ -118,6 +128,12 @@ class NewDomainApiIntegrationTest
             .andExpect( jsonPath( "$.venue" ).value( "gate" ) )
             .andExpect( jsonPath( "$.symbol" ).value( "BTC/USDT" ) )
             .andExpect( jsonPath( "$.armSource" ).value( "EVENT_API" ) )
+            .andExpect( jsonPath( "$.intendedSide" ).value( "SHORT" ) )
+            .andExpect( jsonPath( "$.entryAttemptCount" ).value( 4 ) )
+            .andExpect( jsonPath( "$.entrySpacingMs" ).value( 125 ) )
+            .andExpect( jsonPath( "$.measuredEntryLatencyMs" ).value( 50 ) )
+            .andExpect( jsonPath( "$.manualLatencyAdjustmentMs" ).value( 15 ) )
+            .andExpect( jsonPath( "$.effectiveEntryLatencyMs" ).value( 65 ) )
             .andExpect( jsonPath( "$.entryLeadMs" ).value( 10000 ) )
             .andExpect( jsonPath( "$.exitLeadMs" ).value( -60000 ) );
 
@@ -139,6 +155,39 @@ class NewDomainApiIntegrationTest
 
         assertThat( armedTradeRepository.findAll() ).hasSize( 1 );
         assertThat( fundingEventRepository.findById( fundingEventId ) ).get().extracting( "status" ).isEqualTo( com.crypto.funding.domain.event.FundingEventStatus.ARMED );
+    }
+
+    @Test
+    void rejectsLongFundingArmedTrade() throws Exception
+    {
+        mockMvc.perform( post( "/api/v1/funding-events" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "venue":"gate",
+                      "symbol":"BTC/USDT",
+                      "fundingTime":"2030-01-01T00:00:00Z",
+                      "fundingRatePct":0.015,
+                      "sourceType":"manual",
+                      "sourceRef":"long-rejection-test"
+                    }
+                    """ ) )
+            .andExpect( status().isCreated() );
+
+        Long fundingEventId = fundingEventRepository.findAll().getFirst().getId();
+
+        mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "notionalUsd": 25,
+                      "intendedSide": "LONG",
+                      "plannedEntryAt": "2029-12-31T23:59:50Z",
+                      "plannedExitAt": "2030-01-01T00:01:00Z"
+                    }
+                    """ ) )
+            .andExpect( status().isConflict() )
+            .andExpect( jsonPath( "$.message" ).value( "Funding trades support SHORT side only." ) );
     }
 
     @Test
@@ -244,7 +293,11 @@ class NewDomainApiIntegrationTest
             .andExpect( jsonPath( "$.fundingEventId" ).value( fundingEventId ) )
             .andExpect( jsonPath( "$.venue" ).value( "gate" ) )
             .andExpect( jsonPath( "$.symbol" ).value( "KERNEL/USDT" ) )
-            .andExpect( jsonPath( "$.state" ).value( "ARMED" ) );
+            .andExpect( jsonPath( "$.state" ).value( "ARMED" ) )
+            .andExpect( jsonPath( "$.entryAttemptCount" ).value( 1 ) )
+            .andExpect( jsonPath( "$.entrySpacingMs" ).value( 0 ) )
+            .andExpect( jsonPath( "$.manualLatencyAdjustmentMs" ).value( 0 ) )
+            .andExpect( jsonPath( "$.effectiveEntryLatencyMs" ).value( 0 ) );
 
         mockMvc.perform( get( "/api/v1/funding-events" ).param( "candidateId", candidateId.toString() ) )
             .andExpect( status().isOk() )
@@ -314,7 +367,7 @@ class NewDomainApiIntegrationTest
                 .content( """
                     {
                       "notionalUsd": 30,
-                      "intendedSide": "LONG",
+                      "intendedSide": "SHORT",
                       "plannedEntryAt": "2030-01-01T08:58:50Z",
                       "plannedExitAt": "2030-01-01T09:00:20Z",
                       "notes": "delete cascade"

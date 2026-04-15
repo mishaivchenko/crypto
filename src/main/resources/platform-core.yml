@@ -84,6 +84,9 @@ trading:
         legacy-enabled: ${TRADING_LEGACY_EXECUTION_ENABLED:false}
         live-venues: ${TRADING_LIVE_VENUES:}
         blocked-venues: ${TRADING_BLOCKED_VENUES:gate}
+        default-entry-attempt-count: ${TRADING_DEFAULT_ENTRY_ATTEMPT_COUNT:1}
+        default-entry-spacing-ms: ${TRADING_DEFAULT_ENTRY_SPACING_MS:0}
+        default-manual-latency-adjustment-ms: ${TRADING_DEFAULT_MANUAL_LATENCY_ADJUSTMENT_MS:0}
     bybit:
         mode: ${BYBIT_MODE:testnet}
         recv-window: 5000

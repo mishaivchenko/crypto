@@ -172,6 +172,14 @@ export function formatDurationMs(value) {
     return `${formatDecimal(absValue / 1000, 2)} с ${sign}`;
 }
 
+export function formatSignedMs(value) {
+    if (value === null || value === undefined) {
+        return "—";
+    }
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${formatNumber(value)} мс`;
+}
+
 function resolveTone(kind, text) {
     const registry = badgeTones[kind] ?? {};
     return registry[text] ?? "neutral";

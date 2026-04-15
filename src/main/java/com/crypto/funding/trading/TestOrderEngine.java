@@ -2,6 +2,7 @@ package com.crypto.funding.trading;
 
 import com.crypto.funding.legacy.execution.LegacyExecutionGuard;
 import com.crypto.funding.exchanges.AbstractRestClient;
+import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,10 +19,15 @@ public class TestOrderEngine
 {
     private final Map<String, AbstractRestClient> clientsByName;
     private final LegacyExecutionGuard legacyExecutionGuard;
+    private final VenueRequestTimingService timingService;
 
     // этот конструктор соберёт Map из всех бинов ExchangeTradingClient
     @Autowired
-    public TestOrderEngine( List<AbstractRestClient> clients, LegacyExecutionGuard legacyExecutionGuard )
+    public TestOrderEngine(
+        List<AbstractRestClient> clients,
+        LegacyExecutionGuard legacyExecutionGuard,
+        VenueRequestTimingService timingService
+    )
     {
         this.clientsByName = clients.stream()
                                     .collect( Collectors.toUnmodifiableMap(
@@ -29,6 +35,12 @@ public class TestOrderEngine
                                         Function.identity()
                                     ) );
         this.legacyExecutionGuard = legacyExecutionGuard;
+        this.timingService = timingService;
+    }
+
+    public TestOrderEngine( List<AbstractRestClient> clients, LegacyExecutionGuard legacyExecutionGuard )
+    {
+        this( clients, legacyExecutionGuard, new VenueRequestTimingService() );
     }
 
     public TestOrderEngine( List<AbstractRestClient> clients )
@@ -47,12 +59,16 @@ public class TestOrderEngine
             throw new IllegalArgumentException( "Unsupported exchange: " + ex );
         }
 
+        long startNanos = System.nanoTime();
         try
         {
-            return client.placeTestOrder( cmd );
+            TestOrderResult result = client.placeTestOrder( cmd );
+            timingService.recordSuccess( ex, "test-order", System.nanoTime() - startNanos, 0L, null );
+            return result;
         }
         catch( Exception e )
         {
+            timingService.recordFailure( ex, "test-order", System.nanoTime() - startNanos, e.getMessage() );
             // позже можно завести свой тип исключения/логирование
             throw new RuntimeException( "Failed to place test order on " + ex, e );
         }

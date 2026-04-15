@@ -111,7 +111,7 @@ class NewDomainPersistenceTest
         ArmedTradeEntity armedTrade = new ArmedTradeEntity();
         armedTrade.setFundingEventId( savedEvent.getId() );
         armedTrade.setNotionalUsd( new BigDecimal( "25" ) );
-        armedTrade.setIntendedSide( TradeSide.LONG );
+        armedTrade.setIntendedSide( TradeSide.SHORT );
         armedTrade.setPlannedEntryAt( Instant.now().plusSeconds( 300 ) );
         armedTrade.setPlannedExitAt( Instant.now().plusSeconds( 900 ) );
         armedTrade.setArmedAt( Instant.now() );

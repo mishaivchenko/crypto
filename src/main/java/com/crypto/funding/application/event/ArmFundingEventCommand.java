@@ -10,6 +10,9 @@ public record ArmFundingEventCommand(
     TradeSide intendedSide,
     Instant plannedEntryAt,
     Instant plannedExitAt,
+    Integer entryAttemptCount,
+    Long entrySpacingMs,
+    Long manualLatencyAdjustmentMs,
     String notes
 )
 {

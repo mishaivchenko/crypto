@@ -63,6 +63,21 @@ public class ArmedTradeEntity extends AuditableEntity
     @Column(name = "exit_lead_ms")
     private Long exitLeadMs;
 
+    @Column(name = "entry_attempt_count", nullable = false)
+    private Integer entryAttemptCount = 1;
+
+    @Column(name = "entry_spacing_ms", nullable = false)
+    private Long entrySpacingMs = 0L;
+
+    @Column(name = "measured_entry_latency_ms")
+    private Long measuredEntryLatencyMs;
+
+    @Column(name = "manual_latency_adjustment_ms")
+    private Long manualLatencyAdjustmentMs;
+
+    @Column(name = "effective_entry_latency_ms")
+    private Long effectiveEntryLatencyMs;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "arm_source")
     private TradeArmSource armSource;
@@ -167,6 +182,56 @@ public class ArmedTradeEntity extends AuditableEntity
     public void setExitLeadMs( Long exitLeadMs )
     {
         this.exitLeadMs = exitLeadMs;
+    }
+
+    public Integer getEntryAttemptCount()
+    {
+        return entryAttemptCount == null ? 1 : entryAttemptCount;
+    }
+
+    public void setEntryAttemptCount( Integer entryAttemptCount )
+    {
+        this.entryAttemptCount = entryAttemptCount == null ? 1 : entryAttemptCount;
+    }
+
+    public Long getEntrySpacingMs()
+    {
+        return entrySpacingMs == null ? 0L : entrySpacingMs;
+    }
+
+    public void setEntrySpacingMs( Long entrySpacingMs )
+    {
+        this.entrySpacingMs = entrySpacingMs == null ? 0L : entrySpacingMs;
+    }
+
+    public Long getMeasuredEntryLatencyMs()
+    {
+        return measuredEntryLatencyMs;
+    }
+
+    public void setMeasuredEntryLatencyMs( Long measuredEntryLatencyMs )
+    {
+        this.measuredEntryLatencyMs = measuredEntryLatencyMs;
+    }
+
+    public Long getManualLatencyAdjustmentMs()
+    {
+        return manualLatencyAdjustmentMs;
+    }
+
+    public void setManualLatencyAdjustmentMs( Long manualLatencyAdjustmentMs )
+    {
+        this.manualLatencyAdjustmentMs = manualLatencyAdjustmentMs;
+    }
+
+    public Long getEffectiveEntryLatencyMs()
+    {
+        return effectiveEntryLatencyMs;
+    }
+
+    public void setEffectiveEntryLatencyMs( Long effectiveEntryLatencyMs )
+    {
+        this.effectiveEntryLatencyMs = effectiveEntryLatencyMs;
     }
 
     public TradeArmSource getArmSource()

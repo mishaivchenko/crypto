@@ -57,6 +57,9 @@ public class ArmedTradeController
                 request.intendedSide(),
                 request.plannedEntryAt(),
                 request.plannedExitAt(),
+                request.entryAttemptCount(),
+                request.entrySpacingMs(),
+                request.manualLatencyAdjustmentMs(),
                 request.notes()
             )
         );
@@ -99,6 +102,11 @@ public class ArmedTradeController
             trade.eventAgeMsAtArm(),
             trade.entryLeadMs(),
             trade.exitLeadMs(),
+            trade.entryAttemptCount(),
+            trade.entrySpacingMs(),
+            trade.measuredEntryLatencyMs(),
+            trade.manualLatencyAdjustmentMs(),
+            trade.effectiveEntryLatencyMs(),
             trade.armSource(),
             trade.state(),
             trade.notes(),

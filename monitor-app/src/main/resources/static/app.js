@@ -10,6 +10,7 @@ import {
     formatInstant,
     formatNumber,
     formatRelative,
+    formatSignedMs,
     journalMarkup,
     kv,
     metaRow,
@@ -233,7 +234,7 @@ function tradeCard(trade) {
                 </div>
             </header>
             <div class="item-row">
-                <span class="muted">${escapeHtml(sideLabel(trade.intendedSide))} · source ${escapeHtml(trade.armSource ?? "—")}</span>
+                <span class="muted">${escapeHtml(sideLabel(trade.intendedSide))} · ${formatNumber(trade.entryAttemptCount ?? 1)} attempts · spacing ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
                 <span class="muted">entry ${formatInstant(trade.plannedEntryAt)} · exit ${formatInstant(trade.plannedExitAt)}</span>
             </div>
         </article>
@@ -521,10 +522,8 @@ async function openEvent(id) {
                             </label>
                             <label class="field">
                                 <span>Side</span>
-                                <select name="intendedSide">
-                                    <option value="LONG">Long</option>
-                                    <option value="SHORT">Short</option>
-                                </select>
+                                <input name="intendedSide" type="text" value="SHORT" readonly>
+                                <small>Funding strategy is SHORT-only.</small>
                             </label>
                         </div>
                         <div class="drawer-form-row labeled-row">
@@ -537,6 +536,21 @@ async function openEvent(id) {
                                 <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(defaultExit)}">
                             </label>
                         </div>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Entry attempts</span>
+                                <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
+                            </label>
+                            <label class="field">
+                                <span>Spacing, ms</span>
+                                <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>Manual latency adj, ms</span>
+                            <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
+                            <small>Engine will trigger attempts earlier by measured latency plus this adjustment.</small>
+                        </label>
                         <label class="field">
                             <span>Preparation note</span>
                             <textarea name="notes" placeholder="Почему этот Event должен перейти в Prepared Trade"></textarea>
@@ -580,6 +594,10 @@ async function openTrade(id) {
                     ${metaRow("Side", escapeHtml(sideLabel(trade.intendedSide)))}
                     ${metaRow("Planned entry", formatInstant(trade.plannedEntryAt))}
                     ${metaRow("Planned exit", formatInstant(trade.plannedExitAt))}
+                    ${metaRow("Entry attempts", formatNumber(trade.entryAttemptCount ?? 1), `spacing ${formatDurationMs(trade.entrySpacingMs ?? 0)}`)}
+                    ${metaRow("Measured latency", formatDurationMs(trade.measuredEntryLatencyMs))}
+                    ${metaRow("Manual latency adj", formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
+                    ${metaRow("Effective trigger lead", formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
                     ${metaRow("Armed at", formatInstant(trade.armedAt))}
                     ${metaRow("Entry lead", formatDurationMs(trade.entryLeadMs))}
                     ${metaRow("Exit lead", formatDurationMs(trade.exitLeadMs))}
@@ -690,9 +708,12 @@ async function handleDrawerAction(event) {
             if (action === "arm-event") {
                 await api.armFundingEvent(form.dataset.id, {
                     notionalUsd: numberOrNull(data.get("notionalUsd")),
-                    intendedSide: data.get("intendedSide") || null,
+                    intendedSide: "SHORT",
                     plannedEntryAt: toIsoOrNull(data.get("plannedEntryAt")),
                     plannedExitAt: toIsoOrNull(data.get("plannedExitAt")),
+                    entryAttemptCount: numberOrNull(data.get("entryAttemptCount")),
+                    entrySpacingMs: numberOrNull(data.get("entrySpacingMs")),
+                    manualLatencyAdjustmentMs: numberOrNull(data.get("manualLatencyAdjustmentMs")),
                     notes: data.get("notes") || null
                 });
                 showSuccess("Prepared Trade created.");

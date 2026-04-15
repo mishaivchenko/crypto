@@ -5,6 +5,7 @@ import com.crypto.funding.application.candidate.SignalCandidateIngestService;
 import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.VenueProfileJpaRepository;
+import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,12 +76,16 @@ class VenueDiagnosticsApiIntegrationTest
     @Autowired
     private SignalCandidateIngestService signalCandidateIngestService;
 
+    @Autowired
+    private VenueRequestTimingService venueRequestTimingService;
+
     @BeforeEach
     void clean()
     {
         instrumentMetadataRepository.deleteAll();
         signalCandidateRepository.deleteAll();
         venueProfileRepository.deleteAll();
+        venueRequestTimingService.clear();
         BYBIT_SERVER.resetAll();
         BYBIT_SERVER.stubFor( get( urlPathEqualTo( "/v5/market/instruments-info" ) )
                                    .willReturn( okJson( """
@@ -213,5 +218,12 @@ class VenueDiagnosticsApiIntegrationTest
             .andExpect( jsonPath( "$.connectionStatus" ).value( "INVALID_CREDENTIALS" ) )
             .andExpect( jsonPath( "$.connectionMessage" ).value( org.hamcrest.Matchers.containsString( "invalid api key" ) ) )
             .andExpect( jsonPath( "$.lastConnectionHttpStatus" ).value( 200 ) );
+
+        mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get( "/api/v1/venues/timings" ).param( "venue", "bybit" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$[0].operation" ).value( "credential-check" ) )
+            .andExpect( jsonPath( "$[0].requests" ).value( 1 ) )
+            .andExpect( jsonPath( "$[0].successes" ).value( 1 ) )
+            .andExpect( jsonPath( "$[0].averageDurationMs" ).isNumber() );
     }
 }

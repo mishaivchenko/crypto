@@ -14,6 +14,11 @@ public record ArmedTrade(
     Long eventAgeMsAtArm,
     Long entryLeadMs,
     Long exitLeadMs,
+    Integer entryAttemptCount,
+    Long entrySpacingMs,
+    Long measuredEntryLatencyMs,
+    Long manualLatencyAdjustmentMs,
+    Long effectiveEntryLatencyMs,
     TradeArmSource armSource,
     ArmedTradeState state,
     String notes,
@@ -35,9 +40,37 @@ public record ArmedTrade(
         {
             throw new IllegalArgumentException( "state must not be null" );
         }
+        if( intendedSide != null && intendedSide != TradeSide.SHORT )
+        {
+            throw new IllegalArgumentException( "funding armed trades support SHORT side only" );
+        }
         if( armedAt == null )
         {
             throw new IllegalArgumentException( "armedAt must not be null" );
+        }
+        if( entryAttemptCount == null )
+        {
+            entryAttemptCount = 1;
+        }
+        if( entryAttemptCount < 1 )
+        {
+            throw new IllegalArgumentException( "entryAttemptCount must be positive" );
+        }
+        if( entrySpacingMs == null )
+        {
+            entrySpacingMs = 0L;
+        }
+        if( entrySpacingMs < 0 )
+        {
+            throw new IllegalArgumentException( "entrySpacingMs must not be negative" );
+        }
+        if( measuredEntryLatencyMs != null && measuredEntryLatencyMs < 0 )
+        {
+            throw new IllegalArgumentException( "measuredEntryLatencyMs must not be negative" );
+        }
+        if( effectiveEntryLatencyMs != null && effectiveEntryLatencyMs < 0 )
+        {
+            throw new IllegalArgumentException( "effectiveEntryLatencyMs must not be negative" );
         }
         if( plannedEntryAt != null && plannedExitAt != null && plannedExitAt.isBefore( plannedEntryAt ) )
         {

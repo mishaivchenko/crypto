@@ -56,7 +56,10 @@ class EnginePlanServiceTest
         EngineExecutionPlan plan = service.listPlans().getFirst();
 
         assertThat( plan.status() ).isEqualTo( EnginePlanStatus.WAITING_ENTRY );
-        assertThat( plan.nextActionAt() ).isEqualTo( now.plusSeconds( 300 ) );
+        assertThat( plan.nextActionAt() ).isEqualTo( now.plusSeconds( 300 ).minusMillis( 35 ) );
+        assertThat( plan.entryAttempts() ).hasSize( 3 );
+        assertThat( plan.entryAttempts().getFirst().triggerAt() ).isEqualTo( now.plusSeconds( 300 ).minusMillis( 35 ) );
+        assertThat( plan.entryAttempts().get( 1 ).targetEntryAt() ).isEqualTo( now.plusSeconds( 300 ).plusMillis( 150 ) );
         assertThat( plan.summary() ).contains( "Ожидаем вход" );
     }
 
@@ -138,13 +141,18 @@ class EnginePlanServiceTest
             fundingEventId + 1000,
             fundingEventId,
             new BigDecimal( "25.00" ),
-            TradeSide.LONG,
+            TradeSide.SHORT,
             plannedEntryAt,
             plannedExitAt,
             Instant.parse( "2029-12-31T23:00:00Z" ),
             1_000L,
             null,
             null,
+            3,
+            150L,
+            25L,
+            10L,
+            35L,
             TradeArmSource.EVENT_API,
             state,
             "test",

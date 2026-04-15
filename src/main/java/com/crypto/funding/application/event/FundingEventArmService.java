@@ -52,6 +52,9 @@ public class FundingEventArmService
                 command.intendedSide(),
                 command.plannedEntryAt(),
                 command.plannedExitAt(),
+                command.entryAttemptCount(),
+                command.entrySpacingMs(),
+                command.manualLatencyAdjustmentMs(),
                 command.notes()
             ),
             TradeArmSource.EVENT_API,

@@ -121,7 +121,8 @@ public class EnginePlanService
                                                                ) );
 
         EnginePlanStatus status = deriveStatus( trade, now );
-        Instant nextActionAt = nextActionAt( trade, status );
+        List<EngineEntryAttemptPlan> entryAttempts = entryAttempts( trade, now );
+        Instant nextActionAt = nextActionAt( trade, status, entryAttempts, now );
         Long millisUntilAction = nextActionAt == null ? null : Duration.between( now, nextActionAt ).toMillis();
         Long millisUntilFunding = Duration.between( now, fundingEvent.getFundingTime() ).toMillis();
 
@@ -136,6 +137,12 @@ public class EnginePlanService
             fundingEvent.getFundingTime(),
             trade.plannedEntryAt(),
             trade.plannedExitAt(),
+            trade.entryAttemptCount(),
+            trade.entrySpacingMs(),
+            trade.measuredEntryLatencyMs(),
+            trade.manualLatencyAdjustmentMs(),
+            trade.effectiveEntryLatencyMs(),
+            entryAttempts,
             status,
             nextActionAt,
             millisUntilAction,
@@ -159,13 +166,14 @@ public class EnginePlanService
             return EnginePlanStatus.INVALID;
         }
 
-        Instant entry = trade.plannedEntryAt();
+        Instant firstTrigger = firstEntryTriggerAt( trade );
+        Instant lastTarget = lastEntryTargetAt( trade );
         Instant exit = trade.plannedExitAt();
-        Instant overdueThreshold = entry.plusSeconds( engineProperties.getOverdueGraceSeconds() );
+        Instant overdueThreshold = lastTarget.plusSeconds( engineProperties.getOverdueGraceSeconds() );
 
         if( trade.state() == ArmedTradeState.ARMED || trade.state() == ArmedTradeState.ENTRY_PENDING || trade.state() == ArmedTradeState.ENTRY_ATTEMPTED )
         {
-            if( now.isBefore( entry ) )
+            if( now.isBefore( firstTrigger ) )
             {
                 return EnginePlanStatus.WAITING_ENTRY;
             }
@@ -196,14 +204,66 @@ public class EnginePlanService
         return EnginePlanStatus.INVALID;
     }
 
-    private Instant nextActionAt( ArmedTrade trade, EnginePlanStatus status )
+    private Instant nextActionAt( ArmedTrade trade, EnginePlanStatus status, List<EngineEntryAttemptPlan> entryAttempts, Instant now )
     {
         return switch( status )
         {
-            case WAITING_ENTRY, ENTRY_WINDOW, OVERDUE -> trade.plannedEntryAt();
+            case WAITING_ENTRY, OVERDUE -> entryAttempts.stream()
+                                                        .map( EngineEntryAttemptPlan::triggerAt )
+                                                        .min( Instant::compareTo )
+                                                        .orElse( firstEntryTriggerAt( trade ) );
+            case ENTRY_WINDOW -> entryAttempts.stream()
+                                              .map( EngineEntryAttemptPlan::triggerAt )
+                                              .filter( trigger -> !trigger.isBefore( now ) )
+                                              .min( Instant::compareTo )
+                                              .orElseGet( () -> entryAttempts.stream()
+                                                                              .map( EngineEntryAttemptPlan::triggerAt )
+                                                                              .max( Instant::compareTo )
+                                                                              .orElse( firstEntryTriggerAt( trade ) ) );
             case WAITING_EXIT, EXIT_WINDOW -> trade.plannedExitAt();
             case CLOSED, INVALID -> null;
         };
+    }
+
+    private List<EngineEntryAttemptPlan> entryAttempts( ArmedTrade trade, Instant now )
+    {
+        if( trade.plannedEntryAt() == null )
+        {
+            return List.of();
+        }
+
+        int attempts = trade.entryAttemptCount() == null ? 1 : trade.entryAttemptCount();
+        long spacingMs = trade.entrySpacingMs() == null ? 0L : trade.entrySpacingMs();
+        long effectiveLatencyMs = trade.effectiveEntryLatencyMs() == null ? 0L : trade.effectiveEntryLatencyMs();
+
+        return java.util.stream.IntStream.range( 0, attempts )
+                                         .mapToObj( index -> {
+                                             long offsetMs = spacingMs * index;
+                                             Instant targetEntryAt = trade.plannedEntryAt().plusMillis( offsetMs );
+                                             Instant triggerAt = targetEntryAt.minusMillis( effectiveLatencyMs );
+                                             return new EngineEntryAttemptPlan(
+                                                 index + 1,
+                                                 targetEntryAt,
+                                                 triggerAt,
+                                                 Duration.between( now, triggerAt ).toMillis(),
+                                                 offsetMs,
+                                                 effectiveLatencyMs
+                                             );
+                                         } )
+                                         .toList();
+    }
+
+    private Instant firstEntryTriggerAt( ArmedTrade trade )
+    {
+        long effectiveLatencyMs = trade.effectiveEntryLatencyMs() == null ? 0L : trade.effectiveEntryLatencyMs();
+        return trade.plannedEntryAt().minusMillis( effectiveLatencyMs );
+    }
+
+    private Instant lastEntryTargetAt( ArmedTrade trade )
+    {
+        int attempts = trade.entryAttemptCount() == null ? 1 : trade.entryAttemptCount();
+        long spacingMs = trade.entrySpacingMs() == null ? 0L : trade.entrySpacingMs();
+        return trade.plannedEntryAt().plusMillis( spacingMs * Math.max( 0, attempts - 1 ) );
     }
 
     private boolean withinLookaheadWindow( EngineExecutionPlan plan )

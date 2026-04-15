@@ -2,6 +2,8 @@ package com.crypto.funding.application.trade;
 
 import com.crypto.funding.application.DomainValidationException;
 import com.crypto.funding.application.ResourceNotFoundException;
+import com.crypto.funding.application.venue.VenueLatencyService;
+import com.crypto.funding.config.TradingExecutionProperties;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.ArmedTradeState;
@@ -9,6 +11,7 @@ import com.crypto.funding.domain.trade.TradeArmSource;
 import com.crypto.funding.domain.trade.TradeJournalActorType;
 import com.crypto.funding.domain.trade.TradeJournalEntityType;
 import com.crypto.funding.domain.trade.TradeJournalEventCode;
+import com.crypto.funding.domain.trade.TradeSide;
 import com.crypto.funding.infrastructure.persistence.mapper.ArmedTradeMapper;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
@@ -27,16 +30,22 @@ public class ArmedTradeCommandService
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeJpaRepository armedTradeRepository;
     private final TradeJournalService tradeJournalService;
+    private final VenueLatencyService venueLatencyService;
+    private final TradingExecutionProperties executionProperties;
 
     public ArmedTradeCommandService(
         FundingEventJpaRepository fundingEventRepository,
         ArmedTradeJpaRepository armedTradeRepository,
-        TradeJournalService tradeJournalService
+        TradeJournalService tradeJournalService,
+        VenueLatencyService venueLatencyService,
+        TradingExecutionProperties executionProperties
     )
     {
         this.fundingEventRepository = fundingEventRepository;
         this.armedTradeRepository = armedTradeRepository;
         this.tradeJournalService = tradeJournalService;
+        this.venueLatencyService = venueLatencyService;
+        this.executionProperties = executionProperties;
     }
 
     @Transactional
@@ -72,13 +81,38 @@ public class ArmedTradeCommandService
         {
             throw new DomainValidationException( "У события фандинга " + command.fundingEventId() + " уже есть активная подготовленная сделка." );
         }
+        if( command.intendedSide() != null && command.intendedSide() != TradeSide.SHORT )
+        {
+            throw new DomainValidationException( "Funding trades support SHORT side only." );
+        }
+        if( command.entryAttemptCount() != null && command.entryAttemptCount() < 1 )
+        {
+            throw new DomainValidationException( "entryAttemptCount must be positive." );
+        }
+        if( command.entrySpacingMs() != null && command.entrySpacingMs() < 0 )
+        {
+            throw new DomainValidationException( "entrySpacingMs must not be negative." );
+        }
 
         ArmedTradeEntity entity = new ArmedTradeEntity();
         entity.setFundingEventId( fundingEvent.getId() );
         entity.setNotionalUsd( command.notionalUsd() );
-        entity.setIntendedSide( command.intendedSide() );
+        entity.setIntendedSide( TradeSide.SHORT );
         entity.setPlannedEntryAt( command.plannedEntryAt() );
         entity.setPlannedExitAt( command.plannedExitAt() );
+        entity.setEntryAttemptCount(
+            command.entryAttemptCount() == null ? executionProperties.getDefaultEntryAttemptCount() : command.entryAttemptCount()
+        );
+        entity.setEntrySpacingMs(
+            command.entrySpacingMs() == null ? executionProperties.getDefaultEntrySpacingMs() : command.entrySpacingMs()
+        );
+        Long manualLatencyAdjustmentMs = command.manualLatencyAdjustmentMs() == null
+            ? executionProperties.getDefaultManualLatencyAdjustmentMs()
+            : command.manualLatencyAdjustmentMs();
+        entity.setManualLatencyAdjustmentMs( manualLatencyAdjustmentMs );
+        Long measuredEntryLatencyMs = venueLatencyService.estimateEntryLatencyMs( fundingEvent.getVenue() );
+        entity.setMeasuredEntryLatencyMs( measuredEntryLatencyMs );
+        entity.setEffectiveEntryLatencyMs( venueLatencyService.effectiveEntryLatencyMs( measuredEntryLatencyMs, manualLatencyAdjustmentMs ) );
         Instant armedAt = Instant.now();
         entity.setArmedAt( armedAt );
         entity.setEventAgeMsAtArm( Duration.between( fundingEvent.getDiscoveredAt(), armedAt ).toMillis() );

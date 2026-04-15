@@ -11,6 +11,9 @@ public record CreateArmedTradeCommand(
     TradeSide intendedSide,
     Instant plannedEntryAt,
     Instant plannedExitAt,
+    Integer entryAttemptCount,
+    Long entrySpacingMs,
+    Long manualLatencyAdjustmentMs,
     String notes
 )
 {

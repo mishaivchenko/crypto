@@ -140,6 +140,7 @@ public class VenueDiagnosticsService
         }
 
         VenueCredentialCheckPort.Result result;
+        long startNanos = System.nanoTime();
         try
         {
             result = venueProfileService.checker( venue ).check( new VenueCredentialCheckPort.Credentials(
@@ -150,9 +151,11 @@ public class VenueDiagnosticsService
                 credentials.secretKey(),
                 credentials.passphrase()
             ) );
+            venueRequestTimingService.recordSuccess( venue, "credential-check", System.nanoTime() - startNanos, 0L, result.httpStatus() );
         }
         catch( Exception ex )
         {
+            venueRequestTimingService.recordFailure( venue, "credential-check", System.nanoTime() - startNanos, ex.getMessage() );
             result = new VenueCredentialCheckPort.Result(
                 com.crypto.funding.domain.venue.VenueConnectionStatus.ERROR,
                 ex.getMessage() == null || ex.getMessage().isBlank() ? "Ошибка проверки ключей." : ex.getMessage(),

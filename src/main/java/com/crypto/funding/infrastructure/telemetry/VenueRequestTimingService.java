@@ -61,9 +61,16 @@ public class VenueRequestTimingService
         return snapshots().stream().filter( snapshot -> snapshot.venue().equals( normalizedVenue ) ).toList();
     }
 
+    public void clear()
+    {
+        statsByKey.clear();
+    }
+
     private Stats stats( String venue, String operation )
     {
-        return statsByKey.computeIfAbsent( venue + "::" + operation, key -> new Stats() );
+        String normalizedVenue = venue == null ? "" : venue.trim().toLowerCase( Locale.ROOT );
+        String normalizedOperation = operation == null ? "" : operation.trim().toLowerCase( Locale.ROOT );
+        return statsByKey.computeIfAbsent( normalizedVenue + "::" + normalizedOperation, key -> new Stats() );
     }
 
     private static String keyVenue( String key )
