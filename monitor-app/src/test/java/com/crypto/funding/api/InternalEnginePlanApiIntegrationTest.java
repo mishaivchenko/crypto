@@ -1,12 +1,27 @@
 package com.crypto.funding.api;
 
+import com.crypto.funding.domain.event.FundingEventStatus;
+import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.trade.TradeArmSource;
+import com.crypto.funding.domain.trade.TradeSide;
+import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
+import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
+import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.OrderAttemptJpaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,6 +44,23 @@ class InternalEnginePlanApiIntegrationTest
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private FundingEventJpaRepository fundingEventRepository;
+
+    @Autowired
+    private ArmedTradeJpaRepository armedTradeRepository;
+
+    @Autowired
+    private OrderAttemptJpaRepository orderAttemptRepository;
+
+    @BeforeEach
+    void clean()
+    {
+        orderAttemptRepository.deleteAll();
+        armedTradeRepository.deleteAll();
+        fundingEventRepository.deleteAll();
+    }
+
     @Test
     void protectsEnginePlanApiWithInternalToken() throws Exception
     {
@@ -40,5 +72,79 @@ class InternalEnginePlanApiIntegrationTest
                 .header( "X-Internal-Token", "test-internal-token" ) )
             .andExpect( status().isOk() )
             .andExpect( jsonPath( "$" ).isArray() );
+    }
+
+    @Test
+    void recordsOrderAttemptsIdempotently() throws Exception
+    {
+        ArmedTradeEntity trade = createArmedTrade();
+        String payload = """
+            {
+              "attemptKey":"entry:%d:1:2030-01-01T00:00:00Z",
+              "armedTradeId":%d,
+              "attemptNumber":1,
+              "venue":"bybit",
+              "symbol":"REQ/USDT",
+              "side":"SHORT",
+              "executionType":"MARKET",
+              "quantity":25,
+              "status":"FAILED",
+              "targetEntryAt":"2030-01-01T00:00:00Z",
+              "triggerAt":"2029-12-31T23:59:59Z",
+              "submittedAt":"2029-12-31T23:59:59Z",
+              "failureReason":"Missing engine credentials"
+            }
+            """.formatted( trade.getId(), trade.getId() );
+
+        mockMvc.perform( post( "/internal/v1/engine/order-attempts" )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( payload ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.armedTradeId" ).value( trade.getId() ) )
+            .andExpect( jsonPath( "$.attemptNumber" ).value( 1 ) )
+            .andExpect( jsonPath( "$.status" ).value( "FAILED" ) )
+            .andExpect( jsonPath( "$.failureReason" ).value( "Missing engine credentials" ) );
+
+        mockMvc.perform( post( "/internal/v1/engine/order-attempts" )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( payload ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.armedTradeId" ).value( trade.getId() ) );
+
+        org.assertj.core.api.Assertions.assertThat( orderAttemptRepository.findAll() ).hasSize( 1 );
+
+        mockMvc.perform( get( "/api/v1/armed-trades/{id}/order-attempts", trade.getId() ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$[0].attemptKey" ).value( "entry:" + trade.getId() + ":1:2030-01-01T00:00:00Z" ) );
+    }
+
+    private ArmedTradeEntity createArmedTrade()
+    {
+        FundingEventEntity event = new FundingEventEntity();
+        event.setVenue( "bybit" );
+        event.setSymbol( "REQ/USDT" );
+        event.setFundingTime( Instant.parse( "2030-01-01T00:00:00Z" ) );
+        event.setFundingRatePct( BigDecimal.valueOf( -0.01 ) );
+        event.setStatus( FundingEventStatus.ARMED );
+        event.setSourceType( "FUNDING_API" );
+        event.setSourceRef( "test" );
+        event.setDiscoveredAt( Instant.parse( "2029-12-31T23:00:00Z" ) );
+        FundingEventEntity savedEvent = fundingEventRepository.save( event );
+
+        ArmedTradeEntity trade = new ArmedTradeEntity();
+        trade.setFundingEventId( savedEvent.getId() );
+        trade.setNotionalUsd( BigDecimal.valueOf( 25 ) );
+        trade.setIntendedSide( TradeSide.SHORT );
+        trade.setPlannedEntryAt( Instant.parse( "2029-12-31T23:59:00Z" ) );
+        trade.setPlannedExitAt( Instant.parse( "2030-01-01T00:01:00Z" ) );
+        trade.setArmedAt( Instant.parse( "2029-12-31T23:30:00Z" ) );
+        trade.setEntryAttemptCount( 3 );
+        trade.setEntrySpacingMs( 150L );
+        trade.setEffectiveEntryLatencyMs( 0L );
+        trade.setArmSource( TradeArmSource.EVENT_API );
+        trade.setState( ArmedTradeState.ARMED );
+        return armedTradeRepository.save( trade );
     }
 }

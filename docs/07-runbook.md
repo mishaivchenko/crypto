@@ -67,6 +67,15 @@ curl http://localhost:8091/internal/engine/summary
 curl http://localhost:8091/internal/engine/plans
 ```
 
+Manual execution-attempt smoke:
+
+```bash
+curl -X POST 'http://localhost:8091/internal/engine/execution/run-once?force=true'
+curl http://localhost:8090/api/v1/order-attempts
+```
+
+Expected safe result without engine credentials: attempts are recorded as `FAILED` with a missing credentials reason.
+
 ## Local Safe Defaults
 
 Для локального запуска без ключей:
@@ -85,4 +94,5 @@ CREDENTIALS_STORAGE_ENABLED=false
 - Candidate source creates normalized candidates.
 - Venue metadata sync reports active instruments.
 - Engine endpoints return plans or an empty list through monitor REST.
+- Manual engine run records `OrderAttempt` rows when armed trades exist.
 - No process listens after shutdown on `8090` or `8091`.

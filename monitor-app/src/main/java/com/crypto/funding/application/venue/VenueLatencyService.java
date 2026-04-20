@@ -10,7 +10,7 @@ import java.util.Locale;
 public class VenueLatencyService
 {
     private static final List<String> ENTRY_LATENCY_OPERATIONS = List.of(
-        "test-order",
+        "order-submit",
         "credential-check",
         "metadata-sync"
     );

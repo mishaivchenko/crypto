@@ -1,8 +1,11 @@
 package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
+import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -27,8 +30,15 @@ public class EnginePlanClient
 
     public List<EngineExecutionPlan> listPlans()
     {
+        return listPlans( false );
+    }
+
+    public List<EngineExecutionPlan> listPlans( boolean includeAll )
+    {
         return restClient.get()
-                         .uri( "/internal/v1/engine/plans" )
+                         .uri( uriBuilder -> uriBuilder.path( "/internal/v1/engine/plans" )
+                                                       .queryParam( "includeAll", includeAll )
+                                                       .build() )
                          .headers( this::internalHeaders )
                          .retrieve()
                          .body( PLAN_LIST );
@@ -41,6 +51,17 @@ public class EnginePlanClient
                          .headers( this::internalHeaders )
                          .retrieve()
                          .body( EngineExecutionPlan.class );
+    }
+
+    public EngineOrderAttemptResponse recordOrderAttempt( EngineOrderAttemptRecordRequest request )
+    {
+        return restClient.post()
+                         .uri( "/internal/v1/engine/order-attempts" )
+                         .contentType( MediaType.APPLICATION_JSON )
+                         .headers( this::internalHeaders )
+                         .body( request )
+                         .retrieve()
+                         .body( EngineOrderAttemptResponse.class );
     }
 
     private void internalHeaders( HttpHeaders headers )

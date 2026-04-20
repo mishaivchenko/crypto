@@ -103,5 +103,5 @@ test("detail markup tells the full source-to-outcome story", () => {
     assert.match(markup, /4\. Attempts/);
     assert.match(markup, /5\. Position/);
     assert.match(markup, /6\. Outcome/);
-    assert.match(markup, /Execution attempts ещё не пишутся/);
+    assert.match(markup, /Execution attempts пока нет/);
 });

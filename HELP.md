@@ -17,7 +17,7 @@ TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false \
 ./gradlew bootRunMonitor
 ```
 
-Engine/read-side runtime:
+Engine/runtime:
 
 ```bash
 INTERNAL_ENGINE_TOKEN=dev-internal-token ./gradlew bootRunEngine
@@ -29,6 +29,16 @@ INTERNAL_ENGINE_TOKEN=dev-internal-token ./gradlew bootRunEngine
 - Monitor health: `http://localhost:8090/actuator/health`
 - Engine health: `http://localhost:8091/actuator/health`
 - Engine summary: `http://localhost:8091/internal/engine/summary`
+- Manual engine attempt run: `POST http://localhost:8091/internal/engine/execution/run-once?force=true`
+
+## Execution Attempt Smoke
+
+```bash
+curl -X POST 'http://localhost:8091/internal/engine/execution/run-once?force=true'
+curl http://localhost:8090/api/v1/order-attempts
+```
+
+Without engine credentials this should create visible `FAILED` attempts, not live orders.
 
 ## Auth
 

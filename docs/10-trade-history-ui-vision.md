@@ -184,7 +184,7 @@ planned trigger | submitted | ack | filled
 - journal timeline.
 - latency block.
 - attempt plan block.
-- placeholder for execution attempts until real execution exists.
+- execution attempts block from `OrderAttempt`.
 
 ## Implemented First Slice
 
@@ -203,8 +203,7 @@ planned trigger | submitted | ack | filled
 
 Пока не реализовано:
 
-- реальные execution attempts из `OrderAttempt`;
-- фактические submitted/ack/filled timestamps;
+- фактические ack/filled timestamps;
 - position snapshot;
 - outcome/PnL/capture quality;
 - replay mode.

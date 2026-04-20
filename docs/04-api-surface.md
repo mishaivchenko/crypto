@@ -50,6 +50,8 @@ GET /api/v1/armed-trades
 GET /api/v1/armed-trades/{id}
 POST /api/v1/armed-trades
 GET /api/v1/armed-trades/{id}/journal
+GET /api/v1/armed-trades/{id}/order-attempts
+GET /api/v1/order-attempts
 ```
 
 Важные поля `ArmedTradeResponse`:
@@ -112,10 +114,14 @@ Supported modes:
 
 ```text
 GET /internal/v1/engine/plans
+GET /internal/v1/engine/plans?includeAll=true
 GET /internal/v1/engine/plans/{armedTradeId}
+POST /internal/v1/engine/order-attempts
 ```
 
 Monitor protects these endpoints with `X-Internal-Token`.
+
+`POST /internal/v1/engine/order-attempts` is idempotent by `attemptKey`.
 
 ## Engine
 
@@ -123,6 +129,8 @@ Monitor protects these endpoints with `X-Internal-Token`.
 GET /internal/engine/summary
 GET /internal/engine/plans
 GET /internal/engine/plans/{armedTradeId}
+POST /internal/engine/execution/run-once
+POST /internal/engine/execution/run-once?force=true
 ```
 
-Engine endpoints сейчас internal/read-side. Они проксируют plans из monitor и не размещают orders.
+Engine endpoints сейчас выполняют observable execution attempts. Без engine credentials попытки пишутся как `FAILED`; live order HTTP submission ещё guarded.

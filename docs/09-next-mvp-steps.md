@@ -6,16 +6,17 @@
 
 ## Step 1: Execution Ports Become Real
 
-- Implement venue-specific execution adapters for selected venues.
+- Current status: `engine-app` can invoke `ExecutionPort` and persist `OrderAttempt`.
+- Missing engine credentials become visible `FAILED` attempts.
+- Next: replace guarded/missing-credential adapter with venue-specific order HTTP adapters.
 - Start with one or two venues, but keep the adapter contract identical.
-- Place orders only through `engine-app` and `ExecutionPort`.
-- Persist `OrderAttempt`.
 
 ## Step 2: Engine Runtime Loop
 
-- Engine polls actionable `ArmedTrade`.
+- Current status: manual `run-once` exists and optional loop can be enabled.
 - Engine uses `EngineExecutionPlan.entryAttempts`.
-- For each attempt, engine places SHORT entry orders according to trigger time.
+- For each attempt, engine records submit intent and current failure/success status.
+- Next: place SHORT entry orders according to trigger time when live adapters are enabled.
 - Spacing supports sequential or parallel burst behavior.
 - Engine records submit/ack/fill timestamps.
 

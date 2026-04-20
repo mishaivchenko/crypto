@@ -102,8 +102,8 @@ class NewDomainPersistenceTest
         fundingEvent.setFundingTime( Instant.now().plusSeconds( 3600 ) );
         fundingEvent.setFundingRatePct( new BigDecimal( "0.0150" ) );
         fundingEvent.setStatus( FundingEventStatus.DISCOVERED );
-        fundingEvent.setSourceType( "telegram" );
-        fundingEvent.setSourceRef( "@funding_watchdog" );
+        fundingEvent.setSourceType( "FUNDING_API" );
+        fundingEvent.setSourceRef( "test-source" );
         fundingEvent.setSignalCandidateId( savedCandidate.getId() );
         fundingEvent.setDiscoveredAt( Instant.now() );
         FundingEventEntity savedEvent = fundingEventRepository.save( fundingEvent );
@@ -120,19 +120,23 @@ class NewDomainPersistenceTest
         ArmedTradeEntity savedTrade = armedTradeRepository.save( armedTrade );
 
         OrderAttemptEntity orderAttempt = new OrderAttemptEntity();
+        orderAttempt.setAttemptKey( "entry:" + savedTrade.getId() + ":1:2030-01-01T00:00:00Z" );
         orderAttempt.setArmedTradeId( savedTrade.getId() );
+        orderAttempt.setAttemptNumber( 1 );
         orderAttempt.setVenue( "gate" );
         orderAttempt.setSymbol( "BTC/USDT" );
-        orderAttempt.setSide( TradeSide.LONG );
+        orderAttempt.setSide( TradeSide.SHORT );
         orderAttempt.setExecutionType( ExecutionType.MARKET );
         orderAttempt.setQuantity( new BigDecimal( "0.001" ) );
         orderAttempt.setStatus( OrderAttemptStatus.CREATED );
+        orderAttempt.setTargetEntryAt( Instant.parse( "2030-01-01T00:00:00Z" ) );
+        orderAttempt.setTriggerAt( Instant.parse( "2029-12-31T23:59:59Z" ) );
 
         PositionEntity position = new PositionEntity();
         position.setArmedTradeId( savedTrade.getId() );
         position.setVenue( "gate" );
         position.setSymbol( "BTC/USDT" );
-        position.setSide( TradeSide.LONG );
+        position.setSide( TradeSide.SHORT );
         position.setQuantity( new BigDecimal( "0.001" ) );
         position.setState( PositionState.PENDING_OPEN );
 

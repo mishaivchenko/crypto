@@ -12,7 +12,7 @@
 
 ## Текущий бизнес-flow
 
-`Funding API -> SignalCandidate -> Review -> FundingEvent -> ArmedTrade -> Engine Plan -> Trade Journal`
+`Funding API -> SignalCandidate -> Review -> FundingEvent -> ArmedTrade -> Engine Plan -> OrderAttempt -> Trade Journal`
 
 Что важно:
 
@@ -20,8 +20,8 @@
 - `FundingEvent` создаётся после review/approve.
 - `ArmedTrade` создаётся оператором из confirmed event.
 - Funding armed trade всегда `SHORT-only`.
-- `engine-app` строит план, но не отправляет live orders.
-- Live execution через новый домен ещё не реализован.
+- `engine-app` строит план и может записывать execution attempts.
+- Live exchange order submission через новый домен ещё guarded и не включён автоматически.
 
 ## Что уже работает
 
@@ -36,10 +36,11 @@
 - Venue diagnostics для Bybit, Gate, Bitget, OKX, KuCoin.
 - Monitor UI на `8090`.
 - Engine planning API на `8091`.
+- Manual engine run endpoint пишет `OrderAttempt` records.
 
 ## Что принципиально не готово
 
-- Реальная отправка order через новый execution domain.
+- Реальная отправка order на биржу через новый execution domain.
 - Полный risk engine.
 - Market-data execution loop.
 - PnL/outcome calculation.

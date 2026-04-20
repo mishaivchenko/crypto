@@ -11,3 +11,5 @@ server:
 engine:
     monitor-base-url: ${MONITOR_INTERNAL_BASE_URL:http://localhost:8090}
     internal-token: ${INTERNAL_ENGINE_TOKEN:}
+    execution-loop-enabled: ${ENGINE_EXECUTION_LOOP_ENABLED:false}
+    execution-loop-interval-ms: ${ENGINE_EXECUTION_LOOP_INTERVAL_MS:1000}

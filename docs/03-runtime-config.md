@@ -73,6 +73,40 @@ Monitor internal endpoints `/internal/v1/engine/**` требуют `X-Internal-T
 
 Engine использует `MONITOR_INTERNAL_BASE_URL` и тот же `INTERNAL_ENGINE_TOKEN`.
 
+## Engine Execution Attempts
+
+```env
+ENGINE_EXECUTION_LOOP_ENABLED=false
+ENGINE_EXECUTION_LOOP_INTERVAL_MS=1000
+```
+
+Manual smoke endpoint:
+
+```text
+POST /internal/engine/execution/run-once?force=true
+```
+
+Правила текущей фазы:
+
+- loop выключен по умолчанию;
+- `force=true` выполняет все entry attempts из monitor plans, включая future `WAITING_ENTRY`;
+- без engine credentials попытки сохраняются как `FAILED`;
+- live exchange order submission пока не включён автоматически.
+
+Engine credentials сейчас читаются из runtime ENV/config engine-side:
+
+```env
+ENGINE_CREDENTIALS_BYBIT_API_KEY=
+ENGINE_CREDENTIALS_BYBIT_SECRET_KEY=
+ENGINE_CREDENTIALS_GATE_API_KEY=
+ENGINE_CREDENTIALS_GATE_SECRET_KEY=
+ENGINE_CREDENTIALS_BITGET_API_KEY=
+ENGINE_CREDENTIALS_BITGET_SECRET_KEY=
+ENGINE_CREDENTIALS_BITGET_PASSPHRASE=
+```
+
+Если значения отсутствуют, это нормальный smoke-сценарий: `OrderAttempt` будет записан с причиной missing credentials.
+
 ## Funding Burst Defaults
 
 ```env

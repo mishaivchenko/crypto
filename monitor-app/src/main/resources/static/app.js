@@ -604,9 +604,10 @@ async function openEvent(id) {
 
 async function openTrade(id) {
     try {
-        const [trade, journal] = await Promise.all([
+        const [trade, journal, attempts] = await Promise.all([
             api.getArmedTrade(id),
-            api.listArmedTradeJournal(id)
+            api.listArmedTradeJournal(id),
+            api.listOrderAttempts(id)
         ]);
         nodes.drawerType.textContent = "Prepared Trade";
         nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Сделка #${trade.id}`;
@@ -634,6 +635,13 @@ async function openTrade(id) {
                     ${metaRow("Note", escapeHtml(trade.notes ?? "—"))}
                 </div>
             `)}
+            ${section("Execution attempts", attempts.length ? attempts.map((attempt) => `
+                <div class="meta-row">
+                    <span class="meta-label">#${escapeHtml(attempt.attemptNumber ?? "—")} · ${escapeHtml(attempt.status)}</span>
+                    <strong class="meta-value">${escapeHtml(attempt.symbol)} ${escapeHtml(attempt.side)}</strong>
+                    <span class="meta-helper">${escapeHtml(attempt.failureReason ?? "Без ошибки")} · trigger ${formatInstant(attempt.triggerAt)} · recorded ${formatInstant(attempt.createdAt)}</span>
+                </div>
+            `).join("") : emptyState("Execution attempts пока нет.", "Запусти engine run-once, чтобы увидеть FAILED/SUBMITTED попытки."))}
             ${trade.signalCandidateId ? buildDeleteCandidateSection({ id: trade.signalCandidateId }, "Delete source signal") : ""}
             ${section("Journal", journalMarkup(journal))}
         `;
@@ -650,10 +658,11 @@ async function openHistoryTrade(id) {
             trade.signalCandidateId ? optionalRequest(() => api.getCandidate(trade.signalCandidateId)) : Promise.resolve(null),
             api.listArmedTradeJournal(id)
         ]);
+        const attempts = await api.listOrderAttempts(id);
 
         nodes.drawerType.textContent = "Trade History";
         nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Trade #${trade.id}`;
-        nodes.drawerContent.innerHTML = tradeHistoryDetailMarkup({ trade, event, candidate, journal });
+        nodes.drawerContent.innerHTML = tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts });
     } catch (error) {
         showError(error.message);
     }

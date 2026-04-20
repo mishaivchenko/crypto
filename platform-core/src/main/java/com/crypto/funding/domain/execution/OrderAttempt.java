@@ -7,7 +7,9 @@ import java.time.Instant;
 
 public record OrderAttempt(
     Long id,
+    String attemptKey,
     Long armedTradeId,
+    Integer attemptNumber,
     String venue,
     String symbol,
     TradeSide side,
@@ -16,6 +18,8 @@ public record OrderAttempt(
     BigDecimal limitPrice,
     OrderAttemptStatus status,
     String externalOrderId,
+    Instant targetEntryAt,
+    Instant triggerAt,
     Instant submittedAt,
     Instant exchangeTimestamp,
     String failureReason,
@@ -28,6 +32,10 @@ public record OrderAttempt(
         if( armedTradeId == null )
         {
             throw new IllegalArgumentException( "armedTradeId must not be null" );
+        }
+        if( attemptNumber != null && attemptNumber < 1 )
+        {
+            throw new IllegalArgumentException( "attemptNumber must be positive" );
         }
         if( venue == null || venue.isBlank() )
         {

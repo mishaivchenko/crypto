@@ -172,7 +172,7 @@ export function latencyStripMarkup(trade) {
     `;
 }
 
-export function tradeHistoryDetailMarkup({ trade, event, candidate, journal }) {
+export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts = [] }) {
     const health = deriveTradeHealth(trade);
     const sourceSymbol = candidate?.normalizedSymbol ?? candidate?.rawSymbol ?? trade.symbol ?? "—";
 
@@ -220,10 +220,18 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal }) {
         ${section("4. Attempts", `
             ${latencyStripMarkup(trade)}
             ${attemptLadderMarkup(trade)}
-            <div class="empty-state compact">
-                <strong>Execution attempts ещё не пишутся.</strong>
-                <p>После подключения live execution здесь появятся submitted/ack/filled timestamps, exchange order id и ошибки.</p>
-            </div>
+            ${attempts.length ? attempts.map((attempt) => `
+                <div class="meta-row">
+                    <span class="meta-label">#${escapeHtml(attempt.attemptNumber ?? "—")} · ${escapeHtml(attempt.status)}</span>
+                    <strong class="meta-value">${escapeHtml(attempt.symbol ?? trade.symbol ?? "—")}</strong>
+                    <span class="meta-helper">${escapeHtml(attempt.failureReason ?? "Без ошибки")} · trigger ${formatInstant(attempt.triggerAt)} · recorded ${formatInstant(attempt.createdAt)}</span>
+                </div>
+            `).join("") : `
+                <div class="empty-state compact">
+                    <strong>Execution attempts пока нет.</strong>
+                    <p>Запусти engine run-once, чтобы здесь появились FAILED/SUBMITTED attempts.</p>
+                </div>
+            `}
         `)}
         ${section("5. Position", `
             <div class="empty-state compact">

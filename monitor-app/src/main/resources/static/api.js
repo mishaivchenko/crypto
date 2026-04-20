@@ -109,6 +109,9 @@ export const api = {
     listArmedTradeJournal(id) {
         return request(`/api/v1/armed-trades/${id}/journal`);
     },
+    listOrderAttempts(id) {
+        return request(`/api/v1/armed-trades/${id}/order-attempts`);
+    },
     listVenues() {
         return request("/api/v1/venues");
     },

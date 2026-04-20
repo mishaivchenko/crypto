@@ -4,7 +4,7 @@
 
 Текущий бизнес-flow:
 
-`Funding API -> SignalCandidate -> Review -> FundingEvent -> ArmedTrade -> Trade Journal`
+`Funding API -> SignalCandidate -> Review -> FundingEvent -> ArmedTrade -> Engine Attempt -> Trade Journal`
 
 ## Что входит в 2.0.0
 
@@ -30,15 +30,16 @@
 - internal API for engine plan sync
 
 ### `engine-app`
-Лёгкий execution-preparation модуль:
+Лёгкий execution модуль:
 - отдельный Spring Boot runtime
 - отдельный порт
 - no bot UI
 - no candidate polling
 - no metadata auto-sync on startup
-- lightweight read/planning API for armed trades through monitor REST
+- reads execution plans from monitor REST
+- can run entry attempts and persist `OrderAttempt` results back to monitor
 
-Текущий engine не исполняет live orders. Его задача в `2.0.0` — быть минимальным и пригодным как будущая база для execution runtime.
+Текущий engine уже фиксирует execution attempts, но live exchange order submission всё ещё guarded: без engine credentials попытки становятся `FAILED`, а при наличии credentials live order HTTP submission пока не включается автоматически.
 
 ## Источник кандидатов
 
@@ -90,8 +91,9 @@ UI рассчитан на operator workflow, а не на маркетинго�
 - `GET /internal/engine/summary`
 - `GET /internal/engine/plans`
 - `GET /internal/engine/plans/{armedTradeId}`
+- `POST /internal/engine/execution/run-once?force=true`
 
-Это read-side слой для подготовки исполнения и operator visibility.
+Это execution-side слой для планов и наблюдаемых попыток исполнения.
 
 ## Users And Keys
 
@@ -117,8 +119,9 @@ Credential API:
 
 По умолчанию:
 - старый execution code удалён
-- live execution loop ещё не реализован
-- engine только читает планы из monitor
+- live exchange order submission ещё не включён
+- engine execution loop выключен, ручной `run-once` доступен для проверки
+- missing credentials пишутся как `FAILED OrderAttempt`
 - internal monitor→engine API защищён `X-Internal-Token`
 
 То есть текущую ветку можно запускать локально без риска случайного live execution.

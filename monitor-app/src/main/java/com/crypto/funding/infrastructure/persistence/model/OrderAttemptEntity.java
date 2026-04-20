@@ -23,6 +23,7 @@ import java.time.Instant;
     name = "order_attempt",
     indexes = {
         @Index(name = "idx_order_attempt_trade_id", columnList = "armed_trade_id"),
+        @Index(name = "idx_order_attempt_key", columnList = "attempt_key", unique = true),
         @Index(name = "idx_order_attempt_status", columnList = "status")
     }
 )
@@ -32,8 +33,16 @@ public class OrderAttemptEntity extends AuditableEntity
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Nullable at DDL level so existing SQLite databases can be migrated by hibernate update.
+    // Application service still requires a non-blank key before persisting new attempts.
+    @Column(name = "attempt_key", length = 240)
+    private String attemptKey;
+
     @Column(name = "armed_trade_id", nullable = false)
     private Long armedTradeId;
+
+    @Column(name = "attempt_number")
+    private Integer attemptNumber;
 
     @Column(name = "venue", nullable = false)
     private String venue;
@@ -63,6 +72,14 @@ public class OrderAttemptEntity extends AuditableEntity
     private String externalOrderId;
 
     @Convert(converter = InstantEpochMillisConverter.class)
+    @Column(name = "target_entry_at")
+    private Instant targetEntryAt;
+
+    @Convert(converter = InstantEpochMillisConverter.class)
+    @Column(name = "trigger_at")
+    private Instant triggerAt;
+
+    @Convert(converter = InstantEpochMillisConverter.class)
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
@@ -78,6 +95,16 @@ public class OrderAttemptEntity extends AuditableEntity
         return id;
     }
 
+    public String getAttemptKey()
+    {
+        return attemptKey;
+    }
+
+    public void setAttemptKey( String attemptKey )
+    {
+        this.attemptKey = attemptKey;
+    }
+
     public Long getArmedTradeId()
     {
         return armedTradeId;
@@ -86,6 +113,16 @@ public class OrderAttemptEntity extends AuditableEntity
     public void setArmedTradeId( Long armedTradeId )
     {
         this.armedTradeId = armedTradeId;
+    }
+
+    public Integer getAttemptNumber()
+    {
+        return attemptNumber;
+    }
+
+    public void setAttemptNumber( Integer attemptNumber )
+    {
+        this.attemptNumber = attemptNumber;
     }
 
     public String getVenue()
@@ -166,6 +203,26 @@ public class OrderAttemptEntity extends AuditableEntity
     public void setExternalOrderId( String externalOrderId )
     {
         this.externalOrderId = externalOrderId;
+    }
+
+    public Instant getTargetEntryAt()
+    {
+        return targetEntryAt;
+    }
+
+    public void setTargetEntryAt( Instant targetEntryAt )
+    {
+        this.targetEntryAt = targetEntryAt;
+    }
+
+    public Instant getTriggerAt()
+    {
+        return triggerAt;
+    }
+
+    public void setTriggerAt( Instant triggerAt )
+    {
+        this.triggerAt = triggerAt;
     }
 
     public Instant getSubmittedAt()

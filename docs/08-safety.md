@@ -14,7 +14,15 @@
 
 ## Engine
 
-`engine-app` сейчас не исполняет ордера. Он только читает execution plans из `monitor-app` через protected internal REST.
+`engine-app` сейчас доходит до execution boundary: читает execution plans из `monitor-app`, строит entry attempts, вызывает `ExecutionPort` и сохраняет `OrderAttempt` обратно в monitor.
+
+Что важно:
+
+- execution loop выключен по умолчанию;
+- manual `run-once` можно вызвать только явно;
+- без engine credentials попытка сохраняется как `FAILED`;
+- если credentials есть, live order HTTP submission всё равно остаётся guarded в этой фазе;
+- реальные exchange order adapters будут включаться отдельной фазой.
 
 Internal API защищён `X-Internal-Token`.
 

@@ -67,6 +67,12 @@ public class MonitorEnginePlanService
     @Transactional(readOnly = true)
     public List<EngineExecutionPlan> listPlans()
     {
+        return listPlans( false );
+    }
+
+    @Transactional(readOnly = true)
+    public List<EngineExecutionPlan> listPlans( boolean includeAll )
+    {
         Instant now = Instant.now( clock );
         Predicate<ArmedTrade> stateFilter = engineProperties.isIncludeClosedTrades()
                                             ? trade -> true
@@ -76,7 +82,7 @@ public class MonitorEnginePlanService
                                 .stream()
                                 .filter( stateFilter )
                                 .map( trade -> toPlan( trade, now ) )
-                                .filter( this::withinLookaheadWindow )
+                                .filter( plan -> includeAll || withinLookaheadWindow( plan ) )
                                 .sorted( Comparator.comparing( EngineExecutionPlan::nextActionAt, Comparator.nullsLast( Comparator.naturalOrder() ) )
                                                    .thenComparing( EngineExecutionPlan::armedTradeId ) )
                                 .toList();
