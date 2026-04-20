@@ -2,14 +2,14 @@
 
 ## `platform-core`
 
-Содержит общую бизнес-основу:
+Содержит общие contracts/domain pieces:
 
 - domain models: candidate, event, trade, execution, venue.
-- application services: ingest, review, event command/query, armed trade command/query, journal, venue diagnostics.
-- persistence: SQLite/JPA entities и repositories.
-- REST API для monitor/control plane.
-- safety guards и execution mode config.
-- Funding API candidate source.
+- shared application ports.
+- engine plan contracts.
+- symbol and crypto utilities.
+
+`platform-core` не является Spring Boot runtime и не владеет persistence.
 
 ## `monitor-app`
 
@@ -23,6 +23,8 @@
 - Armed Trades.
 - Venue Diagnostics.
 - Journal visibility.
+- Operator credential management.
+- Internal engine plan API.
 - Static UI assets.
 
 Порт по умолчанию: `8090`.
@@ -34,21 +36,9 @@
 Отвечает за:
 
 - summary of armed trade plans.
-- listing engine execution plans.
-- planning entry/exit windows.
-- burst-entry plan generation.
-- latency-aware trigger time calculation.
+- listing execution plans fetched from monitor.
+- future execution loop host near exchanges.
 
 Порт по умолчанию: `8091`.
 
-Engine сейчас read/planning-only. Он не размещает live orders.
-
-## Что не является целевой архитектурой
-
-- Legacy `ApprovedFundingEntity` flow.
-- Legacy scheduler execution.
-- `/api/test-orders` как production execution API.
-- Telegram bot как trading control plane.
-- TDLib ingestion.
-- Binance-first assumptions.
-
+Engine сейчас read-only относительно execution. Он не размещает live orders.

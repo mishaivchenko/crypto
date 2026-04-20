@@ -28,11 +28,22 @@ jobs:
         run: ./gradlew clean build --no-daemon
 
   docker:
-    name: Build & Push Docker image
+    name: Build & Push Docker images
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: crypto
+    strategy:
+      matrix:
+        app:
+          - module: monitor-app
+            classifier: monitor
+            image_suffix: funding-monitor
+            port: 8090
+          - module: engine-app
+            classifier: engine
+            image_suffix: funding-engine
+            port: 8091
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,16 +58,19 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set image name
-        run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/funding" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.app.image_suffix }}" >> $GITHUB_ENV
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
+          build-args: |
+            APP_MODULE=${{ matrix.app.module }}
+            APP_CLASSIFIER=${{ matrix.app.classifier }}
+            APP_PORT=${{ matrix.app.port }}
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          build-args: TD_NATIVES=linux_amd64_gnu_ssl3
           cache-from: type=gha
           cache-to: type=gha,mode=max

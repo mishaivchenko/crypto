@@ -84,6 +84,39 @@ GET /api/v1/venues/{venue}/instruments
 GET /api/v1/venues/timings
 ```
 
+`/api/v1/venues/{venue}/check` checks credentials for the current operator and current global access mode.
+
+## Operator Credentials
+
+```text
+GET /api/v1/operators/me/credentials
+PUT /api/v1/operators/me/credentials/{venue}/{mode}
+DELETE /api/v1/operators/me/credentials/{venue}/{mode}
+POST /api/v1/operators/me/credentials/{venue}/{mode}/check
+```
+
+Rules:
+
+- `X-Operator-Token` is required when operator auth is enabled.
+- raw secrets are accepted only on `PUT`.
+- responses contain masks/status only, never raw secrets.
+- credentials are isolated by `operator_id`.
+
+Supported modes:
+
+- `testnet`
+- `production`
+- `prod` alias for `production`
+
+## Monitor Internal Engine API
+
+```text
+GET /internal/v1/engine/plans
+GET /internal/v1/engine/plans/{armedTradeId}
+```
+
+Monitor protects these endpoints with `X-Internal-Token`.
+
 ## Engine
 
 ```text
@@ -92,5 +125,4 @@ GET /internal/engine/plans
 GET /internal/engine/plans/{armedTradeId}
 ```
 
-Engine endpoints сейчас internal/read-side. Они не размещают orders.
-
+Engine endpoints сейчас internal/read-side. Они проксируют plans из monitor и не размещают orders.

@@ -51,16 +51,27 @@ GET /api/v1/venues/timings
 GET /api/v1/venues/timings?venue=gate
 ```
 
-## Execution Safety
+## Operator Auth
 
 ```env
-TRADING_EXECUTION_MODE=DISABLED
-TRADING_LEGACY_EXECUTION_ENABLED=false
-TRADING_LIVE_VENUES=
-TRADING_BLOCKED_VENUES=gate
+SECURITY_OPERATOR_AUTH_ENABLED=true
+SECURITY_OPERATOR_BOOTSTRAP_USERS=alice:raw-token,bob:raw-token-2
 ```
 
-По умолчанию приложение не должно размещать live orders.
+Все `/api/**` endpoints требуют `X-Operator-Token`, если auth включён.
+
+Токены bootstrap-операторов сохраняются в базе только как SHA-256 hash.
+
+## Internal Monitor/Engine Token
+
+```env
+INTERNAL_ENGINE_TOKEN=change-me
+MONITOR_INTERNAL_BASE_URL=http://localhost:8090
+```
+
+Monitor internal endpoints `/internal/v1/engine/**` требуют `X-Internal-Token`.
+
+Engine использует `MONITOR_INTERNAL_BASE_URL` и тот же `INTERNAL_ENGINE_TOKEN`.
 
 ## Funding Burst Defaults
 
@@ -87,27 +98,21 @@ TRADING_DEFAULT_MANUAL_LATENCY_ADJUSTMENT_MS=0
 - OKX.
 - KuCoin.
 
-Примеры ENV:
+Credentials больше не задаются через venue-specific API key ENV. Они записываются через operator API:
 
-```env
-BYBIT_PROD_API_KEY=
-BYBIT_PROD_SECRET_KEY=
-
-GATE_PROD_API_KEY=
-GATE_PROD_SECRET_KEY=
-
-BITGET_PROD_API_KEY=
-BITGET_PROD_SECRET_KEY=
-BITGET_PROD_PASSPHRASE=
-
-OKX_PROD_API_KEY=
-OKX_PROD_SECRET_KEY=
-OKX_PROD_PASSPHRASE=
-
-KUCOIN_PROD_API_KEY=
-KUCOIN_PROD_SECRET_KEY=
-KUCOIN_PROD_PASSPHRASE=
+```text
+PUT /api/v1/operators/me/credentials/{venue}/{mode}
+POST /api/v1/operators/me/credentials/{venue}/{mode}/check
 ```
 
-Credentials не должны храниться в репозитории.
+Encryption config:
 
+```env
+CREDENTIALS_STORAGE_ENABLED=true
+CREDENTIALS_REQUIRE_MASTER_KEY_ON_STARTUP=true
+CREDENTIALS_MASTER_KEY_BASE64=<openssl rand -base64 32>
+```
+
+Если credential storage включён и master key отсутствует, startup падает fail-closed.
+
+Credentials не должны храниться в репозитории или deployment image.

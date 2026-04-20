@@ -22,8 +22,6 @@ Product venues:
 - OKX.
 - KuCoin.
 
-Binance не является целевым venue для текущей product line.
-
 ## Sync
 
 Синхронизация запускается:
@@ -59,13 +57,13 @@ UI показывает:
 - last error.
 - last payload size.
 
-Timing пишет не только metadata sync, но и credential check. Guarded legacy test-order path тоже пишет `test-order` timing, если он явно включён и был вызван.
+Timing пишет metadata sync и credential check. В следующей execution-фазе сюда добавятся order submit/ack/fill timings из `engine-app`.
 
 ## Entry Latency
 
 `VenueLatencyService` выбирает measured latency по приоритету:
 
-1. `test-order`
+1. future `order-submit` / `order-ack`
 2. `credential-check`
 3. `metadata-sync`
 
@@ -99,4 +97,3 @@ Engine построит triggers:
 - attempt 1 target `12:00:00.000`, trigger `11:59:59.960`
 - attempt 2 target `12:00:00.150`, trigger `12:00:00.110`
 - attempt 3 target `12:00:00.300`, trigger `12:00:00.260`
-

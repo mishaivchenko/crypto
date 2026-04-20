@@ -8,7 +8,7 @@
 
 - Implement venue-specific execution adapters for selected venues.
 - Start with one or two venues, but keep the adapter contract identical.
-- Place orders only through new domain, not legacy scheduler.
+- Place orders only through `engine-app` and `ExecutionPort`.
 - Persist `OrderAttempt`.
 
 ## Step 2: Engine Runtime Loop
@@ -59,9 +59,8 @@
 
 ## Non-Goals For Immediate MVP
 
-- Multi-user auth.
+- Role model beyond the current operator token flow.
 - Strategy marketplace.
 - Complex PnL dashboard.
 - Auto-selection without operator approval.
 - Full microservice split before execution loop is proven.
-

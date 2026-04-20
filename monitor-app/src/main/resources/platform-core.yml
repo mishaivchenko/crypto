@@ -1,0 +1,115 @@
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,prometheus
+
+spring:
+    cloud:
+        compatibility-verifier:
+            enabled: false
+    web:
+        resources:
+            cache:
+                period: 0
+            chain:
+                cache: false
+    datasource:
+        url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000&journal_mode=WAL}
+        driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.sqlite.JDBC}
+        hikari:
+            maximum-pool-size: 1
+            connection-init-sql: |
+                PRAGMA journal_mode=WAL;
+                PRAGMA busy_timeout=5000;
+                PRAGMA synchronous=NORMAL;
+                PRAGMA foreign_keys=ON;
+    jpa:
+        hibernate:
+            ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+        properties:
+            hibernate:
+                dialect: org.hibernate.community.dialect.SQLiteDialect
+        show-sql: false
+
+security:
+    operators:
+        auth-enabled: ${SECURITY_OPERATOR_AUTH_ENABLED:true}
+        bootstrap-users: ${SECURITY_OPERATOR_BOOTSTRAP_USERS:}
+        internal-token: ${INTERNAL_ENGINE_TOKEN:}
+
+credentials:
+    storage:
+        enabled: ${CREDENTIALS_STORAGE_ENABLED:false}
+        require-master-key-on-startup: ${CREDENTIALS_REQUIRE_MASTER_KEY_ON_STARTUP:true}
+        master-key-base64: ${CREDENTIALS_MASTER_KEY_BASE64:}
+
+monitor:
+    engine-plan:
+        lookahead-minutes: ${MONITOR_ENGINE_PLAN_LOOKAHEAD_MINUTES:120}
+        overdue-grace-seconds: ${MONITOR_ENGINE_PLAN_OVERDUE_GRACE_SECONDS:30}
+        include-closed-trades: ${MONITOR_ENGINE_PLAN_INCLUDE_CLOSED_TRADES:false}
+
+trading:
+    venue-access:
+        mode: ${TRADING_VENUE_ACCESS_MODE:production}
+    candidates:
+        dedupe-window-minutes: ${TRADING_CANDIDATES_DEDUPE_WINDOW_MINUTES:15}
+    candidate-source:
+        enabled: ${TRADING_CANDIDATE_SOURCE_ENABLED:true}
+        url: ${TRADING_CANDIDATE_SOURCE_URL:https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30}
+        refresh-interval-seconds: ${TRADING_CANDIDATE_SOURCE_REFRESH_INTERVAL_SECONDS:60}
+        source-type: ${TRADING_CANDIDATE_SOURCE_TYPE:FUNDING_API}
+    metadata:
+        enabled-venues: ${TRADING_METADATA_ENABLED_VENUES:bybit,gate,bitget,okx,kucoin}
+        sync-on-startup: ${TRADING_METADATA_SYNC_ON_STARTUP:true}
+        schedule-enabled: ${TRADING_METADATA_SCHEDULE_ENABLED:false}
+        sync-interval-minutes: ${TRADING_METADATA_SYNC_INTERVAL_MINUTES:240}
+        require-credentials-on-startup: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:true}
+        bootstrap-fallback-enabled: ${TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED:false}
+    http:
+        connect-timeout-ms: ${TRADING_HTTP_CONNECT_TIMEOUT_MS:1000}
+        request-timeout-ms: ${TRADING_HTTP_REQUEST_TIMEOUT_MS:5000}
+        prefer-http2: ${TRADING_HTTP_PREFER_HTTP2:true}
+    preparation:
+        default-entry-attempt-count: ${TRADING_DEFAULT_ENTRY_ATTEMPT_COUNT:1}
+        default-entry-spacing-ms: ${TRADING_DEFAULT_ENTRY_SPACING_MS:0}
+        default-manual-latency-adjustment-ms: ${TRADING_DEFAULT_MANUAL_LATENCY_ADJUSTMENT_MS:0}
+    bybit:
+        mode: ${BYBIT_MODE:testnet}
+        recv-window: 5000
+        metadata-base-url: ${BYBIT_METADATA_BASE_URL:https://api.bybit.com}
+        testnet:
+            base-url: ${BYBIT_TESTNET_BASE_URL:https://api-testnet.bybit.com}
+        production:
+            base-url: ${BYBIT_PROD_BASE_URL:https://api.bybit.com}
+
+    gate:
+        mode: ${GATE_MODE:testnet}
+        recv-window: 5000
+        contracts-base-url: ${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}
+        testnet:
+            base-url: ${GATE_TESTNET_BASE_URL:https://fx-api-testnet.gateio.ws/api/v4}
+        production:
+            base-url: ${GATE_PROD_BASE_URL:https://api.gateio.ws/api/v4}
+
+    bitget:
+        mode: ${BITGET_MODE:production}
+        recv-window: 5000
+        metadata-base-url: ${BITGET_METADATA_BASE_URL:https://api.bitget.com}
+        production:
+            base-url: ${BITGET_PROD_BASE_URL:https://api.bitget.com}
+
+    okx:
+        mode: ${OKX_MODE:production}
+        recv-window: 5000
+        metadata-base-url: ${OKX_METADATA_BASE_URL:https://www.okx.com}
+        production:
+            base-url: ${OKX_PROD_BASE_URL:https://www.okx.com}
+
+    kucoin:
+        mode: ${KUCOIN_MODE:production}
+        recv-window: 5000
+        metadata-base-url: ${KUCOIN_METADATA_BASE_URL:https://api-futures.kucoin.com}
+        production:
+            base-url: ${KUCOIN_PROD_BASE_URL:https://api-futures.kucoin.com}

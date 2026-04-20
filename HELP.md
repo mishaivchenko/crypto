@@ -1,33 +1,43 @@
-# Getting Started
+# Quick Help
 
-### Что здесь
-- Основные команды: `./gradlew clean build --no-daemon` (бэкенд + фронт), `./gradlew test` (юнит-тесты), `./gradlew frontendBuild` (Vite build).
-- CI/CD: GitHub Actions (`.github/workflows/ci-cd.yml`) собирает, тестирует и пушит Docker-образ при push в `main`.
+## Build
 
-### Reference Documentation
+```bash
+./gradlew test
+./gradlew build
+```
 
-For further reference, please consider the following sections:
+## Run Locally
 
-* [Official Gradle documentation](https://docs.gradle.org)
-* [Spring Boot Gradle Plugin Reference Guide](https://docs.spring.io/spring-boot/3.5.7/gradle-plugin)
-* [Create an OCI image](https://docs.spring.io/spring-boot/3.5.7/gradle-plugin/packaging-oci-image.html)
-* [Spring Boot Actuator](https://docs.spring.io/spring-boot/3.5.7/reference/actuator/index.html)
-* [Prometheus](https://docs.spring.io/spring-boot/3.5.7/reference/actuator/metrics.html#actuator.metrics.export.prometheus)
-* [Spring Web](https://docs.spring.io/spring-boot/3.5.7/reference/web/servlet.html)
-* [WebSocket](https://docs.spring.io/spring-boot/3.5.7/reference/messaging/websockets.html)
+Monitor/control plane:
 
-### Guides
+```bash
+SECURITY_OPERATOR_AUTH_ENABLED=false \
+TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false \
+./gradlew bootRunMonitor
+```
 
-The following guides illustrate how to use some features concretely:
+Engine/read-side runtime:
 
-* [Building a RESTful Web Service with Spring Boot Actuator](https://spring.io/guides/gs/actuator-service/)
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
-* [Using WebSocket to build an interactive web application](https://spring.io/guides/gs/messaging-stomp-websocket/)
+```bash
+INTERNAL_ENGINE_TOKEN=dev-internal-token ./gradlew bootRunEngine
+```
 
-### Additional Links
+## Main URLs
 
-These additional references should also help you:
+- Monitor UI: `http://localhost:8090`
+- Monitor health: `http://localhost:8090/actuator/health`
+- Engine health: `http://localhost:8091/actuator/health`
+- Engine summary: `http://localhost:8091/internal/engine/summary`
 
-* [Gradle Build Scans – insights for your project's build](https://scans.gradle.com#gradle)
+## Auth
+
+Operator APIs use `X-Operator-Token` when `SECURITY_OPERATOR_AUTH_ENABLED=true`.
+
+Bootstrap operators:
+
+```env
+SECURITY_OPERATOR_BOOTSTRAP_USERS=alice:token,bob:token2
+```
+
+Exchange credentials are stored through `/api/v1/operators/me/credentials/**`, encrypted with `CREDENTIALS_MASTER_KEY_BASE64`.

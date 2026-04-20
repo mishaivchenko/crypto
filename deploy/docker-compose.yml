@@ -1,11 +1,28 @@
 services:
-    app:
-        image: funding:arm64
-        container_name: funding-app
+    monitor:
+        image: funding-monitor:2.0.0
+        container_name: funding-monitor
         env_file:
             - .env
+        environment:
+            MONITOR_SERVER_PORT: 8090
+            SPRING_DATASOURCE_URL: jdbc:sqlite:/data/fundingarb.db
         ports:
-            - "${SERVER_PORT:-8090}:8090"
+            - "${MONITOR_SERVER_PORT:-8090}:8090"
         volumes:
-            - ./data:/data
+            - ./data/monitor:/data
+        restart: unless-stopped
+
+    engine:
+        image: funding-engine:2.0.0
+        container_name: funding-engine
+        env_file:
+            - .env
+        environment:
+            ENGINE_SERVER_PORT: 8091
+            MONITOR_INTERNAL_BASE_URL: http://monitor:8090
+        ports:
+            - "${ENGINE_SERVER_PORT:-8091}:8091"
+        depends_on:
+            - monitor
         restart: unless-stopped

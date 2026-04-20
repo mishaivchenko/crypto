@@ -1,5 +1,8 @@
+# Optional monitor-app runtime override.
+# Mount/copy this file only for deployments that need YAML-based overrides.
+
 server:
-    port: 8090
+    port: ${MONITOR_SERVER_PORT:8090}
 
 management:
     endpoints:
@@ -7,23 +10,31 @@ management:
             exposure:
                 include: health,info,prometheus
 
-telegram:
-    bot:
-        enabled: ${TELEGRAM_BOT_ENABLED:false}
-        username: ${TG_BOT_USERNAME:}
-        token: ${TG_BOT_TOKEN:}
+security:
+    operators:
+        auth-enabled: ${SECURITY_OPERATOR_AUTH_ENABLED:true}
+        bootstrap-users: ${SECURITY_OPERATOR_BOOTSTRAP_USERS:}
+        internal-token: ${INTERNAL_ENGINE_TOKEN:}
+
+credentials:
+    storage:
+        enabled: ${CREDENTIALS_STORAGE_ENABLED:false}
+        require-master-key-on-startup: ${CREDENTIALS_REQUIRE_MASTER_KEY_ON_STARTUP:true}
+        master-key-base64: ${CREDENTIALS_MASTER_KEY_BASE64:}
 
 trading:
+    venue-access:
+        mode: ${TRADING_VENUE_ACCESS_MODE:production}
     candidate-source:
         enabled: ${TRADING_CANDIDATE_SOURCE_ENABLED:true}
         url: ${TRADING_CANDIDATE_SOURCE_URL:https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30}
         refresh-interval-seconds: ${TRADING_CANDIDATE_SOURCE_REFRESH_INTERVAL_SECONDS:60}
         source-type: ${TRADING_CANDIDATE_SOURCE_TYPE:FUNDING_API}
-
-arb:
-    watchlist:
-        defaultTtlMinutes: 45
-    spread:
-        minSpreadPct: 3.0
-    funding:
-        restFallbackSeconds: 60
+    metadata:
+        enabled-venues: ${TRADING_METADATA_ENABLED_VENUES:bybit,gate,bitget,okx,kucoin}
+        sync-on-startup: ${TRADING_METADATA_SYNC_ON_STARTUP:true}
+        require-credentials-on-startup: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:true}
+    preparation:
+        default-entry-attempt-count: ${TRADING_DEFAULT_ENTRY_ATTEMPT_COUNT:1}
+        default-entry-spacing-ms: ${TRADING_DEFAULT_ENTRY_SPACING_MS:0}
+        default-manual-latency-adjustment-ms: ${TRADING_DEFAULT_MANUAL_LATENCY_ADJUSTMENT_MS:0}

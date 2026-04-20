@@ -1,4 +1,0 @@
-org.springframework.boot.env.EnvironmentPostProcessor=\
-com.crypto.funding.config.DotenvEnvironmentPostProcessor,\
-com.crypto.funding.config.ExchangeModeEnvironmentPostProcessor,\
-com.crypto.funding.config.SqliteDataDirectoryEnvironmentPostProcessor

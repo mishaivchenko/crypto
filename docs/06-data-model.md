@@ -17,6 +17,8 @@
 - status.
 - review decision / notes.
 - normalization failure reason.
+- source funding time.
+- source funding rate.
 - funding event link.
 
 ### `funding_event`
@@ -93,15 +95,41 @@ Venue-specific instrument registry.
 - active flag.
 - last synced at.
 
-## Legacy Tables
+### `operator_account`
 
-Эти таблицы могут существовать в базе, но не являются будущим core:
+Оператор приложения.
+
+Ключевые поля:
+
+- username.
+- token hash.
+- enabled flag.
+
+Raw token в базе не хранится.
+
+### `operator_exchange_credential`
+
+Зашифрованные exchange keys оператора.
+
+Ключевые поля:
+
+- operator id.
+- venue.
+- access mode.
+- encrypted api key / secret / passphrase.
+- masked key fields for UI.
+- connection status / message.
+- last checked at.
+
+Raw secrets не возвращаются через API.
+
+## Removed Tables
+
+Старые таблицы могут физически остаться в локальной SQLite после предыдущих запусков, но код больше не имеет entity/repository mappings к ним:
 
 - `approved_funding`
 - `approved_funding_exchange`
 - `order_execution_time`
-
-Их нельзя использовать как основу нового funding-event execution flow.
 
 ## SQLite Notes
 
@@ -112,4 +140,3 @@ SQLite остаётся текущей локальной persistence базой
 - новые nullable-колонки безопаснее для schema evolution через Hibernate `ddl-auto=update`;
 - application/domain слой задаёт defaults и invariants;
 - production migration strategy через Flyway/Liquibase ещё не введена.
-

@@ -32,6 +32,8 @@ const state = {
 const nodes = {
     nav: document.getElementById("nav"),
     refreshAllButton: document.getElementById("refresh-all-button"),
+    operatorTokenForm: document.getElementById("operator-token-form"),
+    operatorTokenInput: document.getElementById("operator-token-input"),
     globalModeForm: document.getElementById("global-mode-form"),
     globalModeSelect: document.getElementById("global-mode-select"),
     globalError: document.getElementById("global-error"),
@@ -844,6 +846,14 @@ nodes.nav.addEventListener("click", (event) => {
 nodes.refreshAllButton.addEventListener("click", async () => {
     await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
     showSuccess("Контур обновлён.");
+});
+
+nodes.operatorTokenInput.value = api.getOperatorToken();
+nodes.operatorTokenForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    api.setOperatorToken(nodes.operatorTokenInput.value);
+    await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
+    showSuccess("Operator token сохранён в localStorage.");
 });
 
 nodes.globalModeForm.addEventListener("submit", async (event) => {

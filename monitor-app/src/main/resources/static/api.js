@@ -2,8 +2,26 @@ const jsonHeaders = {
     "Content-Type": "application/json"
 };
 
+const tokenStorageKey = "funding.operatorToken";
+
+function operatorToken() {
+    return window.localStorage?.getItem(tokenStorageKey)?.trim() ?? "";
+}
+
+function withOperatorHeaders(options = {}) {
+    const headers = new Headers(options.headers ?? {});
+    const token = operatorToken();
+    if (token) {
+        headers.set("X-Operator-Token", token);
+    }
+    return {
+        ...options,
+        headers
+    };
+}
+
 async function request(path, options = {}) {
-    const response = await fetch(path, options);
+    const response = await fetch(path, withOperatorHeaders(options));
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
 
@@ -15,6 +33,16 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+    getOperatorToken() {
+        return operatorToken();
+    },
+    setOperatorToken(token) {
+        if (token?.trim()) {
+            window.localStorage?.setItem(tokenStorageKey, token.trim());
+        } else {
+            window.localStorage?.removeItem(tokenStorageKey);
+        }
+    },
     getOverview() {
         return request("/api/v2/monitor/overview");
     },
@@ -102,6 +130,22 @@ export const api = {
     },
     checkVenueCredentials(venue) {
         return request(`/api/v1/venues/${venue}/check`, { method: "POST" });
+    },
+    listCredentials() {
+        return request("/api/v1/operators/me/credentials");
+    },
+    upsertCredential(venue, mode, payload) {
+        return request(`/api/v1/operators/me/credentials/${venue}/${mode}`, {
+            method: "PUT",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
+    deleteCredential(venue, mode) {
+        return request(`/api/v1/operators/me/credentials/${venue}/${mode}`, { method: "DELETE" });
+    },
+    checkCredential(venue, mode) {
+        return request(`/api/v1/operators/me/credentials/${venue}/${mode}/check`, { method: "POST" });
     },
     listVenueInstruments(venue) {
         return request(`/api/v1/venues/${venue}/instruments?activeOnly=true`);

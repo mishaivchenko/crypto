@@ -5,37 +5,26 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "engine")
 public class EngineProperties
 {
-    private int lookaheadMinutes = 120;
-    private int overdueGraceSeconds = 30;
-    private boolean includeClosedTrades = false;
+    private String monitorBaseUrl = "http://localhost:8090";
+    private String internalToken = "";
 
-    public int getLookaheadMinutes()
+    public String getMonitorBaseUrl()
     {
-        return lookaheadMinutes;
+        return monitorBaseUrl;
     }
 
-    public void setLookaheadMinutes( int lookaheadMinutes )
+    public void setMonitorBaseUrl( String monitorBaseUrl )
     {
-        this.lookaheadMinutes = lookaheadMinutes;
+        this.monitorBaseUrl = monitorBaseUrl;
     }
 
-    public int getOverdueGraceSeconds()
+    public String getInternalToken()
     {
-        return overdueGraceSeconds;
+        return internalToken;
     }
 
-    public void setOverdueGraceSeconds( int overdueGraceSeconds )
+    public void setInternalToken( String internalToken )
     {
-        this.overdueGraceSeconds = overdueGraceSeconds;
-    }
-
-    public boolean isIncludeClosedTrades()
-    {
-        return includeClosedTrades;
-    }
-
-    public void setIncludeClosedTrades( boolean includeClosedTrades )
-    {
-        this.includeClosedTrades = includeClosedTrades;
+        this.internalToken = internalToken;
     }
 }

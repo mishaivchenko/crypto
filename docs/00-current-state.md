@@ -4,11 +4,11 @@
 
 Текущая линия продукта: `2.0.0`.
 
-Это уже не Telegram/TDLib bot и не старый funding scheduler. Сейчас проект является modular monolith с двумя runtime-приложениями:
+Это новая линия без старого bot/execution контура. Сейчас проект является modular monolith с двумя runtime-приложениями:
 
 - `monitor-app` — operator/control plane и UI.
 - `engine-app` — лёгкий planning/runtime-контур для будущего execution engine.
-- shared core — домен, persistence, API, venue metadata, safety и journal.
+- `platform-core` — общий домен, contracts, ports и utilities без runtime ownership.
 
 ## Текущий бизнес-flow
 
@@ -17,7 +17,6 @@
 Что важно:
 
 - Кандидаты приходят из Funding API: `https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30`.
-- Telegram/TDLib больше не является source of truth для candidate ingestion.
 - `FundingEvent` создаётся после review/approve.
 - `ArmedTrade` создаётся оператором из confirmed event.
 - Funding armed trade всегда `SHORT-only`.
@@ -45,6 +44,5 @@
 - Market-data execution loop.
 - PnL/outcome calculation.
 - Production-grade trade history UI.
-- Multi-user auth/roles.
 - Деплой в Singapore как отдельная execution-runtime среда.
-
+- Полноценное управление ролями; сейчас есть single-role operator auth через `X-Operator-Token`.
