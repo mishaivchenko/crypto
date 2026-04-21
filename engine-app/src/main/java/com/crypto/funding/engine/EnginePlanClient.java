@@ -1,6 +1,7 @@
 package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import org.springframework.core.ParameterizedTypeReference;
@@ -62,6 +63,17 @@ public class EnginePlanClient
                          .body( request )
                          .retrieve()
                          .body( EngineOrderAttemptResponse.class );
+    }
+
+    public void publishMetricsSnapshot( EngineMetricsSnapshot snapshot )
+    {
+        restClient.post()
+                  .uri( "/internal/v1/engine/metrics-snapshot" )
+                  .contentType( MediaType.APPLICATION_JSON )
+                  .headers( this::internalHeaders )
+                  .body( snapshot )
+                  .retrieve()
+                  .toBodilessEntity();
     }
 
     private void internalHeaders( HttpHeaders headers )

@@ -15,3 +15,4 @@
 9. `08-safety.md` — почему текущий runtime safe-by-default.
 10. `09-next-mvp-steps.md` — что осталось до MVP.
 11. `10-trade-history-ui-vision.md` — видение UI истории сделок.
+12. `11-observability-isolated.md` — отдельный observability-контур без влияния на default runtime.

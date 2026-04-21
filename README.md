@@ -126,6 +126,13 @@ Credential API:
 
 То есть текущую ветку можно запускать локально без риска случайного live execution.
 
+## Optional Observability
+
+Отдельный observability runtime вынесен в:
+- [deploy/observability/README.md](/Users/mishaivchenko/.codex/worktrees/da09/crypto/deploy/observability/README.md)
+
+Он включается только явно и не меняет основной `main` flow.
+
 ## Тесты
 
 Важные свойства текущей линии:

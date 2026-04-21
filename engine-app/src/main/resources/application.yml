@@ -13,3 +13,6 @@ engine:
     internal-token: ${INTERNAL_ENGINE_TOKEN:}
     execution-loop-enabled: ${ENGINE_EXECUTION_LOOP_ENABLED:false}
     execution-loop-interval-ms: ${ENGINE_EXECUTION_LOOP_INTERVAL_MS:1000}
+    metrics-publish:
+        enabled: ${ENGINE_METRICS_PUBLISH_ENABLED:false}
+        interval-ms: ${ENGINE_METRICS_PUBLISH_INTERVAL_MS:15000}

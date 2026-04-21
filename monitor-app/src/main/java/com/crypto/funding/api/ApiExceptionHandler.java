@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -47,6 +48,15 @@ public class ApiExceptionHandler
                            .map( this::formatFieldError )
                            .collect( Collectors.joining( "; " ) );
         return build( HttpStatus.BAD_REQUEST, message, request.getRequestURI() );
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResource(
+        NoResourceFoundException ex,
+        HttpServletRequest request
+    )
+    {
+        return build( HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI() );
     }
 
     @ExceptionHandler(Exception.class)
