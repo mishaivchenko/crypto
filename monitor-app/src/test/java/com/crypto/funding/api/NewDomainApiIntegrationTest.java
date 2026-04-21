@@ -411,6 +411,11 @@ class NewDomainApiIntegrationTest
             .andExpect( jsonPath( "$" ).isArray() )
             .andExpect( jsonPath( "$[?(@.fundingEventId==" + staleEvent.getId() + ")]" ).isEmpty() );
 
+        mockMvc.perform( get( "/api/v1/armed-trades" ).param( "includeHistorical", "true" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$[0].fundingEventId" ).value( staleEvent.getId() ) )
+            .andExpect( jsonPath( "$[0].state" ).value( "ARMED" ) );
+
         assertThat( fundingEventRepository.findById( staleEvent.getId() ) )
             .get()
             .extracting( FundingEventEntity::getStatus )

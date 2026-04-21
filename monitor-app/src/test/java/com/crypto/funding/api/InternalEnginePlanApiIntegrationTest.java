@@ -120,6 +120,19 @@ class InternalEnginePlanApiIntegrationTest
             .andExpect( jsonPath( "$[0].attemptKey" ).value( "entry:" + trade.getId() + ":1:2030-01-01T00:00:00Z" ) );
     }
 
+    @Test
+    void includeAllPlansStillReturnsOverdueArmedTradesAfterFundingEventExpires() throws Exception
+    {
+        ArmedTradeEntity trade = createStaleArmedTrade();
+
+        mockMvc.perform( get( "/internal/v1/engine/plans" )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .param( "includeAll", "true" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$[0].armedTradeId" ).value( trade.getId() ) )
+            .andExpect( jsonPath( "$[0].status" ).value( "OVERDUE" ) );
+    }
+
     private ArmedTradeEntity createArmedTrade()
     {
         FundingEventEntity event = new FundingEventEntity();
@@ -140,6 +153,34 @@ class InternalEnginePlanApiIntegrationTest
         trade.setPlannedEntryAt( Instant.parse( "2029-12-31T23:59:00Z" ) );
         trade.setPlannedExitAt( Instant.parse( "2030-01-01T00:01:00Z" ) );
         trade.setArmedAt( Instant.parse( "2029-12-31T23:30:00Z" ) );
+        trade.setEntryAttemptCount( 3 );
+        trade.setEntrySpacingMs( 150L );
+        trade.setEffectiveEntryLatencyMs( 0L );
+        trade.setArmSource( TradeArmSource.EVENT_API );
+        trade.setState( ArmedTradeState.ARMED );
+        return armedTradeRepository.save( trade );
+    }
+
+    private ArmedTradeEntity createStaleArmedTrade()
+    {
+        FundingEventEntity event = new FundingEventEntity();
+        event.setVenue( "kucoin" );
+        event.setSymbol( "VOOI/USDT" );
+        event.setFundingTime( Instant.parse( "2020-01-01T00:00:00Z" ) );
+        event.setFundingRatePct( BigDecimal.valueOf( -0.003916 ) );
+        event.setStatus( FundingEventStatus.ARMED );
+        event.setSourceType( "FUNDING_API" );
+        event.setSourceRef( "stale-vooi" );
+        event.setDiscoveredAt( Instant.parse( "2019-12-31T23:00:00Z" ) );
+        FundingEventEntity savedEvent = fundingEventRepository.save( event );
+
+        ArmedTradeEntity trade = new ArmedTradeEntity();
+        trade.setFundingEventId( savedEvent.getId() );
+        trade.setNotionalUsd( BigDecimal.valueOf( 25 ) );
+        trade.setIntendedSide( TradeSide.SHORT );
+        trade.setPlannedEntryAt( Instant.parse( "2019-12-31T23:59:00Z" ) );
+        trade.setPlannedExitAt( Instant.parse( "2020-01-01T00:01:00Z" ) );
+        trade.setArmedAt( Instant.parse( "2019-12-31T23:30:00Z" ) );
         trade.setEntryAttemptCount( 3 );
         trade.setEntrySpacingMs( 150L );
         trade.setEffectiveEntryLatencyMs( 0L );

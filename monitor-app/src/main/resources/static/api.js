@@ -100,8 +100,13 @@ export const api = {
     listFundingEventJournal(id) {
         return request(`/api/v1/funding-events/${id}/journal`);
     },
-    listArmedTrades() {
-        return request("/api/v1/armed-trades");
+    listArmedTrades(options = {}) {
+        const params = new URLSearchParams();
+        if (options.includeHistorical) {
+            params.set("includeHistorical", "true");
+        }
+        const suffix = params.size ? `?${params}` : "";
+        return request(`/api/v1/armed-trades${suffix}`);
     },
     getArmedTrade(id) {
         return request(`/api/v1/armed-trades/${id}`);

@@ -34,18 +34,29 @@ public class TradeQueryService
     @Transactional
     public List<ArmedTrade> listArmedTrades()
     {
+        return listArmedTrades( false );
+    }
+
+    @Transactional
+    public List<ArmedTrade> listArmedTrades( boolean includeHistorical )
+    {
         fundingEventLifecycleService.expirePastEvents();
+        List<ArmedTradeEntity> trades = armedTradeRepository.findAllByOrderByCreatedAtDesc();
+        if( includeHistorical )
+        {
+            return trades.stream().map( this::toDomain ).toList();
+        }
+
         Set<Long> activeFundingEventIds = fundingEventRepository.findAll()
                                                                 .stream()
                                                                 .filter( event -> event.getStatus() != com.crypto.funding.domain.event.FundingEventStatus.EXPIRED )
                                                                 .filter( event -> event.getStatus() != com.crypto.funding.domain.event.FundingEventStatus.CANCELLED )
                                                                 .map( com.crypto.funding.infrastructure.persistence.model.FundingEventEntity::getId )
                                                                 .collect( Collectors.toSet() );
-        return armedTradeRepository.findAllByOrderByCreatedAtDesc()
-                                   .stream()
-                                   .filter( trade -> activeFundingEventIds.contains( trade.getFundingEventId() ) )
-                                   .map( this::toDomain )
-                                   .toList();
+        return trades.stream()
+                     .filter( trade -> activeFundingEventIds.contains( trade.getFundingEventId() ) )
+                     .map( this::toDomain )
+                     .toList();
     }
 
     @Transactional(readOnly = true)

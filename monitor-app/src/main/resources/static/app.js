@@ -346,7 +346,7 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "history") {
             setLoading(nodes.historyList, "Собираю историю сделок…");
-            renderHistory(await api.listArmedTrades());
+            renderHistory(await api.listArmedTrades({ includeHistorical: true }));
             return;
         }
         if (state.screen === "venues") {

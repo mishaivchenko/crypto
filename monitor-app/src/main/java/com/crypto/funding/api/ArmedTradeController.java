@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -67,9 +68,9 @@ public class ArmedTradeController
     }
 
     @GetMapping
-    public List<ArmedTradeResponse> list()
+    public List<ArmedTradeResponse> list( @RequestParam(defaultValue = "false") boolean includeHistorical )
     {
-        return tradeQueryService.listArmedTrades().stream().map( this::toResponse ).toList();
+        return tradeQueryService.listArmedTrades( includeHistorical ).stream().map( this::toResponse ).toList();
     }
 
     @GetMapping("/{id}")

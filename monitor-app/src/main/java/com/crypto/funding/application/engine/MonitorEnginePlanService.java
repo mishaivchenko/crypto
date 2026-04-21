@@ -78,7 +78,7 @@ public class MonitorEnginePlanService
                                             ? trade -> true
                                             : trade -> ACTIVE_STATES.contains( trade.state() );
 
-        return tradeQueryService.listArmedTrades()
+        return tradeQueryService.listArmedTrades( true )
                                 .stream()
                                 .filter( stateFilter )
                                 .map( trade -> toPlan( trade, now ) )
