@@ -295,12 +295,12 @@ function renderTrades(trades) {
     wireOpenButtons(nodes.tradesList, "[data-open-trade]", openTrade);
 }
 
-function renderHistory(trades) {
-    const filtered = filterHistoryTrades(trades, state.historyFilters);
+function renderHistory(trades, attemptsByTrade = {}) {
+    const filtered = filterHistoryTrades(trades, state.historyFilters, attemptsByTrade);
     nodes.historyCount.textContent = `${formatNumber(filtered.length)} / ${formatNumber(trades.length)} trades`;
     nodes.historyList.innerHTML = filtered.length
-        ? filtered.map(historyTradeRow).join("")
-        : emptyState("История сделок пуста.", "Когда появятся Prepared Trades, здесь будет разбор Signal -> Decision -> Plan -> Attempts -> Outcome.");
+        ? filtered.map((trade) => historyTradeRow(trade, attemptsByTrade[trade.id] ?? [])).join("")
+        : emptyState("История сделок пуста.", "Когда появятся armed trades, здесь будет разбор Signal -> Decision -> Plan -> Attempts -> Outcome.");
 
     nodes.historyList.querySelectorAll("[data-open-history-trade]").forEach((row) => {
         row.addEventListener("click", () => openHistoryTrade(row.dataset.openHistoryTrade));
@@ -346,7 +346,11 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "history") {
             setLoading(nodes.historyList, "Собираю историю сделок…");
-            renderHistory(await api.listArmedTrades({ includeHistorical: true }));
+            const [trades, attempts] = await Promise.all([
+                api.listArmedTrades({ includeHistorical: true }),
+                api.listAllOrderAttempts()
+            ]);
+            renderHistory(trades, groupAttemptsByTrade(attempts));
             return;
         }
         if (state.screen === "venues") {
@@ -356,6 +360,17 @@ async function refreshCurrentScreen() {
     } catch (error) {
         showError(error.message);
     }
+}
+
+function groupAttemptsByTrade(attempts) {
+    return (attempts ?? []).reduce((acc, attempt) => {
+        const key = String(attempt.armedTradeId ?? "");
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(attempt);
+        return acc;
+    }, {});
 }
 
 function recommendationRows(candidate) {

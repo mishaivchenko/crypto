@@ -15,10 +15,11 @@ services:
             SPRING_DATASOURCE_URL: jdbc:sqlite:/data/observability.db
             SECURITY_OPERATOR_AUTH_ENABLED: "false"
             CREDENTIALS_STORAGE_ENABLED: "false"
-            TRADING_CANDIDATE_SOURCE_ENABLED: "false"
-            TRADING_METADATA_SYNC_ON_STARTUP: "false"
+            TRADING_CANDIDATE_SOURCE_ENABLED: "true"
+            TRADING_METADATA_SYNC_ON_STARTUP: "true"
             TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP: "false"
             MONITOR_ENGINE_METRICS_ENABLED: "true"
+            MANAGEMENT_METRICS_DISTRIBUTION_SLO_HTTP_SERVER_REQUESTS: "50ms,100ms,250ms,500ms,1s,2s,5s"
         ports:
             - "${OBS_MONITOR_PORT:-18090}:8090"
         volumes:

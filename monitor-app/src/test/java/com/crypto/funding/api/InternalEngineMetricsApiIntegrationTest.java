@@ -75,6 +75,10 @@ class InternalEngineMetricsApiIntegrationTest
         assertThat( prometheus ).contains( "funding_engine_plan_status{status=\"WAITING_ENTRY\"} 8.0" );
         assertThat( prometheus ).contains( "funding_engine_plan_status{status=\"ENTRY_WINDOW\"} 2.0" );
         assertThat( prometheus ).contains( "funding_engine_plan_status{status=\"EXIT_WINDOW\"} 1.0" );
+        assertThat( prometheus ).contains( "funding_engine_plan_venue{venue=\"bybit\"} 4.0" );
+        assertThat( prometheus ).contains( "funding_engine_attempt_status_total{status=\"failed\"} 9.0" );
+        assertThat( prometheus ).contains( "funding_engine_submit_duration_avg_ms{venue=\"gate\"} 47.0" );
+        assertThat( prometheus ).contains( "funding_engine_execution_run_duration_avg_ms 128.0" );
     }
 
     private EngineMetricsSnapshot snapshot()
@@ -92,7 +96,23 @@ class InternalEngineMetricsApiIntegrationTest
                 EnginePlanStatus.ENTRY_WINDOW, 2L,
                 EnginePlanStatus.EXIT_WINDOW, 1L,
                 EnginePlanStatus.WAITING_EXIT, 1L
-            )
+            ),
+            Map.of( "bybit", 4L, "gate", 3L, "kucoin", 5L ),
+            Map.of( "bybit", 1L, "gate", 2L ),
+            11L,
+            3L,
+            8L,
+            128L,
+            164L,
+            21L,
+            34L,
+            17L,
+            25L,
+            Map.of( "failed", 9L, "submitted", 2L ),
+            Map.of( "bybit", 4L, "gate", 5L, "kucoin", 2L ),
+            Map.of( "bybit", 4L, "gate", 5L ),
+            Map.of( "bybit", 42L, "gate", 47L ),
+            Map.of( "bybit", 51L, "gate", 54L )
         );
     }
 

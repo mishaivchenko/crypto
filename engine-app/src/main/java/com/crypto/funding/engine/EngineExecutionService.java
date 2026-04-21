@@ -24,56 +24,65 @@ public class EngineExecutionService
 {
     private final EnginePlanClient client;
     private final ExecutionPort executionPort;
+    private final EngineTelemetryService telemetryService;
     private final Clock clock;
 
     @Autowired
-    public EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort )
+    public EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, EngineTelemetryService telemetryService )
     {
-        this( client, executionPort, Clock.systemUTC() );
+        this( client, executionPort, telemetryService, Clock.systemUTC() );
     }
 
-    EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, Clock clock )
+    EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, EngineTelemetryService telemetryService, Clock clock )
     {
         this.client = client;
         this.executionPort = executionPort;
+        this.telemetryService = telemetryService;
         this.clock = clock;
     }
 
     public EngineExecutionRunResponse runOnce( boolean force )
     {
         Instant startedAt = Instant.now( clock );
-        List<EngineExecutionPlan> plans = client.listPlans( force );
-        List<EngineExecutionAttemptResult> results = new ArrayList<>();
-        int skipped = 0;
-
-        for( EngineExecutionPlan plan : plans )
+        try
         {
-            if( !shouldProcessPlan( plan, force ) )
+            List<EngineExecutionPlan> plans = client.listPlans( force );
+            List<EngineExecutionAttemptResult> results = new ArrayList<>();
+            int skipped = 0;
+
+            for( EngineExecutionPlan plan : plans )
             {
-                skipped++;
-                continue;
-            }
-            for( EngineEntryAttemptPlan attemptPlan : plan.entryAttempts() )
-            {
-                if( !force && attemptPlan.triggerAt().isAfter( Instant.now( clock ) ) )
+                if( !shouldProcessPlan( plan, force ) )
                 {
                     skipped++;
                     continue;
                 }
-                EngineExecutionAttemptResult result = executeAttempt( plan, attemptPlan );
-                results.add( result );
+                for( EngineEntryAttemptPlan attemptPlan : plan.entryAttempts() )
+                {
+                    if( !force && attemptPlan.triggerAt().isAfter( Instant.now( clock ) ) )
+                    {
+                        skipped++;
+                        continue;
+                    }
+                    EngineExecutionAttemptResult result = executeAttempt( plan, attemptPlan );
+                    results.add( result );
+                }
             }
-        }
 
-        return new EngineExecutionRunResponse(
-            startedAt,
-            Instant.now( clock ),
-            force,
-            plans.size(),
-            results.size(),
-            skipped,
-            results
-        );
+            return new EngineExecutionRunResponse(
+                startedAt,
+                Instant.now( clock ),
+                force,
+                plans.size(),
+                results.size(),
+                skipped,
+                results
+            );
+        }
+        finally
+        {
+            telemetryService.recordExecutionRun( force, java.time.Duration.between( startedAt, Instant.now( clock ) ).toMillis() );
+        }
     }
 
     private EngineExecutionAttemptResult executeAttempt( EngineExecutionPlan plan, EngineEntryAttemptPlan attemptPlan )
@@ -85,7 +94,13 @@ public class EngineExecutionService
             null,
             attemptPlan.triggerAt()
         );
+        long submitStartedAt = System.nanoTime();
         OrderAttempt attempt = executionPort.submitOrder( plan.armedTradeId(), plan.venue(), plan.symbol(), intent );
+        telemetryService.recordOrderSubmission(
+            plan.venue(),
+            attempt.status(),
+            ( System.nanoTime() - submitStartedAt ) / 1_000_000L
+        );
         String attemptKey = attemptKey( plan, attemptPlan );
         EngineOrderAttemptResponse recorded = client.recordOrderAttempt( new EngineOrderAttemptRecordRequest(
             attemptKey,

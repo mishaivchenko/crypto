@@ -22,10 +22,12 @@ public class EnginePlanClient
 
     private final RestClient restClient;
     private final EngineProperties properties;
+    private final EngineTelemetryService telemetryService;
 
-    public EnginePlanClient( RestClient.Builder builder, EngineProperties properties )
+    public EnginePlanClient( RestClient.Builder builder, EngineProperties properties, EngineTelemetryService telemetryService )
     {
         this.properties = properties;
+        this.telemetryService = telemetryService;
         this.restClient = builder.baseUrl( properties.getMonitorBaseUrl() ).build();
     }
 
@@ -36,13 +38,21 @@ public class EnginePlanClient
 
     public List<EngineExecutionPlan> listPlans( boolean includeAll )
     {
-        return restClient.get()
-                         .uri( uriBuilder -> uriBuilder.path( "/internal/v1/engine/plans" )
-                                                       .queryParam( "includeAll", includeAll )
-                                                       .build() )
-                         .headers( this::internalHeaders )
-                         .retrieve()
-                         .body( PLAN_LIST );
+        long startedAt = System.nanoTime();
+        try
+        {
+            return restClient.get()
+                             .uri( uriBuilder -> uriBuilder.path( "/internal/v1/engine/plans" )
+                                                           .queryParam( "includeAll", includeAll )
+                                                           .build() )
+                             .headers( this::internalHeaders )
+                             .retrieve()
+                             .body( PLAN_LIST );
+        }
+        finally
+        {
+            telemetryService.recordPlanFetch( ( System.nanoTime() - startedAt ) / 1_000_000L );
+        }
     }
 
     public EngineExecutionPlan getPlan( Long armedTradeId )
@@ -56,13 +66,21 @@ public class EnginePlanClient
 
     public EngineOrderAttemptResponse recordOrderAttempt( EngineOrderAttemptRecordRequest request )
     {
-        return restClient.post()
-                         .uri( "/internal/v1/engine/order-attempts" )
-                         .contentType( MediaType.APPLICATION_JSON )
-                         .headers( this::internalHeaders )
-                         .body( request )
-                         .retrieve()
-                         .body( EngineOrderAttemptResponse.class );
+        long startedAt = System.nanoTime();
+        try
+        {
+            return restClient.post()
+                             .uri( "/internal/v1/engine/order-attempts" )
+                             .contentType( MediaType.APPLICATION_JSON )
+                             .headers( this::internalHeaders )
+                             .body( request )
+                             .retrieve()
+                             .body( EngineOrderAttemptResponse.class );
+        }
+        finally
+        {
+            telemetryService.recordAttemptRecord( ( System.nanoTime() - startedAt ) / 1_000_000L );
+        }
     }
 
     public void publishMetricsSnapshot( EngineMetricsSnapshot snapshot )

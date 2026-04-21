@@ -13,6 +13,18 @@ const statusLabels = {
         EXPIRED: "Expired",
         CANCELLED: "Cancelled"
     },
+    historyStage: {
+        PREPARED: "Prepared",
+        ENTRY_PENDING: "Entry pending",
+        ENTRY_ATTEMPTED: "Entry attempted",
+        ATTEMPTS_FAILED: "Attempts failed",
+        MISSED_WINDOW: "Missed window",
+        OPEN: "Open",
+        EXIT_PENDING: "Exit pending",
+        CLOSED: "Closed",
+        CANCELLED: "Cancelled",
+        FAILED: "Failed"
+    },
     trade: {
         ARMED: "Prepared",
         ENTRY_PENDING: "Entry pending",
@@ -22,6 +34,17 @@ const statusLabels = {
         CLOSED: "Closed",
         CANCELLED: "Cancelled",
         FAILED: "Failed"
+    },
+    orderAttempt: {
+        PLANNED: "Planned",
+        CREATED: "Created",
+        SUBMITTED: "Submitted",
+        ACKNOWLEDGED: "Acknowledged",
+        FILLED: "Filled",
+        CANCELLED: "Cancelled",
+        REJECTED: "Rejected",
+        FAILED: "Failed",
+        EXPIRED: "Expired"
     },
     actor: {
         SYSTEM: "Система",
@@ -59,6 +82,18 @@ const badgeTones = {
         EXPIRED: "bad",
         CANCELLED: "muted"
     },
+    historyStage: {
+        PREPARED: "info",
+        ENTRY_PENDING: "warning",
+        ENTRY_ATTEMPTED: "warning",
+        ATTEMPTS_FAILED: "bad",
+        MISSED_WINDOW: "warning",
+        OPEN: "good",
+        EXIT_PENDING: "warning",
+        CLOSED: "muted",
+        CANCELLED: "bad",
+        FAILED: "bad"
+    },
     trade: {
         ARMED: "info",
         ENTRY_PENDING: "warning",
@@ -68,6 +103,17 @@ const badgeTones = {
         CLOSED: "muted",
         CANCELLED: "bad",
         FAILED: "bad"
+    },
+    orderAttempt: {
+        PLANNED: "neutral",
+        CREATED: "neutral",
+        SUBMITTED: "info",
+        ACKNOWLEDGED: "info",
+        FILLED: "good",
+        CANCELLED: "bad",
+        REJECTED: "bad",
+        FAILED: "bad",
+        EXPIRED: "warning"
     },
     connection: {
         NOT_CONNECTED: "muted",

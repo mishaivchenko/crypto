@@ -15,7 +15,7 @@
 - monitor-side internal ingest endpoint
 - monitor-side Micrometer gauges
 - отдельный deploy bundle в `deploy/observability`
-- Grafana provisioning и dashboard
+- Grafana provisioning и operator dashboards
 
 ## Feature Flags
 
@@ -50,6 +50,11 @@
 - `funding_engine_actionable_plans`
 - `funding_engine_plan_status{status=...}`
 - `funding_engine_snapshot_age_seconds`
+- `funding_engine_plan_venue{venue=...}`
+- `funding_engine_attempt_status{status=...}`
+- `funding_engine_submit_duration_avg_ms{venue=...}`
+- `funding_venue_request_avg_duration_ms{venue,operation}`
+- `funding_venue_request_success_ratio{venue,operation}`
 
 Нет labels по:
 
@@ -90,3 +95,12 @@ Rollback простой:
 1. Остановить `deploy/observability` compose.
 2. Не менять основной `.env` и основной business config.
 3. Основной runtime продолжит работать как раньше.
+
+## Что теперь видно в Grafana
+
+- overall engine health и snapshot freshness;
+- execution loop throughput и failed-attempt pressure;
+- split plans / attempts по venue;
+- average submit duration по venue;
+- metadata sync / credential check / candidate source latency;
+- average и p95 latency monitor HTTP endpoints.

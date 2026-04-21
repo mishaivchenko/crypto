@@ -68,7 +68,23 @@ class InternalEngineMetricsDisabledIntegrationTest
             false,
             1,
             0,
-            Map.of( EnginePlanStatus.WAITING_ENTRY, 1L )
+            Map.of( EnginePlanStatus.WAITING_ENTRY, 1L ),
+            Map.of( "bybit", 1L ),
+            Map.of(),
+            0L,
+            0L,
+            0L,
+            0L,
+            0L,
+            0L,
+            0L,
+            0L,
+            0L,
+            Map.of(),
+            Map.of(),
+            Map.of(),
+            Map.of(),
+            Map.of()
         );
     }
 

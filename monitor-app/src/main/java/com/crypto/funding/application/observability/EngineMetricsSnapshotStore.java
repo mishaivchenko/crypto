@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -66,6 +67,130 @@ public class EngineMetricsSnapshotStore
         return snapshot.statusBreakdown().getOrDefault( status, 0L );
     }
 
+    public double planCountForVenue( String venue )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.planVenueBreakdown().getOrDefault( normalize( venue ), 0L );
+    }
+
+    public double actionablePlanCountForVenue( String venue )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.actionableVenueBreakdown().getOrDefault( normalize( venue ), 0L );
+    }
+
+    public double executionRuns()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.executionRuns();
+    }
+
+    public double forcedExecutionRuns()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.forcedExecutionRuns();
+    }
+
+    public double scheduledExecutionRuns()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.scheduledExecutionRuns();
+    }
+
+    public double averageExecutionRunDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.averageExecutionRunDurationMs();
+    }
+
+    public double lastExecutionRunDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastExecutionRunDurationMs();
+    }
+
+    public double averagePlanFetchDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.averagePlanFetchDurationMs();
+    }
+
+    public double lastPlanFetchDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastPlanFetchDurationMs();
+    }
+
+    public double averageAttemptRecordDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.averageAttemptRecordDurationMs();
+    }
+
+    public double lastAttemptRecordDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastAttemptRecordDurationMs();
+    }
+
+    public double attemptStatusCount( String status )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.attemptStatusBreakdown().getOrDefault( normalize( status ), 0L );
+    }
+
+    public double attemptCountForVenue( String venue )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.attemptVenueBreakdown().getOrDefault( normalize( venue ), 0L );
+    }
+
+    public double failedAttemptCountForVenue( String venue )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.failedAttemptVenueBreakdown().getOrDefault( normalize( venue ), 0L );
+    }
+
+    public double averageSubmitDurationMs( String venue )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.averageSubmitDurationMsByVenue().getOrDefault( normalize( venue ), 0L );
+    }
+
+    public double lastSubmitDurationMs( String venue )
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null )
+        {
+            return 0D;
+        }
+        return snapshot.lastSubmitDurationMsByVenue().getOrDefault( normalize( venue ), 0L );
+    }
+
     public double snapshotAgeSeconds()
     {
         EngineMetricsSnapshot snapshot = snapshotRef.get();
@@ -84,5 +209,14 @@ public class EngineMetricsSnapshotStore
             return 0D;
         }
         return snapshot.capturedAt().getEpochSecond();
+    }
+
+    private static String normalize( String value )
+    {
+        if( value == null || value.isBlank() )
+        {
+            return "";
+        }
+        return value.trim().toLowerCase( Locale.ROOT );
     }
 }

@@ -13,7 +13,23 @@ public record EngineMetricsSnapshot(
     boolean executionLoopEnabled,
     int totalPlans,
     int actionablePlans,
-    Map<EnginePlanStatus, Long> statusBreakdown
+    Map<EnginePlanStatus, Long> statusBreakdown,
+    Map<String, Long> planVenueBreakdown,
+    Map<String, Long> actionableVenueBreakdown,
+    long executionRuns,
+    long forcedExecutionRuns,
+    long scheduledExecutionRuns,
+    long averageExecutionRunDurationMs,
+    long lastExecutionRunDurationMs,
+    long averagePlanFetchDurationMs,
+    long lastPlanFetchDurationMs,
+    long averageAttemptRecordDurationMs,
+    long lastAttemptRecordDurationMs,
+    Map<String, Long> attemptStatusBreakdown,
+    Map<String, Long> attemptVenueBreakdown,
+    Map<String, Long> failedAttemptVenueBreakdown,
+    Map<String, Long> averageSubmitDurationMsByVenue,
+    Map<String, Long> lastSubmitDurationMsByVenue
 )
 {
     public EngineMetricsSnapshot
@@ -33,5 +49,29 @@ public record EngineMetricsSnapshot(
             } );
         }
         statusBreakdown = Collections.unmodifiableMap( normalizedBreakdown );
+        planVenueBreakdown = normalizedLongMap( planVenueBreakdown );
+        actionableVenueBreakdown = normalizedLongMap( actionableVenueBreakdown );
+        attemptStatusBreakdown = normalizedLongMap( attemptStatusBreakdown );
+        attemptVenueBreakdown = normalizedLongMap( attemptVenueBreakdown );
+        failedAttemptVenueBreakdown = normalizedLongMap( failedAttemptVenueBreakdown );
+        averageSubmitDurationMsByVenue = normalizedLongMap( averageSubmitDurationMsByVenue );
+        lastSubmitDurationMsByVenue = normalizedLongMap( lastSubmitDurationMsByVenue );
+    }
+
+    private static Map<String, Long> normalizedLongMap( Map<String, Long> raw )
+    {
+        if( raw == null || raw.isEmpty() )
+        {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Long> normalized = new java.util.TreeMap<>();
+        raw.forEach( ( key, value ) -> {
+            if( key != null && !key.isBlank() )
+            {
+                normalized.put( key.trim().toLowerCase( java.util.Locale.ROOT ), value == null ? 0L : value );
+            }
+        } );
+        return Collections.unmodifiableMap( normalized );
     }
 }

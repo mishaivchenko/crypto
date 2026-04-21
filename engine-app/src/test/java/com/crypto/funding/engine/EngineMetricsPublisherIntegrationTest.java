@@ -105,6 +105,8 @@ class EngineMetricsPublisherIntegrationTest
             .withRequestBody( matchingJsonPath( "$.executionLoopEnabled", equalTo( "false" ) ) )
             .withRequestBody( matchingJsonPath( "$.totalPlans", equalTo( "1" ) ) )
             .withRequestBody( matchingJsonPath( "$.actionablePlans", equalTo( "1" ) ) )
-            .withRequestBody( matchingJsonPath( "$.statusBreakdown.ENTRY_WINDOW", equalTo( "1" ) ) ) );
+            .withRequestBody( matchingJsonPath( "$.statusBreakdown.ENTRY_WINDOW", equalTo( "1" ) ) )
+            .withRequestBody( matchingJsonPath( "$.planVenueBreakdown.bybit", equalTo( "1" ) ) )
+            .withRequestBody( matchingJsonPath( "$.executionRuns", equalTo( "0" ) ) ) );
     }
 }

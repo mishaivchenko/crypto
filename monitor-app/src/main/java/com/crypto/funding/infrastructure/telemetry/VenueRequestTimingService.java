@@ -61,6 +61,30 @@ public class VenueRequestTimingService
         return snapshots().stream().filter( snapshot -> snapshot.venue().equals( normalizedVenue ) ).toList();
     }
 
+    public Snapshot snapshot( String venue, String operation )
+    {
+        String normalizedVenue = venue == null ? "" : venue.trim().toLowerCase( Locale.ROOT );
+        String normalizedOperation = operation == null ? "" : operation.trim().toLowerCase( Locale.ROOT );
+        Stats stats = statsByKey.get( normalizedVenue + "::" + normalizedOperation );
+        if( stats == null )
+        {
+            return new Snapshot(
+                normalizedVenue,
+                normalizedOperation,
+                0L,
+                0L,
+                0L,
+                0L,
+                0L,
+                null,
+                null,
+                null,
+                0L
+            );
+        }
+        return stats.snapshot( normalizedVenue, normalizedOperation );
+    }
+
     public void clear()
     {
         statsByKey.clear();

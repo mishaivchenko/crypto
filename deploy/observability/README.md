@@ -41,9 +41,10 @@ docker compose --env-file .env.observability up --build
 В observability compose включаются только отдельные override-переменные для демо/наблюдения:
 - `MONITOR_ENGINE_METRICS_ENABLED=true`
 - `ENGINE_METRICS_PUBLISH_ENABLED=true`
-- `TRADING_CANDIDATE_SOURCE_ENABLED=false`
-- `TRADING_METADATA_SYNC_ON_STARTUP=false`
+- `TRADING_CANDIDATE_SOURCE_ENABLED=true`
+- `TRADING_METADATA_SYNC_ON_STARTUP=true`
 - `TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false`
+- `MANAGEMENT_METRICS_DISTRIBUTION_SLO_HTTP_SERVER_REQUESTS=50ms,100ms,250ms,500ms,1s,2s,5s`
 
 Это сделано специально, чтобы не менять default main behaviour.
 
@@ -62,6 +63,23 @@ SQLite в этом stack отдельная:
    `http://localhost:19090`
 4. Открыть Grafana:
    `http://localhost:13000`
+
+## Dashboards
+
+По умолчанию provisioning поднимает два operator-facing dashboard:
+
+- `Funding Platform Observability`
+  - health engine/snapshot
+  - plans by status / venue
+  - execution run durations
+  - failed attempts by venue
+  - monitor API latency
+- `Funding Platform Venues & Latency`
+  - metadata sync avg duration
+  - credential-check avg duration
+  - request volume / success ratio
+  - telemetry freshness
+  - p95 latency monitor endpoints
 
 ## Rollback
 

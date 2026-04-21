@@ -17,28 +17,32 @@ public class EngineMetricsPublisher
     private final EnginePlanService enginePlanService;
     private final EnginePlanClient enginePlanClient;
     private final EngineProperties engineProperties;
+    private final EngineTelemetryService telemetryService;
     private final Clock clock;
 
     @Autowired
     public EngineMetricsPublisher(
         EnginePlanService enginePlanService,
         EnginePlanClient enginePlanClient,
-        EngineProperties engineProperties
+        EngineProperties engineProperties,
+        EngineTelemetryService telemetryService
     )
     {
-        this( enginePlanService, enginePlanClient, engineProperties, Clock.systemUTC() );
+        this( enginePlanService, enginePlanClient, engineProperties, telemetryService, Clock.systemUTC() );
     }
 
     EngineMetricsPublisher(
         EnginePlanService enginePlanService,
         EnginePlanClient enginePlanClient,
         EngineProperties engineProperties,
+        EngineTelemetryService telemetryService,
         Clock clock
     )
     {
         this.enginePlanService = enginePlanService;
         this.enginePlanClient = enginePlanClient;
         this.engineProperties = engineProperties;
+        this.telemetryService = telemetryService;
         this.clock = clock;
     }
 
@@ -53,7 +57,16 @@ public class EngineMetricsPublisher
 
     public void publishSnapshot()
     {
-        EngineSummaryResponse summary = enginePlanService.summary();
+        EnginePlanService.PlanSnapshot planSnapshot = enginePlanService.loadPlanSnapshot();
+        EngineSummaryResponse summary = new EngineSummaryResponse(
+            "engine-app",
+            "2.0.0",
+            planSnapshot.totalPlans(),
+            planSnapshot.actionablePlans(),
+            Instant.now( clock ),
+            planSnapshot.statusBreakdown()
+        );
+        EngineTelemetryService.RuntimeSnapshot telemetrySnapshot = telemetryService.snapshot();
         enginePlanClient.publishMetricsSnapshot( new EngineMetricsSnapshot(
             summary.module(),
             summary.version(),
@@ -62,7 +75,23 @@ public class EngineMetricsPublisher
             engineProperties.isExecutionLoopEnabled(),
             summary.totalPlans(),
             summary.actionablePlans(),
-            summary.statusBreakdown()
+            summary.statusBreakdown(),
+            planSnapshot.planVenueBreakdown(),
+            planSnapshot.actionableVenueBreakdown(),
+            telemetrySnapshot.executionRuns(),
+            telemetrySnapshot.forcedExecutionRuns(),
+            telemetrySnapshot.scheduledExecutionRuns(),
+            telemetrySnapshot.averageExecutionRunDurationMs(),
+            telemetrySnapshot.lastExecutionRunDurationMs(),
+            telemetrySnapshot.averagePlanFetchDurationMs(),
+            telemetrySnapshot.lastPlanFetchDurationMs(),
+            telemetrySnapshot.averageAttemptRecordDurationMs(),
+            telemetrySnapshot.lastAttemptRecordDurationMs(),
+            telemetrySnapshot.attemptStatusBreakdown(),
+            telemetrySnapshot.attemptVenueBreakdown(),
+            telemetrySnapshot.failedAttemptVenueBreakdown(),
+            telemetrySnapshot.averageSubmitDurationMsByVenue(),
+            telemetrySnapshot.lastSubmitDurationMsByVenue()
         ) );
     }
 }
