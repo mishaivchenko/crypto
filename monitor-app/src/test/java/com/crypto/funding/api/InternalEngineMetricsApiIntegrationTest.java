@@ -79,6 +79,9 @@ class InternalEngineMetricsApiIntegrationTest
         assertThat( prometheus ).contains( "funding_engine_attempt_status_total{status=\"failed\"} 9.0" );
         assertThat( prometheus ).contains( "funding_engine_submit_duration_avg_ms{venue=\"gate\"} 47.0" );
         assertThat( prometheus ).contains( "funding_engine_execution_run_duration_avg_ms 128.0" );
+        assertThat( prometheus ).contains( "funding_engine_execution_loop_interval_ms 1500.0" );
+        assertThat( prometheus ).contains( "funding_engine_last_run_attempts_submitted 9.0" );
+        assertThat( prometheus ).contains( "funding_engine_last_forced_run_attempts_submitted 9.0" );
     }
 
     private EngineMetricsSnapshot snapshot()
@@ -89,6 +92,8 @@ class InternalEngineMetricsApiIntegrationTest
             Instant.parse( "2030-01-01T00:00:00Z" ),
             true,
             false,
+            1500L,
+            Instant.parse( "2030-01-01T00:00:10Z" ),
             12,
             3,
             Map.of(
@@ -103,6 +108,18 @@ class InternalEngineMetricsApiIntegrationTest
             3L,
             8L,
             128L,
+            164L,
+            Instant.parse( "2030-01-01T00:00:30Z" ),
+            Instant.parse( "2030-01-01T00:00:31Z" ),
+            true,
+            12,
+            9,
+            3,
+            Instant.parse( "2030-01-01T00:00:30Z" ),
+            Instant.parse( "2030-01-01T00:00:31Z" ),
+            12,
+            9,
+            3,
             164L,
             21L,
             34L,

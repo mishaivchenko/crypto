@@ -91,6 +91,7 @@ coverage/
 # If you store local data/config in these folders and don't want to commit:
 data/
 /data/
+data-container/
 *.db
 *.db-journal
 config/local/

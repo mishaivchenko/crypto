@@ -2,7 +2,10 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
+import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
 import com.crypto.funding.contract.engine.EngineSummaryResponse;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,11 +21,17 @@ public class EngineController
 {
     private final EnginePlanService enginePlanService;
     private final EngineExecutionService engineExecutionService;
+    private final EngineRuntimeControlService engineRuntimeControlService;
 
-    public EngineController( EnginePlanService enginePlanService, EngineExecutionService engineExecutionService )
+    public EngineController(
+        EnginePlanService enginePlanService,
+        EngineExecutionService engineExecutionService,
+        EngineRuntimeControlService engineRuntimeControlService
+    )
     {
         this.enginePlanService = enginePlanService;
         this.engineExecutionService = engineExecutionService;
+        this.engineRuntimeControlService = engineRuntimeControlService;
     }
 
     @GetMapping("/summary")
@@ -47,5 +56,17 @@ public class EngineController
     public EngineExecutionRunResponse runOnce( @RequestParam(defaultValue = "false") boolean force )
     {
         return engineExecutionService.runOnce( force );
+    }
+
+    @GetMapping("/runtime")
+    public EngineRuntimeControlResponse runtime()
+    {
+        return engineRuntimeControlService.snapshot();
+    }
+
+    @PostMapping("/runtime")
+    public EngineRuntimeControlResponse updateRuntime( @RequestBody EngineRuntimeControlRequest request )
+    {
+        return engineRuntimeControlService.update( request );
     }
 }

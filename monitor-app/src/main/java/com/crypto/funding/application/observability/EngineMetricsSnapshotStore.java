@@ -45,6 +45,22 @@ public class EngineMetricsSnapshotStore
         return snapshot != null && snapshot.executionLoopEnabled() ? 1D : 0D;
     }
 
+    public double executionLoopIntervalMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.executionLoopIntervalMs();
+    }
+
+    public double runtimeUpdatedAtEpochSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.runtimeUpdatedAt() == null )
+        {
+            return 0D;
+        }
+        return snapshot.runtimeUpdatedAt().getEpochSecond();
+    }
+
     public double totalPlans()
     {
         EngineMetricsSnapshot snapshot = snapshotRef.get();
@@ -115,6 +131,114 @@ public class EngineMetricsSnapshotStore
     {
         EngineMetricsSnapshot snapshot = snapshotRef.get();
         return snapshot == null ? 0D : snapshot.lastExecutionRunDurationMs();
+    }
+
+    public double lastRunStartedAtEpochSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.lastRunStartedAt() == null )
+        {
+            return 0D;
+        }
+        return snapshot.lastRunStartedAt().getEpochSecond();
+    }
+
+    public double lastRunFinishedAtEpochSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.lastRunFinishedAt() == null )
+        {
+            return 0D;
+        }
+        return snapshot.lastRunFinishedAt().getEpochSecond();
+    }
+
+    public double lastRunAgeSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.lastRunFinishedAt() == null )
+        {
+            return 0D;
+        }
+        return Math.max( 0D, Duration.between( snapshot.lastRunFinishedAt(), Instant.now( clock ) ).toMillis() / 1000D );
+    }
+
+    public double lastRunForced()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot != null && snapshot.lastRunForced() ? 1D : 0D;
+    }
+
+    public double lastPlansScanned()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastPlansScanned();
+    }
+
+    public double lastAttemptsSubmitted()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastAttemptsSubmitted();
+    }
+
+    public double lastAttemptsSkipped()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastAttemptsSkipped();
+    }
+
+    public double lastForcedRunStartedAtEpochSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.lastForcedRunStartedAt() == null )
+        {
+            return 0D;
+        }
+        return snapshot.lastForcedRunStartedAt().getEpochSecond();
+    }
+
+    public double lastForcedRunFinishedAtEpochSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.lastForcedRunFinishedAt() == null )
+        {
+            return 0D;
+        }
+        return snapshot.lastForcedRunFinishedAt().getEpochSecond();
+    }
+
+    public double lastForcedRunAgeSeconds()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        if( snapshot == null || snapshot.lastForcedRunFinishedAt() == null )
+        {
+            return 0D;
+        }
+        return Math.max( 0D, Duration.between( snapshot.lastForcedRunFinishedAt(), Instant.now( clock ) ).toMillis() / 1000D );
+    }
+
+    public double lastForcedPlansScanned()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastForcedPlansScanned();
+    }
+
+    public double lastForcedAttemptsSubmitted()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastForcedAttemptsSubmitted();
+    }
+
+    public double lastForcedAttemptsSkipped()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastForcedAttemptsSkipped();
+    }
+
+    public double lastForcedRunDurationMs()
+    {
+        EngineMetricsSnapshot snapshot = snapshotRef.get();
+        return snapshot == null ? 0D : snapshot.lastForcedRunDurationMs();
     }
 
     public double averagePlanFetchDurationMs()

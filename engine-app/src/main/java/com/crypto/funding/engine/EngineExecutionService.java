@@ -44,11 +44,14 @@ public class EngineExecutionService
     public EngineExecutionRunResponse runOnce( boolean force )
     {
         Instant startedAt = Instant.now( clock );
+        int plansScanned = 0;
+        int attemptsSubmitted = 0;
+        int skipped = 0;
         try
         {
             List<EngineExecutionPlan> plans = client.listPlans( force );
+            plansScanned = plans.size();
             List<EngineExecutionAttemptResult> results = new ArrayList<>();
-            int skipped = 0;
 
             for( EngineExecutionPlan plan : plans )
             {
@@ -69,19 +72,31 @@ public class EngineExecutionService
                 }
             }
 
+            attemptsSubmitted = results.size();
+            Instant finishedAt = Instant.now( clock );
+            telemetryService.recordExecutionRun(
+                force,
+                startedAt,
+                finishedAt,
+                plansScanned,
+                attemptsSubmitted,
+                skipped,
+                java.time.Duration.between( startedAt, finishedAt ).toMillis()
+            );
+
             return new EngineExecutionRunResponse(
                 startedAt,
-                Instant.now( clock ),
+                finishedAt,
                 force,
-                plans.size(),
-                results.size(),
+                plansScanned,
+                attemptsSubmitted,
                 skipped,
                 results
             );
         }
         finally
         {
-            telemetryService.recordExecutionRun( force, java.time.Duration.between( startedAt, Instant.now( clock ) ).toMillis() );
+            // telemetry is recorded on the happy path with run details; failures still bubble up to the caller.
         }
     }
 

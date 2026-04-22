@@ -49,6 +49,9 @@ monitor:
         lookahead-minutes: ${MONITOR_ENGINE_PLAN_LOOKAHEAD_MINUTES:120}
         overdue-grace-seconds: ${MONITOR_ENGINE_PLAN_OVERDUE_GRACE_SECONDS:30}
         include-closed-trades: ${MONITOR_ENGINE_PLAN_INCLUDE_CLOSED_TRADES:false}
+    engine-control:
+        base-url: ${MONITOR_ENGINE_CONTROL_BASE_URL:http://localhost:8091}
+        internal-token: ${MONITOR_ENGINE_CONTROL_INTERNAL_TOKEN:${INTERNAL_ENGINE_TOKEN:}}
     engine-metrics:
         enabled: ${MONITOR_ENGINE_METRICS_ENABLED:false}
 

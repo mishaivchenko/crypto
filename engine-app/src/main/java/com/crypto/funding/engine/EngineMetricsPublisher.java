@@ -16,7 +16,7 @@ public class EngineMetricsPublisher
 {
     private final EnginePlanService enginePlanService;
     private final EnginePlanClient enginePlanClient;
-    private final EngineProperties engineProperties;
+    private final EngineRuntimeControlService engineRuntimeControlService;
     private final EngineTelemetryService telemetryService;
     private final Clock clock;
 
@@ -24,24 +24,24 @@ public class EngineMetricsPublisher
     public EngineMetricsPublisher(
         EnginePlanService enginePlanService,
         EnginePlanClient enginePlanClient,
-        EngineProperties engineProperties,
+        EngineRuntimeControlService engineRuntimeControlService,
         EngineTelemetryService telemetryService
     )
     {
-        this( enginePlanService, enginePlanClient, engineProperties, telemetryService, Clock.systemUTC() );
+        this( enginePlanService, enginePlanClient, engineRuntimeControlService, telemetryService, Clock.systemUTC() );
     }
 
     EngineMetricsPublisher(
         EnginePlanService enginePlanService,
         EnginePlanClient enginePlanClient,
-        EngineProperties engineProperties,
+        EngineRuntimeControlService engineRuntimeControlService,
         EngineTelemetryService telemetryService,
         Clock clock
     )
     {
         this.enginePlanService = enginePlanService;
         this.enginePlanClient = enginePlanClient;
-        this.engineProperties = engineProperties;
+        this.engineRuntimeControlService = engineRuntimeControlService;
         this.telemetryService = telemetryService;
         this.clock = clock;
     }
@@ -67,12 +67,15 @@ public class EngineMetricsPublisher
             planSnapshot.statusBreakdown()
         );
         EngineTelemetryService.RuntimeSnapshot telemetrySnapshot = telemetryService.snapshot();
+        var runtimeSnapshot = engineRuntimeControlService.snapshot();
         enginePlanClient.publishMetricsSnapshot( new EngineMetricsSnapshot(
             summary.module(),
             summary.version(),
             Instant.now( clock ),
             true,
-            engineProperties.isExecutionLoopEnabled(),
+            runtimeSnapshot.executionLoopEnabled(),
+            runtimeSnapshot.executionLoopIntervalMs(),
+            runtimeSnapshot.runtimeUpdatedAt(),
             summary.totalPlans(),
             summary.actionablePlans(),
             summary.statusBreakdown(),
@@ -83,6 +86,18 @@ public class EngineMetricsPublisher
             telemetrySnapshot.scheduledExecutionRuns(),
             telemetrySnapshot.averageExecutionRunDurationMs(),
             telemetrySnapshot.lastExecutionRunDurationMs(),
+            telemetrySnapshot.lastRunStartedAt(),
+            telemetrySnapshot.lastRunFinishedAt(),
+            telemetrySnapshot.lastRunForced(),
+            telemetrySnapshot.lastPlansScanned(),
+            telemetrySnapshot.lastAttemptsSubmitted(),
+            telemetrySnapshot.lastAttemptsSkipped(),
+            telemetrySnapshot.lastForcedRunStartedAt(),
+            telemetrySnapshot.lastForcedRunFinishedAt(),
+            telemetrySnapshot.lastForcedPlansScanned(),
+            telemetrySnapshot.lastForcedAttemptsSubmitted(),
+            telemetrySnapshot.lastForcedAttemptsSkipped(),
+            telemetrySnapshot.lastForcedRunDurationMs(),
             telemetrySnapshot.averagePlanFetchDurationMs(),
             telemetrySnapshot.lastPlanFetchDurationMs(),
             telemetrySnapshot.averageAttemptRecordDurationMs(),

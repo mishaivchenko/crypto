@@ -25,7 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(
     classes = EngineApplication.class,
     properties = {
-        "engine.internal-token=test-internal-token"
+        "engine.internal-token=test-internal-token",
+        "engine.execution-loop-enabled=false"
     }
 )
 @AutoConfigureMockMvc
@@ -76,6 +77,27 @@ class EngineApplicationIntegrationTest
 
         MONITOR.verify( getRequestedFor( urlEqualTo( "/internal/v1/engine/plans?includeAll=false" ) )
             .withHeader( "X-Internal-Token", equalTo( "test-internal-token" ) ) );
+    }
+
+    @Test
+    void exposesAndUpdatesRuntimeControls() throws Exception
+    {
+        mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get( "/internal/engine/runtime" ) )
+               .andExpect( status().isOk() )
+               .andExpect( jsonPath( "$.executionLoopEnabled" ).value( false ) )
+               .andExpect( jsonPath( "$.executionLoopIntervalMs" ).value( 1000 ) );
+
+        mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post( "/internal/engine/runtime" )
+                .contentType( "application/json" )
+                .content( """
+                    {
+                      "executionLoopEnabled": true,
+                      "executionLoopIntervalMs": 1750
+                    }
+                    """ ) )
+               .andExpect( status().isOk() )
+               .andExpect( jsonPath( "$.executionLoopEnabled" ).value( true ) )
+               .andExpect( jsonPath( "$.executionLoopIntervalMs" ).value( 1750 ) );
     }
 
     @Test

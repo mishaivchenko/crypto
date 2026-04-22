@@ -11,8 +11,9 @@ server:
 engine:
     monitor-base-url: ${MONITOR_INTERNAL_BASE_URL:http://localhost:8090}
     internal-token: ${INTERNAL_ENGINE_TOKEN:}
-    execution-loop-enabled: ${ENGINE_EXECUTION_LOOP_ENABLED:false}
+    execution-loop-enabled: ${ENGINE_EXECUTION_LOOP_ENABLED:true}
     execution-loop-interval-ms: ${ENGINE_EXECUTION_LOOP_INTERVAL_MS:1000}
+    execution-scheduler-tick-ms: ${ENGINE_EXECUTION_SCHEDULER_TICK_MS:250}
     metrics-publish:
         enabled: ${ENGINE_METRICS_PUBLISH_ENABLED:false}
         interval-ms: ${ENGINE_METRICS_PUBLISH_INTERVAL_MS:15000}

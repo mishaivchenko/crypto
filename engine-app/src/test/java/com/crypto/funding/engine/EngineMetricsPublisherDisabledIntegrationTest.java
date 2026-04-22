@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(classes = EngineApplication.class, properties = {
     "engine.internal-token=test-internal-token",
+    "engine.execution-loop-enabled=false",
     "engine.metrics-publish.enabled=false"
 })
 class EngineMetricsPublisherDisabledIntegrationTest

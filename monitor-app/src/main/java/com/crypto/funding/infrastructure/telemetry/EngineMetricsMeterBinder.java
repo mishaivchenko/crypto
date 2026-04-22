@@ -41,6 +41,10 @@ public class EngineMetricsMeterBinder implements MeterBinder
              .description( "Last reported engine execution loop flag." )
              .register( registry );
 
+        Gauge.builder( "funding_engine_execution_loop_interval_ms", snapshotStore, EngineMetricsSnapshotStore::executionLoopIntervalMs )
+             .description( "Current engine execution loop interval in milliseconds." )
+             .register( registry );
+
         Gauge.builder( "funding_engine_plans", snapshotStore, EngineMetricsSnapshotStore::totalPlans )
              .description( "Total execution plans in the last engine snapshot." )
              .register( registry );
@@ -55,6 +59,10 @@ public class EngineMetricsMeterBinder implements MeterBinder
 
         Gauge.builder( "funding_engine_snapshot_captured_at_epoch_seconds", snapshotStore, EngineMetricsSnapshotStore::snapshotCapturedAtEpochSeconds )
              .description( "Unix epoch seconds when the last engine snapshot was captured." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_runtime_updated_at_epoch_seconds", snapshotStore, EngineMetricsSnapshotStore::runtimeUpdatedAtEpochSeconds )
+             .description( "Unix epoch seconds when the engine runtime controls were last changed." )
              .register( registry );
 
         FunctionCounter.builder( "funding_engine_execution_runs", snapshotStore, EngineMetricsSnapshotStore::executionRuns )
@@ -77,6 +85,62 @@ public class EngineMetricsMeterBinder implements MeterBinder
 
         Gauge.builder( "funding_engine_execution_run_duration_last_ms", snapshotStore, EngineMetricsSnapshotStore::lastExecutionRunDurationMs )
              .description( "Last engine execution run duration in milliseconds." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_started_at_epoch_seconds", snapshotStore, EngineMetricsSnapshotStore::lastRunStartedAtEpochSeconds )
+             .description( "Unix epoch seconds when the last engine run started." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_finished_at_epoch_seconds", snapshotStore, EngineMetricsSnapshotStore::lastRunFinishedAtEpochSeconds )
+             .description( "Unix epoch seconds when the last engine run finished." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_age_seconds", snapshotStore, EngineMetricsSnapshotStore::lastRunAgeSeconds )
+             .description( "Age of the last engine run in seconds." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_forced", snapshotStore, EngineMetricsSnapshotStore::lastRunForced )
+             .description( "Whether the last engine run was forced by an operator action." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_plans_scanned", snapshotStore, EngineMetricsSnapshotStore::lastPlansScanned )
+             .description( "Plans scanned during the last engine run." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_attempts_submitted", snapshotStore, EngineMetricsSnapshotStore::lastAttemptsSubmitted )
+             .description( "Attempts submitted during the last engine run." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_run_attempts_skipped", snapshotStore, EngineMetricsSnapshotStore::lastAttemptsSkipped )
+             .description( "Attempts skipped during the last engine run." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_started_at_epoch_seconds", snapshotStore, EngineMetricsSnapshotStore::lastForcedRunStartedAtEpochSeconds )
+             .description( "Unix epoch seconds when the last forced engine run started." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_finished_at_epoch_seconds", snapshotStore, EngineMetricsSnapshotStore::lastForcedRunFinishedAtEpochSeconds )
+             .description( "Unix epoch seconds when the last forced engine run finished." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_age_seconds", snapshotStore, EngineMetricsSnapshotStore::lastForcedRunAgeSeconds )
+             .description( "Age of the last forced engine run in seconds." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_plans_scanned", snapshotStore, EngineMetricsSnapshotStore::lastForcedPlansScanned )
+             .description( "Plans scanned during the last forced engine run." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_attempts_submitted", snapshotStore, EngineMetricsSnapshotStore::lastForcedAttemptsSubmitted )
+             .description( "Attempts submitted during the last forced engine run." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_attempts_skipped", snapshotStore, EngineMetricsSnapshotStore::lastForcedAttemptsSkipped )
+             .description( "Attempts skipped during the last forced engine run." )
+             .register( registry );
+
+        Gauge.builder( "funding_engine_last_forced_run_duration_ms", snapshotStore, EngineMetricsSnapshotStore::lastForcedRunDurationMs )
+             .description( "Duration of the last forced engine run in milliseconds." )
              .register( registry );
 
         Gauge.builder( "funding_engine_plan_fetch_duration_avg_ms", snapshotStore, EngineMetricsSnapshotStore::averagePlanFetchDurationMs )

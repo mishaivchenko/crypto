@@ -46,6 +46,22 @@ export const api = {
     getOverview() {
         return request("/api/v2/monitor/overview");
     },
+    getEngineRuntime() {
+        return request("/api/v2/monitor/dev/engine/runtime");
+    },
+    updateEngineRuntime(payload) {
+        return request("/api/v2/monitor/dev/engine/runtime", {
+            method: "POST",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
+    runEngineOnce(force = true) {
+        const params = new URLSearchParams({ force: String(Boolean(force)) });
+        return request(`/api/v2/monitor/dev/engine/run-once?${params}`, {
+            method: "POST"
+        });
+    },
     listCandidates(filters = {}) {
         const params = new URLSearchParams({ page: "0", size: "50" });
         Object.entries(filters).forEach(([key, value]) => {

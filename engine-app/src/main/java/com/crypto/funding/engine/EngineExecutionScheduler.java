@@ -6,19 +6,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class EngineExecutionScheduler
 {
-    private final EngineProperties properties;
+    private final EngineRuntimeControlService runtimeControlService;
     private final EngineExecutionService executionService;
 
-    public EngineExecutionScheduler( EngineProperties properties, EngineExecutionService executionService )
+    public EngineExecutionScheduler( EngineRuntimeControlService runtimeControlService, EngineExecutionService executionService )
     {
-        this.properties = properties;
+        this.runtimeControlService = runtimeControlService;
         this.executionService = executionService;
     }
 
-    @Scheduled(fixedDelayString = "${engine.execution-loop-interval-ms:1000}")
+    @Scheduled(fixedDelayString = "${engine.execution-scheduler-tick-ms:250}")
     public void runLoop()
     {
-        if( properties.isExecutionLoopEnabled() )
+        if( runtimeControlService.shouldRunScheduledLoop() )
         {
             executionService.runOnce( false );
         }

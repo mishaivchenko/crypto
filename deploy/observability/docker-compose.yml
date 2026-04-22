@@ -4,17 +4,19 @@ services:
             context: ../..
             dockerfile: Dockerfile
             args:
-                APP_MODULE: monitor-app
-                APP_CLASSIFIER: monitor
+                APP_JAR: monitor-app/build/libs/monitor-app-2.0.0-monitor.jar
                 APP_PORT: 8090
         container_name: funding-observability-monitor
         env_file:
             - .env.observability
         environment:
+            SERVER_PORT: 8090
             MONITOR_SERVER_PORT: 8090
             SPRING_DATASOURCE_URL: jdbc:sqlite:/data/observability.db
             SECURITY_OPERATOR_AUTH_ENABLED: "false"
             CREDENTIALS_STORAGE_ENABLED: "false"
+            MONITOR_ENGINE_CONTROL_BASE_URL: http://engine:8091
+            MONITOR_ENGINE_CONTROL_INTERNAL_TOKEN: ${INTERNAL_ENGINE_TOKEN:-funding-local-internal-token}
             TRADING_CANDIDATE_SOURCE_ENABLED: "true"
             TRADING_METADATA_SYNC_ON_STARTUP: "true"
             TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP: "false"
@@ -33,16 +35,16 @@ services:
             context: ../..
             dockerfile: Dockerfile
             args:
-                APP_MODULE: engine-app
-                APP_CLASSIFIER: engine
+                APP_JAR: engine-app/build/libs/engine-app-2.0.0-engine.jar
                 APP_PORT: 8091
         container_name: funding-observability-engine
         env_file:
             - .env.observability
         environment:
+            SERVER_PORT: 8091
             ENGINE_SERVER_PORT: 8091
             MONITOR_INTERNAL_BASE_URL: http://monitor:8090
-            ENGINE_EXECUTION_LOOP_ENABLED: "false"
+            ENGINE_EXECUTION_LOOP_ENABLED: "true"
             ENGINE_METRICS_PUBLISH_ENABLED: "true"
             ENGINE_METRICS_PUBLISH_INTERVAL_MS: 5000
         ports:
@@ -60,6 +62,8 @@ services:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
             - --web.enable-lifecycle
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         ports:
             - "${OBS_PROMETHEUS_PORT:-19090}:9090"
         volumes:

@@ -19,6 +19,18 @@ public class EngineTelemetryService
         long scheduledExecutionRuns,
         long averageExecutionRunDurationMs,
         long lastExecutionRunDurationMs,
+        java.time.Instant lastRunStartedAt,
+        java.time.Instant lastRunFinishedAt,
+        boolean lastRunForced,
+        int lastPlansScanned,
+        int lastAttemptsSubmitted,
+        int lastAttemptsSkipped,
+        java.time.Instant lastForcedRunStartedAt,
+        java.time.Instant lastForcedRunFinishedAt,
+        int lastForcedPlansScanned,
+        int lastForcedAttemptsSubmitted,
+        int lastForcedAttemptsSkipped,
+        long lastForcedRunDurationMs,
         long averagePlanFetchDurationMs,
         long lastPlanFetchDurationMs,
         long averageAttemptRecordDurationMs,
@@ -42,6 +54,18 @@ public class EngineTelemetryService
     private final AtomicLong totalAttemptRecordDurationMs = new AtomicLong();
 
     private volatile long lastExecutionRunDurationMs;
+    private volatile java.time.Instant lastRunStartedAt;
+    private volatile java.time.Instant lastRunFinishedAt;
+    private volatile boolean lastRunForced;
+    private volatile int lastPlansScanned;
+    private volatile int lastAttemptsSubmitted;
+    private volatile int lastAttemptsSkipped;
+    private volatile java.time.Instant lastForcedRunStartedAt;
+    private volatile java.time.Instant lastForcedRunFinishedAt;
+    private volatile int lastForcedPlansScanned;
+    private volatile int lastForcedAttemptsSubmitted;
+    private volatile int lastForcedAttemptsSkipped;
+    private volatile long lastForcedRunDurationMs;
     private volatile long lastPlanFetchDurationMs;
     private volatile long lastAttemptRecordDurationMs;
 
@@ -56,7 +80,15 @@ public class EngineTelemetryService
         }
     }
 
-    public void recordExecutionRun( boolean force, long durationMs )
+    public void recordExecutionRun(
+        boolean force,
+        java.time.Instant startedAt,
+        java.time.Instant finishedAt,
+        int plansScanned,
+        int attemptsSubmitted,
+        int attemptsSkipped,
+        long durationMs
+    )
     {
         executionRuns.incrementAndGet();
         if( force )
@@ -69,6 +101,21 @@ public class EngineTelemetryService
         }
         totalExecutionRunDurationMs.addAndGet( Math.max( 0L, durationMs ) );
         lastExecutionRunDurationMs = Math.max( 0L, durationMs );
+        lastRunStartedAt = startedAt;
+        lastRunFinishedAt = finishedAt;
+        lastRunForced = force;
+        lastPlansScanned = Math.max( 0, plansScanned );
+        lastAttemptsSubmitted = Math.max( 0, attemptsSubmitted );
+        lastAttemptsSkipped = Math.max( 0, attemptsSkipped );
+        if( force )
+        {
+            lastForcedRunStartedAt = startedAt;
+            lastForcedRunFinishedAt = finishedAt;
+            lastForcedPlansScanned = Math.max( 0, plansScanned );
+            lastForcedAttemptsSubmitted = Math.max( 0, attemptsSubmitted );
+            lastForcedAttemptsSkipped = Math.max( 0, attemptsSkipped );
+            lastForcedRunDurationMs = Math.max( 0L, durationMs );
+        }
     }
 
     public void recordPlanFetch( long durationMs )
@@ -103,6 +150,18 @@ public class EngineTelemetryService
             scheduledExecutionRuns.get(),
             average( totalExecutionRunDurationMs.get(), executionRuns.get() ),
             lastExecutionRunDurationMs,
+            lastRunStartedAt,
+            lastRunFinishedAt,
+            lastRunForced,
+            lastPlansScanned,
+            lastAttemptsSubmitted,
+            lastAttemptsSkipped,
+            lastForcedRunStartedAt,
+            lastForcedRunFinishedAt,
+            lastForcedPlansScanned,
+            lastForcedAttemptsSubmitted,
+            lastForcedAttemptsSkipped,
+            lastForcedRunDurationMs,
             average( totalPlanFetchDurationMs.get(), planFetches.get() ),
             lastPlanFetchDurationMs,
             average( totalAttemptRecordDurationMs.get(), attemptRecordRequests.get() ),
