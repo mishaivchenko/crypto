@@ -51,7 +51,7 @@
 ## Запуск
 
 Требования:
-- JDK 21
+- JDK 25
 
 Основные команды:
 - `./gradlew test`
@@ -120,7 +120,7 @@ Credential API:
 По умолчанию:
 - старый execution code удалён
 - live exchange order submission ещё не включён
-- engine execution loop выключен, ручной `run-once` доступен для проверки
+- engine execution loop может работать автоматически, а ручной `run-once` остаётся dev/smoke инструментом
 - missing credentials пишутся как `FAILED OrderAttempt`
 - internal monitor→engine API защищён `X-Internal-Token`
 

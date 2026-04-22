@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 ARG APP_JAR=monitor-app/build/libs/monitor-app-2.0.0-monitor.jar
 ARG APP_PORT=8090

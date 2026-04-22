@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- JDK 21.
+- JDK 25.
 - Gradle wrapper из репозитория.
 - `data/` directory для локальной SQLite базы.
 
@@ -13,10 +13,10 @@
 ./gradlew build
 ```
 
-Если локальный Gradle не видит JDK 21 на macOS:
+Если локальный Gradle не видит JDK 25 на macOS:
 
 ```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk@21 ./gradlew --no-daemon -Dorg.gradle.java.installations.paths=/opt/homebrew/opt/openjdk@21 test
+JAVA_HOME=/opt/homebrew/opt/openjdk@25 ./gradlew --no-daemon -Dorg.gradle.java.installations.paths=/opt/homebrew/opt/openjdk@25 test
 ```
 
 ## Run Monitor

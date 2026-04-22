@@ -1,16 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/main/java` contains the Spring Boot backend (packages under `com.crypto.funding`).
-- `src/test/java` contains JUnit tests for backend modules.
-- `src/main/resources` holds configuration (`application.yml`) and static assets.
+- `platform-core/src/main/java` contains shared domain, contracts, ports, and utilities.
+- `monitor-app/src/main/java` contains the operator/control-plane Spring Boot runtime.
+- `engine-app/src/main/java` contains the lightweight execution-side Spring Boot runtime.
+- `monitor-app/src/test/java` and `engine-app/src/test/java` contain JUnit tests; `monitor-app/src/test/js` contains static UI tests.
+- `monitor-app/src/main/resources` and `engine-app/src/main/resources` hold runtime configuration and static assets.
 - `config/` contains runtime config overrides (for deployments).
 - `data/` is used for runtime data like the SQLite database.
 
 ## Build, Test, and Development Commands
-- `./gradlew bootRun` runs the backend locally (uses Java 21 toolchain).
-- `./gradlew test` runs backend unit tests (JUnit 5).
-- `./gradlew build` builds the backend jar and runs the full verification lifecycle.
+- `./gradlew bootRunMonitor` runs the monitor runtime locally (uses Java 25 toolchain).
+- `./gradlew bootRunEngine` runs the engine runtime locally (uses Java 25 toolchain).
+- `./gradlew test` runs the multi-module backend and UI verification suite.
+- `./gradlew build` builds both application jars and runs the full verification lifecycle.
 - `./gradlew security` runs OWASP dependency-check with a CVSS threshold of 7.0.
 
 ## Coding Style & Naming Conventions
@@ -18,7 +21,7 @@
 - There is no active formatter/linter configured (Spotless is present but commented out).
 
 ## Testing Guidelines
-- Backend tests use JUnit 5 with AssertJ and Mockito; keep tests alongside modules under `src/test/java`.
+- Backend tests use JUnit 5 with AssertJ and Mockito; keep tests alongside the owning module under `*/src/test/java`.
 - Test class naming follows `*Test` (e.g., `MarketCacheTest`).
 
 ## Commit & Pull Request Guidelines
@@ -27,7 +30,7 @@
 - PRs should include: summary, testing notes, and UI screenshots if UI changes affect the frontend.
 
 ## Security & Configuration Tips
-- Runtime secrets should come from environment variables (see `src/main/resources/application.yml`).
+- Runtime secrets should come from environment variables (see each module's `src/main/resources/application.yml`).
 - Avoid committing real API keys or bot tokens; use placeholders or `.env` in local setups.
 - История Git переписана для удаления утёкших ключей; новые токены храните только в секретах/ENV.
 

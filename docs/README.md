@@ -16,3 +16,5 @@
 10. `09-next-mvp-steps.md` — что осталось до MVP.
 11. `10-trade-history-ui-vision.md` — видение UI истории сделок.
 12. `11-observability-isolated.md` — отдельный observability-контур без влияния на default runtime.
+13. `12-engine-tdd-migration-prompt.md` — repo-specific prompt для следующей engine TDD migration сессии на Java 25.
+14. `13-engine-tdd-migration-plan.md` — decision-complete phased plan для перевода `engine-app` к TDD-oriented test structure.
