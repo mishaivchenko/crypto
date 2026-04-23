@@ -12,6 +12,7 @@ services:
         environment:
             SERVER_PORT: 8090
             MONITOR_SERVER_PORT: 8090
+            SPRING_PROFILES_ACTIVE: staging
             SPRING_DATASOURCE_URL: jdbc:sqlite:/data/observability.db
             SECURITY_OPERATOR_AUTH_ENABLED: "false"
             CREDENTIALS_STORAGE_ENABLED: "false"
@@ -43,6 +44,7 @@ services:
         environment:
             SERVER_PORT: 8091
             ENGINE_SERVER_PORT: 8091
+            SPRING_PROFILES_ACTIVE: staging
             MONITOR_INTERNAL_BASE_URL: http://monitor:8090
             ENGINE_EXECUTION_LOOP_ENABLED: "true"
             ENGINE_METRICS_PUBLISH_ENABLED: "true"

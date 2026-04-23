@@ -30,6 +30,7 @@ public class ArmedTradeEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     @Column(name = "funding_event_id", nullable = false)

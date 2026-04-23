@@ -20,6 +20,7 @@ public class OperatorAccountEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     @Column(name = "username", nullable = false, unique = true)

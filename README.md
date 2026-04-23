@@ -56,6 +56,8 @@
 Основные команды:
 - `./gradlew test`
 - `./gradlew build`
+- `./gradlew spotlessCheck`
+- `./gradlew security`
 - `./gradlew bootRunMonitor`
 - `./gradlew bootRunEngine`
 
@@ -66,6 +68,13 @@
 Порты по умолчанию:
 - monitor: `8090`
 - engine: `8091`
+
+Runtime profiles:
+- `local-safe` — локальная безопасная среда: engine loop off, operator auth off, credential storage off.
+- `staging` — проверочная среда: engine loop off, auth/storage on, metrics on.
+- `prod-like` — deployment-профиль: auth/storage on, metrics on, engine loop остаётся off пока не включён ENV/compose.
+
+Если профиль не задан, базовые значения всё равно safe-by-default.
 
 ## UI
 
@@ -120,7 +129,8 @@ Credential API:
 По умолчанию:
 - старый execution code удалён
 - live exchange order submission ещё не включён
-- engine execution loop может работать автоматически, а ручной `run-once` остаётся dev/smoke инструментом
+- engine execution loop выключен и включается только явным `ENGINE_EXECUTION_LOOP_ENABLED=true`
+- monitor schema больше не мутируется Hibernate-ом на лету: `monitor-app` использует Flyway migrations и JPA `validate`
 - missing credentials пишутся как `FAILED OrderAttempt`
 - internal monitor→engine API защищён `X-Internal-Token`
 

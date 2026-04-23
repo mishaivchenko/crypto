@@ -25,8 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(
     classes = EngineApplication.class,
     properties = {
-        "engine.internal-token=test-internal-token",
-        "engine.execution-loop-enabled=false"
+        "engine.internal-token=test-internal-token"
     }
 )
 @AutoConfigureMockMvc

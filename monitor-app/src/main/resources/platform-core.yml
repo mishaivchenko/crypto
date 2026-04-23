@@ -24,9 +24,13 @@ spring:
                 PRAGMA busy_timeout=5000;
                 PRAGMA synchronous=NORMAL;
                 PRAGMA foreign_keys=ON;
+    flyway:
+        enabled: ${SPRING_FLYWAY_ENABLED:true}
+        baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+        baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:1}
     jpa:
         hibernate:
-            ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+            ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
         properties:
             hibernate:
                 dialect: org.hibernate.community.dialect.SQLiteDialect
@@ -34,7 +38,7 @@ spring:
 
 security:
     operators:
-        auth-enabled: ${SECURITY_OPERATOR_AUTH_ENABLED:true}
+        auth-enabled: ${SECURITY_OPERATOR_AUTH_ENABLED:false}
         bootstrap-users: ${SECURITY_OPERATOR_BOOTSTRAP_USERS:}
         internal-token: ${INTERNAL_ENGINE_TOKEN:}
 
@@ -70,7 +74,7 @@ trading:
         sync-on-startup: ${TRADING_METADATA_SYNC_ON_STARTUP:true}
         schedule-enabled: ${TRADING_METADATA_SCHEDULE_ENABLED:false}
         sync-interval-minutes: ${TRADING_METADATA_SYNC_INTERVAL_MINUTES:240}
-        require-credentials-on-startup: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:true}
+        require-credentials-on-startup: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:false}
         bootstrap-fallback-enabled: ${TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED:false}
     http:
         connect-timeout-ms: ${TRADING_HTTP_CONNECT_TIMEOUT_MS:1000}

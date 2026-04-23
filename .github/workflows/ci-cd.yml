@@ -5,10 +5,14 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   build:
     name: Build & Test
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,6 +30,29 @@ jobs:
 
       - name: Build backend (runs tests)
         run: ./gradlew clean build --no-daemon
+
+  security:
+    name: Security Scan
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Run dependency scan
+        run: ./gradlew security --no-daemon
 
   docker:
     name: Build & Push Docker images

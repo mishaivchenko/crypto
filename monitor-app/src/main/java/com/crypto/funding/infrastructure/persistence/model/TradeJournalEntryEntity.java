@@ -25,6 +25,7 @@ public class TradeJournalEntryEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     @Enumerated(EnumType.STRING)

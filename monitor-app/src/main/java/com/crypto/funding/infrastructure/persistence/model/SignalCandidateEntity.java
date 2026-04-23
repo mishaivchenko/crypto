@@ -35,6 +35,7 @@ public class SignalCandidateEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     @Column(name = "source_type", nullable = false)

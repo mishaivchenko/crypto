@@ -1,5 +1,23 @@
 # Runtime Config
 
+## Runtime Profiles
+
+Поддерживаются три явных профиля:
+
+```env
+SPRING_PROFILES_ACTIVE=local-safe
+SPRING_PROFILES_ACTIVE=staging
+SPRING_PROFILES_ACTIVE=prod-like
+```
+
+Смысл профилей:
+
+- `local-safe`: engine loop off, operator auth off, credential storage off, metadata credentials optional, metrics off.
+- `staging`: engine loop off, operator auth on, credential storage on, metadata credentials optional, metrics on.
+- `prod-like`: engine loop off by default, operator auth on, credential storage on, metadata credentials required, metrics on.
+
+Если профиль не задан, base config остаётся safe-by-default.
+
 ## Candidate Source
 
 ```env
@@ -26,14 +44,14 @@ TRADING_METADATA_ENABLED_VENUES=bybit,gate,bitget,okx,kucoin
 TRADING_METADATA_SYNC_ON_STARTUP=true
 TRADING_METADATA_SCHEDULE_ENABLED=false
 TRADING_METADATA_SYNC_INTERVAL_MINUTES=240
-TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=true
+TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false
 TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED=false
 ```
 
-Для локального запуска без ключей можно временно использовать:
+Для `prod-like` включите stricter startup-требование явно:
 
 ```env
-TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false
+TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=true
 ```
 
 ## HTTP Timing
@@ -54,7 +72,7 @@ GET /api/v1/venues/timings?venue=gate
 ## Operator Auth
 
 ```env
-SECURITY_OPERATOR_AUTH_ENABLED=true
+SECURITY_OPERATOR_AUTH_ENABLED=false
 SECURITY_OPERATOR_BOOTSTRAP_USERS=alice:raw-token,bob:raw-token-2
 ```
 
@@ -89,6 +107,7 @@ POST /internal/engine/execution/run-once?force=true
 Правила текущей фазы:
 
 - loop выключен по умолчанию;
+- `prod-like` тоже не включает loop автоматически, deployment должен выставить `ENGINE_EXECUTION_LOOP_ENABLED=true` явно;
 - `force=true` выполняет все entry attempts из monitor plans, включая future `WAITING_ENTRY`;
 - без engine credentials попытки сохраняются как `FAILED`;
 - live exchange order submission пока не включён автоматически.
@@ -150,3 +169,19 @@ CREDENTIALS_MASTER_KEY_BASE64=<openssl rand -base64 32>
 Если credential storage включён и master key отсутствует, startup падает fail-closed.
 
 Credentials не должны храниться в репозитории или deployment image.
+
+## Schema Management
+
+`monitor-app` использует Flyway и больше не опирается на `ddl-auto=update`:
+
+```env
+SPRING_FLYWAY_ENABLED=true
+SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
+SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+```
+
+Поведение:
+
+- пустая SQLite база получает schema из `db/migration/V1__baseline.sql`;
+- существующая pre-Flyway SQLite база берётся под управление через baseline history table;
+- JPA проверяет schema через `validate`, а не изменяет её автоматически.

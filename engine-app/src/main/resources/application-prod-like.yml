@@ -1,0 +1,9 @@
+spring:
+    config:
+        activate:
+            on-profile: prod-like
+
+engine:
+    execution-loop-enabled: false
+    metrics-publish:
+        enabled: true

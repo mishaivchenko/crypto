@@ -137,6 +137,7 @@ SQLite остаётся текущей локальной persistence базой
 
 Важно:
 
-- новые nullable-колонки безопаснее для schema evolution через Hibernate `ddl-auto=update`;
-- application/domain слой задаёт defaults и invariants;
-- production migration strategy через Flyway/Liquibase ещё не введена.
+- schema теперь versioned через Flyway migration `V1__baseline.sql`;
+- `monitor-app` запускает Flyway перед JPA `validate`, а не через Hibernate `ddl-auto=update`;
+- существующие SQLite базы из pre-Flyway эпохи берутся под управление через baseline history table;
+- application/domain слой по-прежнему задаёт defaults и invariants.

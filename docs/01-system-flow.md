@@ -32,4 +32,3 @@
 - `LONG` запрещён для funding armed trades.
 - Entry trigger учитывает measured latency и manual latency adjustment.
 - SQLite schema совместима со старыми базами: новые burst-колонки nullable на DDL-уровне, defaults задаются в домене и service layer.
-

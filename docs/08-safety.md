@@ -19,6 +19,7 @@
 Что важно:
 
 - execution loop выключен по умолчанию;
+- даже `prod-like` профиль не включает loop без явного `ENGINE_EXECUTION_LOOP_ENABLED=true`;
 - manual `run-once` можно вызвать только явно;
 - без engine credentials попытка сохраняется как `FAILED`;
 - если credentials есть, live order HTTP submission всё равно остаётся guarded в этой фазе;
@@ -32,6 +33,12 @@ Operator endpoints защищены `X-Operator-Token`.
 
 Токены bootstrap-операторов задаются через `SECURITY_OPERATOR_BOOTSTRAP_USERS` и хранятся в базе только как SHA-256 hash.
 
+Safe local baseline:
+
+- без профиля или с `local-safe` auth выключен;
+- `staging` и `prod-like` включают auth обратно;
+- deployment не должен полагаться на documentation-only defaults, а должен выставлять профиль явно.
+
 ## Exchange Keys
 
 Exchange keys хранятся per operator:
@@ -42,6 +49,19 @@ Exchange keys хранятся per operator:
 - raw secrets никогда не возвращаются через API.
 
 Если credential storage включён и master key отсутствует, startup падает fail-closed.
+
+`local-safe` держит credential storage выключенным, а `staging` / `prod-like` включают его обратно.
+
+## Schema Safety
+
+`monitor-app` больше не меняет schema автоматически через Hibernate.
+
+Теперь:
+
+- Flyway управляет versioned migrations;
+- пустая база создаётся из baseline migration;
+- существующая SQLite база получает `flyway_schema_history` через baseline-on-migrate;
+- JPA использует `validate`, чтобы fail-fast при schema drift.
 
 ## Funding Direction
 

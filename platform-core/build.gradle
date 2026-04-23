@@ -1,17 +1,7 @@
 plugins {
     id 'java-library'
-    id 'org.owasp.dependencycheck'
 }
 
 dependencies {
     api 'com.fasterxml.jackson.core:jackson-annotations'
-}
-
-dependencyCheck {
-    failBuildOnCVSS = 7.0
-    analyzers.assemblyEnabled = false
-}
-
-tasks.register('security') {
-    dependsOn 'dependencyCheckAnalyze'
 }

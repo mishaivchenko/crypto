@@ -31,6 +31,7 @@ public class OrderAttemptEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     // Nullable at DDL level so existing SQLite databases can be migrated by hibernate update.

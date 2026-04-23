@@ -3,7 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.7' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
     id 'org.owasp.dependencycheck' version '12.1.8' apply false
-    id 'com.diffplug.spotless' version '6.25.0' apply false
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 ext {
@@ -22,6 +22,7 @@ allprojects {
 subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'org.owasp.dependencycheck'
 
     java {
         toolchain {
@@ -53,6 +54,13 @@ subprojects {
         options.encoding = 'UTF-8'
         options.compilerArgs += ['-parameters']
     }
+
+    dependencyCheck {
+        failBuildOnCVSS = 7.0
+        scanConfigurations = ['compileClasspath', 'runtimeClasspath']
+        analyzers.assemblyEnabled = false
+        nvd.apiKey = System.getenv( 'NVD_API_KEY' )
+    }
 }
 
 tasks.register('bootRunMonitor') {
@@ -65,4 +73,19 @@ tasks.register('bootRunEngine') {
     group = 'application'
     description = 'Run the engine application'
     dependsOn ':engine-app:bootRun'
+}
+
+tasks.register('security') {
+    group = 'verification'
+    description = 'Run the OWASP dependency check across all modules'
+    dependsOn ':platform-core:dependencyCheckAnalyze', ':monitor-app:dependencyCheckAnalyze', ':engine-app:dependencyCheckAnalyze'
+}
+
+spotless {
+    format 'misc', {
+        target '*.gradle', '**/*.gradle', '**/*.md', '**/*.yml', '**/*.yaml'
+        targetExclude '**/build/**', '**/.gradle/**'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }

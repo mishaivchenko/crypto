@@ -1,0 +1,21 @@
+spring:
+    config:
+        activate:
+            on-profile: local-safe
+
+security:
+    operators:
+        auth-enabled: false
+
+credentials:
+    storage:
+        enabled: false
+        require-master-key-on-startup: false
+
+monitor:
+    engine-metrics:
+        enabled: false
+
+trading:
+    metadata:
+        require-credentials-on-startup: false

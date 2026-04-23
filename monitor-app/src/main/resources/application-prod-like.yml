@@ -1,0 +1,21 @@
+spring:
+    config:
+        activate:
+            on-profile: prod-like
+
+security:
+    operators:
+        auth-enabled: true
+
+credentials:
+    storage:
+        enabled: true
+        require-master-key-on-startup: true
+
+monitor:
+    engine-metrics:
+        enabled: true
+
+trading:
+    metadata:
+        require-credentials-on-startup: true

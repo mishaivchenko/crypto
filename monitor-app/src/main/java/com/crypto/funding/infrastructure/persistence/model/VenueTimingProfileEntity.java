@@ -23,6 +23,7 @@ public class VenueTimingProfileEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     @Column(name = "venue", nullable = false)

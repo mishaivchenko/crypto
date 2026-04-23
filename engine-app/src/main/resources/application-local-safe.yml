@@ -1,0 +1,9 @@
+spring:
+    config:
+        activate:
+            on-profile: local-safe
+
+engine:
+    execution-loop-enabled: false
+    metrics-publish:
+        enabled: false

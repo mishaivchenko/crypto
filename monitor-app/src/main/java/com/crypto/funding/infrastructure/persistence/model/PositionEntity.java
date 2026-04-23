@@ -29,6 +29,7 @@ public class PositionEntity extends AuditableEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "integer")
     private Long id;
 
     @Column(name = "armed_trade_id", nullable = false)
