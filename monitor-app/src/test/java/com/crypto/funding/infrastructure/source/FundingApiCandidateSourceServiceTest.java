@@ -25,6 +25,7 @@ import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -263,6 +264,43 @@ class FundingApiCandidateSourceServiceTest
         assertThat( captor.getAllValues() )
             .extracting( IngestSignalCandidateCommand::sourceMessageId )
             .containsExactly( captor.getAllValues().getFirst().sourceMessageId(), captor.getAllValues().getFirst().sourceMessageId() );
+    }
+
+    @Test
+    void refreshCandidatesRecordsFailureTimingWhenPayloadFetchFails()
+    {
+        fundingApi.start();
+        fundingApi.stubFor( get( urlEqualTo( "/api/funding?sort_by=funding&sort_dir=asc&limit=30" ) )
+            .willReturn( serverError().withBody( "boom" ) ) );
+
+        SignalCandidateIngestService ingestService = mock( SignalCandidateIngestService.class );
+        SymbolMetadataPort symbolMetadataPort = mock( SymbolMetadataPort.class );
+        VenueRequestTimingService timingService = new VenueRequestTimingService();
+        SignalCandidateJpaRepository candidateRepository = mock( SignalCandidateJpaRepository.class );
+
+        FundingApiCandidateSourceService service = new FundingApiCandidateSourceService(
+            HttpClient.newHttpClient(),
+            httpProperties(),
+            sourceProperties( fundingApi.baseUrl() + "/api/funding?sort_by=funding&sort_dir=asc&limit=30" ),
+            metadataProperties( "bybit" ),
+            ingestService,
+            symbolMetadataPort,
+            timingService,
+            candidateRepository,
+            fixedClock( "2026-04-04T12:35:00Z" )
+        );
+
+        service.refreshCandidates();
+
+        verifyNoInteractions( ingestService );
+        verifyNoInteractions( candidateRepository );
+        assertThat( timingService.snapshot( "candidate-source", "uainvest-funding-fetch" ) )
+            .satisfies( snapshot -> {
+                assertThat( snapshot.failures() ).isEqualTo( 1L );
+                assertThat( snapshot.successes() ).isEqualTo( 0L );
+                assertThat( snapshot.lastHttpStatus() ).isNull();
+                assertThat( snapshot.lastError() ).contains( "500" );
+            } );
     }
 
     private static VenueHttpProperties httpProperties()

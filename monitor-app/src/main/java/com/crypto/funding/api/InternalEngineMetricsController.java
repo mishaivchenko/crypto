@@ -1,6 +1,6 @@
 package com.crypto.funding.api;
 
-import com.crypto.funding.application.observability.EngineMetricsSnapshotStore;
+import com.crypto.funding.application.observability.EngineMetricsIngestService;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
@@ -14,17 +14,17 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(prefix = "monitor.engine-metrics", name = "enabled", havingValue = "true")
 public class InternalEngineMetricsController
 {
-    private final EngineMetricsSnapshotStore snapshotStore;
+    private final EngineMetricsIngestService ingestService;
 
-    public InternalEngineMetricsController( EngineMetricsSnapshotStore snapshotStore )
+    public InternalEngineMetricsController( EngineMetricsIngestService ingestService )
     {
-        this.snapshotStore = snapshotStore;
+        this.ingestService = ingestService;
     }
 
     @PostMapping("/metrics-snapshot")
     public ResponseEntity<Void> ingestSnapshot( @RequestBody EngineMetricsSnapshot snapshot )
     {
-        snapshotStore.update( snapshot );
+        ingestService.ingest( snapshot );
         return ResponseEntity.accepted().build();
     }
 }

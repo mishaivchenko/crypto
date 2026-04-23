@@ -30,7 +30,7 @@ tasks.register('frontendTest', Exec) {
     group = 'verification'
     description = 'Run monitor static UI tests'
     workingDir projectDir
-    commandLine 'node', '--test', 'src/test/js/history.test.mjs'
+    commandLine 'node', '--test', 'src/test/js/**/*.test.mjs'
 }
 
 tasks.named('check') {

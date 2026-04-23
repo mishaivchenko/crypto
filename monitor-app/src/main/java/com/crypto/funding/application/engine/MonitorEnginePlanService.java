@@ -1,6 +1,10 @@
 package com.crypto.funding.application.engine;
 
 import com.crypto.funding.application.ResourceNotFoundException;
+import com.crypto.funding.application.engine.planning.EngineEntryAttemptScheduleBuilder;
+import com.crypto.funding.application.engine.planning.EnginePlanLookaheadFilter;
+import com.crypto.funding.application.engine.planning.EnginePlanStatusCalculator;
+import com.crypto.funding.application.engine.planning.EnginePlanSummaryFormatter;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.config.MonitorEnginePlanProperties;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
@@ -39,28 +43,53 @@ public class MonitorEnginePlanService
     private final TradeQueryService tradeQueryService;
     private final FundingEventJpaRepository fundingEventRepository;
     private final MonitorEnginePlanProperties engineProperties;
+    private final EngineEntryAttemptScheduleBuilder attemptScheduleBuilder;
+    private final EnginePlanStatusCalculator statusCalculator;
+    private final EnginePlanLookaheadFilter lookaheadFilter;
+    private final EnginePlanSummaryFormatter summaryFormatter;
     private final Clock clock;
 
     @Autowired
     public MonitorEnginePlanService(
         TradeQueryService tradeQueryService,
         FundingEventJpaRepository fundingEventRepository,
-        MonitorEnginePlanProperties engineProperties
+        MonitorEnginePlanProperties engineProperties,
+        EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
+        EnginePlanStatusCalculator statusCalculator,
+        EnginePlanLookaheadFilter lookaheadFilter,
+        EnginePlanSummaryFormatter summaryFormatter
     )
     {
-        this( tradeQueryService, fundingEventRepository, engineProperties, Clock.systemUTC() );
+        this(
+            tradeQueryService,
+            fundingEventRepository,
+            engineProperties,
+            attemptScheduleBuilder,
+            statusCalculator,
+            lookaheadFilter,
+            summaryFormatter,
+            Clock.systemUTC()
+        );
     }
 
     MonitorEnginePlanService(
         TradeQueryService tradeQueryService,
         FundingEventJpaRepository fundingEventRepository,
         MonitorEnginePlanProperties engineProperties,
+        EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
+        EnginePlanStatusCalculator statusCalculator,
+        EnginePlanLookaheadFilter lookaheadFilter,
+        EnginePlanSummaryFormatter summaryFormatter,
         Clock clock
     )
     {
         this.tradeQueryService = tradeQueryService;
         this.fundingEventRepository = fundingEventRepository;
         this.engineProperties = engineProperties;
+        this.attemptScheduleBuilder = attemptScheduleBuilder;
+        this.statusCalculator = statusCalculator;
+        this.lookaheadFilter = lookaheadFilter;
+        this.summaryFormatter = summaryFormatter;
         this.clock = clock;
     }
 
@@ -82,7 +111,7 @@ public class MonitorEnginePlanService
                                 .stream()
                                 .filter( stateFilter )
                                 .map( trade -> toPlan( trade, now ) )
-                                .filter( plan -> includeAll || withinLookaheadWindow( plan ) )
+                                .filter( plan -> lookaheadFilter.shouldInclude( plan, includeAll ) )
                                 .sorted( Comparator.comparing( EngineExecutionPlan::nextActionAt, Comparator.nullsLast( Comparator.naturalOrder() ) )
                                                    .thenComparing( EngineExecutionPlan::armedTradeId ) )
                                 .toList();
@@ -131,8 +160,8 @@ public class MonitorEnginePlanService
                                                                    "Событие фандинга не найдено для подготовленной сделки: " + trade.id()
                                                                ) );
 
-        EnginePlanStatus status = deriveStatus( trade, now );
-        List<EngineEntryAttemptPlan> entryAttempts = entryAttempts( trade, now );
+        EnginePlanStatus status = statusCalculator.deriveStatus( trade, now );
+        List<EngineEntryAttemptPlan> entryAttempts = attemptScheduleBuilder.build( trade, now );
         Instant nextActionAt = nextActionAt( trade, status, entryAttempts, now );
         Long millisUntilAction = nextActionAt == null ? null : Duration.between( now, nextActionAt ).toMillis();
         Long millisUntilFunding = Duration.between( now, fundingEvent.getFundingTime() ).toMillis();
@@ -158,61 +187,8 @@ public class MonitorEnginePlanService
             nextActionAt,
             millisUntilAction,
             millisUntilFunding,
-            summaryText( trade, fundingEvent, status )
+            summaryFormatter.format( trade, fundingEvent, status )
         );
-    }
-
-    private EnginePlanStatus deriveStatus( ArmedTrade trade, Instant now )
-    {
-        if( trade.state() == ArmedTradeState.CLOSED )
-        {
-            return EnginePlanStatus.CLOSED;
-        }
-        if( trade.state() == ArmedTradeState.CANCELLED || trade.state() == ArmedTradeState.FAILED )
-        {
-            return EnginePlanStatus.INVALID;
-        }
-        if( trade.plannedEntryAt() == null )
-        {
-            return EnginePlanStatus.INVALID;
-        }
-
-        Instant firstTrigger = firstEntryTriggerAt( trade );
-        Instant lastTarget = lastEntryTargetAt( trade );
-        Instant exit = trade.plannedExitAt();
-        Instant overdueThreshold = lastTarget.plusSeconds( engineProperties.getOverdueGraceSeconds() );
-
-        if( trade.state() == ArmedTradeState.ARMED || trade.state() == ArmedTradeState.ENTRY_PENDING || trade.state() == ArmedTradeState.ENTRY_ATTEMPTED )
-        {
-            if( now.isBefore( firstTrigger ) )
-            {
-                return EnginePlanStatus.WAITING_ENTRY;
-            }
-            if( exit != null && now.isAfter( exit ) )
-            {
-                return EnginePlanStatus.OVERDUE;
-            }
-            if( now.isAfter( overdueThreshold ) )
-            {
-                return EnginePlanStatus.OVERDUE;
-            }
-            return EnginePlanStatus.ENTRY_WINDOW;
-        }
-
-        if( trade.state() == ArmedTradeState.OPEN || trade.state() == ArmedTradeState.EXIT_PENDING )
-        {
-            if( exit == null )
-            {
-                return EnginePlanStatus.INVALID;
-            }
-            if( now.isBefore( exit ) )
-            {
-                return EnginePlanStatus.WAITING_EXIT;
-            }
-            return EnginePlanStatus.EXIT_WINDOW;
-        }
-
-        return EnginePlanStatus.INVALID;
     }
 
     private Instant nextActionAt( ArmedTrade trade, EnginePlanStatus status, List<EngineEntryAttemptPlan> entryAttempts, Instant now )
@@ -222,7 +198,7 @@ public class MonitorEnginePlanService
             case WAITING_ENTRY, OVERDUE -> entryAttempts.stream()
                                                         .map( EngineEntryAttemptPlan::triggerAt )
                                                         .min( Instant::compareTo )
-                                                        .orElse( firstEntryTriggerAt( trade ) );
+                                                        .orElse( attemptScheduleBuilder.firstTriggerAt( trade ) );
             case ENTRY_WINDOW -> entryAttempts.stream()
                                               .map( EngineEntryAttemptPlan::triggerAt )
                                               .filter( trigger -> !trigger.isBefore( now ) )
@@ -230,78 +206,9 @@ public class MonitorEnginePlanService
                                               .orElseGet( () -> entryAttempts.stream()
                                                                               .map( EngineEntryAttemptPlan::triggerAt )
                                                                               .max( Instant::compareTo )
-                                                                              .orElse( firstEntryTriggerAt( trade ) ) );
+                                                                              .orElse( attemptScheduleBuilder.firstTriggerAt( trade ) ) );
             case WAITING_EXIT, EXIT_WINDOW -> trade.plannedExitAt();
             case CLOSED, INVALID -> null;
-        };
-    }
-
-    private List<EngineEntryAttemptPlan> entryAttempts( ArmedTrade trade, Instant now )
-    {
-        if( trade.plannedEntryAt() == null )
-        {
-            return List.of();
-        }
-
-        int attempts = trade.entryAttemptCount() == null ? 1 : trade.entryAttemptCount();
-        long spacingMs = trade.entrySpacingMs() == null ? 0L : trade.entrySpacingMs();
-        long effectiveLatencyMs = trade.effectiveEntryLatencyMs() == null ? 0L : trade.effectiveEntryLatencyMs();
-
-        return java.util.stream.IntStream.range( 0, attempts )
-                                         .mapToObj( index -> {
-                                             long offsetMs = spacingMs * index;
-                                             Instant targetEntryAt = trade.plannedEntryAt().plusMillis( offsetMs );
-                                             Instant triggerAt = targetEntryAt.minusMillis( effectiveLatencyMs );
-                                             return new EngineEntryAttemptPlan(
-                                                 index + 1,
-                                                 targetEntryAt,
-                                                 triggerAt,
-                                                 Duration.between( now, triggerAt ).toMillis(),
-                                                 offsetMs,
-                                                 effectiveLatencyMs
-                                             );
-                                         } )
-                                         .toList();
-    }
-
-    private Instant firstEntryTriggerAt( ArmedTrade trade )
-    {
-        long effectiveLatencyMs = trade.effectiveEntryLatencyMs() == null ? 0L : trade.effectiveEntryLatencyMs();
-        return trade.plannedEntryAt().minusMillis( effectiveLatencyMs );
-    }
-
-    private Instant lastEntryTargetAt( ArmedTrade trade )
-    {
-        int attempts = trade.entryAttemptCount() == null ? 1 : trade.entryAttemptCount();
-        long spacingMs = trade.entrySpacingMs() == null ? 0L : trade.entrySpacingMs();
-        return trade.plannedEntryAt().plusMillis( spacingMs * Math.max( 0, attempts - 1 ) );
-    }
-
-    private boolean withinLookaheadWindow( EngineExecutionPlan plan )
-    {
-        if( plan.status() == EnginePlanStatus.ENTRY_WINDOW || plan.status() == EnginePlanStatus.EXIT_WINDOW || plan.status() == EnginePlanStatus.OVERDUE )
-        {
-            return true;
-        }
-        if( plan.millisUntilAction() == null )
-        {
-            return false;
-        }
-        long lookaheadMillis = Duration.ofMinutes( engineProperties.getLookaheadMinutes() ).toMillis();
-        return plan.millisUntilAction() <= lookaheadMillis;
-    }
-
-    private String summaryText( ArmedTrade trade, FundingEventEntity fundingEvent, EnginePlanStatus status )
-    {
-        return switch( status )
-        {
-            case WAITING_ENTRY -> "Ожидаем вход по " + fundingEvent.getSymbol() + " на " + fundingEvent.getVenue();
-            case ENTRY_WINDOW -> "Окно входа активно для " + fundingEvent.getSymbol() + " (" + trade.intendedSide() + ")";
-            case WAITING_EXIT -> "Сделка ждёт планового выхода";
-            case EXIT_WINDOW -> "Окно выхода активно для " + fundingEvent.getSymbol();
-            case OVERDUE -> "Окно входа пропущено, нужен разбор оператора";
-            case CLOSED -> "Сделка уже закрыта";
-            case INVALID -> "План сделки неполный и не готов к исполнению";
         };
     }
 }
