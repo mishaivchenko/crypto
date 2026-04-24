@@ -9,6 +9,8 @@ plugins {
 
 ext {
     springCloudVersion = '2024.0.1'
+    localBootProfile = 'local-safe'
+    localInternalEngineToken = 'funding-local-internal-token'
 }
 
 allprojects {
@@ -66,14 +68,34 @@ subprojects {
 
 tasks.register('bootRunMonitor') {
     group = 'application'
-    description = 'Run the monitor application'
+    description = 'Run the monitor application with local-safe defaults when env is not provided'
     dependsOn ':monitor-app:bootRun'
 }
 
 tasks.register('bootRunEngine') {
     group = 'application'
-    description = 'Run the engine application'
+    description = 'Run the engine application with local-safe defaults when env is not provided'
     dependsOn ':engine-app:bootRun'
+}
+
+project( ':monitor-app' ) {
+    plugins.withId( 'org.springframework.boot' ) {
+        tasks.named( 'bootRun' ) {
+            environment 'SPRING_PROFILES_ACTIVE', System.getenv( 'SPRING_PROFILES_ACTIVE' ) ?: localBootProfile
+            environment 'INTERNAL_ENGINE_TOKEN', System.getenv( 'INTERNAL_ENGINE_TOKEN' ) ?: localInternalEngineToken
+            environment 'MONITOR_ENGINE_CONTROL_INTERNAL_TOKEN',
+                System.getenv( 'MONITOR_ENGINE_CONTROL_INTERNAL_TOKEN' ) ?: ( System.getenv( 'INTERNAL_ENGINE_TOKEN' ) ?: localInternalEngineToken )
+        }
+    }
+}
+
+project( ':engine-app' ) {
+    plugins.withId( 'org.springframework.boot' ) {
+        tasks.named( 'bootRun' ) {
+            environment 'SPRING_PROFILES_ACTIVE', System.getenv( 'SPRING_PROFILES_ACTIVE' ) ?: localBootProfile
+            environment 'INTERNAL_ENGINE_TOKEN', System.getenv( 'INTERNAL_ENGINE_TOKEN' ) ?: localInternalEngineToken
+        }
+    }
 }
 
 tasks.register('security') {

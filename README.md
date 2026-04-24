@@ -76,6 +76,8 @@ Runtime profiles:
 
 Если профиль не задан, базовые значения всё равно safe-by-default.
 
+Локальные `bootRun`-таски также подставляют `SPRING_PROFILES_ACTIVE=local-safe` и общий `INTERNAL_ENGINE_TOKEN=funding-local-internal-token`, если вы не передали свои ENV явно.
+
 ## UI
 
 Рабочий операторский интерфейс находится в `monitor-app`.

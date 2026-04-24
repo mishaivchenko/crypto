@@ -18,6 +18,8 @@ SPRING_PROFILES_ACTIVE=prod-like
 
 Если профиль не задан, base config остаётся safe-by-default.
 
+Для локального `./gradlew bootRunMonitor` и `./gradlew bootRunEngine` root build подставляет `SPRING_PROFILES_ACTIVE=local-safe`, если переменная окружения не задана.
+
 ## Candidate Source
 
 ```env
@@ -90,6 +92,8 @@ MONITOR_INTERNAL_BASE_URL=http://localhost:8090
 Monitor internal endpoints `/internal/v1/engine/**` требуют `X-Internal-Token`.
 
 Engine использует `MONITOR_INTERNAL_BASE_URL` и тот же `INTERNAL_ENGINE_TOKEN`.
+
+Для локального `bootRun` тот же root build подставляет `INTERNAL_ENGINE_TOKEN=funding-local-internal-token`, если ENV не задан. Это нужно, чтобы `engine-app` мог ходить в monitor internal API без ручной подготовки токена.
 
 ## Engine Execution Attempts
 

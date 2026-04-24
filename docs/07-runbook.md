@@ -22,10 +22,10 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@25 ./gradlew --no-daemon -Dorg.gradle.java.i
 ## Run Monitor
 
 ```bash
-SECURITY_OPERATOR_AUTH_ENABLED=false \
-TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false \
 ./gradlew bootRunMonitor
 ```
+
+По умолчанию этот root task сам стартует monitor с `SPRING_PROFILES_ACTIVE=local-safe` и `INTERNAL_ENGINE_TOKEN=funding-local-internal-token`, если вы не передали свои ENV.
 
 URL:
 
@@ -50,8 +50,10 @@ curl -H 'X-Operator-Token: <token>' http://localhost:8090/api/v2/monitor/overvie
 ## Run Engine
 
 ```bash
-INTERNAL_ENGINE_TOKEN=<same-token-as-monitor> ./gradlew bootRunEngine
+./gradlew bootRunEngine
 ```
+
+По умолчанию этот root task сам стартует engine с `SPRING_PROFILES_ACTIVE=local-safe` и тем же `INTERNAL_ENGINE_TOKEN=funding-local-internal-token`, если вы не передали свои ENV.
 
 URL:
 
