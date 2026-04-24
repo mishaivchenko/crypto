@@ -92,6 +92,7 @@ class EngineMetricsPublisherIntegrationTest
     @Test
     void publishesLowCardinalityMetricsSnapshotToMonitor()
     {
+        // REQ: ENG-ACC-004
         assertThat( applicationContext.getBeansOfType( EngineMetricsPublisher.class ) ).hasSize( 1 );
 
         publisher.publishSnapshot();

@@ -46,6 +46,7 @@ class InternalEngineMetricsApiIntegrationTest
     @Test
     void protectsMetricsIngestAndExportsPrometheusView()
     {
+        // REQ: ENG-ACC-007
         ResponseEntity<String> unauthorized = restTemplate.postForEntity(
             url( "/internal/v1/engine/metrics-snapshot" ),
             snapshot(),

@@ -31,6 +31,27 @@ jobs:
       - name: Build backend (runs tests)
         run: ./gradlew clean build --no-daemon
 
+  engine_tdd:
+    name: Engine TDD Gate
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Run engine TDD gate
+        run: ./gradlew engineTddGate --no-daemon
+
   security:
     name: Security Scan
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'

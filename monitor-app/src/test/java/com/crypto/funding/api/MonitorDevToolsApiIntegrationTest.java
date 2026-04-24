@@ -130,6 +130,7 @@ class MonitorDevToolsApiIntegrationTest
     @Test
     void requiresOperatorTokenForDevTools() throws Exception
     {
+        // REQ: ENG-ACC-007
         mockMvc.perform( post( "/api/v2/monitor/dev/engine/run-once" ) )
                .andExpect( status().isUnauthorized() )
                .andExpect( jsonPath( "$.message" ).value( "Valid X-Operator-Token is required." ) );
@@ -138,6 +139,7 @@ class MonitorDevToolsApiIntegrationTest
     @Test
     void proxiesRunOnceToEngineWithInternalToken() throws Exception
     {
+        // REQ: ENG-ACC-007
         mockMvc.perform( post( "/api/v2/monitor/dev/engine/run-once" )
                 .header( "X-Operator-Token", "alice-token" )
                 .param( "force", "true" ) )
@@ -155,6 +157,7 @@ class MonitorDevToolsApiIntegrationTest
     @Test
     void loadsAndUpdatesEngineRuntimeThroughMonitorApi() throws Exception
     {
+        // REQ: ENG-ACC-007
         mockMvc.perform( get( "/api/v2/monitor/dev/engine/runtime" )
                 .header( "X-Operator-Token", "alice-token" ) )
                .andExpect( status().isOk() )

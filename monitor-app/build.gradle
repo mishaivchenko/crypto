@@ -36,3 +36,16 @@ tasks.register('frontendTest', Exec) {
 tasks.named('check') {
     dependsOn tasks.named('frontendTest')
 }
+
+tasks.register('engineAcceptanceTest', Test) {
+    group = 'verification'
+    description = 'Run the monitor-side engine acceptance boundary tests'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+
+    include '**/InternalEnginePlanApiIntegrationTest.class'
+    include '**/InternalEngineMetricsApiIntegrationTest.class'
+    include '**/InternalEngineMetricsDisabledIntegrationTest.class'
+    include '**/MonitorDevToolsApiIntegrationTest.class'
+}

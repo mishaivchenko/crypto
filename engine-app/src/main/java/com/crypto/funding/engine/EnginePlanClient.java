@@ -4,6 +4,7 @@ import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.function.LongSupplier;
 
 @Component
 public class EnginePlanClient
@@ -23,11 +25,24 @@ public class EnginePlanClient
     private final RestClient restClient;
     private final EngineProperties properties;
     private final EngineTelemetryService telemetryService;
+    private final LongSupplier nanoTimeSupplier;
 
+    @Autowired
     public EnginePlanClient( RestClient.Builder builder, EngineProperties properties, EngineTelemetryService telemetryService )
+    {
+        this( builder, properties, telemetryService, System::nanoTime );
+    }
+
+    EnginePlanClient(
+        RestClient.Builder builder,
+        EngineProperties properties,
+        EngineTelemetryService telemetryService,
+        LongSupplier nanoTimeSupplier
+    )
     {
         this.properties = properties;
         this.telemetryService = telemetryService;
+        this.nanoTimeSupplier = nanoTimeSupplier;
         this.restClient = builder.baseUrl( properties.getMonitorBaseUrl() ).build();
     }
 
@@ -38,7 +53,7 @@ public class EnginePlanClient
 
     public List<EngineExecutionPlan> listPlans( boolean includeAll )
     {
-        long startedAt = System.nanoTime();
+        long startedAt = nanoTimeSupplier.getAsLong();
         try
         {
             return restClient.get()
@@ -51,7 +66,7 @@ public class EnginePlanClient
         }
         finally
         {
-            telemetryService.recordPlanFetch( ( System.nanoTime() - startedAt ) / 1_000_000L );
+            telemetryService.recordPlanFetch( ( nanoTimeSupplier.getAsLong() - startedAt ) / 1_000_000L );
         }
     }
 
@@ -66,7 +81,7 @@ public class EnginePlanClient
 
     public EngineOrderAttemptResponse recordOrderAttempt( EngineOrderAttemptRecordRequest request )
     {
-        long startedAt = System.nanoTime();
+        long startedAt = nanoTimeSupplier.getAsLong();
         try
         {
             return restClient.post()
@@ -79,7 +94,7 @@ public class EnginePlanClient
         }
         finally
         {
-            telemetryService.recordAttemptRecord( ( System.nanoTime() - startedAt ) / 1_000_000L );
+            telemetryService.recordAttemptRecord( ( nanoTimeSupplier.getAsLong() - startedAt ) / 1_000_000L );
         }
     }
 

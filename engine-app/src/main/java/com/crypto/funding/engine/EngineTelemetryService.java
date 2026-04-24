@@ -136,7 +136,11 @@ public class EngineTelemetryService
     {
         if( status != null )
         {
-            attemptStatusBreakdown.computeIfAbsent( status, ignored -> new AtomicLong() ).incrementAndGet();
+            AtomicLong counter = attemptStatusBreakdown.get( status );
+            if( counter != null )
+            {
+                counter.incrementAndGet();
+            }
         }
         submitStatsByVenue.computeIfAbsent( normalizeVenue( venue ), ignored -> new VenueSubmitStats() )
                          .record( status, durationMs );

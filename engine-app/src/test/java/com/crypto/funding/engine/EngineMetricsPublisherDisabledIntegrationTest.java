@@ -20,6 +20,7 @@ class EngineMetricsPublisherDisabledIntegrationTest
     @Test
     void doesNotCreateMetricsPublisherByDefault()
     {
+        // REQ: ENG-ACC-004
         assertThat( applicationContext.getBeansOfType( EngineMetricsPublisher.class ) ).isEmpty();
     }
 }

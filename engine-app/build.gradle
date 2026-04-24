@@ -1,5 +1,7 @@
 plugins {
     id 'org.springframework.boot'
+    id 'jacoco'
+    id 'info.solidsoft.pitest'
 }
 
 dependencies {
@@ -15,4 +17,105 @@ springBoot {
 
 bootJar {
     archiveClassifier = 'engine'
+}
+
+def engineTddClassPatterns = [
+    'com/crypto/funding/engine/*.class'
+]
+
+def engineTddClasses = [
+    'com.crypto.funding.engine.CredentialAwareExecutionPort',
+    'com.crypto.funding.engine.EngineApplication',
+    'com.crypto.funding.engine.EngineController',
+    'com.crypto.funding.engine.EngineExecutionService',
+    'com.crypto.funding.engine.EngineExecutionScheduler',
+    'com.crypto.funding.engine.EngineMetricsPublishProperties',
+    'com.crypto.funding.engine.EngineMetricsPublisher',
+    'com.crypto.funding.engine.EngineModuleConfiguration',
+    'com.crypto.funding.engine.EnginePlanClient',
+    'com.crypto.funding.engine.EnginePlanService',
+    'com.crypto.funding.engine.EngineProperties',
+    'com.crypto.funding.engine.EngineRuntimeControlService',
+    'com.crypto.funding.engine.EngineTelemetryService'
+]
+
+tasks.register('engineTddCoverageReport', JacocoReport) {
+    group = 'verification'
+    description = 'Generate JaCoCo coverage for engine TDD engine-app classes'
+    dependsOn tasks.named('test')
+
+    executionData.from fileTree(buildDir).include(
+        'jacoco/test.exec',
+        'jacoco/test*.exec'
+    )
+    sourceDirectories.from files(sourceSets.main.allSource.srcDirs)
+    classDirectories.from files(sourceSets.main.output.classesDirs.collect { dir ->
+        fileTree(dir: dir, include: engineTddClassPatterns, exclude: ['**/*$*'])
+    })
+
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.register('engineTddCoverageVerification', JacocoCoverageVerification) {
+    group = 'verification'
+    description = 'Verify engine TDD coverage thresholds for engine-app classes'
+    dependsOn tasks.named('test')
+
+    executionData.from fileTree(buildDir).include(
+        'jacoco/test.exec',
+        'jacoco/test*.exec'
+    )
+    sourceDirectories.from files(sourceSets.main.allSource.srcDirs)
+    classDirectories.from files(sourceSets.main.output.classesDirs.collect { dir ->
+        fileTree(dir: dir, include: engineTddClassPatterns, exclude: ['**/*$*'])
+    })
+
+    violationRules {
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.95
+            }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+pitest {
+    junit5PluginVersion = '1.2.3'
+    pitestVersion = '1.22.1'
+    targetClasses = engineTddClasses
+    targetTests = [
+        'com.crypto.funding.engine.EngineApplicationIntegrationTest',
+        'com.crypto.funding.engine.EngineApplicationTest',
+        'com.crypto.funding.engine.CredentialAwareExecutionPortTest',
+        'com.crypto.funding.engine.EngineControllerTest',
+        'com.crypto.funding.engine.EngineExecutionServiceTest',
+        'com.crypto.funding.engine.EngineExecutionSchedulerTest',
+        'com.crypto.funding.engine.EngineMetricsPublishPropertiesTest',
+        'com.crypto.funding.engine.EngineMetricsPublisherDisabledIntegrationTest',
+        'com.crypto.funding.engine.EngineMetricsPublisherIntegrationTest',
+        'com.crypto.funding.engine.EngineMetricsPublisherTest',
+        'com.crypto.funding.engine.EngineModuleConfigurationTest',
+        'com.crypto.funding.engine.EnginePlanClientTest',
+        'com.crypto.funding.engine.EnginePlanServiceTest',
+        'com.crypto.funding.engine.EnginePropertiesTest',
+        'com.crypto.funding.engine.EngineRuntimeControlServiceTest',
+        'com.crypto.funding.engine.EngineRuntimeProfilesIntegrationTest',
+        'com.crypto.funding.engine.EngineTelemetryServiceTest'
+    ]
+    mutationThreshold = 100
+    threads = 1
+    outputFormats = ['XML', 'HTML']
+    timestampedReports = false
+    useClasspathFile = true
 }

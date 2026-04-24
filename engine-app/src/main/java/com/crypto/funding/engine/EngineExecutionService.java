@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.LongSupplier;
 
 @Service
 public class EngineExecutionService
@@ -26,19 +27,32 @@ public class EngineExecutionService
     private final ExecutionPort executionPort;
     private final EngineTelemetryService telemetryService;
     private final Clock clock;
+    private final LongSupplier nanoTimeSupplier;
 
     @Autowired
     public EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, EngineTelemetryService telemetryService )
     {
-        this( client, executionPort, telemetryService, Clock.systemUTC() );
+        this( client, executionPort, telemetryService, Clock.systemUTC(), System::nanoTime );
     }
 
     EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, EngineTelemetryService telemetryService, Clock clock )
+    {
+        this( client, executionPort, telemetryService, clock, System::nanoTime );
+    }
+
+    EngineExecutionService(
+        EnginePlanClient client,
+        ExecutionPort executionPort,
+        EngineTelemetryService telemetryService,
+        Clock clock,
+        LongSupplier nanoTimeSupplier
+    )
     {
         this.client = client;
         this.executionPort = executionPort;
         this.telemetryService = telemetryService;
         this.clock = clock;
+        this.nanoTimeSupplier = nanoTimeSupplier;
     }
 
     public EngineExecutionRunResponse runOnce( boolean force )
@@ -109,12 +123,12 @@ public class EngineExecutionService
             null,
             attemptPlan.triggerAt()
         );
-        long submitStartedAt = System.nanoTime();
+        long submitStartedAt = nanoTimeSupplier.getAsLong();
         OrderAttempt attempt = executionPort.submitOrder( plan.armedTradeId(), plan.venue(), plan.symbol(), intent );
         telemetryService.recordOrderSubmission(
             plan.venue(),
             attempt.status(),
-            ( System.nanoTime() - submitStartedAt ) / 1_000_000L
+            ( nanoTimeSupplier.getAsLong() - submitStartedAt ) / 1_000_000L
         );
         String attemptKey = attemptKey( plan, attemptPlan );
         EngineOrderAttemptResponse recorded = client.recordOrderAttempt( new EngineOrderAttemptRecordRequest(

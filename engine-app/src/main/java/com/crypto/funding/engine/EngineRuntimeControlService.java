@@ -34,7 +34,7 @@ public class EngineRuntimeControlService
         this.telemetryService = telemetryService;
         this.clock = clock;
         this.executionLoopEnabled.set( properties.isExecutionLoopEnabled() );
-        this.executionLoopIntervalMs.set( normalizeInterval( properties.getExecutionLoopIntervalMs() ) );
+        this.executionLoopIntervalMs.set( clampInterval( properties.getExecutionLoopIntervalMs() ) );
         this.updatedAt = Instant.now( clock );
     }
 
@@ -51,7 +51,7 @@ public class EngineRuntimeControlService
         }
         if( request.executionLoopIntervalMs() != null )
         {
-            executionLoopIntervalMs.set( normalizeInterval( request.executionLoopIntervalMs() ) );
+            executionLoopIntervalMs.set( clampInterval( request.executionLoopIntervalMs() ) );
         }
         lastScheduledDispatchAtMs.set( Long.MIN_VALUE );
         updatedAt = Instant.now( clock );
@@ -71,7 +71,7 @@ public class EngineRuntimeControlService
         {
             return false;
         }
-        return lastScheduledDispatchAtMs.compareAndSet( previous, now );
+        return tryMarkScheduledDispatch( previous, now );
     }
 
     public boolean executionLoopEnabled()
@@ -114,12 +114,13 @@ public class EngineRuntimeControlService
         );
     }
 
-    private static long normalizeInterval( Long value )
+    boolean tryMarkScheduledDispatch( long previous, long now )
     {
-        if( value == null )
-        {
-            return MIN_EXECUTION_LOOP_INTERVAL_MS;
-        }
+        return lastScheduledDispatchAtMs.compareAndSet( previous, now );
+    }
+
+    private static long clampInterval( long value )
+    {
         return Math.max( MIN_EXECUTION_LOOP_INTERVAL_MS, value );
     }
 }

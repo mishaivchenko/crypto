@@ -11,6 +11,7 @@ class EngineRuntimeProfilesIntegrationTest
     @Test
     void localSafeProfileKeepsLoopAndMetricsDisabled()
     {
+        // REQ: ENG-ACC-005
         try( ConfigurableApplicationContext context = runWithProfile( "local-safe" ) )
         {
             assertThat( context.getBean( EngineProperties.class ).isExecutionLoopEnabled() ).isFalse();
@@ -21,6 +22,7 @@ class EngineRuntimeProfilesIntegrationTest
     @Test
     void stagingProfileKeepsLoopDisabledButEnablesMetricsPublishing()
     {
+        // REQ: ENG-ACC-005
         try( ConfigurableApplicationContext context = runWithProfile( "staging" ) )
         {
             assertThat( context.getBean( EngineProperties.class ).isExecutionLoopEnabled() ).isFalse();
@@ -31,6 +33,7 @@ class EngineRuntimeProfilesIntegrationTest
     @Test
     void prodLikeProfileKeepsLoopDisabledButEnablesMetricsPublishing()
     {
+        // REQ: ENG-ACC-005
         try( ConfigurableApplicationContext context = runWithProfile( "prod-like" ) )
         {
             assertThat( context.getBean( EngineProperties.class ).isExecutionLoopEnabled() ).isFalse();

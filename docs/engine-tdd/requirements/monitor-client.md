@@ -1,0 +1,9 @@
+# Monitor Client Requirements
+
+Primary classes: `EnginePlanClient`, `EngineProperties`.
+
+- `ENG-CLI-001`: `listPlans(includeAll)` sends the current query flag and internal token header.
+- `ENG-CLI-002`: `recordOrderAttempt` posts the request body shape expected by monitor and records timing telemetry.
+- `ENG-CLI-003`: `publishMetricsSnapshot` posts the current snapshot wire shape with the internal token header.
+- `ENG-CLI-004`: `getPlan` fetches a single plan by path without changing endpoint shape.
+- `ENG-CLI-005`: engine client properties keep the default monitor base URL, blank internal token, and safe loop defaults.

@@ -64,6 +64,7 @@ class EngineApplicationIntegrationTest
     @Test
     void exposesEngineSummaryAndPlans() throws Exception
     {
+        // REQ: ENG-ACC-001
         mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get( "/internal/engine/summary" ) )
                .andExpect( status().isOk() )
                .andExpect( jsonPath( "$.module" ).value( "engine-app" ) )
@@ -81,6 +82,7 @@ class EngineApplicationIntegrationTest
     @Test
     void exposesAndUpdatesRuntimeControls() throws Exception
     {
+        // REQ: ENG-ACC-002
         mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get( "/internal/engine/runtime" ) )
                .andExpect( status().isOk() )
                .andExpect( jsonPath( "$.executionLoopEnabled" ).value( false ) )
@@ -102,6 +104,7 @@ class EngineApplicationIntegrationTest
     @Test
     void runOnceRecordsFailedAttemptsWhenEngineCredentialsAreMissing() throws Exception
     {
+        // REQ: ENG-ACC-003
         MONITOR.stubFor( get( urlEqualTo( "/internal/v1/engine/plans?includeAll=true" ) )
             .willReturn( okJson( """
                 [

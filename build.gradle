@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.7' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
     id 'org.owasp.dependencycheck' version '12.1.8' apply false
+    id 'info.solidsoft.pitest' version '1.19.0' apply false
     id 'com.diffplug.spotless' version '6.25.0'
 }
 
@@ -88,4 +89,114 @@ spotless {
         trimTrailingWhitespace()
         endWithNewline()
     }
+}
+
+tasks.register('engineTddDocsCheck') {
+    group = 'verification'
+    description = 'Verify engine TDD requirement IDs stay consistent across specs, gap matrix, and tests'
+
+    inputs.files(
+        fileTree( 'docs/engine-tdd' ) { include '**/*.md' },
+        fileTree( 'docs/engine-tdd/requirements' ) { include '**/*.md' },
+        fileTree( 'docs/engine-tdd' ) { include 'gap-matrix.md' },
+        fileTree( 'engine-app/src/main/java/com/crypto/funding/engine' ) { include '*.java' },
+        fileTree( 'engine-app/src/test/java' ) { include '**/*.java' },
+        fileTree( 'platform-core/src/test/java' ) { include '**/*.java' },
+        fileTree( 'monitor-app/src/test/java' ) { include '**/*.java' }
+    )
+
+    doLast {
+        def requirementPattern = ~/\bENG-(?:ACC|CLI|CORE|CRED|EXE|PLAN|PUB|RTC|SCH|TEL)-\d{3}\b/
+        def extractIds = { FileTree tree ->
+            def ids = new TreeSet<String>()
+            tree.files.each { file ->
+                ( file.getText( 'UTF-8' ) =~ requirementPattern ).each { match ->
+                    ids.add( match instanceof List ? match[0] : match )
+                }
+            }
+            ids
+        }
+
+        FileTree requirementFiles = fileTree( 'docs/engine-tdd/requirements' ) { include '**/*.md' }
+        FileTree allDocsFiles = fileTree( 'docs/engine-tdd' ) { include '**/*.md' }
+        if( requirementFiles.isEmpty() )
+        {
+            throw new GradleException( 'No engine TDD requirement files found under docs/engine-tdd/requirements.' )
+        }
+
+        Set<String> requirementIds = extractIds( requirementFiles )
+        Set<String> gapIds = extractIds( fileTree( 'docs/engine-tdd' ) { include 'gap-matrix.md' } )
+        Set<String> testIds = extractIds( fileTree( projectDir ) {
+            include 'engine-app/src/test/java/**/*.java'
+            include 'platform-core/src/test/java/**/*.java'
+            include 'monitor-app/src/test/java/**/*.java'
+        } )
+
+        if( requirementIds.isEmpty() )
+        {
+            throw new GradleException( 'No requirement IDs found in docs/engine-tdd/requirements.' )
+        }
+
+        def requirementWithoutGap = new TreeSet<>( requirementIds )
+        requirementWithoutGap.removeAll( gapIds )
+        if( !requirementWithoutGap.isEmpty() )
+        {
+            throw new GradleException( "Requirement IDs missing from gap matrix: ${requirementWithoutGap.join( ', ' )}" )
+        }
+
+        def gapWithoutRequirement = new TreeSet<>( gapIds )
+        gapWithoutRequirement.removeAll( requirementIds )
+        if( !gapWithoutRequirement.isEmpty() )
+        {
+            throw new GradleException( "Gap matrix contains orphan requirement IDs: ${gapWithoutRequirement.join( ', ' )}" )
+        }
+
+        def requirementWithoutTests = new TreeSet<>( requirementIds )
+        requirementWithoutTests.removeAll( testIds )
+        if( !requirementWithoutTests.isEmpty() )
+        {
+            throw new GradleException( "Requirement IDs missing from tests: ${requirementWithoutTests.join( ', ' )}" )
+        }
+
+        def testWithoutRequirement = new TreeSet<>( testIds )
+        testWithoutRequirement.removeAll( requirementIds )
+        if( !testWithoutRequirement.isEmpty() )
+        {
+            throw new GradleException( "Tests contain orphan requirement IDs: ${testWithoutRequirement.join( ', ' )}" )
+        }
+
+        def docsText = allDocsFiles.files.collect { it.getText( 'UTF-8' ) }.join( System.lineSeparator() )
+        def gapMatrixText = file( 'docs/engine-tdd/gap-matrix.md' ).getText( 'UTF-8' )
+        def engineProductionClasses = fileTree( 'engine-app/src/main/java/com/crypto/funding/engine' ) {
+            include '*.java'
+            exclude 'package-info.java'
+        }.files.collect { it.name - '.java' } as Set<String>
+
+        def undocumentedClasses = new TreeSet<>( engineProductionClasses.findAll { !docsText.contains( it ) } )
+        if( !undocumentedClasses.isEmpty() )
+        {
+            throw new GradleException( "Engine production classes missing from docs/engine-tdd: ${undocumentedClasses.join( ', ' )}" )
+        }
+
+        def gapUnmappedClasses = new TreeSet<>( engineProductionClasses.findAll { !gapMatrixText.contains( it ) } )
+        if( !gapUnmappedClasses.isEmpty() )
+        {
+            throw new GradleException( "Engine production classes missing from gap matrix: ${gapUnmappedClasses.join( ', ' )}" )
+        }
+    }
+}
+
+tasks.register('engineTddGate') {
+    group = 'verification'
+    description = 'Run engine TDD docs, acceptance, coverage, and mutation gates'
+    dependsOn(
+        'engineTddDocsCheck',
+        ':platform-core:test',
+        ':platform-core:engineTddCoverageVerification',
+        ':platform-core:pitest',
+        ':engine-app:test',
+        ':engine-app:engineTddCoverageVerification',
+        ':engine-app:pitest',
+        ':monitor-app:engineAcceptanceTest'
+    )
 }

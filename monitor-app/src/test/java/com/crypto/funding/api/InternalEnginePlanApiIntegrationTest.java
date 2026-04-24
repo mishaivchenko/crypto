@@ -64,6 +64,7 @@ class InternalEnginePlanApiIntegrationTest
     @Test
     void protectsEnginePlanApiWithInternalToken() throws Exception
     {
+        // REQ: ENG-ACC-006
         mockMvc.perform( get( "/internal/v1/engine/plans" ) )
                .andExpect( status().isUnauthorized() )
                .andExpect( jsonPath( "$.message" ).value( "Valid X-Internal-Token is required." ) );
@@ -77,6 +78,7 @@ class InternalEnginePlanApiIntegrationTest
     @Test
     void recordsOrderAttemptsIdempotently() throws Exception
     {
+        // REQ: ENG-ACC-006
         ArmedTradeEntity trade = createArmedTrade();
         String payload = """
             {
@@ -123,6 +125,7 @@ class InternalEnginePlanApiIntegrationTest
     @Test
     void includeAllPlansStillReturnsOverdueArmedTradesAfterFundingEventExpires() throws Exception
     {
+        // REQ: ENG-ACC-006
         ArmedTradeEntity trade = createStaleArmedTrade();
 
         mockMvc.perform( get( "/internal/v1/engine/plans" )

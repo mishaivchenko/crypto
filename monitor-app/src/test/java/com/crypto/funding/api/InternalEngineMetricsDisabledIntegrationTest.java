@@ -44,6 +44,7 @@ class InternalEngineMetricsDisabledIntegrationTest
     @Test
     void keepsMetricsEndpointAbsentWhenFeatureDisabled()
     {
+        // REQ: ENG-ACC-007
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType( MediaType.APPLICATION_JSON );
         headers.set( "X-Internal-Token", "test-internal-token" );

@@ -1,7 +1,88 @@
 plugins {
     id 'java-library'
+    id 'jacoco'
+    id 'info.solidsoft.pitest'
 }
 
 dependencies {
     api 'com.fasterxml.jackson.core:jackson-annotations'
+}
+
+def engineTddRuleClassPatterns = [
+    'com/crypto/funding/domain/execution/OrderIntent.class',
+    'com/crypto/funding/domain/execution/OrderAttempt.class',
+    'com/crypto/funding/contract/engine/EngineMetricsSnapshot.class'
+]
+
+def engineTddRuleClasses = [
+    'com.crypto.funding.domain.execution.OrderIntent',
+    'com.crypto.funding.domain.execution.OrderAttempt',
+    'com.crypto.funding.contract.engine.EngineMetricsSnapshot'
+]
+
+tasks.register('engineTddCoverageReport', JacocoReport) {
+    group = 'verification'
+    description = 'Generate JaCoCo coverage for engine-core rule classes'
+    dependsOn tasks.named('test')
+
+    executionData.from fileTree(buildDir).include(
+        'jacoco/test.exec',
+        'jacoco/test*.exec'
+    )
+    sourceDirectories.from files(sourceSets.main.allSource.srcDirs)
+    classDirectories.from files(sourceSets.main.output.classesDirs.collect { dir ->
+        fileTree(dir: dir, include: engineTddRuleClassPatterns)
+    })
+
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.register('engineTddCoverageVerification', JacocoCoverageVerification) {
+    group = 'verification'
+    description = 'Verify engine-core coverage thresholds for engine TDD rule classes'
+    dependsOn tasks.named('test')
+
+    executionData.from fileTree(buildDir).include(
+        'jacoco/test.exec',
+        'jacoco/test*.exec'
+    )
+    sourceDirectories.from files(sourceSets.main.allSource.srcDirs)
+    classDirectories.from files(sourceSets.main.output.classesDirs.collect { dir ->
+        fileTree(dir: dir, include: engineTddRuleClassPatterns)
+    })
+
+    violationRules {
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.95
+            }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+pitest {
+    junit5PluginVersion = '1.2.3'
+    pitestVersion = '1.22.1'
+    targetClasses = engineTddRuleClasses
+    targetTests = [
+        'com.crypto.funding.domain.execution.OrderIntentTest',
+        'com.crypto.funding.domain.execution.OrderAttemptTest',
+        'com.crypto.funding.contract.engine.EngineMetricsSnapshotContractTest'
+    ]
+    mutationThreshold = 90
+    threads = 1
+    outputFormats = ['XML', 'HTML']
+    timestampedReports = false
+    useClasspathFile = true
 }
