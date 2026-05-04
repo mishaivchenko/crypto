@@ -91,6 +91,15 @@ public class OrderAttemptEntity extends AuditableEntity
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
+    @Column(name = "average_fill_price", precision = 19, scale = 8)
+    private BigDecimal averageFillPrice;
+
+    @Column(name = "filled_quantity", precision = 19, scale = 8)
+    private BigDecimal filledQuantity;
+
+    @Column(name = "fee_usd", precision = 19, scale = 8)
+    private BigDecimal feeUsd;
+
     public Long getId()
     {
         return id;
@@ -254,5 +263,35 @@ public class OrderAttemptEntity extends AuditableEntity
     public void setFailureReason( String failureReason )
     {
         this.failureReason = failureReason;
+    }
+
+    public BigDecimal getAverageFillPrice()
+    {
+        return averageFillPrice;
+    }
+
+    public void setAverageFillPrice( BigDecimal averageFillPrice )
+    {
+        this.averageFillPrice = averageFillPrice;
+    }
+
+    public BigDecimal getFilledQuantity()
+    {
+        return filledQuantity;
+    }
+
+    public void setFilledQuantity( BigDecimal filledQuantity )
+    {
+        this.filledQuantity = filledQuantity;
+    }
+
+    public BigDecimal getFeeUsd()
+    {
+        return feeUsd;
+    }
+
+    public void setFeeUsd( BigDecimal feeUsd )
+    {
+        this.feeUsd = feeUsd;
     }
 }

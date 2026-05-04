@@ -2,15 +2,22 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.application.port.ExecutionPort;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
+import com.crypto.funding.contract.engine.EngineExecutionAttemptResult;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
+import com.crypto.funding.contract.engine.EnginePositionResponse;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
+import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
 import com.crypto.funding.domain.execution.ExecutionType;
 import com.crypto.funding.domain.execution.OrderAttempt;
 import com.crypto.funding.domain.execution.OrderAttemptStatus;
 import com.crypto.funding.domain.execution.OrderIntent;
 import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.trade.PositionState;
 import com.crypto.funding.domain.trade.TradeSide;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,16 +28,16 @@ import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -59,8 +66,12 @@ class EngineExecutionServiceTest
             advancingNanos( Duration.ofSeconds( 1 ).toNanos(), Duration.ofMillis( 25 ).toNanos() )
         );
         when( client.recordOrderAttempt( any() ) ).thenAnswer( invocation -> recordedAttempt( invocation.getArgument( 0 ) ) );
-        when( executionPort.submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) ) )
+        when( client.recordPosition( any() ) ).thenAnswer( invocation -> recordedPosition( invocation.getArgument( 0 ) ) );
+        when( client.recordTradeOutcome( any() ) ).thenAnswer( invocation -> recordedOutcome( invocation.getArgument( 0 ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
             .thenReturn( failedAttempt( 5L, "bybit", "REQ/USDT", NOW.minusSeconds( 1 ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
     }
 
     // REQ: ENG-EXE-001
@@ -80,7 +91,7 @@ class EngineExecutionServiceTest
         assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
         assertThat( response.attemptsSkipped() ).isEqualTo( 2 );
         assertThat( response.results() ).hasSize( 1 );
-        verify( executionPort, times( 1 ) ).submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) );
+        verify( executionPort, times( 1 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
         assertThat( telemetryService.snapshot().scheduledExecutionRuns() ).isEqualTo( 1 );
         assertThat( telemetryService.snapshot().forcedExecutionRuns() ).isZero();
     }
@@ -101,7 +112,7 @@ class EngineExecutionServiceTest
         assertThat( response.force() ).isTrue();
         assertThat( response.attemptsSubmitted() ).isEqualTo( 3 );
         assertThat( response.attemptsSkipped() ).isZero();
-        verify( executionPort, times( 3 ) ).submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) );
+        verify( executionPort, times( 3 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
         assertThat( telemetryService.snapshot().forcedExecutionRuns() ).isEqualTo( 1 );
         assertThat( telemetryService.snapshot().lastForcedAttemptsSubmitted() ).isEqualTo( 3 );
     }
@@ -124,7 +135,7 @@ class EngineExecutionServiceTest
 
         assertThat( response.attemptsSubmitted() ).isEqualTo( 3 );
         assertThat( response.attemptsSkipped() ).isEqualTo( 4 );
-        verify( executionPort, times( 3 ) ).submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) );
+        verify( executionPort, times( 3 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
     }
 
     // REQ: ENG-EXE-003
@@ -141,7 +152,7 @@ class EngineExecutionServiceTest
         assertThat( response.attemptsSubmitted() ).isZero();
         assertThat( response.attemptsSkipped() ).isEqualTo( 2 );
         assertThat( response.results() ).isEmpty();
-        verify( executionPort, never() ).submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) );
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
         verify( client, never() ).recordOrderAttempt( any() );
     }
 
@@ -158,7 +169,7 @@ class EngineExecutionServiceTest
         assertThat( response.plansScanned() ).isEqualTo( 1 );
         assertThat( response.attemptsSubmitted() ).isZero();
         assertThat( response.attemptsSkipped() ).isEqualTo( 1 );
-        verify( executionPort, never() ).submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) );
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
     }
 
     // REQ: ENG-EXE-005
@@ -176,7 +187,7 @@ class EngineExecutionServiceTest
             0L
         );
         when( client.listPlans( true ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( attemptPlan ) ) ) );
-        when( executionPort.submitOrder( anyLong(), anyString(), anyString(), any( OrderIntent.class ) ) )
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
             .thenReturn( failedAttempt( 5L, "bybit", "REQ/USDT", NOW.minusSeconds( 1 ) ) );
 
         var response = service.runOnce( true );
@@ -198,6 +209,208 @@ class EngineExecutionServiceTest
         } );
         verify( telemetryService ).recordOrderSubmission( "bybit", OrderAttemptStatus.FAILED, 25L );
         verify( telemetryService ).recordExecutionRun( eq( true ), eq( NOW ), eq( NOW ), eq( 1 ), eq( 1 ), eq( 0 ), eq( 0L ) );
+    }
+
+    @Test
+    void filledEntryRecordsOpenPositionAndMovesTradeOpen()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+
+        var response = service.runOnce( false );
+        ArgumentCaptor<EnginePositionRecordRequest> positionCaptor = ArgumentCaptor.forClass( EnginePositionRecordRequest.class );
+        ArgumentCaptor<EngineTradeStateUpdateRequest> stateCaptor = ArgumentCaptor.forClass( EngineTradeStateUpdateRequest.class );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        verify( client ).recordPosition( positionCaptor.capture() );
+        verify( client ).updateTradeState( eq( 5L ), stateCaptor.capture() );
+        assertThat( positionCaptor.getValue().state() ).isEqualTo( PositionState.OPEN );
+        assertThat( positionCaptor.getValue().quantity() ).isEqualByComparingTo( "10" );
+        assertThat( positionCaptor.getValue().entryPrice() ).isEqualByComparingTo( "2.5" );
+        assertThat( stateCaptor.getValue().state() ).isEqualTo( ArmedTradeState.OPEN );
+    }
+
+    @Test
+    void acknowledgedEntryDoesNotChangePositionOrTradeState()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
+            .thenReturn( acknowledgedAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.results() ).singleElement().satisfies( result -> assertThat( result.status() ).isEqualTo( OrderAttemptStatus.ACKNOWLEDGED ) );
+        verify( client, never() ).recordPosition( any() );
+        verify( client, never() ).updateTradeState( any(), any() );
+    }
+
+    @Test
+    void filledEntryFallsBackToSubmittedAtAndOrderQuantityWhenFillDetailsArePartial()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
+            .thenReturn( filledAttemptWithoutExchangeTimestamp( 5L, "bybit", "REQ/USDT", NOW ) );
+
+        service.runOnce( false );
+        ArgumentCaptor<EnginePositionRecordRequest> positionCaptor = ArgumentCaptor.forClass( EnginePositionRecordRequest.class );
+
+        verify( client ).recordPosition( positionCaptor.capture() );
+        assertThat( positionCaptor.getValue().openedAt() ).isEqualTo( NOW );
+        assertThat( positionCaptor.getValue().quantity() ).isEqualByComparingTo( "10" );
+    }
+
+    @Test
+    void exitWindowSubmitsReduceOnlyExitAndRecordsOutcome()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( openPlan( 5L ) ) );
+
+        var response = service.runOnce( false );
+        ArgumentCaptor<OrderIntent> intentCaptor = ArgumentCaptor.forClass( OrderIntent.class );
+        ArgumentCaptor<EngineOrderAttemptRecordRequest> attemptCaptor = ArgumentCaptor.forClass( EngineOrderAttemptRecordRequest.class );
+        ArgumentCaptor<EngineTradeStateUpdateRequest> stateCaptor = ArgumentCaptor.forClass( EngineTradeStateUpdateRequest.class );
+        ArgumentCaptor<EngineTradeOutcomeRecordRequest> outcomeCaptor = ArgumentCaptor.forClass( EngineTradeOutcomeRecordRequest.class );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.results() ).singleElement().satisfies( result -> assertThat( result.status() ).isEqualTo( OrderAttemptStatus.FILLED ) );
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), intentCaptor.capture(), eq( true ) );
+        verify( client ).recordOrderAttempt( attemptCaptor.capture() );
+        verify( client ).updateTradeState( eq( 5L ), stateCaptor.capture() );
+        verify( client ).recordTradeOutcome( outcomeCaptor.capture() );
+        verify( telemetryService ).recordOrderSubmission( "bybit", OrderAttemptStatus.FILLED, 25L );
+        assertThat( intentCaptor.getValue().side() ).isEqualTo( TradeSide.LONG );
+        assertThat( intentCaptor.getValue().quantity() ).isEqualByComparingTo( "10" );
+        assertThat( attemptCaptor.getValue().attemptKey() ).isEqualTo( "exit:5:2030-01-01T00:01:00Z" );
+        assertThat( stateCaptor.getValue().state() ).isEqualTo( ArmedTradeState.CLOSED );
+        assertThat( outcomeCaptor.getValue().outcomeCode() ).isEqualTo( "CLOSED" );
+    }
+
+    @Test
+    void duplicateScheduledEntryTicksDoNotSubmitTheSameAttemptTwice()
+    {
+        EngineExecutionPlan plan = plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ), List.of( plan ) );
+
+        var first = service.runOnce( false );
+        var second = service.runOnce( false );
+
+        assertThat( first.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( second.attemptsSubmitted() ).isZero();
+        assertThat( second.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, times( 1 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
+        verify( client, times( 1 ) ).recordOrderAttempt( any() );
+    }
+
+    @Test
+    void duplicateScheduledExitTicksDoNotSubmitTheSameAttemptTwice()
+    {
+        EngineExecutionPlan plan = openPlan( 5L );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ), List.of( plan ) );
+
+        var first = service.runOnce( false );
+        var second = service.runOnce( false );
+
+        assertThat( first.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( second.attemptsSubmitted() ).isZero();
+        assertThat( second.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, times( 1 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+        verify( client, times( 1 ) ).recordOrderAttempt( any() );
+    }
+
+    @Test
+    void isolatesEntryFailuresAndContinuesProcessingOtherTrades()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of(
+            plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ),
+            plan( 6L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) )
+        ) );
+        doAnswer( invocation -> {
+            EngineOrderAttemptRecordRequest request = invocation.getArgument( 0 );
+            if( request.armedTradeId().equals( 5L ) )
+            {
+                throw new IllegalStateException( "monitor write failed" );
+            }
+            return recordedAttempt( request );
+        } ).when( client ).recordOrderAttempt( any() );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.plansScanned() ).isEqualTo( 2 );
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 2 );
+        assertThat( response.results() ).extracting( EngineExecutionAttemptResult::armedTradeId )
+                                      .containsExactly( 5L, 6L );
+        assertThat( response.results().getFirst().status() ).isEqualTo( OrderAttemptStatus.FAILED );
+        assertThat( response.results().getFirst().failureReason() ).contains( "monitor write failed" );
+        verify( executionPort, times( 2 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
+        verify( client, times( 2 ) ).recordOrderAttempt( any() );
+    }
+
+    @Test
+    void exitWindowUsesSubmittedAtWhenExchangeTimestampIsMissing()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( openPlan( 5L ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( filledAttemptWithoutExchangeTimestamp( 5L, "bybit", "REQ/USDT", NOW ) );
+
+        service.runOnce( false );
+        ArgumentCaptor<EnginePositionRecordRequest> positionCaptor = ArgumentCaptor.forClass( EnginePositionRecordRequest.class );
+        ArgumentCaptor<EngineTradeOutcomeRecordRequest> outcomeCaptor = ArgumentCaptor.forClass( EngineTradeOutcomeRecordRequest.class );
+
+        verify( client ).recordPosition( positionCaptor.capture() );
+        verify( client ).recordTradeOutcome( outcomeCaptor.capture() );
+        assertThat( positionCaptor.getValue().closedAt() ).isEqualTo( NOW );
+        assertThat( outcomeCaptor.getValue().evaluatedAt() ).isEqualTo( NOW );
+    }
+
+    @Test
+    void rejectedExitMarksOnlyThatTradeFailedWithoutOutcome()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( openPlan( 5L ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( rejectedAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+        ArgumentCaptor<EngineTradeStateUpdateRequest> stateCaptor = ArgumentCaptor.forClass( EngineTradeStateUpdateRequest.class );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.results() ).singleElement().satisfies( result -> assertThat( result.status() ).isEqualTo( OrderAttemptStatus.REJECTED ) );
+        verify( client ).updateTradeState( eq( 5L ), stateCaptor.capture() );
+        verify( client, never() ).recordTradeOutcome( any() );
+        assertThat( stateCaptor.getValue().state() ).isEqualTo( ArmedTradeState.FAILED );
+    }
+
+    @Test
+    void longExitRecordsPositiveGrossPnlAndZeroFeesWhenFeeIsMissing()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( openPlan( 5L, TradeSide.LONG, BigDecimal.TEN, BigDecimal.valueOf( 2.5 ) ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", TradeSide.SHORT, NOW, BigDecimal.valueOf( 3 ), BigDecimal.TEN, null, NOW ) );
+        ArgumentCaptor<OrderIntent> intentCaptor = ArgumentCaptor.forClass( OrderIntent.class );
+        ArgumentCaptor<EngineTradeOutcomeRecordRequest> outcomeCaptor = ArgumentCaptor.forClass( EngineTradeOutcomeRecordRequest.class );
+
+        service.runOnce( false );
+
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), intentCaptor.capture(), eq( true ) );
+        verify( client ).recordTradeOutcome( outcomeCaptor.capture() );
+        assertThat( intentCaptor.getValue().side() ).isEqualTo( TradeSide.SHORT );
+        assertThat( outcomeCaptor.getValue().grossPnlUsd() ).isEqualByComparingTo( "5" );
+        assertThat( outcomeCaptor.getValue().netPnlUsd() ).isEqualByComparingTo( "5" );
+        assertThat( outcomeCaptor.getValue().feesUsd() ).isEqualByComparingTo( "0" );
+    }
+
+    @Test
+    void skipsNullPlansAndExitPlansWithoutPositivePositionQuantity()
+    {
+        when( client.listPlans( false ) ).thenReturn( Arrays.asList(
+            null,
+            openPlan( 5L, TradeSide.SHORT, null, BigDecimal.valueOf( 2.5 ) ),
+            openPlan( 6L, TradeSide.SHORT, BigDecimal.ZERO, BigDecimal.valueOf( 2.5 ) )
+        ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        assertThat( response.attemptsSkipped() ).isEqualTo( 3 );
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
     }
 
     private static LongSupplier advancingNanos( long startingNanos, long stepNanos )
@@ -229,7 +442,55 @@ class EngineExecutionServiceTest
             NOW,
             0L,
             60_000L,
-            "summary"
+            "summary",
+            "REQUSDT",
+            BigDecimal.ONE,
+            BigDecimal.ONE,
+            BigDecimal.valueOf( 5 ),
+            NOW.minusSeconds( 60 ),
+            NOW.minusSeconds( 60 ),
+            null,
+            null
+        );
+    }
+
+    private static EngineExecutionPlan openPlan( Long armedTradeId )
+    {
+        return openPlan( armedTradeId, TradeSide.SHORT, BigDecimal.TEN, BigDecimal.valueOf( 2.5 ) );
+    }
+
+    private static EngineExecutionPlan openPlan( Long armedTradeId, TradeSide side, BigDecimal quantity, BigDecimal entryPrice )
+    {
+        return new EngineExecutionPlan(
+            armedTradeId,
+            13L,
+            "bybit",
+            "REQ/USDT",
+            side,
+            BigDecimal.valueOf( 25 ),
+            ArmedTradeState.OPEN,
+            NOW.minusSeconds( 60 ),
+            NOW.minusSeconds( 120 ),
+            NOW.plusSeconds( 60 ),
+            1,
+            0L,
+            0L,
+            0L,
+            0L,
+            List.of( pastAttempt( 1, 0 ) ),
+            EnginePlanStatus.EXIT_WINDOW,
+            NOW,
+            0L,
+            -60_000L,
+            "exit",
+            "REQUSDT",
+            BigDecimal.ONE,
+            BigDecimal.ONE,
+            BigDecimal.valueOf( 5 ),
+            NOW.minusSeconds( 3600 ),
+            NOW.minusSeconds( 300 ),
+            quantity,
+            entryPrice
         );
     }
 
@@ -266,6 +527,133 @@ class EngineExecutionServiceTest
             null,
             "Missing engine credentials for bybit.",
             null,
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    private static OrderAttempt filledAttempt( Long armedTradeId, String venue, String symbol, Instant submittedAt )
+    {
+        return filledAttempt(
+            armedTradeId,
+            venue,
+            symbol,
+            TradeSide.SHORT,
+            submittedAt,
+            BigDecimal.valueOf( 2.5 ),
+            BigDecimal.TEN,
+            BigDecimal.valueOf( 0.01 ),
+            submittedAt
+        );
+    }
+
+    private static OrderAttempt filledAttemptWithoutExchangeTimestamp( Long armedTradeId, String venue, String symbol, Instant submittedAt )
+    {
+        return filledAttempt(
+            armedTradeId,
+            venue,
+            symbol,
+            TradeSide.SHORT,
+            submittedAt,
+            BigDecimal.valueOf( 2.5 ),
+            null,
+            null,
+            null
+        );
+    }
+
+    private static OrderAttempt acknowledgedAttempt( Long armedTradeId, String venue, String symbol, Instant submittedAt )
+    {
+        return new OrderAttempt(
+            null,
+            null,
+            armedTradeId,
+            null,
+            venue,
+            symbol,
+            TradeSide.SHORT,
+            ExecutionType.MARKET,
+            BigDecimal.TEN,
+            null,
+            OrderAttemptStatus.ACKNOWLEDGED,
+            "external-ack",
+            null,
+            null,
+            submittedAt,
+            submittedAt,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    private static OrderAttempt rejectedAttempt( Long armedTradeId, String venue, String symbol, Instant submittedAt )
+    {
+        return new OrderAttempt(
+            null,
+            null,
+            armedTradeId,
+            null,
+            venue,
+            symbol,
+            TradeSide.LONG,
+            ExecutionType.MARKET,
+            BigDecimal.TEN,
+            null,
+            OrderAttemptStatus.REJECTED,
+            "external-rejected",
+            null,
+            null,
+            submittedAt,
+            null,
+            "exchange rejected",
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    private static OrderAttempt filledAttempt(
+        Long armedTradeId,
+        String venue,
+        String symbol,
+        TradeSide side,
+        Instant submittedAt,
+        BigDecimal averageFillPrice,
+        BigDecimal filledQuantity,
+        BigDecimal feeUsd,
+        Instant exchangeTimestamp
+    )
+    {
+        return new OrderAttempt(
+            null,
+            null,
+            armedTradeId,
+            null,
+            venue,
+            symbol,
+            side,
+            ExecutionType.MARKET,
+            BigDecimal.TEN,
+            null,
+            OrderAttemptStatus.FILLED,
+            "external-1",
+            null,
+            null,
+            submittedAt,
+            exchangeTimestamp,
+            null,
+            averageFillPrice,
+            filledQuantity,
+            feeUsd,
+            null,
             null
         );
     }
@@ -290,6 +678,44 @@ class EngineExecutionServiceTest
             request.submittedAt(),
             request.exchangeTimestamp(),
             request.failureReason(),
+            request.averageFillPrice(),
+            request.filledQuantity(),
+            request.feeUsd(),
+            NOW,
+            NOW
+        );
+    }
+
+    private static EnginePositionResponse recordedPosition( EnginePositionRecordRequest request )
+    {
+        return new EnginePositionResponse(
+            201L,
+            request.armedTradeId(),
+            request.venue(),
+            request.symbol(),
+            request.side(),
+            request.quantity(),
+            request.entryPrice(),
+            request.exitPrice(),
+            request.state(),
+            request.openedAt(),
+            request.closedAt(),
+            NOW,
+            NOW
+        );
+    }
+
+    private static EngineTradeOutcomeResponse recordedOutcome( EngineTradeOutcomeRecordRequest request )
+    {
+        return new EngineTradeOutcomeResponse(
+            301L,
+            request.armedTradeId(),
+            request.grossPnlUsd(),
+            request.netPnlUsd(),
+            request.feesUsd(),
+            request.outcomeCode(),
+            request.notes(),
+            request.evaluatedAt(),
             NOW,
             NOW
         );

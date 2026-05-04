@@ -13,12 +13,20 @@ import com.crypto.funding.contract.engine.EnginePlanStatus;
 import com.crypto.funding.contract.engine.EngineSummaryResponse;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.venue.InstrumentStatus;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
+import com.crypto.funding.infrastructure.persistence.model.InstrumentMetadataEntity;
+import com.crypto.funding.infrastructure.persistence.model.PositionEntity;
+import com.crypto.funding.infrastructure.persistence.model.VenueTimingProfileEntity;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.PositionJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -42,6 +50,9 @@ public class MonitorEnginePlanService
 
     private final TradeQueryService tradeQueryService;
     private final FundingEventJpaRepository fundingEventRepository;
+    private final InstrumentMetadataJpaRepository instrumentMetadataRepository;
+    private final PositionJpaRepository positionRepository;
+    private final VenueTimingProfileJpaRepository timingProfileRepository;
     private final MonitorEnginePlanProperties engineProperties;
     private final EngineEntryAttemptScheduleBuilder attemptScheduleBuilder;
     private final EnginePlanStatusCalculator statusCalculator;
@@ -53,6 +64,9 @@ public class MonitorEnginePlanService
     public MonitorEnginePlanService(
         TradeQueryService tradeQueryService,
         FundingEventJpaRepository fundingEventRepository,
+        InstrumentMetadataJpaRepository instrumentMetadataRepository,
+        PositionJpaRepository positionRepository,
+        VenueTimingProfileJpaRepository timingProfileRepository,
         MonitorEnginePlanProperties engineProperties,
         EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
         EnginePlanStatusCalculator statusCalculator,
@@ -63,6 +77,9 @@ public class MonitorEnginePlanService
         this(
             tradeQueryService,
             fundingEventRepository,
+            instrumentMetadataRepository,
+            positionRepository,
+            timingProfileRepository,
             engineProperties,
             attemptScheduleBuilder,
             statusCalculator,
@@ -75,6 +92,9 @@ public class MonitorEnginePlanService
     MonitorEnginePlanService(
         TradeQueryService tradeQueryService,
         FundingEventJpaRepository fundingEventRepository,
+        InstrumentMetadataJpaRepository instrumentMetadataRepository,
+        PositionJpaRepository positionRepository,
+        VenueTimingProfileJpaRepository timingProfileRepository,
         MonitorEnginePlanProperties engineProperties,
         EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
         EnginePlanStatusCalculator statusCalculator,
@@ -85,6 +105,9 @@ public class MonitorEnginePlanService
     {
         this.tradeQueryService = tradeQueryService;
         this.fundingEventRepository = fundingEventRepository;
+        this.instrumentMetadataRepository = instrumentMetadataRepository;
+        this.positionRepository = positionRepository;
+        this.timingProfileRepository = timingProfileRepository;
         this.engineProperties = engineProperties;
         this.attemptScheduleBuilder = attemptScheduleBuilder;
         this.statusCalculator = statusCalculator;
@@ -165,6 +188,13 @@ public class MonitorEnginePlanService
         Instant nextActionAt = nextActionAt( trade, status, entryAttempts, now );
         Long millisUntilAction = nextActionAt == null ? null : Duration.between( now, nextActionAt ).toMillis();
         Long millisUntilFunding = Duration.between( now, fundingEvent.getFundingTime() ).toMillis();
+        InstrumentMetadataEntity metadata = instrumentMetadataRepository
+            .findByVenueAndCanonicalSymbolAndStatus( fundingEvent.getVenue(), fundingEvent.getSymbol(), InstrumentStatus.ACTIVE )
+            .orElse( null );
+        PositionEntity position = positionRepository.findFirstByArmedTradeIdOrderByCreatedAtDesc( trade.id() ).orElse( null );
+        VenueTimingProfileEntity timing = timingProfileRepository
+            .findFirstByVenueAndSymbolOrderBySampledAtDesc( fundingEvent.getVenue(), fundingEvent.getSymbol() )
+            .orElse( null );
 
         return new EngineExecutionPlan(
             trade.id(),
@@ -187,8 +217,25 @@ public class MonitorEnginePlanService
             nextActionAt,
             millisUntilAction,
             millisUntilFunding,
-            summaryFormatter.format( trade, fundingEvent, status )
+            summaryFormatter.format( trade, fundingEvent, status ),
+            metadata == null ? null : metadata.getVenueSymbol(),
+            metadata == null ? null : metadata.getMinOrderQty(),
+            metadata == null ? null : metadata.getQtyStep(),
+            metadata == null ? null : metadata.getMinNotionalValue(),
+            metadata == null ? null : metadata.getLastSyncedAt(),
+            timing == null ? null : timing.getSampledAt(),
+            positionQuantity( position ),
+            position == null ? null : position.getEntryPrice()
         );
+    }
+
+    private static BigDecimal positionQuantity( PositionEntity position )
+    {
+        if( position == null )
+        {
+            return null;
+        }
+        return position.getQuantity();
     }
 
     private Instant nextActionAt( ArmedTrade trade, EnginePlanStatus status, List<EngineEntryAttemptPlan> entryAttempts, Instant now )

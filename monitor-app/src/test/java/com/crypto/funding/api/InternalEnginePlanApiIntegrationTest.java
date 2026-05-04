@@ -9,6 +9,8 @@ import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.OrderAttemptJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.PositionJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.TradeOutcomeJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,9 +55,17 @@ class InternalEnginePlanApiIntegrationTest
     @Autowired
     private OrderAttemptJpaRepository orderAttemptRepository;
 
+    @Autowired
+    private PositionJpaRepository positionRepository;
+
+    @Autowired
+    private TradeOutcomeJpaRepository tradeOutcomeRepository;
+
     @BeforeEach
     void clean()
     {
+        tradeOutcomeRepository.deleteAll();
+        positionRepository.deleteAll();
         orderAttemptRepository.deleteAll();
         armedTradeRepository.deleteAll();
         fundingEventRepository.deleteAll();
@@ -120,6 +130,69 @@ class InternalEnginePlanApiIntegrationTest
         mockMvc.perform( get( "/api/v1/armed-trades/{id}/order-attempts", trade.getId() ) )
             .andExpect( status().isOk() )
             .andExpect( jsonPath( "$[0].attemptKey" ).value( "entry:" + trade.getId() + ":1:2030-01-01T00:00:00Z" ) );
+    }
+
+    @Test
+    void recordsPositionStateAndOutcomeForEngineLifecycle() throws Exception
+    {
+        ArmedTradeEntity trade = createArmedTrade();
+
+        mockMvc.perform( post( "/internal/v1/engine/trades/{id}/state", trade.getId() )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( "{\"state\":\"OPEN\",\"note\":\"entry filled\"}" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.state" ).value( "OPEN" ) );
+
+        mockMvc.perform( post( "/internal/v1/engine/positions" )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "armedTradeId":%d,
+                      "venue":"bybit",
+                      "symbol":"REQ/USDT",
+                      "side":"SHORT",
+                      "quantity":10,
+                      "entryPrice":2.5,
+                      "state":"OPEN",
+                      "openedAt":"2030-01-01T00:00:00Z"
+                    }
+                    """.formatted( trade.getId() ) ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.armedTradeId" ).value( trade.getId() ) )
+            .andExpect( jsonPath( "$.state" ).value( "OPEN" ) )
+            .andExpect( jsonPath( "$.entryPrice" ).value( 2.5 ) );
+
+        mockMvc.perform( post( "/internal/v1/engine/trades/{id}/state", trade.getId() )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( "{\"state\":\"CLOSED\",\"note\":\"exit filled\"}" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.state" ).value( "CLOSED" ) );
+
+        mockMvc.perform( post( "/internal/v1/engine/outcomes" )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "armedTradeId":%d,
+                      "grossPnlUsd":1.2,
+                      "netPnlUsd":1.18,
+                      "feesUsd":0.02,
+                      "outcomeCode":"CLOSED",
+                      "notes":"entry/exit filled",
+                      "evaluatedAt":"2030-01-01T00:01:00Z"
+                    }
+                    """.formatted( trade.getId() ) ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.armedTradeId" ).value( trade.getId() ) )
+            .andExpect( jsonPath( "$.outcomeCode" ).value( "CLOSED" ) );
+
+        org.assertj.core.api.Assertions.assertThat( armedTradeRepository.findById( trade.getId() ).orElseThrow().getState() )
+                                       .isEqualTo( ArmedTradeState.CLOSED );
+        org.assertj.core.api.Assertions.assertThat( positionRepository.findAll() ).hasSize( 1 );
+        org.assertj.core.api.Assertions.assertThat( tradeOutcomeRepository.findAll() ).hasSize( 1 );
     }
 
     @Test

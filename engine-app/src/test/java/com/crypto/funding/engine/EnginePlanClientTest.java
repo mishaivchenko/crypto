@@ -3,8 +3,13 @@ package com.crypto.funding.engine;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
+import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
+import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
 import com.crypto.funding.domain.execution.ExecutionType;
 import com.crypto.funding.domain.execution.OrderAttemptStatus;
+import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.trade.PositionState;
 import com.crypto.funding.domain.trade.TradeSide;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -174,6 +179,88 @@ class EnginePlanClientTest
 
         assertThat( plan.armedTradeId() ).isEqualTo( 5L );
         assertThat( plan.venue() ).isEqualTo( "bybit" );
+        server.verify();
+    }
+
+    // REQ: ENG-CLI-002
+    @Test
+    void postsPositionStateAndOutcomeLifecycleContracts()
+    {
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/positions" ) )
+              .andExpect( method( HttpMethod.POST ) )
+              .andExpect( header( "X-Internal-Token", "internal-token" ) )
+              .andExpect( jsonPath( "$.armedTradeId" ).value( 5 ) )
+              .andExpect( jsonPath( "$.state" ).value( "OPEN" ) )
+              .andRespond( withSuccess( """
+                  {
+                    "id": 10,
+                    "armedTradeId": 5,
+                    "venue": "bybit",
+                    "symbol": "REQ/USDT",
+                    "side": "SHORT",
+                    "quantity": 10,
+                    "entryPrice": 2.5,
+                    "state": "OPEN",
+                    "openedAt": "2030-01-01T00:00:00Z",
+                    "createdAt": "2030-01-01T00:00:00Z",
+                    "updatedAt": "2030-01-01T00:00:00Z"
+                  }
+                  """, MediaType.APPLICATION_JSON ) );
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/trades/5/state" ) )
+              .andExpect( method( HttpMethod.POST ) )
+              .andExpect( header( "X-Internal-Token", "internal-token" ) )
+              .andExpect( jsonPath( "$.state" ).value( "OPEN" ) )
+              .andRespond( withSuccess( """
+                  {
+                    "armedTradeId": 5,
+                    "state": "OPEN",
+                    "updatedAt": "2030-01-01T00:00:00Z"
+                  }
+                  """, MediaType.APPLICATION_JSON ) );
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/outcomes" ) )
+              .andExpect( method( HttpMethod.POST ) )
+              .andExpect( header( "X-Internal-Token", "internal-token" ) )
+              .andExpect( jsonPath( "$.outcomeCode" ).value( "CLOSED" ) )
+              .andRespond( withSuccess( """
+                  {
+                    "id": 11,
+                    "armedTradeId": 5,
+                    "grossPnlUsd": 1.2,
+                    "netPnlUsd": 1.18,
+                    "feesUsd": 0.02,
+                    "outcomeCode": "CLOSED",
+                    "evaluatedAt": "2030-01-01T00:01:00Z",
+                    "createdAt": "2030-01-01T00:01:00Z",
+                    "updatedAt": "2030-01-01T00:01:00Z"
+                  }
+                  """, MediaType.APPLICATION_JSON ) );
+
+        var position = client.recordPosition( new EnginePositionRecordRequest(
+            5L,
+            "bybit",
+            "REQ/USDT",
+            TradeSide.SHORT,
+            BigDecimal.TEN,
+            BigDecimal.valueOf( 2.5 ),
+            null,
+            PositionState.OPEN,
+            Instant.parse( "2030-01-01T00:00:00Z" ),
+            null
+        ) );
+        var state = client.updateTradeState( 5L, new EngineTradeStateUpdateRequest( ArmedTradeState.OPEN, "entry filled" ) );
+        var outcome = client.recordTradeOutcome( new EngineTradeOutcomeRecordRequest(
+            5L,
+            BigDecimal.valueOf( 1.2 ),
+            BigDecimal.valueOf( 1.18 ),
+            BigDecimal.valueOf( 0.02 ),
+            "CLOSED",
+            "entry/exit filled",
+            Instant.parse( "2030-01-01T00:01:00Z" )
+        ) );
+
+        assertThat( position.id() ).isEqualTo( 10L );
+        assertThat( state.state() ).isEqualTo( ArmedTradeState.OPEN );
+        assertThat( outcome.outcomeCode() ).isEqualTo( "CLOSED" );
         server.verify();
     }
 

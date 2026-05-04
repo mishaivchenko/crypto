@@ -23,7 +23,51 @@ public record EngineOrderAttemptRecordRequest(
     Instant triggerAt,
     Instant submittedAt,
     Instant exchangeTimestamp,
-    String failureReason
+    String failureReason,
+    BigDecimal averageFillPrice,
+    BigDecimal filledQuantity,
+    BigDecimal feeUsd
 )
 {
+    public EngineOrderAttemptRecordRequest(
+        String attemptKey,
+        Long armedTradeId,
+        Integer attemptNumber,
+        String venue,
+        String symbol,
+        TradeSide side,
+        ExecutionType executionType,
+        BigDecimal quantity,
+        BigDecimal limitPrice,
+        OrderAttemptStatus status,
+        String externalOrderId,
+        Instant targetEntryAt,
+        Instant triggerAt,
+        Instant submittedAt,
+        Instant exchangeTimestamp,
+        String failureReason
+    )
+    {
+        this(
+            attemptKey,
+            armedTradeId,
+            attemptNumber,
+            venue,
+            symbol,
+            side,
+            executionType,
+            quantity,
+            limitPrice,
+            status,
+            externalOrderId,
+            targetEntryAt,
+            triggerAt,
+            submittedAt,
+            exchangeTimestamp,
+            failureReason,
+            null,
+            null,
+            null
+        );
+    }
 }

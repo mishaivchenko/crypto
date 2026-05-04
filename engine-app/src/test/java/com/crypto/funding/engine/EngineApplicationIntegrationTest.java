@@ -170,6 +170,14 @@ class EngineApplicationIntegrationTest
                   "updatedAt":"2029-12-31T23:59:00Z"
                 }
                 """ ) ) );
+        MONITOR.stubFor( post( urlEqualTo( "/internal/v1/engine/trades/5/state" ) )
+            .willReturn( okJson( """
+                {
+                  "armedTradeId":5,
+                  "state":"FAILED",
+                  "updatedAt":"2029-12-31T23:59:00Z"
+                }
+                """ ) ) );
 
         mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
                 "/internal/engine/execution/run-once?force=true" ) )
@@ -182,6 +190,8 @@ class EngineApplicationIntegrationTest
         MONITOR.verify( getRequestedFor( urlEqualTo( "/internal/v1/engine/plans?includeAll=true" ) )
             .withHeader( "X-Internal-Token", equalTo( "test-internal-token" ) ) );
         MONITOR.verify( 2, postRequestedFor( urlEqualTo( "/internal/v1/engine/order-attempts" ) )
+            .withHeader( "X-Internal-Token", equalTo( "test-internal-token" ) ) );
+        MONITOR.verify( 2, postRequestedFor( urlEqualTo( "/internal/v1/engine/trades/5/state" ) )
             .withHeader( "X-Internal-Token", equalTo( "test-internal-token" ) ) );
     }
 }

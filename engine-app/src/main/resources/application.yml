@@ -14,6 +14,19 @@ engine:
     execution-loop-enabled: ${ENGINE_EXECUTION_LOOP_ENABLED:false}
     execution-loop-interval-ms: ${ENGINE_EXECUTION_LOOP_INTERVAL_MS:1000}
     execution-scheduler-tick-ms: ${ENGINE_EXECUTION_SCHEDULER_TICK_MS:250}
+    live-order-enabled: ${ENGINE_LIVE_ORDER_ENABLED:false}
+    kill-switch-enabled: ${ENGINE_KILL_SWITCH_ENABLED:true}
+    live-enabled-venues: ${ENGINE_LIVE_ENABLED_VENUES:bybit,gate}
+    max-notional-usd: ${ENGINE_MAX_NOTIONAL_USD:25}
+    metadata-max-age-minutes: ${ENGINE_METADATA_MAX_AGE_MINUTES:240}
+    latency-max-age-minutes: ${ENGINE_LATENCY_MAX_AGE_MINUTES:1440}
+    trading-venue-access-mode: ${TRADING_VENUE_ACCESS_MODE:testnet}
+    bybit:
+        testnet-base-url: ${BYBIT_TESTNET_BASE_URL:https://api-testnet.bybit.com}
+        production-base-url: ${BYBIT_PRODUCTION_BASE_URL:https://api.bybit.com}
+    gate:
+        testnet-base-url: ${GATE_TESTNET_BASE_URL:https://fx-api-testnet.gateio.ws/api/v4}
+        production-base-url: ${GATE_PRODUCTION_BASE_URL:https://fx-api.gateio.ws/api/v4}
     metrics-publish:
         enabled: ${ENGINE_METRICS_PUBLISH_ENABLED:false}
         interval-ms: ${ENGINE_METRICS_PUBLISH_INTERVAL_MS:15000}

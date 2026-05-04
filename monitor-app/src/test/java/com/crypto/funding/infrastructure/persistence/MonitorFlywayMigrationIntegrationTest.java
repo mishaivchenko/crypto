@@ -43,7 +43,7 @@ class MonitorFlywayMigrationIntegrationTest
         {
             assertThat( tableExists( dbPath, "flyway_schema_history" ) ).isTrue();
             assertThat( countRows( dbPath, "signal_candidate" ) ).isEqualTo( 1 );
-            assertThat( historyTypes( dbPath ) ).containsExactly( "BASELINE" );
+            assertThat( historyTypes( dbPath ) ).containsExactly( "BASELINE", "JDBC" );
         }
     }
 

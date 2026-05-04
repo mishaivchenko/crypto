@@ -80,6 +80,9 @@ public class OrderAttemptRecordService
         entity.setSubmittedAt( request.submittedAt() );
         entity.setExchangeTimestamp( request.exchangeTimestamp() );
         entity.setFailureReason( request.failureReason() );
+        entity.setAverageFillPrice( request.averageFillPrice() );
+        entity.setFilledQuantity( request.filledQuantity() );
+        entity.setFeeUsd( request.feeUsd() );
         return entity;
     }
 
@@ -103,6 +106,9 @@ public class OrderAttemptRecordService
             entity.getSubmittedAt(),
             entity.getExchangeTimestamp(),
             entity.getFailureReason(),
+            entity.getAverageFillPrice(),
+            entity.getFilledQuantity(),
+            entity.getFeeUsd(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

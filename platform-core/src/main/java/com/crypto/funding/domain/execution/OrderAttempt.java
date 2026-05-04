@@ -23,10 +23,61 @@ public record OrderAttempt(
     Instant submittedAt,
     Instant exchangeTimestamp,
     String failureReason,
+    BigDecimal averageFillPrice,
+    BigDecimal filledQuantity,
+    BigDecimal feeUsd,
     Instant createdAt,
     Instant updatedAt
 )
 {
+    public OrderAttempt(
+        Long id,
+        String attemptKey,
+        Long armedTradeId,
+        Integer attemptNumber,
+        String venue,
+        String symbol,
+        TradeSide side,
+        ExecutionType executionType,
+        BigDecimal quantity,
+        BigDecimal limitPrice,
+        OrderAttemptStatus status,
+        String externalOrderId,
+        Instant targetEntryAt,
+        Instant triggerAt,
+        Instant submittedAt,
+        Instant exchangeTimestamp,
+        String failureReason,
+        Instant createdAt,
+        Instant updatedAt
+    )
+    {
+        this(
+            id,
+            attemptKey,
+            armedTradeId,
+            attemptNumber,
+            venue,
+            symbol,
+            side,
+            executionType,
+            quantity,
+            limitPrice,
+            status,
+            externalOrderId,
+            targetEntryAt,
+            triggerAt,
+            submittedAt,
+            exchangeTimestamp,
+            failureReason,
+            null,
+            null,
+            null,
+            createdAt,
+            updatedAt
+        );
+    }
+
     public OrderAttempt
     {
         if( armedTradeId == null )

@@ -1,10 +1,17 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.application.engine.MonitorEnginePlanService;
+import com.crypto.funding.application.execution.EngineLifecycleRecordService;
 import com.crypto.funding.application.execution.OrderAttemptRecordService;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
+import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
+import com.crypto.funding.contract.engine.EnginePositionResponse;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
+import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
+import com.crypto.funding.contract.engine.EngineTradeStateUpdateResponse;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,14 +28,17 @@ public class InternalEnginePlanController
 {
     private final MonitorEnginePlanService enginePlanService;
     private final OrderAttemptRecordService orderAttemptRecordService;
+    private final EngineLifecycleRecordService lifecycleRecordService;
 
     public InternalEnginePlanController(
         MonitorEnginePlanService enginePlanService,
-        OrderAttemptRecordService orderAttemptRecordService
+        OrderAttemptRecordService orderAttemptRecordService,
+        EngineLifecycleRecordService lifecycleRecordService
     )
     {
         this.enginePlanService = enginePlanService;
         this.orderAttemptRecordService = orderAttemptRecordService;
+        this.lifecycleRecordService = lifecycleRecordService;
     }
 
     @GetMapping("/plans")
@@ -47,5 +57,26 @@ public class InternalEnginePlanController
     public EngineOrderAttemptResponse recordOrderAttempt( @RequestBody EngineOrderAttemptRecordRequest request )
     {
         return orderAttemptRecordService.record( request );
+    }
+
+    @PostMapping("/trades/{armedTradeId}/state")
+    public EngineTradeStateUpdateResponse updateTradeState(
+        @PathVariable Long armedTradeId,
+        @RequestBody EngineTradeStateUpdateRequest request
+    )
+    {
+        return lifecycleRecordService.updateTradeState( armedTradeId, request );
+    }
+
+    @PostMapping("/positions")
+    public EnginePositionResponse recordPosition( @RequestBody EnginePositionRecordRequest request )
+    {
+        return lifecycleRecordService.recordPosition( request );
+    }
+
+    @PostMapping("/outcomes")
+    public EngineTradeOutcomeResponse recordOutcome( @RequestBody EngineTradeOutcomeRecordRequest request )
+    {
+        return lifecycleRecordService.recordTradeOutcome( request );
     }
 }

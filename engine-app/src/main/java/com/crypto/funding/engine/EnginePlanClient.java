@@ -4,6 +4,12 @@ import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
+import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
+import com.crypto.funding.contract.engine.EnginePositionResponse;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
+import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
+import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
+import com.crypto.funding.contract.engine.EngineTradeStateUpdateResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -96,6 +102,39 @@ public class EnginePlanClient
         {
             telemetryService.recordAttemptRecord( ( nanoTimeSupplier.getAsLong() - startedAt ) / 1_000_000L );
         }
+    }
+
+    public EnginePositionResponse recordPosition( EnginePositionRecordRequest request )
+    {
+        return restClient.post()
+                         .uri( "/internal/v1/engine/positions" )
+                         .contentType( MediaType.APPLICATION_JSON )
+                         .headers( this::internalHeaders )
+                         .body( request )
+                         .retrieve()
+                         .body( EnginePositionResponse.class );
+    }
+
+    public EngineTradeStateUpdateResponse updateTradeState( Long armedTradeId, EngineTradeStateUpdateRequest request )
+    {
+        return restClient.post()
+                         .uri( "/internal/v1/engine/trades/{armedTradeId}/state", armedTradeId )
+                         .contentType( MediaType.APPLICATION_JSON )
+                         .headers( this::internalHeaders )
+                         .body( request )
+                         .retrieve()
+                         .body( EngineTradeStateUpdateResponse.class );
+    }
+
+    public EngineTradeOutcomeResponse recordTradeOutcome( EngineTradeOutcomeRecordRequest request )
+    {
+        return restClient.post()
+                         .uri( "/internal/v1/engine/outcomes" )
+                         .contentType( MediaType.APPLICATION_JSON )
+                         .headers( this::internalHeaders )
+                         .body( request )
+                         .retrieve()
+                         .body( EngineTradeOutcomeResponse.class );
     }
 
     public void publishMetricsSnapshot( EngineMetricsSnapshot snapshot )
