@@ -26,12 +26,15 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     if (runtimeError) {
         return `
             <div class="panel-header">
-                <div>
-                    <h3>Dev Tools</h3>
-                    <p class="muted">Runtime control временно недоступен.</p>
-                </div>
+            <div>
+                <h3>Dev Tools</h3>
+                <p class="muted">Runtime control временно недоступен.</p>
+            </div>
+            <div class="actions">
+                <button class="icon-button lab-button" type="button" title="Dev test run" aria-label="Dev test run" data-action="open-dev-test-run">LAB</button>
                 <button class="button secondary" type="button" data-action="run-engine-once">Run once · dev</button>
             </div>
+        </div>
             <div class="action-card dev-tool-card">
                 <span class="chip dev-chip">DEV TOOL</span>
                 <p class="helper-text">${escapeHtml(runtimeError)}</p>
@@ -78,7 +81,10 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
                 <h3>Dev Tools</h3>
                 <p class="muted">Инженерный контур для ручной проверки engine.</p>
             </div>
-            <button class="button secondary" type="button" data-action="run-engine-once">Run once · dev</button>
+            <div class="actions">
+                <button class="icon-button lab-button" type="button" title="Dev test run" aria-label="Dev test run" data-action="open-dev-test-run">LAB</button>
+                <button class="button secondary" type="button" data-action="run-engine-once">Run once · dev</button>
+            </div>
         </div>
         <div class="action-card dev-tool-card">
             <span class="chip dev-chip">DEV TOOL</span>
@@ -87,7 +93,7 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     `;
 }
 
-export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue }) {
+export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
     nodes.dashboardSummary.innerHTML = dashboardSummaryMarkup(overview);
     nodes.dashboardDevTools.innerHTML = dashboardDevToolsMarkup(state.engineRuntime, state.engineRuntimeError);
@@ -98,6 +104,10 @@ export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpd
     const runOnceButton = nodes.dashboardDevTools.querySelector("[data-action='run-engine-once']");
     if (runOnceButton) {
         runOnceButton.addEventListener("click", onRunEngineOnce);
+    }
+    const devTestRunButton = nodes.dashboardDevTools.querySelector("[data-action='open-dev-test-run']");
+    if (devTestRunButton) {
+        devTestRunButton.addEventListener("click", onOpenDevTestRun);
     }
     const runtimeForm = nodes.dashboardDevTools.querySelector("[data-action='update-engine-runtime']");
     if (runtimeForm) {

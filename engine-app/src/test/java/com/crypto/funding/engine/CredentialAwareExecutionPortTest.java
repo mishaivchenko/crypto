@@ -206,6 +206,9 @@ class CredentialAwareExecutionPortTest
     @Test
     void submitsBybitLinearMarketSellAndReadsFilledStatus()
     {
+        exchange.stubFor( get( urlEqualTo( "/v5/market/tickers?category=linear&symbol=REQUSDT" ) ).willReturn( okJson( """
+            {"retCode":0,"retMsg":"OK","result":{"list":[{"symbol":"REQUSDT","lastPrice":"2.5"}]}}
+            """ ) ) );
         exchange.stubFor( post( "/v5/order/create" ).willReturn( okJson( """
             {"retCode":0,"retMsg":"OK","result":{"orderId":"bybit-order-1"}}
             """ ) ) );
@@ -219,7 +222,7 @@ class CredentialAwareExecutionPortTest
                 .withProperty( "engine.bybit.testnet-base-url", exchange.baseUrl() )
         );
 
-        var attempt = port.submitOrder( livePlan( "bybit" ), marketIntent(), false );
+        var attempt = port.submitOrder( liveEntryPlanWithoutPositionPrice( "bybit" ), marketIntent(), false );
 
         assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
         assertThat( attempt.externalOrderId() ).isEqualTo( "bybit-order-1" );
@@ -231,6 +234,38 @@ class CredentialAwareExecutionPortTest
             .withRequestBody( containing( "\"side\":\"Sell\"" ) )
             .withRequestBody( containing( "\"orderType\":\"Market\"" ) )
             .withRequestBody( containing( "\"reduceOnly\":false" ) ) );
+    }
+
+    @Test
+    void submitsGateEntryUsingTickerAndContractMultiplier()
+    {
+        exchange.stubFor( get( urlEqualTo( "/futures/usdt/tickers?contract=REQ_USDT" ) ).willReturn( okJson( """
+            [{"contract":"REQ_USDT","last":"2.5"}]
+            """ ) ) );
+        exchange.stubFor( get( urlEqualTo( "/futures/usdt/contracts/REQ_USDT" ) ).willReturn( okJson( """
+            {"name":"REQ_USDT","quanto_multiplier":"0.01"}
+            """ ) ) );
+        exchange.stubFor( post( "/futures/usdt/orders" ).willReturn( okJson( """
+            {"id":"gate-order-entry-1","status":"finished","finish_as":"filled","contract":"REQ_USDT","size":-1000,"fill_price":"2.5","fee":"0.01","create_time":1893456000}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironment( "gate" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.gate.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( liveEntryPlanWithoutPositionPrice( "gate" ), marketIntent(), false );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "gate-order-entry-1" );
+        assertThat( attempt.quantity() ).isEqualByComparingTo( "1000" );
+        assertThat( attempt.averageFillPrice() ).isEqualByComparingTo( "2.5" );
+        exchange.verify( postRequestedFor( urlEqualTo( "/futures/usdt/orders" ) )
+            .withRequestBody( containing( "\"contract\":\"REQ_USDT\"" ) )
+            .withRequestBody( containing( "\"size\":-1000" ) )
+            .withRequestBody( containing( "\"price\":\"0\"" ) )
+            .withRequestBody( containing( "\"tif\":\"ioc\"" ) )
+            .withRequestBody( containing( "\"reduce_only\":false" ) ) );
     }
 
     @Test
@@ -295,6 +330,16 @@ class CredentialAwareExecutionPortTest
 
     private static EngineExecutionPlan livePlan( String venue, Integer entryAttemptCount )
     {
+        return livePlan( venue, entryAttemptCount, BigDecimal.valueOf( 2.5 ) );
+    }
+
+    private static EngineExecutionPlan liveEntryPlanWithoutPositionPrice( String venue )
+    {
+        return livePlan( venue, 1, null );
+    }
+
+    private static EngineExecutionPlan livePlan( String venue, Integer entryAttemptCount, BigDecimal positionEntryPrice )
+    {
         return new EngineExecutionPlan(
             5L,
             10L,
@@ -324,7 +369,7 @@ class CredentialAwareExecutionPortTest
             Instant.parse( "2029-12-31T00:00:00Z" ),
             Instant.parse( "2029-12-31T00:00:00Z" ),
             BigDecimal.TEN,
-            BigDecimal.valueOf( 2.5 )
+            positionEntryPrice
         );
     }
 }

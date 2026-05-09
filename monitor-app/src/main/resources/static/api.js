@@ -62,6 +62,30 @@ export const api = {
             method: "POST"
         });
     },
+    getDevTestRunOptions() {
+        return request("/api/v2/monitor/dev/test-runs/options");
+    },
+    createDevTestRun(payload) {
+        return request("/api/v2/monitor/dev/test-runs", {
+            method: "POST",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
+    runDevTestEntry(armedTradeId, payload = {}) {
+        return request(`/api/v2/monitor/dev/test-runs/${armedTradeId}/entry`, {
+            method: "POST",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
+    runDevTestExit(armedTradeId, payload = {}) {
+        return request(`/api/v2/monitor/dev/test-runs/${armedTradeId}/exit`, {
+            method: "POST",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
     listCandidates(filters = {}) {
         const params = new URLSearchParams({ page: "0", size: "50" });
         Object.entries(filters).forEach(([key, value]) => {

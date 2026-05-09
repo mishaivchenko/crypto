@@ -28,6 +28,9 @@ import {
     openVenueDetail
 } from "./app/workflows/venue-detail.js";
 import {
+    openDevTestRunTool
+} from "./app/workflows/dev-test-run.js";
+import {
     createDrawerActionHandler
 } from "./app/workflows/drawer-actions.js";
 
@@ -58,6 +61,7 @@ const openEvent = (id) => openEventDetail({ id, nodes, showError });
 const openTrade = (id) => openTradeDetail({ id, nodes, showError });
 const openHistoryTrade = (id) => openHistoryTradeDetail({ id, nodes, showError });
 const openVenue = (venueName) => openVenueDetail({ venueName, nodes, showError });
+const openDevTestRun = () => openDevTestRunTool({ nodes, showError });
 
 async function refreshCurrentScreen() {
     try {
@@ -78,7 +82,8 @@ async function refreshCurrentScreen() {
                 state,
                 onRunEngineOnce: () => handleRunEngineOnce({ state, refreshCurrentScreen, showSuccess, showError }),
                 onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
-                onOpenVenue: openVenue
+                onOpenVenue: openVenue,
+                onOpenDevTestRun: openDevTestRun
             });
             return;
         }

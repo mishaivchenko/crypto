@@ -20,6 +20,7 @@ public class EngineRuntimeControlService
     private final AtomicLong lastScheduledDispatchAtMs = new AtomicLong( Long.MIN_VALUE );
     private final EngineTelemetryService telemetryService;
     private final Clock clock;
+    private final EngineProperties properties;
 
     private volatile Instant updatedAt;
 
@@ -33,6 +34,7 @@ public class EngineRuntimeControlService
     {
         this.telemetryService = telemetryService;
         this.clock = clock;
+        this.properties = properties;
         this.executionLoopEnabled.set( properties.isExecutionLoopEnabled() );
         this.executionLoopIntervalMs.set( clampInterval( properties.getExecutionLoopIntervalMs() ) );
         this.updatedAt = Instant.now( clock );
@@ -94,6 +96,11 @@ public class EngineRuntimeControlService
         return new EngineRuntimeControlResponse(
             "engine-app",
             "2.0.0",
+            properties.getTradingVenueAccessMode(),
+            properties.isLiveOrderEnabled(),
+            properties.isKillSwitchEnabled(),
+            properties.liveEnabledVenues(),
+            properties.getMaxNotionalUsd(),
             executionLoopEnabled(),
             executionLoopIntervalMs(),
             MIN_EXECUTION_LOOP_INTERVAL_MS,

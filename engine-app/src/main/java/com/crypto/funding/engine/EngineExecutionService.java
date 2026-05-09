@@ -7,6 +7,7 @@ import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
+import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
 import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
@@ -154,6 +155,94 @@ public class EngineExecutionService
         {
             // telemetry is recorded on the happy path with run details; failures still bubble up to the caller.
         }
+    }
+
+    public EngineExecutionRunResponse runTarget( Long armedTradeId, EngineExecutionTargetPhase phase, boolean force )
+    {
+        Instant startedAt = Instant.now( clock );
+        List<EngineExecutionAttemptResult> results = new ArrayList<>();
+        int skipped = 0;
+        if( armedTradeId == null || phase == null )
+        {
+            skipped++;
+        }
+        else
+        {
+            EngineExecutionPlan plan = client.getPlan( armedTradeId );
+            if( phase == EngineExecutionTargetPhase.EXIT )
+            {
+                if( shouldProcessTargetExit( plan, force ) )
+                {
+                    String exitAttemptKey = exitAttemptKey( plan );
+                    if( reserveAttemptKey( exitAttemptKey ) )
+                    {
+                        try
+                        {
+                            results.add( executeExit( plan ) );
+                        }
+                        catch( Exception e )
+                        {
+                            results.add( isolatedFailure( plan.armedTradeId(), null, exitAttemptKey, e ) );
+                        }
+                    }
+                    else
+                    {
+                        skipped++;
+                    }
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+            else
+            {
+                EngineEntryAttemptPlan attemptPlan = firstTargetEntryAttempt( plan );
+                if( shouldProcessTargetEntry( plan, attemptPlan, force ) )
+                {
+                    String attemptKey = attemptKey( plan, attemptPlan );
+                    if( reserveAttemptKey( attemptKey ) )
+                    {
+                        try
+                        {
+                            results.add( executeEntryAttempt( plan, attemptPlan ) );
+                        }
+                        catch( Exception e )
+                        {
+                            results.add( isolatedFailure( plan.armedTradeId(), attemptPlan.attemptNumber(), attemptKey, e ) );
+                        }
+                    }
+                    else
+                    {
+                        skipped++;
+                    }
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+        }
+
+        Instant finishedAt = Instant.now( clock );
+        telemetryService.recordExecutionRun(
+            force,
+            startedAt,
+            finishedAt,
+            1,
+            results.size(),
+            skipped,
+            java.time.Duration.between( startedAt, finishedAt ).toMillis()
+        );
+        return new EngineExecutionRunResponse(
+            startedAt,
+            finishedAt,
+            force,
+            1,
+            results.size(),
+            skipped,
+            results
+        );
     }
 
     private EngineExecutionAttemptResult executeEntryAttempt( EngineExecutionPlan plan, EngineEntryAttemptPlan attemptPlan )
@@ -365,6 +454,44 @@ public class EngineExecutionService
                    || plan.status() == EnginePlanStatus.OVERDUE;
         }
         return plan.status() == EnginePlanStatus.ENTRY_WINDOW;
+    }
+
+    private boolean shouldProcessTargetEntry( EngineExecutionPlan plan, EngineEntryAttemptPlan attemptPlan, boolean force )
+    {
+        if( plan == null || attemptPlan == null )
+        {
+            return false;
+        }
+        if( force )
+        {
+            return plan.status() == EnginePlanStatus.WAITING_ENTRY
+                   || plan.status() == EnginePlanStatus.ENTRY_WINDOW
+                   || plan.status() == EnginePlanStatus.OVERDUE;
+        }
+        return plan.status() == EnginePlanStatus.ENTRY_WINDOW
+               && !attemptPlan.triggerAt().isAfter( Instant.now( clock ) );
+    }
+
+    private boolean shouldProcessTargetExit( EngineExecutionPlan plan, boolean force )
+    {
+        if( plan == null || plan.positionQuantity() == null || plan.positionQuantity().signum() <= 0 )
+        {
+            return false;
+        }
+        if( force )
+        {
+            return plan.status() == EnginePlanStatus.WAITING_EXIT || plan.status() == EnginePlanStatus.EXIT_WINDOW;
+        }
+        return plan.status() == EnginePlanStatus.EXIT_WINDOW;
+    }
+
+    private EngineEntryAttemptPlan firstTargetEntryAttempt( EngineExecutionPlan plan )
+    {
+        if( plan == null || plan.entryAttempts() == null || plan.entryAttempts().isEmpty() )
+        {
+            return null;
+        }
+        return plan.entryAttempts().getFirst();
     }
 
     private String attemptKey( EngineExecutionPlan plan, EngineEntryAttemptPlan attemptPlan )

@@ -142,6 +142,30 @@ class EngineRuntimeControlServiceTest
     }
 
     @Test
+    void exposesLiveSafetyConfigurationInRuntimeSnapshot()
+    {
+        EngineProperties properties = new EngineProperties();
+        properties.setTradingVenueAccessMode( "production" );
+        properties.setLiveOrderEnabled( true );
+        properties.setKillSwitchEnabled( false );
+        properties.setLiveEnabledVenues( "bybit,gate" );
+        properties.setMaxNotionalUsd( new java.math.BigDecimal( "25" ) );
+        EngineRuntimeControlService service = new EngineRuntimeControlService(
+            properties,
+            new EngineTelemetryService(),
+            Clock.fixed( Instant.parse( "2030-01-01T00:00:00Z" ), ZoneOffset.UTC )
+        );
+
+        var response = service.snapshot();
+
+        assertThat( response.tradingVenueAccessMode() ).isEqualTo( "production" );
+        assertThat( response.liveOrderEnabled() ).isTrue();
+        assertThat( response.killSwitchEnabled() ).isFalse();
+        assertThat( response.liveEnabledVenues() ).containsExactly( "bybit", "gate" );
+        assertThat( response.maxNotionalUsd() ).isEqualByComparingTo( "25" );
+    }
+
+    @Test
     void refusesScheduledLoopWhenRuntimeGateIsDisabled()
     {
         // REQ: ENG-RTC-002

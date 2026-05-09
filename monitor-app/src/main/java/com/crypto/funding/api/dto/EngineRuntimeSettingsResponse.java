@@ -1,10 +1,17 @@
 package com.crypto.funding.api.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 public record EngineRuntimeSettingsResponse(
     String module,
     String version,
+    String tradingVenueAccessMode,
+    boolean liveOrderEnabled,
+    boolean killSwitchEnabled,
+    List<String> liveEnabledVenues,
+    BigDecimal maxNotionalUsd,
     boolean executionLoopEnabled,
     long executionLoopIntervalMs,
     long minimumExecutionLoopIntervalMs,

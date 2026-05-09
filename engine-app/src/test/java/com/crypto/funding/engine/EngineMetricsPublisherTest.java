@@ -59,6 +59,11 @@ class EngineMetricsPublisherTest
         when( runtimeControlService.snapshot() ).thenReturn( new EngineRuntimeControlResponse(
             "engine-app",
             "2.0.0",
+            "testnet",
+            false,
+            true,
+            List.of( "bybit", "gate" ),
+            java.math.BigDecimal.valueOf( 25 ),
             false,
             1500L,
             100L,

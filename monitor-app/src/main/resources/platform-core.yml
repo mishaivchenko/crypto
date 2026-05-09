@@ -58,6 +58,10 @@ monitor:
         internal-token: ${MONITOR_ENGINE_CONTROL_INTERNAL_TOKEN:${INTERNAL_ENGINE_TOKEN:}}
     engine-metrics:
         enabled: ${MONITOR_ENGINE_METRICS_ENABLED:false}
+    dev-test-tool:
+        enabled: ${MONITOR_DEV_TEST_TOOL_ENABLED:false}
+        max-notional-usd: ${MONITOR_DEV_TEST_MAX_NOTIONAL_USD:25}
+        enabled-venues: ${MONITOR_DEV_TEST_ENABLED_VENUES:bybit,gate}
 
 trading:
     venue-access:

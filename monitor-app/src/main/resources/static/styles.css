@@ -475,6 +475,14 @@ body {
     color: var(--ink);
 }
 
+.lab-button {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #d7fff8;
+    border: 1px solid rgba(124, 224, 207, 0.28);
+}
+
 .detail-section {
     border-radius: 18px 8px 24px 8px;
     padding: 16px;

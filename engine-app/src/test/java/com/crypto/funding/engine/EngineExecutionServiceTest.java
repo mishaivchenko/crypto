@@ -8,6 +8,7 @@ import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
 import com.crypto.funding.contract.engine.EnginePositionResponse;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
+import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -170,6 +172,214 @@ class EngineExecutionServiceTest
         assertThat( response.attemptsSubmitted() ).isZero();
         assertThat( response.attemptsSkipped() ).isEqualTo( 1 );
         verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
+    }
+
+    @Test
+    void targetedEntryFetchesOnlyRequestedTradeAndRecordsLifecycle()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( plan( 5L, EnginePlanStatus.WAITING_ENTRY, List.of( futureAttempt( 1, 1_000 ) ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+        ArgumentCaptor<EngineTradeStateUpdateRequest> stateCaptor = ArgumentCaptor.forClass( EngineTradeStateUpdateRequest.class );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, true );
+
+        assertThat( response.plansScanned() ).isEqualTo( 1 );
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.attemptsSkipped() ).isZero();
+        assertThat( response.results() ).singleElement().satisfies( result -> {
+            assertThat( result.armedTradeId() ).isEqualTo( 5L );
+            assertThat( result.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        } );
+        verify( client ).getPlan( 5L );
+        verify( client, never() ).listPlans( true );
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
+        verify( client ).recordPosition( any() );
+        verify( client ).updateTradeState( eq( 5L ), stateCaptor.capture() );
+        verify( telemetryService ).recordExecutionRun( eq( true ), eq( NOW ), eq( NOW ), eq( 1 ), eq( 1 ), eq( 0 ), eq( 0L ) );
+        assertThat( stateCaptor.getValue().state() ).isEqualTo( ArmedTradeState.OPEN );
+    }
+
+    @Test
+    void targetedExitFetchesOnlyRequestedTradeAndRecordsOutcome()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( openPlan( 5L ) );
+        ArgumentCaptor<EngineTradeOutcomeRecordRequest> outcomeCaptor = ArgumentCaptor.forClass( EngineTradeOutcomeRecordRequest.class );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+
+        assertThat( response.plansScanned() ).isEqualTo( 1 );
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.attemptsSkipped() ).isZero();
+        verify( client ).getPlan( 5L );
+        verify( client, never() ).listPlans( true );
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+        verify( client ).recordTradeOutcome( outcomeCaptor.capture() );
+        assertThat( outcomeCaptor.getValue().outcomeCode() ).isEqualTo( "CLOSED" );
+    }
+
+    @Test
+    void targetedExecutionSkipsInvalidRequestWithoutFetchingPlan()
+    {
+        var response = service.runTarget( null, EngineExecutionTargetPhase.ENTRY, true );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        assertThat( response.attemptsSkipped() ).isEqualTo( 1 );
+        verify( client, never() ).getPlan( any() );
+        verify( executionPort, never() ).submitOrder( any(), any(), eq( false ) );
+    }
+
+    @Test
+    void targetedEntryWithoutForceWaitsForTrigger()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( futureAttempt( 1, 1_000 ) ) ) );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        assertThat( response.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, never() ).submitOrder( any(), any(), eq( false ) );
+        verify( client, never() ).recordOrderAttempt( any() );
+    }
+
+    @Test
+    void targetedEntryWithoutForceProcessesDueEntryWindow()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.attemptsSkipped() ).isZero();
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
+    }
+
+    @Test
+    void targetedEntrySkipsMissingAttemptAndInvalidStatus()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of() ) );
+        when( client.getPlan( 6L ) ).thenReturn( plan( 6L, EnginePlanStatus.CLOSED, List.of( pastAttempt( 1, 0 ) ) ) );
+
+        var missingAttempt = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, true );
+        var invalidStatus = service.runTarget( 6L, EngineExecutionTargetPhase.ENTRY, true );
+
+        assertThat( missingAttempt.attemptsSkipped() ).isEqualTo( 1 );
+        assertThat( invalidStatus.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, never() ).submitOrder( any(), any(), eq( false ) );
+    }
+
+    @Test
+    void targetedExitForceAllowsWaitingExit()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( openPlan( 5L, EnginePlanStatus.WAITING_EXIT ) );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.attemptsSkipped() ).isZero();
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    @Test
+    void targetedExitWithoutForceProcessesOnlyExitWindow()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( openPlan( 5L ) );
+        when( client.getPlan( 6L ) ).thenReturn( openPlan( 6L, EnginePlanStatus.WAITING_EXIT ) );
+
+        var due = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, false );
+        var waiting = service.runTarget( 6L, EngineExecutionTargetPhase.EXIT, false );
+
+        assertThat( due.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( waiting.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, times( 1 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    @Test
+    void targetedExitSkipsMissingPositionQuantity()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( openPlan( 5L, TradeSide.SHORT, null, BigDecimal.valueOf( 2.5 ) ) );
+        when( client.getPlan( 6L ) ).thenReturn( openPlan( 6L, TradeSide.SHORT, BigDecimal.ZERO, BigDecimal.valueOf( 2.5 ) ) );
+
+        var missing = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+        var zero = service.runTarget( 6L, EngineExecutionTargetPhase.EXIT, true );
+
+        assertThat( missing.attemptsSubmitted() ).isZero();
+        assertThat( missing.attemptsSkipped() ).isEqualTo( 1 );
+        assertThat( zero.attemptsSubmitted() ).isZero();
+        assertThat( zero.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, never() ).submitOrder( any(), any(), eq( true ) );
+    }
+
+    @Test
+    void targetedExitForceSkipsClosedTrade()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( openPlan( 5L, EnginePlanStatus.CLOSED ) );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        assertThat( response.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, never() ).submitOrder( any(), any(), eq( true ) );
+    }
+
+    @Test
+    void duplicateTargetedEntryClicksDoNotDuplicateOrder()
+    {
+        EngineExecutionPlan plan = plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) );
+        when( client.getPlan( 5L ) ).thenReturn( plan );
+
+        var first = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, true );
+        var second = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, true );
+
+        assertThat( first.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( second.attemptsSubmitted() ).isZero();
+        assertThat( second.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, times( 1 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) );
+    }
+
+    @Test
+    void duplicateTargetedExitClicksDoNotDuplicateOrder()
+    {
+        EngineExecutionPlan plan = openPlan( 5L );
+        when( client.getPlan( 5L ) ).thenReturn( plan );
+
+        var first = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+        var second = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+
+        assertThat( first.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( second.attemptsSubmitted() ).isZero();
+        assertThat( second.attemptsSkipped() ).isEqualTo( 1 );
+        verify( executionPort, times( 1 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    @Test
+    void targetedEntryFailureIsIsolated()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) );
+        doThrow( new IllegalStateException( "monitor write failed" ) ).when( client ).recordOrderAttempt( any() );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.ENTRY, true );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.results() ).singleElement().satisfies( result -> {
+            assertThat( result.status() ).isEqualTo( OrderAttemptStatus.FAILED );
+            assertThat( result.failureReason() ).contains( "monitor write failed" );
+        } );
+    }
+
+    @Test
+    void targetedExitFailureIsIsolated()
+    {
+        when( client.getPlan( 5L ) ).thenReturn( openPlan( 5L ) );
+        doThrow( new IllegalStateException( "monitor write failed" ) ).when( client ).recordOrderAttempt( any() );
+
+        var response = service.runTarget( 5L, EngineExecutionTargetPhase.EXIT, true );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.results() ).singleElement().satisfies( result -> {
+            assertThat( result.status() ).isEqualTo( OrderAttemptStatus.FAILED );
+            assertThat( result.failureReason() ).contains( "monitor write failed" );
+        } );
     }
 
     // REQ: ENG-EXE-005
@@ -456,10 +666,26 @@ class EngineExecutionServiceTest
 
     private static EngineExecutionPlan openPlan( Long armedTradeId )
     {
-        return openPlan( armedTradeId, TradeSide.SHORT, BigDecimal.TEN, BigDecimal.valueOf( 2.5 ) );
+        return openPlan( armedTradeId, EnginePlanStatus.EXIT_WINDOW );
+    }
+
+    private static EngineExecutionPlan openPlan( Long armedTradeId, EnginePlanStatus status )
+    {
+        return openPlan( armedTradeId, TradeSide.SHORT, BigDecimal.TEN, BigDecimal.valueOf( 2.5 ), status );
     }
 
     private static EngineExecutionPlan openPlan( Long armedTradeId, TradeSide side, BigDecimal quantity, BigDecimal entryPrice )
+    {
+        return openPlan( armedTradeId, side, quantity, entryPrice, EnginePlanStatus.EXIT_WINDOW );
+    }
+
+    private static EngineExecutionPlan openPlan(
+        Long armedTradeId,
+        TradeSide side,
+        BigDecimal quantity,
+        BigDecimal entryPrice,
+        EnginePlanStatus status
+    )
     {
         return new EngineExecutionPlan(
             armedTradeId,
@@ -478,7 +704,7 @@ class EngineExecutionServiceTest
             0L,
             0L,
             List.of( pastAttempt( 1, 0 ) ),
-            EnginePlanStatus.EXIT_WINDOW,
+            status,
             NOW,
             0L,
             -60_000L,

@@ -304,28 +304,93 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         return null;
     }
 
-    private BigDecimal orderQuantity( EngineExecutionPlan plan, OrderIntent intent, boolean reduceOnly )
+    private BigDecimal orderQuantity( EngineExecutionPlan plan, OrderIntent intent, boolean reduceOnly ) throws IOException, InterruptedException
     {
-        BigDecimal raw = reduceOnly ? intent.quantity() : plan.notionalUsd().divide( priceReference( plan ), 16, RoundingMode.DOWN );
+        if( reduceOnly )
+        {
+            BigDecimal rounded = roundDownToStep( intent.quantity(), plan.qtyStep() );
+            if( rounded.compareTo( plan.minOrderQty() ) < 0 )
+            {
+                throw new IllegalArgumentException( "Order quantity is below instrument minOrderQty." );
+            }
+            return rounded;
+        }
+
+        BigDecimal priceReference = liveMarketPrice( plan );
+        BigDecimal contractMultiplier = contractMultiplier( plan );
+        BigDecimal raw = plan.notionalUsd().divide( priceReference.multiply( contractMultiplier ), 16, RoundingMode.DOWN );
         BigDecimal rounded = roundDownToStep( raw, plan.qtyStep() );
         if( rounded.compareTo( plan.minOrderQty() ) < 0 )
         {
             throw new IllegalArgumentException( "Order quantity is below instrument minOrderQty." );
         }
-        if( !reduceOnly && rounded.multiply( priceReference( plan ) ).compareTo( plan.minNotionalValue() ) < 0 )
+        if( rounded.multiply( priceReference ).multiply( contractMultiplier ).compareTo( plan.minNotionalValue() ) < 0 )
         {
             throw new IllegalArgumentException( "Order notional is below instrument minNotionalValue." );
         }
         return rounded;
     }
 
-    private BigDecimal priceReference( EngineExecutionPlan plan )
+    private BigDecimal liveMarketPrice( EngineExecutionPlan plan ) throws IOException, InterruptedException
     {
+        String venue = normalizeVenue( plan.venue() );
+        if( "bybit".equals( venue ) )
+        {
+            String url = baseUrl( "bybit" ) + "/v5/market/tickers?category=linear&symbol=" + encode( plan.venueSymbol() );
+            JsonNode root = getJson( url, "Bybit ticker" );
+            JsonNode list = root.path( "result" ).path( "list" );
+            JsonNode ticker = list.isArray() && !list.isEmpty() ? list.get( 0 ) : objectMapper.createObjectNode();
+            return requirePositiveDecimal( ticker.path( "lastPrice" ).asText( null ), "Bybit ticker lastPrice is missing." );
+        }
+        if( "gate".equals( venue ) )
+        {
+            String url = baseUrl( "gate" ) + "/futures/usdt/tickers?contract=" + encode( plan.venueSymbol() );
+            JsonNode root = getJson( url, "Gate ticker" );
+            JsonNode ticker = root.isArray() && !root.isEmpty() ? root.get( 0 ) : root;
+            return requirePositiveDecimal( ticker.path( "last" ).asText( null ), "Gate ticker last price is missing." );
+        }
         if( plan.positionEntryPrice() == null || plan.positionEntryPrice().signum() <= 0 )
         {
             throw new IllegalArgumentException( "Price reference is missing for notional-to-quantity conversion." );
         }
         return plan.positionEntryPrice();
+    }
+
+    private BigDecimal contractMultiplier( EngineExecutionPlan plan ) throws IOException, InterruptedException
+    {
+        if( !"gate".equals( normalizeVenue( plan.venue() ) ) )
+        {
+            return BigDecimal.ONE;
+        }
+        String url = baseUrl( "gate" ) + "/futures/usdt/contracts/" + encode( plan.venueSymbol() );
+        JsonNode root = getJson( url, "Gate contract" );
+        return requirePositiveDecimal( root.path( "quanto_multiplier" ).asText( null ), "Gate contract quanto_multiplier is missing." );
+    }
+
+    private JsonNode getJson( String url, String operation ) throws IOException, InterruptedException
+    {
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri( URI.create( url ) )
+                                         .timeout( REQUEST_TIMEOUT )
+                                         .GET()
+                                         .build();
+        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        if( response.statusCode() >= 300 )
+        {
+            throw new IllegalArgumentException( operation + " request failed: " + response.body() );
+        }
+        return root;
+    }
+
+    private static BigDecimal requirePositiveDecimal( String value, String message )
+    {
+        BigDecimal decimal = decimalOrNull( value );
+        if( decimal == null || decimal.signum() <= 0 )
+        {
+            throw new IllegalArgumentException( message );
+        }
+        return decimal;
     }
 
     private static BigDecimal roundDownToStep( BigDecimal value, BigDecimal step )

@@ -2,6 +2,7 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EngineExecutionTargetRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
 import com.crypto.funding.contract.engine.EngineSummaryResponse;
@@ -56,6 +57,16 @@ public class EngineController
     public EngineExecutionRunResponse runOnce( @RequestParam(defaultValue = "false") boolean force )
     {
         return engineExecutionService.runOnce( force );
+    }
+
+    @PostMapping("/execution/target")
+    public EngineExecutionRunResponse runTarget( @RequestBody EngineExecutionTargetRequest request )
+    {
+        return engineExecutionService.runTarget(
+            request.armedTradeId(),
+            request.phase(),
+            Boolean.TRUE.equals( request.force() )
+        );
     }
 
     @GetMapping("/runtime")

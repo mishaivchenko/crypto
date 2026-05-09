@@ -2,6 +2,8 @@ package com.crypto.funding.application.monitor;
 
 import com.crypto.funding.config.MonitorEngineControlProperties;
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
+import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
+import com.crypto.funding.contract.engine.EngineExecutionTargetRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
 import org.springframework.stereotype.Service;
@@ -64,6 +66,23 @@ public class EngineControlService
         }
     }
 
+    public EngineExecutionRunResponse runTarget( Long armedTradeId, EngineExecutionTargetPhase phase, boolean force )
+    {
+        try
+        {
+            return restClient.post()
+                             .uri( "/internal/engine/execution/target" )
+                             .headers( this::applyInternalToken )
+                             .body( new EngineExecutionTargetRequest( armedTradeId, phase, force ) )
+                             .retrieve()
+                             .body( EngineExecutionRunResponse.class );
+        }
+        catch( RestClientException ex )
+        {
+            throw new IllegalStateException( "Engine targeted execution is unavailable: " + ex.getMessage(), ex );
+        }
+    }
+
     public EngineRuntimeControlResponse updateRuntime( EngineRuntimeControlRequest request )
     {
         try
@@ -83,6 +102,14 @@ public class EngineControlService
         catch( RestClientException ex )
         {
             throw new IllegalStateException( "Engine runtime update failed: " + ex.getMessage(), ex );
+        }
+    }
+
+    private void applyInternalToken( org.springframework.http.HttpHeaders headers )
+    {
+        if( properties.getInternalToken() != null && !properties.getInternalToken().isBlank() )
+        {
+            headers.set( "X-Internal-Token", properties.getInternalToken() );
         }
     }
 }

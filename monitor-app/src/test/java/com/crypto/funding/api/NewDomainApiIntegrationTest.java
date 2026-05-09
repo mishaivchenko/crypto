@@ -37,6 +37,9 @@ import java.time.Instant;
     "spring.datasource.driver-class-name=org.sqlite.JDBC",
     "spring.datasource.hikari.maximum-pool-size=1",
     "spring.jpa.properties.hibernate.dialect=org.hibernate.community.dialect.SQLiteDialect",
+    "trading.metadata.sync-on-startup=false",
+    "trading.metadata.schedule-enabled=false",
+    "trading.metadata.require-credentials-on-startup=false",
     "security.operators.auth-enabled=false"
 })
 @AutoConfigureMockMvc

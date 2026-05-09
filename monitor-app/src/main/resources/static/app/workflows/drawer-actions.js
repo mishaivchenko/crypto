@@ -1,5 +1,6 @@
 import { api } from "../../api.js";
 import { numberOrNull, resetDrawer, toIsoOrNull } from "../shared.js";
+import { renderDevTestRunCreated } from "./dev-test-run.js";
 
 export function createDrawerActionHandler({
     nodes,
@@ -65,6 +66,18 @@ export function createDrawerActionHandler({
                     await Promise.all([refreshCurrentScreen(), openEventDetail(form.dataset.id)]);
                     return;
                 }
+                if (action === "create-dev-test-run") {
+                    const run = await api.createDevTestRun({
+                        venue: data.get("venue"),
+                        symbol: data.get("symbol"),
+                        notionalUsd: numberOrNull(data.get("notionalUsd"))
+                    });
+                    const options = await api.getDevTestRunOptions();
+                    renderDevTestRunCreated({ nodes, options, run });
+                    await refreshCurrentScreen();
+                    showSuccess(`DEV_TEST created: ${run.venue} ${run.symbol} #${run.armedTradeId}.`);
+                    return;
+                }
             } catch (error) {
                 showError(error.message);
             }
@@ -89,6 +102,31 @@ export function createDrawerActionHandler({
                 await api.checkVenueCredentials(checkButton.dataset.venue);
                 showSuccess(`Credential check completed for ${checkButton.dataset.venue}.`);
                 await Promise.all([refreshCurrentScreen(), openVenueDetail(checkButton.dataset.venue)]);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        const devRunButton = event.target.closest("[data-action='run-dev-test-entry'], [data-action='run-dev-test-exit']");
+        if (devRunButton) {
+            const productionConfirm = nodes.drawerContent.querySelector("[data-production-confirm]")?.value ?? null;
+            const payload = productionConfirm ? { productionConfirm } : {};
+            const run = {
+                armedTradeId: devRunButton.dataset.armedTradeId,
+                venue: devRunButton.dataset.venue,
+                symbol: devRunButton.dataset.symbol,
+                mode: devRunButton.dataset.mode,
+                notionalUsd: devRunButton.dataset.notionalUsd,
+                status: "ARMED"
+            };
+            try {
+                const execution = devRunButton.dataset.action === "run-dev-test-entry"
+                    ? await api.runDevTestEntry(run.armedTradeId, payload)
+                    : await api.runDevTestExit(run.armedTradeId, payload);
+                const options = await api.getDevTestRunOptions();
+                renderDevTestRunCreated({ nodes, options, run, execution });
+                await refreshCurrentScreen();
+                showSuccess(`${execution.phase} completed: submitted ${execution.execution.attemptsSubmitted}, skipped ${execution.execution.attemptsSkipped}.`);
             } catch (error) {
                 showError(error.message);
             }

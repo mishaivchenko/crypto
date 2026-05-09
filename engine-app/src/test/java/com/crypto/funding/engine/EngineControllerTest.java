@@ -2,6 +2,8 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
+import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
+import com.crypto.funding.contract.engine.EngineExecutionTargetRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
 import com.crypto.funding.contract.engine.EngineSummaryResponse;
@@ -62,6 +64,21 @@ class EngineControllerTest
         verify( executionService ).runOnce( true );
     }
 
+    @Test
+    void delegatesTargetedExecutionRequest()
+    {
+        EnginePlanService planService = mock( EnginePlanService.class );
+        EngineExecutionService executionService = mock( EngineExecutionService.class );
+        EngineRuntimeControlService runtimeControlService = mock( EngineRuntimeControlService.class );
+        EngineController controller = new EngineController( planService, executionService, runtimeControlService );
+        EngineExecutionTargetRequest request = new EngineExecutionTargetRequest( 7L, EngineExecutionTargetPhase.EXIT, true );
+        EngineExecutionRunResponse response = new EngineExecutionRunResponse( NOW, NOW, true, 1, 1, 0, List.of() );
+        when( executionService.runTarget( 7L, EngineExecutionTargetPhase.EXIT, true ) ).thenReturn( response );
+
+        assertThat( controller.runTarget( request ) ).isSameAs( response );
+        verify( executionService ).runTarget( 7L, EngineExecutionTargetPhase.EXIT, true );
+    }
+
     // REQ: ENG-ACC-010
     @Test
     void delegatesRuntimeReadAndUpdateWithoutChangingPayloads()
@@ -74,6 +91,11 @@ class EngineControllerTest
         EngineRuntimeControlResponse snapshot = new EngineRuntimeControlResponse(
             "engine-app",
             "2.0.0",
+            "testnet",
+            false,
+            true,
+            List.of( "bybit", "gate" ),
+            BigDecimal.valueOf( 25 ),
             true,
             2_000L,
             100L,

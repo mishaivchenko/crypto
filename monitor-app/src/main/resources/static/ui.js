@@ -23,7 +23,8 @@ const statusLabels = {
         EXIT_PENDING: "Exit pending",
         CLOSED: "Closed",
         CANCELLED: "Cancelled",
-        FAILED: "Failed"
+        FAILED: "Failed",
+        DEV_TEST: "DEV_TEST"
     },
     trade: {
         ARMED: "Prepared",
@@ -92,7 +93,8 @@ const badgeTones = {
         EXIT_PENDING: "warning",
         CLOSED: "muted",
         CANCELLED: "bad",
-        FAILED: "bad"
+        FAILED: "bad",
+        DEV_TEST: "info"
     },
     trade: {
         ARMED: "info",
