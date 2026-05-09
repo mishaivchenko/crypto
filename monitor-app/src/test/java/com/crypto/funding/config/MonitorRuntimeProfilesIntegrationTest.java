@@ -26,6 +26,7 @@ class MonitorRuntimeProfilesIntegrationTest
             assertThat( context.getBean( CredentialStorageProperties.class ).isEnabled() ).isFalse();
             assertThat( context.getBean( MetadataSyncProperties.class ).isRequireCredentialsOnStartup() ).isFalse();
             assertThat( context.getBean( MonitorEngineMetricsProperties.class ).isEnabled() ).isFalse();
+            assertThat( context.getEnvironment().getProperty( "spring.jpa.open-in-view", Boolean.class ) ).isFalse();
         }
     }
 

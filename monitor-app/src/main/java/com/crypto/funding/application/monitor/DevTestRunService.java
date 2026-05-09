@@ -146,7 +146,6 @@ public class DevTestRunService
         );
     }
 
-    @Transactional(readOnly = true)
     public DevTestRunExecutionResponse runPhase( Long armedTradeId, EngineExecutionTargetPhase phase, String productionConfirm )
     {
         ArmedTradeEntity trade = armedTradeRepository.findById( armedTradeId )
