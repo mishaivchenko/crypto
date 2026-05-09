@@ -2,6 +2,7 @@ package com.crypto.funding.application.venue;
 
 import com.crypto.funding.application.ResourceNotFoundException;
 import com.crypto.funding.application.security.OperatorCredentialService;
+import com.crypto.funding.application.security.OperatorCredentialService.CredentialSummary;
 import com.crypto.funding.config.MetadataSyncProperties;
 import com.crypto.funding.domain.venue.VenueAccessMode;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
@@ -129,11 +130,17 @@ public class VenueDiagnosticsService
         }
 
         long startNanos = System.nanoTime();
+        CredentialSummary checkedSummary;
         try
         {
             var profile = venueProfileService.getProfile( venue );
-            var result = operatorCredentialService.checkMine( venue, profile.mode() );
-            venueRequestTimingService.recordSuccess( venue, "credential-check", System.nanoTime() - startNanos, 0L, result.lastConnectionHttpStatus() );
+            checkedSummary = operatorCredentialService.checkMine( venue, profile.mode() );
+            venueProfileService.saveCheckResult( venue, new com.crypto.funding.application.port.VenueCredentialCheckPort.Result(
+                checkedSummary.connectionStatus(),
+                checkedSummary.connectionMessage(),
+                checkedSummary.lastConnectionHttpStatus()
+            ) );
+            venueRequestTimingService.recordSuccess( venue, "credential-check", System.nanoTime() - startNanos, 0L, checkedSummary.lastConnectionHttpStatus() );
         }
         catch( Exception ex )
         {
@@ -144,7 +151,7 @@ public class VenueDiagnosticsService
             }
             throw new IllegalStateException( ex );
         }
-        return buildSummary( venue );
+        return buildSummary( venue, checkedSummary );
     }
 
     private void ensureEnabledVenue( String venue )
@@ -178,10 +185,36 @@ public class VenueDiagnosticsService
 
     private VenueSummary buildSummary( String venue )
     {
+        return buildSummary( venue, null );
+    }
+
+    private VenueSummary buildSummary( String venue, CredentialSummary checkedSummary )
+    {
         VenueProfileService.VenueAccessProfile accessProfile = venueProfileService.getProfile( venue );
         String mode = accessProfile.mode().propertyValue();
         OperatorCredentialService.CredentialSummary credentialSummary =
-            operatorCredentialService.currentOperatorSummary( venue, accessProfile.mode() );
+            checkedSummary == null
+            ? operatorCredentialService.currentOperatorSummary( venue, accessProfile.mode() )
+            : checkedSummary;
+        if( checkedSummary == null
+            && credentialSummary.configured()
+            && accessProfile.lastCheckedAt() != null
+            && credentialSummary.updatedAt() == null )
+        {
+            credentialSummary = new CredentialSummary(
+                venue,
+                accessProfile.mode(),
+                true,
+                credentialSummary.apiKeyMask(),
+                credentialSummary.secretKeyMask(),
+                credentialSummary.passphraseMask(),
+                accessProfile.connectionStatus(),
+                accessProfile.connectionMessage(),
+                accessProfile.lastConnectionHttpStatus(),
+                accessProfile.lastCheckedAt(),
+                null
+            );
+        }
         List<InstrumentMetadata> instruments = instrumentRegistryService.listVenueInstruments( venue );
         Instant lastSyncedAt = instruments.stream()
                                           .map( InstrumentMetadata::lastSyncedAt )

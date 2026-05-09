@@ -47,7 +47,7 @@ public class GateCredentialChecker implements VenueCredentialCheckPort
     public Result check( Credentials credentials ) throws IOException, InterruptedException
     {
         long timestamp = System.currentTimeMillis() / 1000L;
-        String requestPath = "/wallet/total_balance";
+        String requestPath = "/futures/usdt/accounts";
         String bodyHash = CredentialCheckSupport.sha512Hex( "" );
         String signatureString = "GET\n/api/v4" + requestPath + "\n\n" + bodyHash + "\n" + timestamp;
         String sign = HmacSigner.hmacSha512( credentials.secretKey(), signatureString );

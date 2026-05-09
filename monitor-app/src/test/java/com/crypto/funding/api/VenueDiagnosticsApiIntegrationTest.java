@@ -212,6 +212,26 @@ class VenueDiagnosticsApiIntegrationTest
         mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get( "/api/v1/venues/bybit" ) )
             .andExpect( status().isOk() )
             .andExpect( jsonPath( "$.configuredMode" ).value( "production" ) )
-            .andExpect( jsonPath( "$.credentialsConfigured" ).value( false ) );
+            .andExpect( jsonPath( "$.credentialsConfigured" ).value( true ) )
+            .andExpect( jsonPath( "$.connectionMessage" ).value( "ENV keys loaded, check not run." ) );
+
+        BYBIT_SERVER.stubFor( get( urlPathEqualTo( "/v5/account/wallet-balance" ) )
+                                   .willReturn( okJson( """
+                                       {
+                                         "retCode": 0,
+                                         "retMsg": "OK",
+                                         "result": {}
+                                       }
+                                       """ ) ) );
+
+        mockMvc.perform( post( "/api/v1/venues/bybit/check" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.credentialsConfigured" ).value( true ) )
+            .andExpect( jsonPath( "$.connectionStatus" ).value( "CONNECTED" ) );
+
+        mockMvc.perform( org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get( "/api/v1/venues/bybit" ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.credentialsConfigured" ).value( true ) )
+            .andExpect( jsonPath( "$.connectionStatus" ).value( "CONNECTED" ) );
     }
 }

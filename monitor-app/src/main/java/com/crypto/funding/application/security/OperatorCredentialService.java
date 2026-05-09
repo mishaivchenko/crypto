@@ -87,14 +87,19 @@ public class OperatorCredentialService
     public CredentialSummary currentOperatorSummary( String rawVenue, VenueAccessMode mode )
     {
         String venue = normalizeVenue( rawVenue );
+        CredentialSummary environmentSummary = environmentSummary( venue, mode );
         if( !properties.isEnabled() )
         {
-            return notConfigured( venue, mode, "Credential storage is disabled." );
+            return environmentSummary.configured()
+                   ? environmentSummary
+                   : notConfigured( venue, mode, "Credential storage is disabled." );
         }
         return OperatorContext.current()
                               .flatMap( operator -> repository.findByOperatorIdAndVenueAndMode( operator.id(), venue, mode ) )
                               .map( this::toSummary )
-                              .orElseGet( () -> notConfigured( venue, mode, "Ключи не подключены." ) );
+                              .orElseGet( () -> environmentSummary.configured()
+                                               ? environmentSummary
+                                               : notConfigured( venue, mode, "Ключи не подключены." ) );
     }
 
     @Transactional
@@ -131,13 +136,23 @@ public class OperatorCredentialService
     @Transactional
     public CredentialSummary checkMine( String rawVenue, VenueAccessMode mode )
     {
-        ensureStorageEnabled();
-        OperatorPrincipal operator = OperatorContext.require();
         String venue = normalizeVenue( rawVenue );
+        if( !properties.isEnabled() )
+        {
+            return checkEnvironmentCredentials( venue, mode );
+        }
+        OperatorPrincipal operator = OperatorContext.require();
         OperatorExchangeCredentialEntity entity = repository.findByOperatorIdAndVenueAndMode( operator.id(), venue, mode )
-                                                            .orElseThrow( () -> new ResourceNotFoundException(
-                                                                "Ключи не найдены для " + venue + " / " + mode
-                                                            ) );
+                                                            .orElse( null );
+        if( entity == null )
+        {
+            CredentialSummary environmentSummary = environmentSummary( venue, mode );
+            if( environmentSummary.configured() )
+            {
+                return checkEnvironmentCredentials( venue, mode );
+            }
+            throw new ResourceNotFoundException( "Ключи не найдены для " + venue + " / " + mode );
+        }
         VenueCredentialCheckPort checker = checkersByVenue.get( venue );
         if( checker == null )
         {
@@ -169,6 +184,72 @@ public class OperatorCredentialService
         }
         entity.setLastCheckedAt( Instant.now() );
         return toSummary( repository.save( entity ) );
+    }
+
+    private CredentialSummary checkEnvironmentCredentials( String venue, VenueAccessMode mode )
+    {
+        EnvironmentCredentials credentials = environmentCredentials( venue, mode );
+        if( !credentials.loaded() )
+        {
+            throw new ResourceNotFoundException( "ENV ключи не найдены для " + venue + " / " + mode );
+        }
+        VenueCredentialCheckPort checker = checkersByVenue.get( venue );
+        if( checker == null )
+        {
+            return new CredentialSummary(
+                venue,
+                mode,
+                true,
+                mask( credentials.apiKey() ),
+                mask( credentials.secretKey() ),
+                mask( credentials.passphrase() ),
+                VenueConnectionStatus.UNSUPPORTED,
+                "Проверка ключей не поддерживается для площадки: " + venue,
+                null,
+                Instant.now(),
+                null
+            );
+        }
+        try
+        {
+            VenueCredentialCheckPort.Result result = checker.check( new VenueCredentialCheckPort.Credentials(
+                venue,
+                mode,
+                baseUrl( venue, mode ),
+                credentials.apiKey(),
+                credentials.secretKey(),
+                credentials.passphrase()
+            ) );
+            return new CredentialSummary(
+                venue,
+                mode,
+                true,
+                mask( credentials.apiKey() ),
+                mask( credentials.secretKey() ),
+                mask( credentials.passphrase() ),
+                result.status(),
+                result.message(),
+                result.httpStatus(),
+                Instant.now(),
+                null
+            );
+        }
+        catch( Exception ex )
+        {
+            return new CredentialSummary(
+                venue,
+                mode,
+                true,
+                mask( credentials.apiKey() ),
+                mask( credentials.secretKey() ),
+                mask( credentials.passphrase() ),
+                VenueConnectionStatus.ERROR,
+                ex.getMessage(),
+                null,
+                Instant.now(),
+                null
+            );
+        }
     }
 
     private CredentialSummary toSummary( OperatorExchangeCredentialEntity entity )
@@ -203,6 +284,46 @@ public class OperatorCredentialService
             null,
             null
         );
+    }
+
+    private CredentialSummary environmentSummary( String venue, VenueAccessMode mode )
+    {
+        EnvironmentCredentials credentials = environmentCredentials( venue, mode );
+        return new CredentialSummary(
+            venue,
+            mode,
+            credentials.loaded(),
+            mask( credentials.apiKey() ),
+            mask( credentials.secretKey() ),
+            mask( credentials.passphrase() ),
+            VenueConnectionStatus.NOT_CONNECTED,
+            credentials.loaded() ? "ENV keys loaded, check not run." : "ENV keys are missing.",
+            null,
+            null,
+            null
+        );
+    }
+
+    private EnvironmentCredentials environmentCredentials( String venue, VenueAccessMode mode )
+    {
+        String modeValue = mode.propertyValue();
+        return new EnvironmentCredentials(
+            environment.getProperty( "trading." + venue + "." + modeValue + ".api-key" ),
+            environment.getProperty( "trading." + venue + "." + modeValue + ".secret-key" ),
+            environment.getProperty( "trading." + venue + "." + modeValue + ".passphrase" )
+        );
+    }
+
+    private record EnvironmentCredentials(
+        String apiKey,
+        String secretKey,
+        String passphrase
+    )
+    {
+        private boolean loaded()
+        {
+            return apiKey != null && !apiKey.isBlank() && secretKey != null && !secretKey.isBlank();
+        }
     }
 
     private void ensureStorageEnabled()
