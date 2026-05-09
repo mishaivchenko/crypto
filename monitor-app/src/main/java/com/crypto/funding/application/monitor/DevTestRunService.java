@@ -28,9 +28,11 @@ import com.crypto.funding.domain.venue.VenueAccessMode;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
 import com.crypto.funding.infrastructure.persistence.model.InstrumentMetadataEntity;
+import com.crypto.funding.infrastructure.persistence.model.VenueTimingProfileEntity;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +56,7 @@ public class DevTestRunService
     private final ArmedTradeCommandService armedTradeCommandService;
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeJpaRepository armedTradeRepository;
+    private final VenueTimingProfileJpaRepository venueTimingProfileRepository;
     private final EngineControlService engineControlService;
 
     public DevTestRunService(
@@ -64,6 +67,7 @@ public class DevTestRunService
         ArmedTradeCommandService armedTradeCommandService,
         FundingEventJpaRepository fundingEventRepository,
         ArmedTradeJpaRepository armedTradeRepository,
+        VenueTimingProfileJpaRepository venueTimingProfileRepository,
         EngineControlService engineControlService
     )
     {
@@ -74,6 +78,7 @@ public class DevTestRunService
         this.armedTradeCommandService = armedTradeCommandService;
         this.fundingEventRepository = fundingEventRepository;
         this.armedTradeRepository = armedTradeRepository;
+        this.venueTimingProfileRepository = venueTimingProfileRepository;
         this.engineControlService = engineControlService;
     }
 
@@ -134,6 +139,7 @@ public class DevTestRunService
             TradeJournalActorType.OPERATOR,
             "dev-test-run"
         );
+        seedTestnetTimingMarker( mode, venue, symbol, now );
 
         return new DevTestRunResponse(
             fundingEvent.id(),
@@ -144,6 +150,23 @@ public class DevTestRunService
             armedTrade.notionalUsd(),
             armedTrade.state().name()
         );
+    }
+
+    private void seedTestnetTimingMarker( VenueAccessMode mode, String venue, String symbol, Instant sampledAt )
+    {
+        if( mode != VenueAccessMode.TESTNET )
+        {
+            return;
+        }
+        VenueTimingProfileEntity timing = new VenueTimingProfileEntity();
+        timing.setVenue( venue );
+        timing.setSymbol( symbol );
+        timing.setObservedLagMs( 0L );
+        timing.setEntryLatencyMs( 0L );
+        timing.setExitLatencyMs( 0L );
+        timing.setSampledAt( sampledAt );
+        timing.setNotes( "DEV_TEST_RUN testnet freshness marker; not a production latency proof." );
+        venueTimingProfileRepository.save( timing );
     }
 
     public DevTestRunExecutionResponse runPhase( Long armedTradeId, EngineExecutionTargetPhase phase, String productionConfirm )

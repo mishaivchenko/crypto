@@ -7,6 +7,7 @@ import com.crypto.funding.infrastructure.persistence.model.InstrumentMetadataEnt
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.VenueProfileJpaRepository;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,6 +73,9 @@ class MonitorDevToolsApiIntegrationTest
     private InstrumentMetadataJpaRepository instrumentMetadataRepository;
 
     @Autowired
+    private VenueTimingProfileJpaRepository venueTimingProfileRepository;
+
+    @Autowired
     private FundingEventJpaRepository fundingEventRepository;
 
     @Autowired
@@ -86,6 +90,7 @@ class MonitorDevToolsApiIntegrationTest
         armedTradeRepository.deleteAll();
         fundingEventRepository.deleteAll();
         instrumentMetadataRepository.deleteAll();
+        venueTimingProfileRepository.deleteAll();
         venueProfileRepository.deleteAll();
         ENGINE.resetAll();
         ENGINE.stubFor( com.github.tomakehurst.wiremock.client.WireMock.get( urlPathEqualTo( "/internal/engine/runtime" ) )
@@ -286,6 +291,12 @@ class MonitorDevToolsApiIntegrationTest
             assertThat( trade.getEntrySpacingMs() ).isZero();
             assertThat( trade.getNotes() ).contains( "DEV_TEST_RUN" );
         } );
+        assertThat( venueTimingProfileRepository.findFirstByVenueAndSymbolOrderBySampledAtDesc( "bybit", "BTC/USDT" ) )
+            .get()
+            .satisfies( timing -> {
+                assertThat( timing.getSampledAt() ).isAfter( Instant.parse( "2026-01-01T00:00:00Z" ) );
+                assertThat( timing.getNotes() ).contains( "DEV_TEST_RUN" );
+            } );
     }
 
     @Test
