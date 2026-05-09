@@ -26,7 +26,8 @@ services:
             TRADING_METADATA_SCHEDULE_ENABLED: ${TRADING_METADATA_SCHEDULE_ENABLED:-false}
             TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP: ${TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP:-false}
             BYBIT_METADATA_BASE_URL: ${BYBIT_METADATA_BASE_URL:-https://api-testnet.bybit.com}
-            GATE_CONTRACTS_BASE_URL: ${GATE_CONTRACTS_BASE_URL:-https://fx-api-testnet.gateio.ws/api/v4}
+            GATE_TESTNET_BASE_URL: ${GATE_TESTNET_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
+            GATE_CONTRACTS_BASE_URL: ${GATE_CONTRACTS_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
             BYBIT_MODE: ${BYBIT_MODE:-testnet}
             GATE_MODE: ${GATE_MODE:-testnet}
             TRADING_BYBIT_TESTNET_API_KEY: ${BYBIT_TESTNET_API_KEY:-}
@@ -64,6 +65,7 @@ services:
             TRADING_VENUE_ACCESS_MODE: ${TRADING_VENUE_ACCESS_MODE:-testnet}
             BYBIT_MODE: ${BYBIT_MODE:-testnet}
             GATE_MODE: ${GATE_MODE:-testnet}
+            GATE_TESTNET_BASE_URL: ${GATE_TESTNET_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
             ENGINE_CREDENTIALS_BYBIT_API_KEY: ${BYBIT_TESTNET_API_KEY:-}
             ENGINE_CREDENTIALS_BYBIT_SECRET_KEY: ${BYBIT_TESTNET_SECRET_KEY:-}
             ENGINE_CREDENTIALS_GATE_API_KEY: ${GATE_TESTNET_API_KEY:-}

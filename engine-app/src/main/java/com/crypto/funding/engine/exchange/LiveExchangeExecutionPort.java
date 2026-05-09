@@ -533,7 +533,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         {
             case "bybit:production" -> "https://api.bybit.com";
             case "gate:production" -> "https://fx-api.gateio.ws/api/v4";
-            case "gate:testnet" -> "https://fx-api-testnet.gateio.ws/api/v4";
+            case "gate:testnet" -> "https://api-testnet.gateapi.io/api/v4";
             default -> "https://api-testnet.bybit.com";
         };
         String url = property( property, fallback );

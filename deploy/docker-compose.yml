@@ -15,6 +15,8 @@ services:
             MONITOR_DEV_TEST_TOOL_ENABLED: ${MONITOR_DEV_TEST_TOOL_ENABLED:-false}
             MONITOR_DEV_TEST_MAX_NOTIONAL_USD: ${MONITOR_DEV_TEST_MAX_NOTIONAL_USD:-25}
             MONITOR_DEV_TEST_ENABLED_VENUES: ${MONITOR_DEV_TEST_ENABLED_VENUES:-bybit,gate}
+            GATE_TESTNET_BASE_URL: ${GATE_TESTNET_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
+            GATE_CONTRACTS_BASE_URL: ${GATE_CONTRACTS_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
             TRADING_BYBIT_TESTNET_API_KEY: ${BYBIT_TESTNET_API_KEY:-}
             TRADING_BYBIT_TESTNET_SECRET_KEY: ${BYBIT_TESTNET_SECRET_KEY:-}
             TRADING_GATE_TESTNET_API_KEY: ${GATE_TESTNET_API_KEY:-}
@@ -42,6 +44,7 @@ services:
             ENGINE_MAX_NOTIONAL_USD: ${ENGINE_MAX_NOTIONAL_USD:-25}
             ENGINE_METRICS_PUBLISH_ENABLED: "true"
             ENGINE_METRICS_PUBLISH_INTERVAL_MS: 5000
+            GATE_TESTNET_BASE_URL: ${GATE_TESTNET_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
         ports:
             - "${ENGINE_SERVER_PORT:-8091}:8091"
         depends_on:

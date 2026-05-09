@@ -82,6 +82,11 @@ public class GateMetadataAdapter implements VenueMetadataPort
             String quoteAsset = "USDT";
             BigDecimal minOrderQty = decimalOrNull( item, "order_size_min" );
             BigDecimal qtyStep = decimalOrNull( item, "order_size_round" );
+            if( qtyStep == null && !item.path( "enable_decimal" ).asBoolean( false ) )
+            {
+                qtyStep = BigDecimal.ONE;
+            }
+            BigDecimal minNotionalValue = minNotionalValue( item, minOrderQty );
 
             instruments.add( new InstrumentMetadata(
                 null,
@@ -94,7 +99,7 @@ public class GateMetadataAdapter implements VenueMetadataPort
                 inDelisting ? InstrumentStatus.INACTIVE : InstrumentStatus.ACTIVE,
                 minOrderQty,
                 qtyStep,
-                null,
+                minNotionalValue,
                 null,
                 syncedAt,
                 null,
@@ -112,5 +117,29 @@ public class GateMetadataAdapter implements VenueMetadataPort
         }
         String raw = item.get( field ).asText();
         return raw == null || raw.isBlank() ? null : new BigDecimal( raw );
+    }
+
+    private BigDecimal minNotionalValue( JsonNode item, BigDecimal minOrderQty )
+    {
+        BigDecimal multiplier = decimalOrNull( item, "quanto_multiplier" );
+        BigDecimal price = firstDecimalOrNull( item, "last_price", "mark_price", "index_price" );
+        if( minOrderQty == null || multiplier == null || price == null )
+        {
+            return null;
+        }
+        return minOrderQty.multiply( multiplier ).multiply( price );
+    }
+
+    private BigDecimal firstDecimalOrNull( JsonNode item, String... fields )
+    {
+        for( String field : fields )
+        {
+            BigDecimal decimal = decimalOrNull( item, field );
+            if( decimal != null && decimal.signum() > 0 )
+            {
+                return decimal;
+            }
+        }
+        return null;
     }
 }

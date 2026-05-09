@@ -25,7 +25,7 @@ engine:
         testnet-base-url: ${BYBIT_TESTNET_BASE_URL:https://api-testnet.bybit.com}
         production-base-url: ${BYBIT_PRODUCTION_BASE_URL:https://api.bybit.com}
     gate:
-        testnet-base-url: ${GATE_TESTNET_BASE_URL:https://fx-api-testnet.gateio.ws/api/v4}
+        testnet-base-url: ${GATE_TESTNET_BASE_URL:https://api-testnet.gateapi.io/api/v4}
         production-base-url: ${GATE_PRODUCTION_BASE_URL:https://fx-api.gateio.ws/api/v4}
     metrics-publish:
         enabled: ${ENGINE_METRICS_PUBLISH_ENABLED:false}
