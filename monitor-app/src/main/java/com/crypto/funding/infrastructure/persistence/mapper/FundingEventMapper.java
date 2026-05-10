@@ -11,6 +11,11 @@ public final class FundingEventMapper
 
     public static FundingEvent toDomain( FundingEventEntity entity )
     {
+        return toDomain( entity, null );
+    }
+
+    public static FundingEvent toDomain( FundingEventEntity entity, Long armedTradeId )
+    {
         return new FundingEvent(
             entity.getId(),
             entity.getVenue(),
@@ -21,6 +26,7 @@ public final class FundingEventMapper
             entity.getSourceType(),
             entity.getSourceRef(),
             entity.getSignalCandidateId(),
+            armedTradeId,
             entity.getDiscoveredAt(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()

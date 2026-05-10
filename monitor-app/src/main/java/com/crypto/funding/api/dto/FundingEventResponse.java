@@ -15,6 +15,7 @@ public record FundingEventResponse(
     String sourceType,
     String sourceRef,
     Long signalCandidateId,
+    Long armedTradeId,
     Instant discoveredAt,
     Instant createdAt,
     Instant updatedAt

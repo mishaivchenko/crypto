@@ -14,6 +14,7 @@ public record FundingEventListItemResponse(
     FundingEventStatus status,
     String sourceType,
     Long signalCandidateId,
+    Long armedTradeId,
     Instant discoveredAt
 )
 {
