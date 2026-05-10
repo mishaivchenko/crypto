@@ -156,57 +156,12 @@
         {
           "editorMode": "code",
           "expr": "100 * funding_venue_request_success_ratio{operation=~\"metadata-sync|credential-check\"}",
-          "legendFormat": "{{operation}} · {{venue}}",
+          "legendFormat": "{{operation}} \u00b7 {{venue}}",
           "range": true,
           "refId": "A"
         }
       ],
       "title": "Venue Request Success Ratio",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 9
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.2.0",
-      "targets": [
-        {
-          "editorMode": "code",
-          "expr": "funding_venue_requests_total{operation=~\"metadata-sync|credential-check|uainvest-funding-fetch\"}",
-          "legendFormat": "{{operation}} · {{venue}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Venue Request Volume",
       "type": "timeseries"
     },
     {
@@ -248,7 +203,7 @@
         {
           "editorMode": "code",
           "expr": "funding_venue_request_last_http_status{operation=~\"metadata-sync|credential-check\"}",
-          "legendFormat": "{{operation}} · {{venue}}",
+          "legendFormat": "{{operation}} \u00b7 {{venue}}",
           "range": true,
           "refId": "A"
         }
@@ -344,7 +299,7 @@
         {
           "editorMode": "code",
           "expr": "time() - funding_venue_request_last_occurred_epoch_seconds{operation=~\"metadata-sync|credential-check|uainvest-funding-fetch\"}",
-          "legendFormat": "{{operation}} · {{venue}}",
+          "legendFormat": "{{operation}} \u00b7 {{venue}}",
           "range": true,
           "refId": "A"
         }

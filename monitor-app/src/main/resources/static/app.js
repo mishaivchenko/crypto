@@ -223,8 +223,10 @@ const handleDrawerAction = createDrawerActionHandler({
     refreshCurrentScreen,
     showSuccess,
     showError,
+    switchScreen,
     openCandidateDetail: openCandidate,
     openEventDetail: openEvent,
+    openTradeDetail: openTrade,
     openVenueDetail: openVenue
 });
 

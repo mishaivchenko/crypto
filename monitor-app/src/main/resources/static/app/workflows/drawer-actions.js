@@ -7,8 +7,10 @@ export function createDrawerActionHandler({
     refreshCurrentScreen,
     showSuccess,
     showError,
+    switchScreen,
     openCandidateDetail,
     openEventDetail,
+    openTradeDetail,
     openVenueDetail
 }) {
     return async function handleDrawerAction(event) {
@@ -31,6 +33,7 @@ export function createDrawerActionHandler({
                     });
                     showSuccess("Кандидат переведён в событие фандинга.");
                     await Promise.all([refreshCurrentScreen(), openCandidateDetail(form.dataset.id)]);
+                    switchScreen("events");
                     return;
                 }
                 if (action === "reject-candidate") {
@@ -64,6 +67,7 @@ export function createDrawerActionHandler({
                     });
                     showSuccess("Prepared Trade created.");
                     await Promise.all([refreshCurrentScreen(), openEventDetail(form.dataset.id)]);
+                    switchScreen("trades");
                     return;
                 }
                 if (action === "create-dev-test-run") {
@@ -105,6 +109,7 @@ export function createDrawerActionHandler({
             } catch (error) {
                 showError(error.message);
             }
+            return;
         }
 
         const devRunButton = event.target.closest("[data-action='run-dev-test-entry'], [data-action='run-dev-test-exit']");
@@ -130,6 +135,15 @@ export function createDrawerActionHandler({
             } catch (error) {
                 showError(error.message);
             }
+            return;
+        }
+
+        const openEntityButton = event.target.closest("[data-open-candidate],[data-open-event],[data-open-trade],[data-open-venue]");
+        if (openEntityButton) {
+            if (openEntityButton.dataset.openCandidate) openCandidateDetail(openEntityButton.dataset.openCandidate);
+            if (openEntityButton.dataset.openEvent) openEventDetail(openEntityButton.dataset.openEvent);
+            if (openEntityButton.dataset.openTrade) openTradeDetail(openEntityButton.dataset.openTrade);
+            if (openEntityButton.dataset.openVenue) openVenueDetail(openEntityButton.dataset.openVenue);
         }
     };
 }

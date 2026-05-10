@@ -11,6 +11,7 @@ import {
     formatSignedMs,
     journalMarkup,
     metaRow,
+    pipelineStageMarkup,
     section,
     sideLabel
 } from "../shared.js";
@@ -18,6 +19,7 @@ import { buildDeleteCandidateSection } from "./pipeline.js";
 
 export function buildTradeDrawerContent({ trade, journal, attempts }) {
     return `
+        ${pipelineStageMarkup("trade")}
         ${section("Trade parameters", `
             <div class="meta-grid">
                 ${metaRow("Статус", formatBadge("trade", trade.state))}
@@ -31,15 +33,20 @@ export function buildTradeDrawerContent({ trade, journal, attempts }) {
                 ${metaRow("Planned entry", formatInstant(trade.plannedEntryAt))}
                 ${metaRow("Planned exit", formatInstant(trade.plannedExitAt))}
                 ${metaRow("Entry attempts", formatNumber(trade.entryAttemptCount ?? 1), `spacing ${formatDurationMs(trade.entrySpacingMs ?? 0)}`)}
-                ${metaRow("Measured latency", formatDurationMs(trade.measuredEntryLatencyMs))}
-                ${metaRow("Manual latency adj", formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
-                ${metaRow("Effective trigger lead", formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
-                ${metaRow("Armed at", formatInstant(trade.armedAt))}
-                ${metaRow("Entry lead", formatDurationMs(trade.entryLeadMs))}
-                ${metaRow("Exit lead", formatDurationMs(trade.exitLeadMs))}
-                ${metaRow("Arm source", escapeHtml(trade.armSource ?? "—"))}
                 ${metaRow("Note", escapeHtml(trade.notes ?? "—"))}
             </div>
+            <details class="technical-details">
+                <summary>Latency details</summary>
+                <div class="meta-grid">
+                    ${metaRow("Measured latency", formatDurationMs(trade.measuredEntryLatencyMs))}
+                    ${metaRow("Manual latency adj", formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
+                    ${metaRow("Effective trigger lead", formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
+                    ${metaRow("Armed at", formatInstant(trade.armedAt))}
+                    ${metaRow("Entry lead", formatDurationMs(trade.entryLeadMs))}
+                    ${metaRow("Exit lead", formatDurationMs(trade.exitLeadMs))}
+                    ${metaRow("Arm source", escapeHtml(trade.armSource ?? "—"))}
+                </div>
+            </details>
         `)}
         ${section("Execution attempts", attempts.length ? attempts.map((attempt) => `
             <div class="meta-row">
