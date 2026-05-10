@@ -13,6 +13,7 @@ import {
     journalMarkup,
     kv,
     metaRow,
+    pipelineStageMarkup,
     section
 } from "../ui.js";
 
@@ -31,6 +32,7 @@ export {
     journalMarkup,
     kv,
     metaRow,
+    pipelineStageMarkup,
     section
 };
 

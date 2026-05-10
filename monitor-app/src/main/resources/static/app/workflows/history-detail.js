@@ -1,9 +1,9 @@
 import { api } from "../../api.js";
 import { tradeHistoryDetailMarkup } from "../../history.js";
-import { optionalRequest } from "../shared.js";
+import { optionalRequest, pipelineStageMarkup } from "../shared.js";
 
 export function buildHistoryTradeDrawerContent(payload) {
-    return tradeHistoryDetailMarkup(payload);
+    return pipelineStageMarkup("trade") + tradeHistoryDetailMarkup(payload);
 }
 
 export async function openHistoryTradeDetail({ id, nodes, showError }) {

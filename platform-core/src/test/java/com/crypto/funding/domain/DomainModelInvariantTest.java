@@ -28,6 +28,7 @@ class DomainModelInvariantTest
             null,
             null,
             null,
+            null,
             Instant.now(),
             null,
             null

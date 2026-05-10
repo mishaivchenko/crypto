@@ -188,7 +188,7 @@ export function formatFundingCountdown(value) {
     if (deltaMs >= 0) {
         return `до funding ${formatRelative(value)}`;
     }
-    return `funding был ${formatRelative(value).replace("назад", "").trim()} назад`;
+    return `funding ${formatRelative(value)}`;
 }
 
 export function formatNumber(value) {
@@ -297,6 +297,20 @@ export function section(title, body, aside = "") {
 
 export function formatConnectionBadge(status) {
     return formatBadge("connection", status ?? "NOT_CONNECTED");
+}
+
+export function pipelineStageMarkup(current) {
+    const stages = ["signal", "event", "trade", "executed"];
+    const labels = { signal: "Signal", event: "Event", trade: "Trade", executed: "Executed" };
+    const currentIndex = stages.indexOf(current);
+    return `
+        <div class="pipeline-strip">
+            ${stages.map((stage, i) => {
+                const cls = stage === current ? "is-current" : i < currentIndex ? "is-done" : "";
+                return `<span class="pipeline-step ${cls}">${escapeHtml(labels[stage])}</span>${i < stages.length - 1 ? `<span class="pipeline-arrow">→</span>` : ""}`;
+            }).join("")}
+        </div>
+    `;
 }
 
 export { escapeHtml, translate };

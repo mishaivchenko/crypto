@@ -268,6 +268,38 @@ class CredentialAwareExecutionPortTest
             .withRequestBody( containing( "\"reduce_only\":false" ) ) );
     }
 
+    // REQ: ENG-CRED-001
+    @Test
+    void liveGateRejectsWhenInstrumentMetadataIsStale()
+    {
+        MockEnvironment environment = liveEnvironment( "bybit" )
+            .withProperty( "engine.live-order-enabled", "true" )
+            .withProperty( "engine.metadata-max-age-minutes", "240" );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort( environment );
+        EngineExecutionPlan stale = livePlanWithTimings( "bybit", Instant.now().minusSeconds( 241 * 60 ), Instant.now() );
+
+        var attempt = port.submitOrder( stale, marketIntent(), false );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FAILED );
+        assertThat( attempt.failureReason() ).contains( "Instrument metadata is stale" );
+    }
+
+    // REQ: ENG-CRED-001
+    @Test
+    void liveGateRejectsWhenLatencyProfileIsStale()
+    {
+        MockEnvironment environment = liveEnvironment( "bybit" )
+            .withProperty( "engine.live-order-enabled", "true" )
+            .withProperty( "engine.latency-max-age-minutes", "1440" );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort( environment );
+        EngineExecutionPlan stale = livePlanWithTimings( "bybit", Instant.now(), Instant.now().minusSeconds( 1441 * 60 ) );
+
+        var attempt = port.submitOrder( stale, marketIntent(), false );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FAILED );
+        assertThat( attempt.failureReason() ).contains( "Latency profile is stale" );
+    }
+
     @Test
     void submitsGateMarketReduceOnlyExit()
     {
@@ -370,6 +402,41 @@ class CredentialAwareExecutionPortTest
             Instant.parse( "2029-12-31T00:00:00Z" ),
             BigDecimal.TEN,
             positionEntryPrice
+        );
+    }
+
+    private static EngineExecutionPlan livePlanWithTimings( String venue, Instant metadataLastSyncedAt, Instant latencySampledAt )
+    {
+        return new EngineExecutionPlan(
+            5L,
+            10L,
+            venue,
+            "REQ/USDT",
+            TradeSide.SHORT,
+            BigDecimal.valueOf( 25 ),
+            ArmedTradeState.ARMED,
+            Instant.parse( "2030-01-01T00:00:00Z" ),
+            Instant.parse( "2029-12-31T23:59:00Z" ),
+            Instant.parse( "2030-01-01T00:01:00Z" ),
+            1,
+            0L,
+            25L,
+            0L,
+            25L,
+            List.of(),
+            EnginePlanStatus.ENTRY_WINDOW,
+            Instant.parse( "2029-12-31T23:59:00Z" ),
+            0L,
+            60_000L,
+            "summary",
+            "REQUSDT",
+            BigDecimal.ONE,
+            BigDecimal.ONE,
+            BigDecimal.valueOf( 5 ),
+            metadataLastSyncedAt,
+            latencySampledAt,
+            BigDecimal.TEN,
+            null
         );
     }
 }

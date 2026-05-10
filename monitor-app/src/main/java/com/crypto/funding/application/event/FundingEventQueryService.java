@@ -5,6 +5,7 @@ import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.infrastructure.persistence.mapper.FundingEventMapper;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
+import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -21,14 +22,17 @@ import java.util.Locale;
 public class FundingEventQueryService
 {
     private final FundingEventJpaRepository fundingEventRepository;
+    private final ArmedTradeJpaRepository armedTradeRepository;
     private final FundingEventLifecycleService fundingEventLifecycleService;
 
     public FundingEventQueryService(
         FundingEventJpaRepository fundingEventRepository,
+        ArmedTradeJpaRepository armedTradeRepository,
         FundingEventLifecycleService fundingEventLifecycleService
     )
     {
         this.fundingEventRepository = fundingEventRepository;
+        this.armedTradeRepository = armedTradeRepository;
         this.fundingEventLifecycleService = fundingEventLifecycleService;
     }
 
@@ -44,16 +48,25 @@ public class FundingEventQueryService
     {
         fundingEventLifecycleService.expirePastEvents();
         return fundingEventRepository.findAll( specification( status, venue, symbol, sourceType, candidateId ), pageable )
-                                     .map( FundingEventMapper::toDomain );
+                                     .map( entity -> FundingEventMapper.toDomain( entity, resolveArmedTradeId( entity.getId() ) ) );
     }
 
     @Transactional
     public FundingEvent getFundingEvent( Long id )
     {
         fundingEventLifecycleService.expirePastEvents();
-        return fundingEventRepository.findById( id )
-                                     .map( FundingEventMapper::toDomain )
-                                     .orElseThrow( () -> new ResourceNotFoundException( "Событие фандинга не найдено: " + id ) );
+        FundingEventEntity entity = fundingEventRepository.findById( id )
+                                                          .orElseThrow( () -> new ResourceNotFoundException( "Событие фандинга не найдено: " + id ) );
+        return FundingEventMapper.toDomain( entity, resolveArmedTradeId( id ) );
+    }
+
+    private Long resolveArmedTradeId( Long fundingEventId )
+    {
+        return armedTradeRepository.findAllByFundingEventIdOrderByCreatedAtDesc( fundingEventId )
+                                   .stream()
+                                   .findFirst()
+                                   .map( trade -> trade.getId() )
+                                   .orElse( null );
     }
 
     private Specification<FundingEventEntity> specification(

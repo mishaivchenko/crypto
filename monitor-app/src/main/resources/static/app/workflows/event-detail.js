@@ -8,6 +8,7 @@ import {
     journalMarkup,
     metaRow,
     offsetIso,
+    pipelineStageMarkup,
     section,
     sourceLabel,
     toLocalInputValue
@@ -20,6 +21,7 @@ export function buildEventDrawerContent({ event, journal }) {
     const canArm = event.status === "DISCOVERED";
 
     return `
+        ${pipelineStageMarkup("event")}
         ${section("Event snapshot", `
             <div class="meta-grid">
                 ${metaRow("Статус", formatBadge("event", event.status))}
@@ -28,6 +30,9 @@ export function buildEventDrawerContent({ event, journal }) {
                 ${metaRow("Venue", escapeHtml(event.venue))}
                 ${metaRow("Source", escapeHtml(sourceLabel(event.sourceType)))}
                 ${metaRow("Linked signal", event.signalCandidateId ? `#${event.signalCandidateId}` : "manual")}
+                ${event.armedTradeId
+                    ? metaRow("Prepared Trade", `<button class="button secondary small" type="button" data-open-trade="${event.armedTradeId}">→ Trade #${event.armedTradeId}</button>`)
+                    : metaRow("Prepared Trade", "—")}
             </div>
         `)}
         ${section("Arm Prepared Trade", canArm ? `

@@ -156,6 +156,7 @@ public class FundingEventController
             event.sourceType(),
             event.sourceRef(),
             event.signalCandidateId(),
+            event.armedTradeId(),
             event.discoveredAt(),
             event.createdAt(),
             event.updatedAt()
@@ -173,6 +174,7 @@ public class FundingEventController
             event.status(),
             event.sourceType(),
             event.signalCandidateId(),
+            event.armedTradeId(),
             event.discoveredAt()
         );
     }

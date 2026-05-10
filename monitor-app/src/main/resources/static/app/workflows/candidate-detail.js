@@ -7,6 +7,7 @@ import {
     formatRelative,
     kv,
     metaRow,
+    pipelineStageMarkup,
     section,
     sourceLabel,
     toLocalInputValue
@@ -121,6 +122,7 @@ function buildRejectSection(candidate) {
 
 export function buildCandidateDrawerContent(candidate) {
     return `
+        ${pipelineStageMarkup("signal")}
         ${section("Signal snapshot", `
             <div class="meta-grid">
                 ${metaRow("Статус", formatBadge("candidate", candidate.status))}
@@ -130,7 +132,9 @@ export function buildCandidateDrawerContent(candidate) {
                 ${metaRow("Canonical symbol", escapeHtml(candidate.normalizedSymbol ?? "—"))}
                 ${metaRow("Venue hints", escapeHtml(candidate.venueHints?.join(", ") || "—"))}
                 ${metaRow("Review", escapeHtml(candidate.reviewDecision ?? "Pending"))}
-                ${metaRow("Funding Event", candidate.fundingEventId ? `#${candidate.fundingEventId}` : "—")}
+                ${candidate.fundingEventId
+                    ? metaRow("Funding Event", `<button class="button secondary small" type="button" data-open-event="${candidate.fundingEventId}">→ Event #${candidate.fundingEventId}</button>`)
+                    : metaRow("Funding Event", "—")}
             </div>
         `)}
         ${candidate.normalizationFailureReason ? section("Normalization note", `
