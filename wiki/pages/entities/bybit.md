@@ -23,7 +23,7 @@ updated: 2026-05-09
 
 ## API Notes
 
-_To be expanded on source ingest._
+**Geo-restriction (confirmed 2026-05-09):** Bybit testnet returns "regulatory restrictions" error for Ukrainian IPs even with valid API key and full trading permissions. Not a credential issue — account-level geo-block. Requires VPN through neutral country (DE/NL/SG) to trade. Bybit skipped for testnet validation; Gate used instead.
 
 ## Related
 

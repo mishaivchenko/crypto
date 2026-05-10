@@ -17,7 +17,21 @@ updated: 2026-05-09
 
 - Supported: `engine.live-enabled-venues` includes `gate`
 - Testnet available: yes
-- Adapter: `monitor-app/infrastructure/exchange/GateFeignClient` (Feign)
+- Adapter: `engine-app/src/main/java/com/crypto/funding/engine/exchange/LiveExchangeExecutionPort.java` (submitGate)
+- **Testnet validated 2026-05-09**: full entry+exit cycle FILLED, externalOrderId=`195625108917026449`
+
+## Testnet Order Details (2026-05-09)
+
+| Field | Value |
+|-------|-------|
+| Symbol | ACT/USDT |
+| Side | SHORT |
+| Quantity | 31 contracts |
+| Fill price | $0.0159 |
+| Notional | ~$5 |
+| External order ID | `195625108917026449` |
+| Entry status | FILLED |
+| Exit status | FILLED |
 
 ## Related
 
