@@ -41,7 +41,7 @@ Pure domain library — no Spring Boot, no persistence. Contains:
 Operator control plane. Spring Boot 3.5, JPA+SQLite, Flyway, OpenFeign.
 - `api/` — REST controllers for all domain entities
 - `application/` — Command/Query services per domain area (candidate, event, trade, engine, execution, venue, security, observability)
-- `infrastructure/persistence/` — JPA repositories; schema owned by Flyway (`V1__baseline.sql`), JPA runs in `validate` mode (no auto-DDL)
+- `infrastructure/persistence/` — JPA repositories; schema owned by Flyway (V1–V5 migrations), JPA runs in `validate` mode (no auto-DDL)
 - `infrastructure/exchange/` — venue adapters (Bybit, Gate, OKX, KuCoin, Bitget) via Feign
 - `infrastructure/security/` — AES-GCM credential encryption with master key rotation
 - `static/` — vanilla JS UI (no framework); modules: `app.js` (state machine), `ui.js` (rendering), `api.js` (HTTP), `history.js` (navigation)
@@ -80,11 +80,11 @@ Lightweight execution runtime. Spring Boot 3.5, no persistence layer — reads p
 
 ## Profiles
 
-| Profile | Auth | Credentials | Engine loop |
-|---------|------|-------------|-------------|
-| `local-safe` | OFF | OFF | OFF |
-| `staging` | ON | ON | OFF |
-| `prod-like` | ON | ON | OFF (explicit ENV to enable) |
+| Profile | Auth | Credentials | Engine loop | Live orders | Metadata sync on startup |
+|---------|------|-------------|-------------|-------------|--------------------------|
+| `local-safe` | OFF | OFF | OFF | OFF | OFF |
+| `staging` | ON | ON | OFF | OFF | ON |
+| `prod-like` | ON | ON | OFF (explicit ENV) | OFF (explicit ENV) | ON |
 
 ## Observability
 

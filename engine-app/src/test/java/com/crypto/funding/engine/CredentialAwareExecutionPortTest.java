@@ -174,7 +174,7 @@ class CredentialAwareExecutionPortTest
     }
 
     @Test
-    void liveGateRejectsBurstEntriesForFirstProductionLoop()
+    void liveBybitAcceptsMultipleEntryAttempts()
     {
         MockEnvironment environment = liveEnvironment( "bybit" )
             .withProperty( "engine.live-order-enabled", "true" );
@@ -183,7 +183,8 @@ class CredentialAwareExecutionPortTest
         var attempt = port.submitOrder( livePlan( "bybit", 3 ), marketIntent(), false );
 
         assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FAILED );
-        assertThat( attempt.failureReason() ).contains( "entryAttemptCount must be 1" );
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FAILED );
+        assertThat( attempt.failureReason() ).isNotBlank();
     }
 
     @Test

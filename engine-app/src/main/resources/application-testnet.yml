@@ -1,0 +1,23 @@
+spring:
+    config:
+        activate:
+            on-profile: testnet
+
+engine:
+    execution-loop-enabled: true
+    execution-loop-interval-ms: 2000
+    live-order-enabled: true
+    kill-switch-enabled: false
+    trading-venue-access-mode: testnet
+    live-enabled-venues: gate
+    max-notional-usd: 25
+    metadata-max-age-minutes: 240
+    latency-max-age-minutes: 1440
+    monitor-base-url: ${MONITOR_INTERNAL_BASE_URL:http://localhost:8090}
+    internal-token: ${INTERNAL_ENGINE_TOKEN:funding-local-internal-token}
+    credentials:
+        gate:
+            api-key: ${ENGINE_GATE_TESTNET_API_KEY:}
+            secret-key: ${ENGINE_GATE_TESTNET_SECRET_KEY:}
+    metrics-publish:
+        enabled: false

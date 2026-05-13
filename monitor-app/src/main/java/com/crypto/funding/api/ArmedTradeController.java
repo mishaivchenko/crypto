@@ -3,6 +3,10 @@ package com.crypto.funding.api;
 import com.crypto.funding.api.dto.ArmedTradeResponse;
 import com.crypto.funding.api.dto.CreateArmedTradeRequest;
 import com.crypto.funding.api.dto.TradeJournalEntryResponse;
+import com.crypto.funding.api.dto.TradeOutcomeResponse;
+import com.crypto.funding.api.dto.TradePositionResponse;
+import com.crypto.funding.application.execution.PositionQueryService;
+import com.crypto.funding.application.execution.TradeOutcomeQueryService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
@@ -14,6 +18,8 @@ import com.crypto.funding.domain.trade.TradeJournalEntry;
 import com.crypto.funding.domain.trade.TradeJournalEntityType;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,18 +39,24 @@ public class ArmedTradeController
     private final TradeQueryService tradeQueryService;
     private final TradeJournalService tradeJournalService;
     private final FundingEventQueryService fundingEventQueryService;
+    private final PositionQueryService positionQueryService;
+    private final TradeOutcomeQueryService tradeOutcomeQueryService;
 
     public ArmedTradeController(
         ArmedTradeCommandService armedTradeCommandService,
         TradeQueryService tradeQueryService,
         TradeJournalService tradeJournalService,
-        FundingEventQueryService fundingEventQueryService
+        FundingEventQueryService fundingEventQueryService,
+        PositionQueryService positionQueryService,
+        TradeOutcomeQueryService tradeOutcomeQueryService
     )
     {
         this.armedTradeCommandService = armedTradeCommandService;
         this.tradeQueryService = tradeQueryService;
         this.tradeJournalService = tradeJournalService;
         this.fundingEventQueryService = fundingEventQueryService;
+        this.positionQueryService = positionQueryService;
+        this.tradeOutcomeQueryService = tradeOutcomeQueryService;
     }
 
     @PostMapping
@@ -79,10 +91,37 @@ public class ArmedTradeController
         return toResponse( tradeQueryService.getArmedTrade( id ) );
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancel( @PathVariable Long id )
+    {
+        armedTradeCommandService.cancel( id );
+    }
+
     @GetMapping("/{id}/journal")
     public List<TradeJournalEntryResponse> journal( @PathVariable Long id )
     {
         return tradeJournalService.list( TradeJournalEntityType.ARMED_TRADE, id ).stream().map( this::toJournalResponse ).toList();
+    }
+
+    @GetMapping("/{id}/position")
+    public ResponseEntity<TradePositionResponse> position( @PathVariable Long id )
+    {
+        return positionQueryService.findByArmedTrade( id )
+                                   .map( p -> ResponseEntity.ok( new TradePositionResponse(
+                                       p.state(), p.quantity(), p.entryPrice(), p.exitPrice(), p.openedAt(), p.closedAt()
+                                   ) ) )
+                                   .orElse( ResponseEntity.noContent().build() );
+    }
+
+    @GetMapping("/{id}/outcome")
+    public ResponseEntity<TradeOutcomeResponse> outcome( @PathVariable Long id )
+    {
+        return tradeOutcomeQueryService.findByArmedTrade( id )
+                                       .map( o -> ResponseEntity.ok( new TradeOutcomeResponse(
+                                           o.grossPnlUsd(), o.netPnlUsd(), o.feesUsd(), o.outcomeCode(), o.evaluatedAt()
+                                       ) ) )
+                                       .orElse( ResponseEntity.noContent().build() );
     }
 
     private ArmedTradeResponse toResponse( ArmedTrade trade )

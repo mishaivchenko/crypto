@@ -31,4 +31,16 @@
 - Добавлен burst-entry план: несколько входов с configurable spacing.
 - `LONG` запрещён для funding armed trades.
 - Entry trigger учитывает measured latency и manual latency adjustment.
-- SQLite schema совместима со старыми базами: новые burst-колонки nullable на DDL-уровне, defaults задаются в домене и service layer.
+- SQLite schema управляется через Flyway (V1–V5): baseline + incremental migrations для operator account, credentials, новых колонок.
+- `FundingEvent` response теперь содержит `armedTradeId` для прямой навигации.
+- `local-safe` профиль теперь отключает `sync-on-startup`, чтобы не падать на startup при отсутствии сети.
+- Dev test run flow: `POST /api/v2/monitor/dev/test-runs` + entry/exit endpoints для testnet validation.
+- Gate testnet FILLED order подтверждён (2026-05-09).
+- Full exit lifecycle добавлен:
+  `OrderAttempt (FILLED entry)` → `ArmedTrade → OPEN` + position записывается →
+  `EngineExecutionService` обнаруживает `EXIT_WINDOW` (plannedExitAt прошёл, positionQuantity > 0) →
+  `submitOrder(reduceOnly=true)` → `OrderAttempt (FILLED exit)` →
+  `recordPosition(CLOSED, exitPrice)` → `recordTradeOutcome(netPnlUsd, feesUsd)` →
+  `ArmedTrade → CLOSED`
+- Ограничение `entryAttemptCount must be 1` удалено из live execution — burst entry (несколько attempts со spacing) теперь поддерживается для live venues.
+- Cancel flow: `DELETE /api/v1/armed-trades/{id}` доступен для CANCELLABLE_STATES; пишет `ARMED_TRADE_CANCELLED` в `TradeJournal`.

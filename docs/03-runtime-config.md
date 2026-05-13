@@ -50,6 +50,8 @@ TRADING_METADATA_REQUIRE_CREDENTIALS_ON_STARTUP=false
 TRADING_METADATA_BOOTSTRAP_FALLBACK_ENABLED=false
 ```
 
+В `local-safe` профиле `TRADING_METADATA_SYNC_ON_STARTUP` принудительно выключен (`false`), чтобы startup не падал при недоступной сети.
+
 Для `prod-like` включите stricter startup-требование явно:
 
 ```env
@@ -100,6 +102,7 @@ Engine использует `MONITOR_INTERNAL_BASE_URL` и тот же `INTERNAL
 ```env
 ENGINE_EXECUTION_LOOP_ENABLED=false
 ENGINE_EXECUTION_LOOP_INTERVAL_MS=1000
+ENGINE_LIVE_ORDER_ENABLED=false
 ```
 
 Manual smoke endpoint:
@@ -111,12 +114,13 @@ POST /internal/engine/execution/run-once?force=true
 Правила текущей фазы:
 
 - loop выключен по умолчанию;
-- `prod-like` тоже не включает loop автоматически, deployment должен выставить `ENGINE_EXECUTION_LOOP_ENABLED=true` явно;
+- live order submission выключен по умолчанию (`ENGINE_LIVE_ORDER_ENABLED=false`);
+- `prod-like` тоже не включает loop автоматически, deployment должен выставить `ENGINE_EXECUTION_LOOP_ENABLED=true` и `ENGINE_LIVE_ORDER_ENABLED=true` явно;
 - `force=true` выполняет все entry attempts из monitor plans, включая future `WAITING_ENTRY`;
 - без engine credentials попытки сохраняются как `FAILED`;
-- live exchange order submission пока не включён автоматически.
+- Gate testnet подтверждён; Bybit geo-blocked для UA IPs.
 
-Engine credentials сейчас читаются из runtime ENV/config engine-side:
+Engine credentials читаются из runtime ENV/config engine-side:
 
 ```env
 ENGINE_CREDENTIALS_BYBIT_API_KEY=
@@ -173,6 +177,45 @@ CREDENTIALS_MASTER_KEY_BASE64=<openssl rand -base64 32>
 Если credential storage включён и master key отсутствует, startup падает fail-closed.
 
 Credentials не должны храниться в репозитории или deployment image.
+
+## Risk Properties
+
+```env
+MONITOR_RISK_MAX_CONCURRENT_ARMED_TRADES=3
+MONITOR_RISK_DISABLED_VENUES=
+```
+
+Prefix: `monitor.risk`.
+
+- `max-concurrent-armed-trades` (default 3) — проверяется при создании `ArmedTrade`; считаются сделки в состояниях ARMED, ENTRY_PENDING, ENTRY_ATTEMPTED, OPEN, EXIT_PENDING; при достижении лимита — 422.
+- `disabled-venues` (default empty, comma-separated) — создание `ArmedTrade` отклоняется с 422, если venue события входит в этот список.
+
+## Engine Testnet Profile
+
+Профиль `application-testnet.yml` (engine-app) активирует execution loop + live orders для Gate testnet:
+
+```bash
+ENGINE_GATE_TESTNET_API_KEY=xxx ENGINE_GATE_TESTNET_SECRET_KEY=yyy \
+  SPRING_PROFILES_ACTIVE=testnet ./gradlew bootRunEngine
+```
+
+Что включает профиль:
+
+- `engine.execution-loop-enabled=true` (interval 2000 ms).
+- `engine.live-order-enabled=true`.
+- `engine.kill-switch-enabled=false`.
+- `engine.live-enabled-venues=gate`.
+- `engine.max-notional-usd=25`.
+- `engine.trading-venue-access-mode=testnet`.
+
+## Docker-compose Defaults
+
+В docker-compose значения по умолчанию для metadata sync изменены:
+
+```env
+TRADING_METADATA_SYNC_ON_STARTUP=true   # было false
+TRADING_METADATA_SCHEDULE_ENABLED=true  # было false
+```
 
 ## Schema Management
 

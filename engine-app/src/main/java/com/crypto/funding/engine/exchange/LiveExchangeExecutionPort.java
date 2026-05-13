@@ -278,10 +278,6 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         {
             return "Live notionalUsd must be <= " + plain( maxNotional ) + ".";
         }
-        if( !reduceOnly && ( plan.entryAttemptCount() == null || plan.entryAttemptCount() != 1 ) )
-        {
-            return "Live v1 entryAttemptCount must be 1.";
-        }
         if( !reduceOnly && intent.side() != TradeSide.SHORT )
         {
             return "Live v1 entry side must be SHORT.";

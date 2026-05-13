@@ -19,3 +19,4 @@ monitor:
 trading:
     metadata:
         require-credentials-on-startup: false
+        sync-on-startup: false

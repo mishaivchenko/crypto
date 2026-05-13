@@ -56,14 +56,19 @@ function setLoading(target, label = "Загрузка…") {
     target.innerHTML = emptyState(label, "Подожди, desk обновляет состояние.");
 }
 
+function setLoadError(target, message) {
+    target.innerHTML = emptyState("Ошибка загрузки", message);
+}
+
 const openCandidate = (id) => openCandidateDetail({ id, nodes, showError });
 const openEvent = (id) => openEventDetail({ id, nodes, showError });
-const openTrade = (id) => openTradeDetail({ id, nodes, showError });
-const openHistoryTrade = (id) => openHistoryTradeDetail({ id, nodes, showError });
+const openTrade = (id) => openTradeDetail({ id, nodes, showError, onRefresh: refreshCurrentScreen });
+const openHistoryTrade = (id) => openHistoryTradeDetail({ id, nodes, showError, onRefresh: refreshCurrentScreen });
 const openVenue = (venueName) => openVenueDetail({ venueName, nodes, showError });
 const openDevTestRun = () => openDevTestRunTool({ nodes, showError });
 
 async function refreshCurrentScreen() {
+    let loadingTarget = null;
     try {
         if (state.screen === "dashboard") {
             setLoading(nodes.dashboardSummary, "Собираю срез контура…");
@@ -88,7 +93,8 @@ async function refreshCurrentScreen() {
             return;
         }
         if (state.screen === "candidates") {
-            setLoading(nodes.candidatesList, "Загружаю входящие сигналы…");
+            loadingTarget = nodes.candidatesList;
+            setLoading(loadingTarget, "Загружаю входящие сигналы…");
             renderCandidates({
                 nodes,
                 page: await api.listCandidates(state.candidateFilters),
@@ -97,7 +103,8 @@ async function refreshCurrentScreen() {
             return;
         }
         if (state.screen === "events") {
-            setLoading(nodes.eventsList, "Загружаю подтверждённые события…");
+            loadingTarget = nodes.eventsList;
+            setLoading(loadingTarget, "Загружаю подтверждённые события…");
             renderFundingEvents({
                 nodes,
                 page: await api.listFundingEvents(state.eventFilters),
@@ -106,7 +113,8 @@ async function refreshCurrentScreen() {
             return;
         }
         if (state.screen === "trades") {
-            setLoading(nodes.tradesList, "Загружаю подготовленные сделки…");
+            loadingTarget = nodes.tradesList;
+            setLoading(loadingTarget, "Загружаю подготовленные сделки…");
             renderTrades({
                 nodes,
                 trades: await api.listArmedTrades(),
@@ -115,7 +123,8 @@ async function refreshCurrentScreen() {
             return;
         }
         if (state.screen === "history") {
-            setLoading(nodes.historyList, "Собираю историю сделок…");
+            loadingTarget = nodes.historyList;
+            setLoading(loadingTarget, "Собираю историю сделок…");
             const [trades, attempts] = await Promise.all([
                 api.listArmedTrades({ includeHistorical: true }),
                 api.listAllOrderAttempts()
@@ -130,7 +139,8 @@ async function refreshCurrentScreen() {
             return;
         }
         if (state.screen === "venues") {
-            setLoading(nodes.venuesList, "Загружаю диагностику площадок…");
+            loadingTarget = nodes.venuesList;
+            setLoading(loadingTarget, "Загружаю диагностику площадок…");
             renderVenues({
                 nodes,
                 venues: await api.listVenues(),
@@ -139,6 +149,9 @@ async function refreshCurrentScreen() {
         }
     } catch (error) {
         showError(error.message);
+        if (loadingTarget) {
+            setLoadError(loadingTarget, error.message);
+        }
     }
 }
 

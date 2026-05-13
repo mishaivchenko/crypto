@@ -14,16 +14,16 @@
 
 ## Engine
 
-`engine-app` сейчас доходит до execution boundary: читает execution plans из `monitor-app`, строит entry attempts, вызывает `ExecutionPort` и сохраняет `OrderAttempt` обратно в monitor.
+`engine-app` доходит до полного execution boundary: читает plans из `monitor-app`, вызывает `LiveExchangeExecutionPort` и сохраняет `OrderAttempt` обратно в monitor.
 
 Что важно:
 
-- execution loop выключен по умолчанию;
-- даже `prod-like` профиль не включает loop без явного `ENGINE_EXECUTION_LOOP_ENABLED=true`;
+- execution loop выключен по умолчанию (`ENGINE_EXECUTION_LOOP_ENABLED=false`);
+- live order submission выключен по умолчанию (`ENGINE_LIVE_ORDER_ENABLED=false`);
+- даже `prod-like` профиль не включает loop/live-order без явных ENV;
 - manual `run-once` можно вызвать только явно;
 - без engine credentials попытка сохраняется как `FAILED`;
-- если credentials есть, live order HTTP submission всё равно остаётся guarded в этой фазе;
-- реальные exchange order adapters будут включаться отдельной фазой.
+- Gate testnet подтверждён (FILLED), Bybit geo-blocked для UA IPs.
 
 Internal API защищён `X-Internal-Token`.
 
@@ -62,6 +62,14 @@ Exchange keys хранятся per operator:
 - пустая база создаётся из baseline migration;
 - существующая SQLite база получает `flyway_schema_history` через baseline-on-migrate;
 - JPA использует `validate`, чтобы fail-fast при schema drift.
+
+## Trade Lifecycle Guardrails
+
+**Cancel state validation**: `DELETE /api/v1/armed-trades/{id}` доступен только для CANCELLABLE_STATES (ARMED, ENTRY_PENDING, ENTRY_ATTEMPTED, OPEN, EXIT_PENDING). Попытка отмены сделки в CLOSED / FAILED / CANCELLED бросает 422.
+
+**Max-concurrent limit** (default 3): при создании `ArmedTrade` подсчитываются активные сделки (те же 5 состояний); при достижении лимита — 422. Настраивается через `monitor.risk.max-concurrent-armed-trades`.
+
+**Disabled venues**: список `monitor.risk.disabled-venues` (comma-separated) блокирует создание `ArmedTrade` для указанных venues с 422. Используется для ограничения execution до подтверждённых venues (Gate testnet confirmed; Bybit geo-blocked для UA IPs).
 
 ## Funding Direction
 

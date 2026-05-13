@@ -175,7 +175,18 @@ export function eventCard(event) {
     `;
 }
 
-export function tradeCard(trade) {
+export function formatPnlBadge(outcome) {
+    if (!outcome || outcome.netPnlUsd == null) {
+        return "";
+    }
+    const net = Number(outcome.netPnlUsd);
+    const sign = net >= 0 ? "+" : "";
+    const tone = net >= 0 ? "good" : "bad";
+    const fees = outcome.feesUsd != null ? ` (fees ${formatDecimal(outcome.feesUsd, 4)})` : "";
+    return formatBadge("outcome", `${sign}${formatDecimal(net, 4)} USD${fees}`, tone);
+}
+
+export function tradeCard(trade, outcome = null) {
     return `
         <article class="list-item trade-card">
             <header>
@@ -185,6 +196,7 @@ export function tradeCard(trade) {
                 </div>
                 <div class="actions">
                     ${formatBadge("trade", trade.state)}
+                    ${formatPnlBadge(outcome)}
                     <button class="button secondary" type="button" data-open-trade="${trade.id}">Inspect</button>
                 </div>
             </header>

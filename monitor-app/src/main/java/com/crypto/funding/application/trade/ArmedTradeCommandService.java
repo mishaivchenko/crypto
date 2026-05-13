@@ -3,6 +3,7 @@ package com.crypto.funding.application.trade;
 import com.crypto.funding.application.DomainValidationException;
 import com.crypto.funding.application.ResourceNotFoundException;
 import com.crypto.funding.application.venue.VenueLatencyService;
+import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.config.TradePreparationProperties;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.domain.trade.ArmedTrade;
@@ -22,23 +23,34 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
 public class ArmedTradeCommandService
 {
+    private static final Set<ArmedTradeState> ACTIVE_STATES = Set.of(
+        ArmedTradeState.ARMED,
+        ArmedTradeState.ENTRY_PENDING,
+        ArmedTradeState.ENTRY_ATTEMPTED,
+        ArmedTradeState.OPEN,
+        ArmedTradeState.EXIT_PENDING
+    );
+
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeJpaRepository armedTradeRepository;
     private final TradeJournalService tradeJournalService;
     private final VenueLatencyService venueLatencyService;
     private final TradePreparationProperties preparationProperties;
+    private final MonitorRiskProperties riskProperties;
 
     public ArmedTradeCommandService(
         FundingEventJpaRepository fundingEventRepository,
         ArmedTradeJpaRepository armedTradeRepository,
         TradeJournalService tradeJournalService,
         VenueLatencyService venueLatencyService,
-        TradePreparationProperties preparationProperties
+        TradePreparationProperties preparationProperties,
+        MonitorRiskProperties riskProperties
     )
     {
         this.fundingEventRepository = fundingEventRepository;
@@ -46,6 +58,40 @@ public class ArmedTradeCommandService
         this.tradeJournalService = tradeJournalService;
         this.venueLatencyService = venueLatencyService;
         this.preparationProperties = preparationProperties;
+        this.riskProperties = riskProperties;
+    }
+
+    private static final Set<ArmedTradeState> CANCELLABLE_STATES = Set.of(
+        ArmedTradeState.ARMED,
+        ArmedTradeState.ENTRY_PENDING,
+        ArmedTradeState.ENTRY_ATTEMPTED,
+        ArmedTradeState.OPEN,
+        ArmedTradeState.EXIT_PENDING
+    );
+
+    @Transactional
+    public ArmedTrade cancel( Long id )
+    {
+        ArmedTradeEntity entity = armedTradeRepository.findById( id )
+                                                      .orElseThrow( () -> new ResourceNotFoundException( "Подготовленная сделка не найдена: " + id ) );
+        if( !CANCELLABLE_STATES.contains( entity.getState() ) )
+        {
+            throw new DomainValidationException( "Нельзя отменить сделку в статусе " + entity.getState() );
+        }
+        ArmedTradeState previousState = entity.getState();
+        entity.setState( ArmedTradeState.CANCELLED );
+        armedTradeRepository.save( entity );
+        tradeJournalService.append(
+            TradeJournalEntityType.ARMED_TRADE,
+            entity.getId(),
+            TradeJournalEventCode.ARMED_TRADE_CANCELLED,
+            previousState.name(),
+            ArmedTradeState.CANCELLED.name(),
+            TradeJournalActorType.OPERATOR,
+            "api",
+            null
+        );
+        return ArmedTradeMapper.toDomain( entity );
     }
 
     @Transactional
@@ -74,12 +120,21 @@ public class ArmedTradeCommandService
                 "Событие фандинга " + command.fundingEventId() + " нельзя подготовить из статуса " + fundingEvent.getStatus()
             );
         }
-        if( armedTradeRepository.existsByFundingEventIdAndStateIn(
-            fundingEvent.getId(),
-            Set.of( ArmedTradeState.ARMED, ArmedTradeState.ENTRY_PENDING, ArmedTradeState.ENTRY_ATTEMPTED, ArmedTradeState.OPEN, ArmedTradeState.EXIT_PENDING )
-        ) )
+        if( armedTradeRepository.existsByFundingEventIdAndStateIn( fundingEvent.getId(), ACTIVE_STATES ) )
         {
             throw new DomainValidationException( "У события фандинга " + command.fundingEventId() + " уже есть активная подготовленная сделка." );
+        }
+        String normalizedVenue = fundingEvent.getVenue() == null ? "" : fundingEvent.getVenue().trim().toLowerCase( Locale.ROOT );
+        if( riskProperties.disabledVenues().contains( normalizedVenue ) )
+        {
+            throw new DomainValidationException( "Venue " + fundingEvent.getVenue() + " is disabled for trading." );
+        }
+        long activeTrades = armedTradeRepository.countByStateIn( ACTIVE_STATES );
+        if( activeTrades >= riskProperties.getMaxConcurrentArmedTrades() )
+        {
+            throw new DomainValidationException(
+                "Max concurrent armed trades limit reached (" + riskProperties.getMaxConcurrentArmedTrades() + "). Close existing trades first."
+            );
         }
         if( command.intendedSide() != null && command.intendedSide() != TradeSide.SHORT )
         {

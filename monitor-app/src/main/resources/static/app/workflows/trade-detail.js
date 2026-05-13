@@ -17,6 +17,18 @@ import {
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 
+const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED", "OPEN", "EXIT_PENDING"]);
+
+function buildCancelSection(trade) {
+    if (!CANCELLABLE_STATES.has(trade.state)) {
+        return "";
+    }
+    return section("Cancel trade", `
+        <p class="muted">Переведёт сделку в CANCELLED. Открытые позиции на бирже не закрываются — только запись в системе.</p>
+        <button class="button danger" type="button" data-cancel-trade="${trade.id}">Отменить сделку</button>
+    `);
+}
+
 export function buildTradeDrawerContent({ trade, journal, attempts }) {
     return `
         ${pipelineStageMarkup("trade")}
@@ -55,12 +67,13 @@ export function buildTradeDrawerContent({ trade, journal, attempts }) {
                 <span class="meta-helper">${escapeHtml(attempt.failureReason ?? "Без ошибки")} · trigger ${formatInstant(attempt.triggerAt)} · recorded ${formatInstant(attempt.createdAt)}</span>
             </div>
         `).join("") : emptyState("Execution attempts пока нет.", "Запусти engine run-once, чтобы увидеть FAILED/SUBMITTED попытки."))}
+        ${buildCancelSection(trade)}
         ${trade.signalCandidateId ? buildDeleteCandidateSection({ id: trade.signalCandidateId }, "Delete source signal") : ""}
         ${section("Journal", journalMarkup(journal))}
     `;
 }
 
-export async function openTradeDetail({ id, nodes, showError }) {
+export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
     try {
         const [trade, journal, attempts] = await Promise.all([
             api.getArmedTrade(id),
@@ -71,6 +84,23 @@ export async function openTradeDetail({ id, nodes, showError }) {
         nodes.drawerType.textContent = "Prepared Trade";
         nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Сделка #${trade.id}`;
         nodes.drawerContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts });
+
+        const cancelBtn = nodes.drawerContent.querySelector("[data-cancel-trade]");
+        if (cancelBtn) {
+            cancelBtn.addEventListener("click", async () => {
+                cancelBtn.disabled = true;
+                cancelBtn.textContent = "Отменяем…";
+                try {
+                    await api.cancelArmedTrade(trade.id);
+                    if (onRefresh) onRefresh();
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    cancelBtn.disabled = false;
+                    cancelBtn.textContent = "Отменить сделку";
+                }
+            });
+        }
     } catch (error) {
         showError(error.message);
     }

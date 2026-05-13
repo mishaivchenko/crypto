@@ -26,7 +26,7 @@ Product venues:
 
 Синхронизация запускается:
 
-- при старте monitor, если `TRADING_METADATA_SYNC_ON_STARTUP=true`;
+- при старте monitor, если `TRADING_METADATA_SYNC_ON_STARTUP=true` (в `local-safe` отключено по умолчанию);
 - вручную через `POST /api/v1/venues/{venue}/sync`;
 - по расписанию, если включить `TRADING_METADATA_SCHEDULE_ENABLED=true`.
 
@@ -59,11 +59,25 @@ UI показывает:
 
 Timing пишет metadata sync и credential check. В следующей execution-фазе сюда добавятся order submit/ack/fill timings из `engine-app`.
 
+## Latency Probes
+
+Latency profile можно обновить двумя способами:
+
+**Ручной probe** через monitor API:
+
+```bash
+POST /api/v2/monitor/venues/{venue}/latency-probe
+```
+
+`VenueLatencyProbeService` делает GET к публичному endpoint venue (Gate: `/futures/usdt/tickers?contract=BTC_USDT`, Bybit: `/v5/market/time`), измеряет wall-clock RTT, обновляет `VenueTimingProfileEntity.latencySampledAt` и возвращает `{ venue, durationMs, sampledAt }`.
+
+**Автоматическое обновление после реального ордера**: после `submitOrder()` `EngineExecutionService` отправляет RTT заявки в `POST /internal/v1/engine/latency-samples`. `EngineLatencyRecordService` делает upsert `VenueTimingProfileEntity` + обновляет in-memory `VenueRequestTimingService`. Это обеспечивает актуальность latency profile без ручного вмешательства.
+
 ## Entry Latency
 
 `VenueLatencyService` выбирает measured latency по приоритету:
 
-1. future `order-submit` / `order-ack`
+1. `order-submit` (из engine post-order feedback)
 2. `credential-check`
 3. `metadata-sync`
 

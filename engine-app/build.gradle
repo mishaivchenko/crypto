@@ -95,6 +95,7 @@ pitest {
     pitestVersion = '1.22.1'
     targetClasses = engineTddClasses
     targetTests = [
+        'com.crypto.funding.engine.AutonomousLoopIntegrationTest',
         'com.crypto.funding.engine.EngineApplicationIntegrationTest',
         'com.crypto.funding.engine.EngineApplicationTest',
         'com.crypto.funding.engine.CredentialAwareExecutionPortTest',

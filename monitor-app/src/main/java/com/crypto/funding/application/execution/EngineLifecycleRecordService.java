@@ -87,9 +87,17 @@ public class EngineLifecycleRecordService
     {
         validateOutcome( request );
         assertTradeExists( request.armedTradeId() );
-        return tradeOutcomeRepository.findFirstByArmedTradeIdOrderByCreatedAtDesc( request.armedTradeId() )
-                                     .map( EngineLifecycleRecordService::toOutcomeResponse )
-                                     .orElseGet( () -> toOutcomeResponse( tradeOutcomeRepository.save( toOutcomeEntity( request ) ) ) );
+        TradeOutcomeEntity entity = tradeOutcomeRepository
+            .findFirstByArmedTradeIdOrderByCreatedAtDesc( request.armedTradeId() )
+            .orElseGet( TradeOutcomeEntity::new );
+        entity.setArmedTradeId( request.armedTradeId() );
+        entity.setGrossPnlUsd( request.grossPnlUsd() );
+        entity.setNetPnlUsd( request.netPnlUsd() );
+        entity.setFeesUsd( request.feesUsd() );
+        entity.setOutcomeCode( request.outcomeCode().trim() );
+        entity.setNotes( request.notes() );
+        entity.setEvaluatedAt( request.evaluatedAt() == null ? Instant.now() : request.evaluatedAt() );
+        return toOutcomeResponse( tradeOutcomeRepository.save( entity ) );
     }
 
     private void validatePosition( EnginePositionRecordRequest request )

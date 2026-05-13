@@ -7,6 +7,7 @@ import com.crypto.funding.application.engine.planning.EnginePlanStatusCalculator
 import com.crypto.funding.application.engine.planning.EnginePlanSummaryFormatter;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.config.MonitorEnginePlanProperties;
+import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
@@ -33,6 +34,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -54,6 +56,7 @@ public class MonitorEnginePlanService
     private final PositionJpaRepository positionRepository;
     private final VenueTimingProfileJpaRepository timingProfileRepository;
     private final MonitorEnginePlanProperties engineProperties;
+    private final MonitorRiskProperties riskProperties;
     private final EngineEntryAttemptScheduleBuilder attemptScheduleBuilder;
     private final EnginePlanStatusCalculator statusCalculator;
     private final EnginePlanLookaheadFilter lookaheadFilter;
@@ -68,6 +71,7 @@ public class MonitorEnginePlanService
         PositionJpaRepository positionRepository,
         VenueTimingProfileJpaRepository timingProfileRepository,
         MonitorEnginePlanProperties engineProperties,
+        MonitorRiskProperties riskProperties,
         EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
         EnginePlanStatusCalculator statusCalculator,
         EnginePlanLookaheadFilter lookaheadFilter,
@@ -81,6 +85,7 @@ public class MonitorEnginePlanService
             positionRepository,
             timingProfileRepository,
             engineProperties,
+            riskProperties,
             attemptScheduleBuilder,
             statusCalculator,
             lookaheadFilter,
@@ -96,6 +101,7 @@ public class MonitorEnginePlanService
         PositionJpaRepository positionRepository,
         VenueTimingProfileJpaRepository timingProfileRepository,
         MonitorEnginePlanProperties engineProperties,
+        MonitorRiskProperties riskProperties,
         EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
         EnginePlanStatusCalculator statusCalculator,
         EnginePlanLookaheadFilter lookaheadFilter,
@@ -109,6 +115,7 @@ public class MonitorEnginePlanService
         this.positionRepository = positionRepository;
         this.timingProfileRepository = timingProfileRepository;
         this.engineProperties = engineProperties;
+        this.riskProperties = riskProperties;
         this.attemptScheduleBuilder = attemptScheduleBuilder;
         this.statusCalculator = statusCalculator;
         this.lookaheadFilter = lookaheadFilter;
@@ -183,7 +190,10 @@ public class MonitorEnginePlanService
                                                                    "Событие фандинга не найдено для подготовленной сделки: " + trade.id()
                                                                ) );
 
-        EnginePlanStatus status = statusCalculator.deriveStatus( trade, now );
+        String venueNormalized = fundingEvent.getVenue() == null ? "" : fundingEvent.getVenue().trim().toLowerCase( Locale.ROOT );
+        EnginePlanStatus status = riskProperties.disabledVenues().contains( venueNormalized )
+                                  ? EnginePlanStatus.INVALID
+                                  : statusCalculator.deriveStatus( trade, now );
         List<EngineEntryAttemptPlan> entryAttempts = attemptScheduleBuilder.build( trade, now );
         Instant nextActionAt = nextActionAt( trade, status, entryAttempts, now );
         Long millisUntilAction = nextActionAt == null ? null : Duration.between( now, nextActionAt ).toMillis();

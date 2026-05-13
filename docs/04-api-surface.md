@@ -46,13 +46,27 @@ Funding armed trades поддерживают только `SHORT`.
 ## Armed Trades
 
 ```text
-GET /api/v1/armed-trades
-GET /api/v1/armed-trades/{id}
-POST /api/v1/armed-trades
-GET /api/v1/armed-trades/{id}/journal
-GET /api/v1/armed-trades/{id}/order-attempts
-GET /api/v1/order-attempts
+GET    /api/v1/armed-trades
+GET    /api/v1/armed-trades/{id}
+POST   /api/v1/armed-trades
+DELETE /api/v1/armed-trades/{id}
+GET    /api/v1/armed-trades/{id}/journal
+GET    /api/v1/armed-trades/{id}/order-attempts
+GET    /api/v1/order-attempts
 ```
+
+`DELETE /api/v1/armed-trades/{id}` — отменяет сделку, переводя в `CANCELLED`. Работает только для CANCELLABLE_STATES: `ARMED`, `ENTRY_PENDING`, `ENTRY_ATTEMPTED`, `OPEN`, `EXIT_PENDING`. Возвращает HTTP 204. Пишет `ARMED_TRADE_CANCELLED` в TradeJournal. При недопустимом state — 422.
+
+## Trade Position And Outcome
+
+```text
+GET /api/v2/trades/{armedTradeId}/position
+GET /api/v2/trades/{armedTradeId}/outcome
+```
+
+`GET /api/v2/trades/{armedTradeId}/position` — последняя записанная позиция: `state`, `quantity`, `entryPrice`, `exitPrice`, `openedAt`, `closedAt`. 404 если позиция ещё не записана.
+
+`GET /api/v2/trades/{armedTradeId}/outcome` — последний записанный outcome: `grossPnlUsd`, `netPnlUsd`, `feesUsd`, `outcomeCode`, `evaluatedAt`. 404 если outcome ещё не записан.
 
 Важные поля `ArmedTradeResponse`:
 
@@ -75,16 +89,19 @@ GET /api/v1/order-attempts
 ## Venues
 
 ```text
-GET /api/v1/venues
-GET /api/v1/venues/access-mode
+GET  /api/v1/venues
+GET  /api/v1/venues/access-mode
 POST /api/v1/venues/access-mode
-GET /api/v1/venues/{venue}
+GET  /api/v1/venues/{venue}
 POST /api/v1/venues/{venue}/sync
 POST /api/v1/venues/{venue}/mode
 POST /api/v1/venues/{venue}/check
-GET /api/v1/venues/{venue}/instruments
-GET /api/v1/venues/timings
+POST /api/v2/monitor/venues/{venue}/latency-probe
+GET  /api/v1/venues/{venue}/instruments
+GET  /api/v1/venues/timings
 ```
+
+`POST /api/v2/monitor/venues/{venue}/latency-probe` — выполняет GET к дешёвому публичному endpoint venue (Gate: `/futures/usdt/tickers?contract=BTC_USDT`, Bybit: `/v5/market/time`), измеряет wall-clock RTT, делает upsert `VenueTimingProfileEntity.latencySampledAt`. Возвращает `{ venue, durationMs, sampledAt }`.
 
 `/api/v1/venues/{venue}/check` checks credentials for the current operator and current global access mode.
 
@@ -110,13 +127,31 @@ Supported modes:
 - `production`
 - `prod` alias for `production`
 
+## Dev Tools (monitor-side)
+
+```text
+POST /api/v2/monitor/dev/engine/run-once
+GET  /api/v2/monitor/dev/engine/runtime
+POST /api/v2/monitor/dev/engine/runtime
+GET  /api/v2/monitor/dev/test-runs/options
+POST /api/v2/monitor/dev/test-runs
+POST /api/v2/monitor/dev/test-runs/{armedTradeId}/entry
+POST /api/v2/monitor/dev/test-runs/{armedTradeId}/exit
+```
+
+Dev test run flow используется для testnet validation без полного engine loop.
+
 ## Monitor Internal Engine API
 
 ```text
-GET /internal/v1/engine/plans
-GET /internal/v1/engine/plans?includeAll=true
-GET /internal/v1/engine/plans/{armedTradeId}
+GET  /internal/v1/engine/plans
+GET  /internal/v1/engine/plans?includeAll=true
+GET  /internal/v1/engine/plans/{armedTradeId}
 POST /internal/v1/engine/order-attempts
+POST /internal/v1/engine/trades/{armedTradeId}/state
+POST /internal/v1/engine/positions
+POST /internal/v1/engine/outcomes
+POST /internal/v1/engine/metrics-snapshot
 ```
 
 Monitor protects these endpoints with `X-Internal-Token`.
@@ -126,11 +161,14 @@ Monitor protects these endpoints with `X-Internal-Token`.
 ## Engine
 
 ```text
-GET /internal/engine/summary
-GET /internal/engine/plans
-GET /internal/engine/plans/{armedTradeId}
+GET  /internal/engine/summary
+GET  /internal/engine/plans
+GET  /internal/engine/plans/{armedTradeId}
 POST /internal/engine/execution/run-once
 POST /internal/engine/execution/run-once?force=true
+POST /internal/engine/execution/target
+GET  /internal/engine/runtime
+POST /internal/engine/runtime
 ```
 
-Engine endpoints сейчас выполняют observable execution attempts. Без engine credentials попытки пишутся как `FAILED`; live order HTTP submission ещё guarded.
+Live order submission доступен при `ENGINE_LIVE_ORDER_ENABLED=true`. Gate testnet подтверждён; Bybit geo-blocked для UA IPs.

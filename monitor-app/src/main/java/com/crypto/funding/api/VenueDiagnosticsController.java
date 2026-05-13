@@ -4,9 +4,11 @@ import com.crypto.funding.api.dto.GlobalVenueModeResponse;
 import com.crypto.funding.api.dto.InstrumentMetadataResponse;
 import com.crypto.funding.api.dto.SetGlobalVenueModeRequest;
 import com.crypto.funding.api.dto.SetVenueModeRequest;
+import com.crypto.funding.api.dto.VenueLatencyProbeResponse;
 import com.crypto.funding.api.dto.VenueRequestTimingResponse;
 import com.crypto.funding.api.dto.VenueSummaryResponse;
 import com.crypto.funding.application.venue.VenueDiagnosticsService;
+import com.crypto.funding.application.venue.VenueLatencyProbeService;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import jakarta.validation.Valid;
@@ -25,10 +27,15 @@ import java.util.List;
 public class VenueDiagnosticsController
 {
     private final VenueDiagnosticsService venueDiagnosticsService;
+    private final VenueLatencyProbeService latencyProbeService;
 
-    public VenueDiagnosticsController( VenueDiagnosticsService venueDiagnosticsService )
+    public VenueDiagnosticsController(
+        VenueDiagnosticsService venueDiagnosticsService,
+        VenueLatencyProbeService latencyProbeService
+    )
     {
         this.venueDiagnosticsService = venueDiagnosticsService;
+        this.latencyProbeService = latencyProbeService;
     }
 
     @GetMapping
@@ -89,6 +96,13 @@ public class VenueDiagnosticsController
                                                              ? venueDiagnosticsService.listTimings()
                                                              : venueDiagnosticsService.listTimings( venue );
         return snapshots.stream().map( this::toResponse ).toList();
+    }
+
+    @PostMapping("/{venue}/latency-probe")
+    public VenueLatencyProbeResponse probeLatency( @PathVariable String venue )
+    {
+        VenueLatencyProbeService.ProbeResult result = latencyProbeService.probe( venue );
+        return new VenueLatencyProbeResponse( result.venue(), result.durationMs(), result.sampledAt() );
     }
 
     private VenueSummaryResponse toResponse( VenueDiagnosticsService.VenueSummary summary )

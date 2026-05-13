@@ -5,6 +5,7 @@ import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
 import com.crypto.funding.contract.engine.EngineExecutionAttemptResult;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
+import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
@@ -255,12 +256,11 @@ public class EngineExecutionService
             attemptPlan.triggerAt()
         );
         long submitStartedAt = nanoTimeSupplier.getAsLong();
+        Instant submittedAt = Instant.now( clock );
         OrderAttempt attempt = executionPort.submitOrder( plan, intent, false );
-        telemetryService.recordOrderSubmission(
-            plan.venue(),
-            attempt.status(),
-            ( nanoTimeSupplier.getAsLong() - submitStartedAt ) / 1_000_000L
-        );
+        long submitDurationMs = ( nanoTimeSupplier.getAsLong() - submitStartedAt ) / 1_000_000L;
+        telemetryService.recordOrderSubmission( plan.venue(), attempt.status(), submitDurationMs );
+        reportLatencySample( plan.venue(), plan.symbol(), submitDurationMs, submittedAt );
         String attemptKey = attemptKey( plan, attemptPlan );
         EngineOrderAttemptResponse recorded = recordAttempt(
             attemptKey,
@@ -287,12 +287,11 @@ public class EngineExecutionService
             triggerAt
         );
         long submitStartedAt = nanoTimeSupplier.getAsLong();
+        Instant submittedAt = Instant.now( clock );
         OrderAttempt attempt = executionPort.submitOrder( plan, intent, true );
-        telemetryService.recordOrderSubmission(
-            plan.venue(),
-            attempt.status(),
-            ( nanoTimeSupplier.getAsLong() - submitStartedAt ) / 1_000_000L
-        );
+        long submitDurationMs = ( nanoTimeSupplier.getAsLong() - submitStartedAt ) / 1_000_000L;
+        telemetryService.recordOrderSubmission( plan.venue(), attempt.status(), submitDurationMs );
+        reportLatencySample( plan.venue(), plan.symbol(), submitDurationMs, submittedAt );
         EngineOrderAttemptResponse recorded = recordAttempt(
             attemptKey,
             null,
@@ -539,5 +538,23 @@ public class EngineExecutionService
     private static BigDecimal zeroIfNull( BigDecimal value )
     {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private void reportLatencySample( String venue, String symbol, long durationMs, Instant sampledAt )
+    {
+        try
+        {
+            client.recordLatencySample( new EngineLatencySampleRequest(
+                venue,
+                symbol,
+                "order-submit",
+                durationMs,
+                sampledAt
+            ) );
+        }
+        catch( Exception ignored )
+        {
+            // Latency feedback is best-effort; never block execution on it.
+        }
     }
 }

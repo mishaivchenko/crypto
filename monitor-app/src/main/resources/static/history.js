@@ -243,7 +243,7 @@ export function latencyStripMarkup(trade, attempts = []) {
     `;
 }
 
-export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts = [] }) {
+export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts = [], position = null, outcome = null }) {
     const historyStage = deriveHistoryStage(trade, event, attempts);
     const health = deriveTradeHealth(trade, attempts, event);
     const sourceSymbol = candidate?.normalizedSymbol ?? candidate?.rawSymbol ?? trade.symbol ?? "—";
@@ -310,16 +310,33 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
                 </div>
             `}
         `)}
-        ${section("5. Position", `
+        ${section("5. Position", position ? `
+            <div class="meta-grid">
+                ${metaRow("State", formatBadge("position", position.state))}
+                ${metaRow("Quantity", formatDecimal(position.quantity, 6))}
+                ${metaRow("Entry price", position.entryPrice != null ? formatDecimal(position.entryPrice, 6) : "—")}
+                ${metaRow("Exit price", position.exitPrice != null ? formatDecimal(position.exitPrice, 6) : "—")}
+                ${metaRow("Opened at", formatInstant(position.openedAt))}
+                ${metaRow("Closed at", position.closedAt ? formatInstant(position.closedAt) : "—")}
+            </div>
+        ` : `
             <div class="empty-state compact">
-                <strong>Position ещё не открывалась в новом домене.</strong>
-                <p>Этот блок ждёт реальный execution loop: entry price, qty, close timestamps и fees.</p>
+                <strong>Position ещё не записана.</strong>
+                <p>Появится после FILLED entry attempt.</p>
             </div>
         `)}
-        ${section("6. Outcome", `
+        ${section("6. Outcome", outcome ? `
+            <div class="meta-grid">
+                ${metaRow("Net PnL", formatBadge("outcome", (outcome.netPnlUsd >= 0 ? "+" : "") + formatDecimal(outcome.netPnlUsd, 4) + " USD", outcome.netPnlUsd >= 0 ? "good" : "bad"))}
+                ${metaRow("Gross PnL", formatDecimal(outcome.grossPnlUsd, 4) + " USD")}
+                ${metaRow("Fees", outcome.feesUsd != null ? formatDecimal(outcome.feesUsd, 4) + " USD" : "—")}
+                ${metaRow("Code", escapeHtml(outcome.outcomeCode ?? "—"))}
+                ${metaRow("Evaluated at", formatInstant(outcome.evaluatedAt))}
+            </div>
+        ` : `
             <div class="empty-state compact">
                 <strong>Outcome пока не рассчитан.</strong>
-                <p>Здесь будет net PnL, slippage, capture quality и итоговый код сделки.</p>
+                <p>Появится после закрытия позиции.</p>
             </div>
         `)}
         ${section("Journal", journalMarkup(journal))}

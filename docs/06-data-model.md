@@ -75,6 +75,11 @@ Funding `armed_trade` должен быть `SHORT`.
 - note.
 - created at.
 
+Допустимые значения `event_code` (`TradeJournalEventCode`):
+`CANDIDATE_APPROVED`, `CANDIDATE_REJECTED`, `CANDIDATE_DELETED`,
+`FUNDING_EVENT_CREATED`, `FUNDING_EVENT_ARMED`,
+`ARMED_TRADE_CREATED`, `ARMED_TRADE_CANCELLED`.
+
 ### `instrument_metadata`
 
 Venue-specific instrument registry.
@@ -137,7 +142,19 @@ SQLite остаётся текущей локальной persistence базой
 
 Важно:
 
-- schema теперь versioned через Flyway migration `V1__baseline.sql`;
+- schema versioned через Flyway migrations (V1–V5);
 - `monitor-app` запускает Flyway перед JPA `validate`, а не через Hibernate `ddl-auto=update`;
 - существующие SQLite базы из pre-Flyway эпохи берутся под управление через baseline history table;
 - application/domain слой по-прежнему задаёт defaults и invariants.
+
+Текущие миграции:
+
+| Версия | Тип | Назначение |
+|--------|-----|-----------|
+| V1 | SQL | Baseline schema (все core tables) |
+| V2 | Java | order_attempt fill fields: average_fill_price, filled_quantity, fee_usd |
+| V3 | Java | Пересоздаёт trade_journal с расширенным CHECK constraint (добавляет ARMED_TRADE_CANCELLED). Использует CREATE…AS + DROP + RENAME, т.к. SQLite не поддерживает ALTER CHECK. Содержит guard `tableExists()` для тестовых сред с `ddl-auto=create-drop`. |
+
+Примечание: V1 baseline содержит полную schema включая operator_account, operator_exchange_credential, trade_position, trade_outcome и все остальные таблицы. Отдельных SQL-миграций V3–V5 нет — они были частью первоначального baseline.
+
+Flyway настроен с `out-of-order: true` (platform-core.yml), что позволяет применять миграции не по порядку при обновлении существующих баз.

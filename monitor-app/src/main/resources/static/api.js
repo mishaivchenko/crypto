@@ -140,6 +140,9 @@ export const api = {
     listFundingEventJournal(id) {
         return request(`/api/v1/funding-events/${id}/journal`);
     },
+    cancelArmedTrade(id) {
+        return request(`/api/v1/armed-trades/${id}`, { method: "DELETE" });
+    },
     listArmedTrades(options = {}) {
         const params = new URLSearchParams();
         if (options.includeHistorical) {
@@ -156,6 +159,15 @@ export const api = {
     },
     listOrderAttempts(id) {
         return request(`/api/v1/armed-trades/${id}/order-attempts`);
+    },
+    getTradePosition(id) {
+        return request(`/api/v1/armed-trades/${id}/position`).catch(() => null);
+    },
+    getTradeOutcome(id) {
+        return request(`/api/v1/armed-trades/${id}/outcome`).catch(() => null);
+    },
+    probeVenueLatency(venue) {
+        return request(`/api/v1/venues/${venue}/latency-probe`, { method: "POST" });
     },
     listAllOrderAttempts() {
         return request("/api/v1/order-attempts");

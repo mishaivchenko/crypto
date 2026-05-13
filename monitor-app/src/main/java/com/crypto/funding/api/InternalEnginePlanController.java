@@ -1,9 +1,11 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.application.engine.MonitorEnginePlanService;
+import com.crypto.funding.application.execution.EngineLatencyRecordService;
 import com.crypto.funding.application.execution.EngineLifecycleRecordService;
 import com.crypto.funding.application.execution.OrderAttemptRecordService;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
@@ -12,12 +14,14 @@ import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
 import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
 import com.crypto.funding.contract.engine.EngineTradeStateUpdateResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -29,16 +33,19 @@ public class InternalEnginePlanController
     private final MonitorEnginePlanService enginePlanService;
     private final OrderAttemptRecordService orderAttemptRecordService;
     private final EngineLifecycleRecordService lifecycleRecordService;
+    private final EngineLatencyRecordService latencyRecordService;
 
     public InternalEnginePlanController(
         MonitorEnginePlanService enginePlanService,
         OrderAttemptRecordService orderAttemptRecordService,
-        EngineLifecycleRecordService lifecycleRecordService
+        EngineLifecycleRecordService lifecycleRecordService,
+        EngineLatencyRecordService latencyRecordService
     )
     {
         this.enginePlanService = enginePlanService;
         this.orderAttemptRecordService = orderAttemptRecordService;
         this.lifecycleRecordService = lifecycleRecordService;
+        this.latencyRecordService = latencyRecordService;
     }
 
     @GetMapping("/plans")
@@ -78,5 +85,12 @@ public class InternalEnginePlanController
     public EngineTradeOutcomeResponse recordOutcome( @RequestBody EngineTradeOutcomeRecordRequest request )
     {
         return lifecycleRecordService.recordTradeOutcome( request );
+    }
+
+    @PostMapping("/latency-samples")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void recordLatencySample( @RequestBody EngineLatencySampleRequest request )
+    {
+        latencyRecordService.record( request );
     }
 }

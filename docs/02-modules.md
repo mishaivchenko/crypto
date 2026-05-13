@@ -31,14 +31,16 @@
 
 ## `engine-app`
 
-Лёгкий planning runtime.
+Лёгкий execution runtime.
 
 Отвечает за:
 
 - summary of armed trade plans.
 - listing execution plans fetched from monitor.
-- future execution loop host near exchanges.
+- live order submission через `LiveExchangeExecutionPort` (Gate и Bybit адаптеры).
+- recording `OrderAttempt` results back to monitor.
+- engine execution loop (disabled by default).
 
 Порт по умолчанию: `8091`.
 
-Engine сейчас read-only относительно execution. Он не размещает live orders.
+Engine может размещать live orders, если `ENGINE_LIVE_ORDER_ENABLED=true`. По умолчанию отключено — safe-by-default.
