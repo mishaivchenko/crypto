@@ -196,6 +196,36 @@ class InternalEnginePlanApiIntegrationTest
     }
 
     @Test
+    void closedPositionRecordClosesTradeStateIdempotently() throws Exception
+    {
+        ArmedTradeEntity trade = createArmedTrade();
+        trade.setState( ArmedTradeState.OPEN );
+        armedTradeRepository.save( trade );
+
+        mockMvc.perform( post( "/internal/v1/engine/positions" )
+                .header( "X-Internal-Token", "test-internal-token" )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {
+                      "armedTradeId":%d,
+                      "venue":"bybit",
+                      "symbol":"REQ/USDT",
+                      "side":"SHORT",
+                      "quantity":10,
+                      "entryPrice":2.5,
+                      "exitPrice":2.4,
+                      "state":"CLOSED",
+                      "closedAt":"2030-01-01T00:01:00Z"
+                    }
+                    """.formatted( trade.getId() ) ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.state" ).value( "CLOSED" ) );
+
+        org.assertj.core.api.Assertions.assertThat( armedTradeRepository.findById( trade.getId() ).orElseThrow().getState() )
+                                       .isEqualTo( ArmedTradeState.CLOSED );
+    }
+
+    @Test
     void includeAllPlansStillReturnsOverdueArmedTradesAfterFundingEventExpires() throws Exception
     {
         // REQ: ENG-ACC-006

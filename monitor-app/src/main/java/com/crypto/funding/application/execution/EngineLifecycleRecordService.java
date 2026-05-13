@@ -8,6 +8,8 @@ import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
 import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
 import com.crypto.funding.contract.engine.EngineTradeStateUpdateResponse;
+import com.crypto.funding.domain.trade.ArmedTradeState;
+import com.crypto.funding.domain.trade.PositionState;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
 import com.crypto.funding.infrastructure.persistence.model.PositionEntity;
 import com.crypto.funding.infrastructure.persistence.model.TradeOutcomeEntity;
@@ -79,7 +81,21 @@ public class EngineLifecycleRecordService
         entity.setState( request.state() );
         entity.setOpenedAt( request.openedAt() );
         entity.setClosedAt( request.closedAt() );
-        return toPositionResponse( positionRepository.save( entity ) );
+        EnginePositionResponse response = toPositionResponse( positionRepository.save( entity ) );
+        if( request.state() == PositionState.CLOSED )
+        {
+            ArmedTradeEntity trade = armedTradeRepository.findById( request.armedTradeId() )
+                                                        .orElseThrow( () -> new ResourceNotFoundException(
+                                                            "Prepared trade not found: " + request.armedTradeId()
+                                                        ) );
+            trade.setState( ArmedTradeState.CLOSED );
+            if( trade.getNotes() == null || trade.getNotes().isBlank() || "entry filled".equalsIgnoreCase( trade.getNotes() ) )
+            {
+                trade.setNotes( "exit filled" );
+            }
+            armedTradeRepository.save( trade );
+        }
+        return response;
     }
 
     @Transactional

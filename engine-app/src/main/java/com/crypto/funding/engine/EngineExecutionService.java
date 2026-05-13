@@ -369,7 +369,7 @@ public class EngineExecutionService
 
     private void applyExitLifecycle( EngineExecutionPlan plan, EngineOrderAttemptResponse recorded, OrderAttempt attempt )
     {
-        if( recorded.status() == OrderAttemptStatus.FILLED )
+        if( isCompletedExit( recorded, attempt ) )
         {
             BigDecimal fees = zeroIfNull( attempt.feeUsd() );
             BigDecimal grossPnl = grossPnl( plan, attempt );
@@ -406,6 +406,18 @@ public class EngineExecutionService
                 new EngineTradeStateUpdateRequest( ArmedTradeState.FAILED, recorded.failureReason() )
             );
         }
+    }
+
+    private static boolean isCompletedExit( EngineOrderAttemptResponse recorded, OrderAttempt attempt )
+    {
+        if( recorded.status() == OrderAttemptStatus.FILLED )
+        {
+            return true;
+        }
+        return recorded.status() == OrderAttemptStatus.ACKNOWLEDGED
+               && attempt.averageFillPrice() != null
+               && attempt.filledQuantity() != null
+               && attempt.filledQuantity().signum() > 0;
     }
 
     private EngineExecutionAttemptResult toResult( EngineOrderAttemptResponse recorded )

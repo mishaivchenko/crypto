@@ -456,6 +456,25 @@ class EngineExecutionServiceTest
     }
 
     @Test
+    void acknowledgedExitWithFillDetailsClosesPositionAndTrade()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( openPlan( 5L ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( acknowledgedFilledExitAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+        ArgumentCaptor<EnginePositionRecordRequest> positionCaptor = ArgumentCaptor.forClass( EnginePositionRecordRequest.class );
+        ArgumentCaptor<EngineTradeStateUpdateRequest> stateCaptor = ArgumentCaptor.forClass( EngineTradeStateUpdateRequest.class );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.results() ).singleElement().satisfies( result -> assertThat( result.status() ).isEqualTo( OrderAttemptStatus.ACKNOWLEDGED ) );
+        verify( client ).recordPosition( positionCaptor.capture() );
+        verify( client ).updateTradeState( eq( 5L ), stateCaptor.capture() );
+        verify( client ).recordTradeOutcome( any() );
+        assertThat( positionCaptor.getValue().state() ).isEqualTo( PositionState.CLOSED );
+        assertThat( stateCaptor.getValue().state() ).isEqualTo( ArmedTradeState.CLOSED );
+    }
+
+    @Test
     void filledEntryFallsBackToSubmittedAtAndOrderQuantityWhenFillDetailsArePartial()
     {
         when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
@@ -813,6 +832,34 @@ class EngineExecutionServiceTest
             null,
             null,
             null,
+            null,
+            null
+        );
+    }
+
+    private static OrderAttempt acknowledgedFilledExitAttempt( Long armedTradeId, String venue, String symbol, Instant submittedAt )
+    {
+        return new OrderAttempt(
+            null,
+            null,
+            armedTradeId,
+            null,
+            venue,
+            symbol,
+            TradeSide.LONG,
+            ExecutionType.MARKET,
+            BigDecimal.TEN,
+            null,
+            OrderAttemptStatus.ACKNOWLEDGED,
+            "external-ack-fill",
+            null,
+            null,
+            submittedAt,
+            submittedAt,
+            null,
+            BigDecimal.valueOf( 2.4 ),
+            BigDecimal.TEN,
+            BigDecimal.valueOf( 0.01 ),
             null,
             null
         );
