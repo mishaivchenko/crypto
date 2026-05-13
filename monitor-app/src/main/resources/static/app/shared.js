@@ -196,6 +196,7 @@ export function tradeCard(trade, outcome = null) {
                 </div>
                 <div class="actions">
                     ${formatBadge("trade", trade.state)}
+                    ${trade.mode === "testnet" ? formatBadge("venue", "Testnet", "info") : ""}
                     ${formatPnlBadge(outcome)}
                     <button class="button secondary" type="button" data-open-trade="${trade.id}">Inspect</button>
                 </div>

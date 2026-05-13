@@ -88,6 +88,7 @@ public class TradeQueryService
             entity.getArmSource(),
             entity.getState(),
             entity.getNotes(),
+            entity.getMode(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

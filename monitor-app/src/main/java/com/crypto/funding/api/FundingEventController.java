@@ -133,6 +133,7 @@ public class FundingEventController
             trade.armSource(),
             trade.state(),
             trade.notes(),
+            trade.mode() == null ? null : trade.mode().propertyValue(),
             trade.createdAt(),
             trade.updatedAt()
         );

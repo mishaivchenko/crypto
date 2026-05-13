@@ -1,5 +1,7 @@
 package com.crypto.funding.domain.trade;
 
+import com.crypto.funding.domain.venue.VenueAccessMode;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -22,6 +24,7 @@ public record ArmedTrade(
     TradeArmSource armSource,
     ArmedTradeState state,
     String notes,
+    VenueAccessMode mode,
     Instant createdAt,
     Instant updatedAt
 )

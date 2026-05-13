@@ -2,18 +2,24 @@ package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.ArmedTradeResponse;
 import com.crypto.funding.api.dto.CreateArmedTradeRequest;
+import com.crypto.funding.api.dto.EngineRunOnceResponse;
 import com.crypto.funding.api.dto.TradeJournalEntryResponse;
 import com.crypto.funding.api.dto.TradeOutcomeResponse;
 import com.crypto.funding.api.dto.TradePositionResponse;
+import com.crypto.funding.application.DomainValidationException;
 import com.crypto.funding.application.execution.PositionQueryService;
 import com.crypto.funding.application.execution.TradeOutcomeQueryService;
+import com.crypto.funding.application.monitor.EngineControlService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
 import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.application.event.FundingEventQueryService;
+import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
+import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.trade.ArmedTrade;
+import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.TradeJournalEntry;
 import com.crypto.funding.domain.trade.TradeJournalEntityType;
 import jakarta.validation.Valid;
@@ -30,17 +36,24 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/armed-trades")
 public class ArmedTradeController
 {
+    private static final Set<ArmedTradeState> CLOSEABLE_STATES = Set.of(
+        ArmedTradeState.OPEN,
+        ArmedTradeState.EXIT_PENDING
+    );
+
     private final ArmedTradeCommandService armedTradeCommandService;
     private final TradeQueryService tradeQueryService;
     private final TradeJournalService tradeJournalService;
     private final FundingEventQueryService fundingEventQueryService;
     private final PositionQueryService positionQueryService;
     private final TradeOutcomeQueryService tradeOutcomeQueryService;
+    private final EngineControlService engineControlService;
 
     public ArmedTradeController(
         ArmedTradeCommandService armedTradeCommandService,
@@ -48,7 +61,8 @@ public class ArmedTradeController
         TradeJournalService tradeJournalService,
         FundingEventQueryService fundingEventQueryService,
         PositionQueryService positionQueryService,
-        TradeOutcomeQueryService tradeOutcomeQueryService
+        TradeOutcomeQueryService tradeOutcomeQueryService,
+        EngineControlService engineControlService
     )
     {
         this.armedTradeCommandService = armedTradeCommandService;
@@ -57,6 +71,7 @@ public class ArmedTradeController
         this.fundingEventQueryService = fundingEventQueryService;
         this.positionQueryService = positionQueryService;
         this.tradeOutcomeQueryService = tradeOutcomeQueryService;
+        this.engineControlService = engineControlService;
     }
 
     @PostMapping
@@ -96,6 +111,26 @@ public class ArmedTradeController
     public void cancel( @PathVariable Long id )
     {
         armedTradeCommandService.cancel( id );
+    }
+
+    @PostMapping("/{id}/close")
+    public EngineRunOnceResponse close( @PathVariable Long id )
+    {
+        ArmedTrade trade = tradeQueryService.getArmedTrade( id );
+        if( !CLOSEABLE_STATES.contains( trade.state() ) )
+        {
+            throw new DomainValidationException( "Нельзя закрыть сделку в статусе " + trade.state() + ". Закрытие возможно только из OPEN или EXIT_PENDING." );
+        }
+        EngineExecutionRunResponse result = engineControlService.runTarget( id, EngineExecutionTargetPhase.EXIT, true );
+        return new EngineRunOnceResponse(
+            result.startedAt(),
+            result.finishedAt(),
+            result.force(),
+            result.plansScanned(),
+            result.attemptsSubmitted(),
+            result.attemptsSkipped(),
+            result.results()
+        );
     }
 
     @GetMapping("/{id}/journal")
@@ -150,6 +185,7 @@ public class ArmedTradeController
             trade.armSource(),
             trade.state(),
             trade.notes(),
+            trade.mode() == null ? null : trade.mode().propertyValue(),
             trade.createdAt(),
             trade.updatedAt()
         );

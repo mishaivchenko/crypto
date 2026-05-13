@@ -3,6 +3,7 @@ package com.crypto.funding.infrastructure.persistence.model;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.TradeArmSource;
 import com.crypto.funding.domain.trade.TradeSide;
+import com.crypto.funding.domain.venue.VenueAccessMode;
 import com.crypto.funding.infrastructure.persistence.converter.InstantEpochMillisConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -89,6 +90,10 @@ public class ArmedTradeEntity extends AuditableEntity
 
     @Column(name = "notes", length = 1000)
     private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mode")
+    private VenueAccessMode mode;
 
     public Long getId()
     {
@@ -263,5 +268,15 @@ public class ArmedTradeEntity extends AuditableEntity
     public void setNotes( String notes )
     {
         this.notes = notes;
+    }
+
+    public VenueAccessMode getMode()
+    {
+        return mode;
+    }
+
+    public void setMode( VenueAccessMode mode )
+    {
+        this.mode = mode;
     }
 }

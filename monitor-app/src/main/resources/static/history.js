@@ -148,7 +148,7 @@ export function historyTradeRow(trade, attempts = []) {
     const historyStage = deriveHistoryStage(trade, null, attempts);
     const health = deriveTradeHealth(trade, attempts);
     const summary = summarizeAttempts(attempts);
-    const devTestRun = String(trade.notes ?? "").includes("DEV_TEST_RUN");
+    const isTestnet = trade.mode === "testnet" || (!trade.mode && String(trade.notes ?? "").includes("DEV_TEST_RUN"));
     const configuredAttempts = Number(trade.entryAttemptCount ?? 1);
     const spacingMs = Number(trade.entrySpacingMs ?? 0);
     const manualAdjustment = Number(trade.manualLatencyAdjustmentMs ?? 0);
@@ -159,7 +159,7 @@ export function historyTradeRow(trade, attempts = []) {
     return `
         <article class="history-row" data-open-history-trade="${escapeHtml(trade.id)}">
             <div class="history-row-main">
-                <strong class="history-symbol">${escapeHtml(trade.symbol ?? `Trade #${trade.id}`)}${devTestRun ? ` ${formatBadge("historyStage", "DEV_TEST")}` : ""}</strong>
+                <strong class="history-symbol">${escapeHtml(trade.symbol ?? `Trade #${trade.id}`)}${isTestnet ? ` ${formatBadge("venue", "Testnet", "info")}` : ""}</strong>
                 <span class="history-venue">${escapeHtml(trade.venue ?? "venue —")}</span>
                 <span class="history-time">funding ${formatInstant(trade.fundingTime)}</span>
                 <span class="history-side">${escapeHtml(trade.intendedSide ?? "SHORT")}</span>
@@ -272,6 +272,7 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
                 ${metaRow("History stage", formatBadge("historyStage", historyStage.code), historyStage.reason)}
                 ${metaRow("Raw trade state", formatBadge("trade", trade.state))}
                 ${metaRow("Venue", escapeHtml(trade.venue ?? event?.venue ?? "—"))}
+                ${metaRow("Mode", trade.mode ? formatBadge("venue", trade.mode === "testnet" ? "Testnet" : "Production", trade.mode === "testnet" ? "info" : "bad") : "—")}
                 ${metaRow("Symbol", escapeHtml(trade.symbol ?? event?.symbol ?? "—"))}
                 ${metaRow("Funding time", formatInstant(trade.fundingTime ?? event?.fundingTime), formatFundingCountdown(trade.fundingTime ?? event?.fundingTime))}
                 ${metaRow("Funding rate", formatDecimal(event?.fundingRatePct, 6))}

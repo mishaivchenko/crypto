@@ -29,6 +29,7 @@ public record ArmedTradeResponse(
     com.crypto.funding.domain.trade.TradeArmSource armSource,
     ArmedTradeState state,
     String notes,
+    String mode,
     Instant createdAt,
     Instant updatedAt
 )

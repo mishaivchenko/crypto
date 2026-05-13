@@ -61,6 +61,7 @@ class DomainModelInvariantTest
             ArmedTradeState.ARMED,
             null,
             null,
+            null,
             null
         ) ).isInstanceOf( IllegalArgumentException.class )
           .hasMessageContaining( "plannedExitAt" );
@@ -89,6 +90,7 @@ class DomainModelInvariantTest
             null,
             TradeArmSource.EVENT_API,
             ArmedTradeState.ARMED,
+            null,
             null,
             null,
             null

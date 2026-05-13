@@ -39,6 +39,7 @@ class EnginePlanSummaryFormatterTest
             TradeArmSource.EVENT_API,
             ArmedTradeState.ARMED,
             null,
+            null,
             Instant.parse( "2029-12-31T23:00:00Z" ),
             Instant.parse( "2029-12-31T23:00:00Z" )
         );

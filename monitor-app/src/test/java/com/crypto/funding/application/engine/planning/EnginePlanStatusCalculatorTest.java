@@ -108,6 +108,7 @@ class EnginePlanStatusCalculatorTest
             TradeArmSource.EVENT_API,
             state,
             null,
+            null,
             Instant.parse( "2029-12-31T23:00:00Z" ),
             Instant.parse( "2029-12-31T23:00:00Z" )
         );

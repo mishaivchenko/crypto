@@ -11,15 +11,23 @@ import {
     formatSignedMs,
     journalMarkup,
     metaRow,
+    modeLabel,
     pipelineStageMarkup,
     section,
     sideLabel
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 
-const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED", "OPEN", "EXIT_PENDING"]);
+const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED"]);
+const CLOSEABLE_STATES = new Set(["OPEN", "EXIT_PENDING"]);
 
 function buildCancelSection(trade) {
+    if (CLOSEABLE_STATES.has(trade.state)) {
+        return section("Close position", `
+            <p class="muted">Отправит exit-ордер через engine. Позиция на бирже будет закрыта.</p>
+            <button class="button danger" type="button" data-close-trade="${trade.id}">Закрыть позицию</button>
+        `);
+    }
     if (!CANCELLABLE_STATES.has(trade.state)) {
         return "";
     }
@@ -38,6 +46,7 @@ export function buildTradeDrawerContent({ trade, journal, attempts }) {
                 ${metaRow("Funding Event", `#${trade.fundingEventId}`)}
                 ${metaRow("Source signal", trade.signalCandidateId ? `#${trade.signalCandidateId}` : "manual")}
                 ${metaRow("Venue", escapeHtml(trade.venue ?? "—"))}
+                ${metaRow("Mode", trade.mode ? formatBadge("venue", modeLabel(trade.mode)) : "—")}
                 ${metaRow("Instrument", escapeHtml(trade.symbol ?? "—"))}
                 ${metaRow("Funding time", formatInstant(trade.fundingTime), formatFundingCountdown(trade.fundingTime))}
                 ${metaRow("Notional", `${formatDecimal(trade.notionalUsd, 2)} USD`)}
@@ -98,6 +107,23 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
                     showError(err.message);
                     cancelBtn.disabled = false;
                     cancelBtn.textContent = "Отменить сделку";
+                }
+            });
+        }
+
+        const closeBtn = nodes.drawerContent.querySelector("[data-close-trade]");
+        if (closeBtn) {
+            closeBtn.addEventListener("click", async () => {
+                closeBtn.disabled = true;
+                closeBtn.textContent = "Закрываем…";
+                try {
+                    await api.closeArmedTrade(trade.id);
+                    if (onRefresh) onRefresh();
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    closeBtn.disabled = false;
+                    closeBtn.textContent = "Закрыть позицию";
                 }
             });
         }

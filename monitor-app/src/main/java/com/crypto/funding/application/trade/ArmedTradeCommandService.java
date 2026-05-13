@@ -3,6 +3,7 @@ package com.crypto.funding.application.trade;
 import com.crypto.funding.application.DomainValidationException;
 import com.crypto.funding.application.ResourceNotFoundException;
 import com.crypto.funding.application.venue.VenueLatencyService;
+import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.config.TradePreparationProperties;
 import com.crypto.funding.domain.event.FundingEventStatus;
@@ -41,6 +42,7 @@ public class ArmedTradeCommandService
     private final ArmedTradeJpaRepository armedTradeRepository;
     private final TradeJournalService tradeJournalService;
     private final VenueLatencyService venueLatencyService;
+    private final VenueProfileService venueProfileService;
     private final TradePreparationProperties preparationProperties;
     private final MonitorRiskProperties riskProperties;
 
@@ -49,6 +51,7 @@ public class ArmedTradeCommandService
         ArmedTradeJpaRepository armedTradeRepository,
         TradeJournalService tradeJournalService,
         VenueLatencyService venueLatencyService,
+        VenueProfileService venueProfileService,
         TradePreparationProperties preparationProperties,
         MonitorRiskProperties riskProperties
     )
@@ -57,6 +60,7 @@ public class ArmedTradeCommandService
         this.armedTradeRepository = armedTradeRepository;
         this.tradeJournalService = tradeJournalService;
         this.venueLatencyService = venueLatencyService;
+        this.venueProfileService = venueProfileService;
         this.preparationProperties = preparationProperties;
         this.riskProperties = riskProperties;
     }
@@ -64,9 +68,7 @@ public class ArmedTradeCommandService
     private static final Set<ArmedTradeState> CANCELLABLE_STATES = Set.of(
         ArmedTradeState.ARMED,
         ArmedTradeState.ENTRY_PENDING,
-        ArmedTradeState.ENTRY_ATTEMPTED,
-        ArmedTradeState.OPEN,
-        ArmedTradeState.EXIT_PENDING
+        ArmedTradeState.ENTRY_ATTEMPTED
     );
 
     @Transactional
@@ -176,6 +178,7 @@ public class ArmedTradeCommandService
         entity.setArmSource( armSource );
         entity.setState( ArmedTradeState.ARMED );
         entity.setNotes( command.notes() == null || command.notes().isBlank() ? null : command.notes().trim() );
+        entity.setMode( venueProfileService.getGlobalAccessProfile().mode() );
 
         ArmedTradeEntity saved = armedTradeRepository.save( entity );
         fundingEvent.setStatus( FundingEventStatus.ARMED );

@@ -143,6 +143,9 @@ export const api = {
     cancelArmedTrade(id) {
         return request(`/api/v1/armed-trades/${id}`, { method: "DELETE" });
     },
+    closeArmedTrade(id) {
+        return request(`/api/v1/armed-trades/${id}/close`, { method: "POST" });
+    },
     listArmedTrades(options = {}) {
         const params = new URLSearchParams();
         if (options.includeHistorical) {
