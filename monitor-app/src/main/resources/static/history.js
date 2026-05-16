@@ -12,6 +12,7 @@ import {
     metaRow,
     section
 } from "./ui.js";
+import { modeLabel } from "./app/shared.js";
 
 const FAILURE_ATTEMPT_STATUSES = new Set(["CANCELLED", "REJECTED", "FAILED", "EXPIRED"]);
 const ACTIVE_ATTEMPT_STATUSES = new Set(["CREATED", "SUBMITTED", "ACKNOWLEDGED"]);
@@ -272,7 +273,7 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
                 ${metaRow("History stage", formatBadge("historyStage", historyStage.code), historyStage.reason)}
                 ${metaRow("Raw trade state", formatBadge("trade", trade.state))}
                 ${metaRow("Venue", escapeHtml(trade.venue ?? event?.venue ?? "—"))}
-                ${metaRow("Mode", trade.mode ? formatBadge("venue", trade.mode === "testnet" ? "Testnet" : "Production", trade.mode === "testnet" ? "info" : "bad") : "—")}
+                ${metaRow("Mode", trade.mode ? formatBadge("venue", modeLabel(trade.mode), trade.mode === "testnet" ? "info" : "bad") : "—")}
                 ${metaRow("Symbol", escapeHtml(trade.symbol ?? event?.symbol ?? "—"))}
                 ${metaRow("Funding time", formatInstant(trade.fundingTime ?? event?.fundingTime), formatFundingCountdown(trade.fundingTime ?? event?.fundingTime))}
                 ${metaRow("Funding rate", formatDecimal(event?.fundingRatePct, 6))}

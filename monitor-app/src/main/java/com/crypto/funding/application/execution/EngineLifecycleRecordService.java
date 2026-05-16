@@ -68,7 +68,10 @@ public class EngineLifecycleRecordService
     public EnginePositionResponse recordPosition( EnginePositionRecordRequest request )
     {
         validatePosition( request );
-        assertTradeExists( request.armedTradeId() );
+        ArmedTradeEntity armedTrade = armedTradeRepository.findById( request.armedTradeId() )
+                                                          .orElseThrow( () -> new ResourceNotFoundException(
+                                                              "Prepared trade not found: " + request.armedTradeId()
+                                                          ) );
         PositionEntity entity = positionRepository.findFirstByArmedTradeIdOrderByCreatedAtDesc( request.armedTradeId() )
                                                   .orElseGet( PositionEntity::new );
         entity.setArmedTradeId( request.armedTradeId() );
@@ -84,16 +87,12 @@ public class EngineLifecycleRecordService
         EnginePositionResponse response = toPositionResponse( positionRepository.save( entity ) );
         if( request.state() == PositionState.CLOSED )
         {
-            ArmedTradeEntity trade = armedTradeRepository.findById( request.armedTradeId() )
-                                                        .orElseThrow( () -> new ResourceNotFoundException(
-                                                            "Prepared trade not found: " + request.armedTradeId()
-                                                        ) );
-            trade.setState( ArmedTradeState.CLOSED );
-            if( trade.getNotes() == null || trade.getNotes().isBlank() || "entry filled".equalsIgnoreCase( trade.getNotes() ) )
+            armedTrade.setState( ArmedTradeState.CLOSED );
+            if( armedTrade.getNotes() == null || armedTrade.getNotes().isBlank() || "entry filled".equalsIgnoreCase( armedTrade.getNotes() ) )
             {
-                trade.setNotes( "exit filled" );
+                armedTrade.setNotes( "exit filled" );
             }
-            armedTradeRepository.save( trade );
+            armedTradeRepository.save( armedTrade );
         }
         return response;
     }

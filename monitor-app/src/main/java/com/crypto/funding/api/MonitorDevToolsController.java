@@ -41,16 +41,7 @@ public class MonitorDevToolsController
     @PostMapping("/engine/run-once")
     public EngineRunOnceResponse runEngineOnce( @RequestParam(defaultValue = "true") boolean force )
     {
-        EngineExecutionRunResponse response = engineControlService.runOnce( force );
-        return new EngineRunOnceResponse(
-            response.startedAt(),
-            response.finishedAt(),
-            response.force(),
-            response.plansScanned(),
-            response.attemptsSubmitted(),
-            response.attemptsSkipped(),
-            response.results()
-        );
+        return EngineRunOnceResponse.from( engineControlService.runOnce( force ) );
     }
 
     @GetMapping("/engine/runtime")

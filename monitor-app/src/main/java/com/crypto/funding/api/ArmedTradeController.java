@@ -15,7 +15,6 @@ import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
 import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.application.event.FundingEventQueryService;
-import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
 import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.trade.ArmedTrade;
@@ -121,16 +120,7 @@ public class ArmedTradeController
         {
             throw new DomainValidationException( "Нельзя закрыть сделку в статусе " + trade.state() + ". Закрытие возможно только из OPEN или EXIT_PENDING." );
         }
-        EngineExecutionRunResponse result = engineControlService.runTarget( id, EngineExecutionTargetPhase.EXIT, true );
-        return new EngineRunOnceResponse(
-            result.startedAt(),
-            result.finishedAt(),
-            result.force(),
-            result.plansScanned(),
-            result.attemptsSubmitted(),
-            result.attemptsSkipped(),
-            result.results()
-        );
+        return EngineRunOnceResponse.from( engineControlService.runTarget( id, EngineExecutionTargetPhase.EXIT, true ) );
     }
 
     @GetMapping("/{id}/journal")
