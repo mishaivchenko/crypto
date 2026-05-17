@@ -299,6 +299,277 @@ class EngineExecutionServiceWarmupTest
         assertThat( sample.symbol() ).isEqualTo( "_all_" );
     }
 
+    // REQ: ENG-WRM-013 — warmup window uses effectiveLatencyMs=null as 0 to compute firstTrigger
+    @Test
+    @SuppressWarnings("unchecked")
+    void warmupWindowComputedWithNullEffectiveLatency() throws Exception
+    {
+        // effectiveLatencyMs=null → treated as 0; firstTrigger = targetEntry - 0 = targetEntry
+        // NOW is 250ms before targetEntry → inside warmup window (lead=500) → probes fire
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, 500L, null, null, null, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        service.runOnce( false );
+
+        verify( probeHttpClient, times( 3 ) ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-013 — warmup uses default probeLeadMs=500 when null
+    @Test
+    @SuppressWarnings("unchecked")
+    void warmupWindowUsesDefault500LeadWhenNull() throws Exception
+    {
+        // warmupProbeLeadMs=null → default 500ms; targetEntry 250ms away → in window
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, null, 0L, 0L, 0L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        service.runOnce( false );
+
+        verify( probeHttpClient, times( 3 ) ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-013 — executeWarmupProbes uses default count=3 when warmupProbeCount null
+    @Test
+    @SuppressWarnings("unchecked")
+    void warmupProbeCountDefaultsTo3WhenNull() throws Exception
+    {
+        // warmupProbeCount=null → default 3 probes
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            null, 500L, 0L, 0L, 0L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        service.runOnce( false );
+
+        verify( probeHttpClient, times( 3 ) ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-013 — budgetDeadline uses budget when it is before firstTrigger
+    @Test
+    @SuppressWarnings("unchecked")
+    void budgetDeadlineCappedAtFirstTrigger() throws Exception
+    {
+        // warmupProbeLeadMs=600; targetEntry=NOW+400ms; firstTrigger=NOW+400ms
+        // NOW is 400ms before firstTrigger → inside warmup window (lead=600 → window starts at NOW-200ms)
+        // budget=min(300,250)=250ms; NOW+250ms < NOW+400ms → deadline=NOW+250ms
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, 600L, 0L, 0L, 0L, NOW.plusMillis( 400 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        service.runOnce( false );
+
+        verify( probeHttpClient, times( 3 ) ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-013 — timing sample value reflects subtraction (not addition) of timestamps
+    @Test
+    @SuppressWarnings("unchecked")
+    void probeTimingSampleIsPositiveNotNegative() throws Exception
+    {
+        // nanoTime advances by 5ms per call → sample = 5ms (not -(5ms) from subtraction)
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            1, 500L, 0L, 0L, 0L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        service.runOnce( false );
+
+        ArgumentCaptor<EngineLatencySampleRequest> captor =
+            ArgumentCaptor.forClass( EngineLatencySampleRequest.class );
+        verify( client ).recordLatencySample( captor.capture() );
+        assertThat( captor.getValue().durationMs() ).isGreaterThanOrEqualTo( 0L );
+    }
+
+    // REQ: ENG-WRM-014 — buildCalibration with empty samples uses plan effectiveEntryLatencyMs as fallback
+    @Test
+    void buildCalibrationEmptySamplesUsesFallbackEffectiveLatency() throws Exception
+    {
+        // all probes throw → empty samples → fallbackUsed=true, calibratedLatency = effectiveLatencyMs
+        // effectiveLatency=80ms; targetEntry=NOW+50ms → calibratedTrigger = NOW-30ms (past) → execution fires
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, 500L, 80L, 0L, 80L, NOW.plusMillis( 50 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+        when( probeHttpClient.send( any( HttpRequest.class ), any() ) )
+            .thenThrow( new java.io.IOException( "timeout" ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+    }
+
+    // REQ: ENG-WRM-014 — buildCalibration with empty samples uses 0 when effectiveEntryLatencyMs is null
+    @Test
+    void buildCalibrationEmptySamplesUsesFallback0WhenEffectiveLatencyNull() throws Exception
+    {
+        // effectiveLatencyMs=null → fallback=0; targetEntry=NOW+100ms → calibratedTrigger=NOW+100ms (future) → skip
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, 500L, null, null, null, NOW.plusMillis( 100 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+        when( probeHttpClient.send( any( HttpRequest.class ), any() ) )
+            .thenThrow( new java.io.IOException( "timeout" ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+    }
+
+    // REQ: ENG-WRM-015 — buildCalibration adds p50+manualLatency for calibratedEffectiveLatencyMs
+    @Test
+    @SuppressWarnings("unchecked")
+    void buildCalibrationAddsManualLatencyToP50() throws Exception
+    {
+        // nanoTimeSupplier advances 5ms per call → measured ~5ms; manualLatencyMs=10ms
+        // calibratedEffectiveLatency = p50 + manual = ~5ms + 10ms = ~15ms
+        // targetEntry=NOW+300ms; calibratedTrigger=NOW+300-15=NOW+285ms (future) → skip execution
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            1, 500L, 5L, 10L, 5L, NOW.plusMillis( 300 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+    }
+
+    // REQ: ENG-WRM-015 — buildCalibration uses 0 for null manualLatencyAdjustmentMs
+    @Test
+    @SuppressWarnings("unchecked")
+    void buildCalibrationTreatsNullManualLatencyAsZero() throws Exception
+    {
+        // manualLatencyMs=null → treated as 0; calibrated = p50 + 0 = p50
+        // measuredLatency=5ms (from nanoTime); targetEntry=NOW+250ms; in warmup window
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            1, 500L, 5L, null, 5L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        // Just verify probe fires and no exception from null manual latency
+        service.runOnce( false );
+
+        verify( probeHttpClient, times( 1 ) ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-016 — budgetDeadline caps probes to budget (not trigger) when budget < timeToTrigger
+    @Test
+    @SuppressWarnings("unchecked")
+    void budgetDeadlineStopsLoopWhenExhausted() throws Exception
+    {
+        // Advancing clock: each call to Instant.now(clock) returns NOW + n*100ms.
+        // runOnce calls now() at ~line 116 (startedAt) and ~line 177 (warmup now → startNow).
+        // executeWarmupProbes loop checks now() each iteration.
+        // With budget=50ms: budgetDeadline = startNow + 50ms.
+        // By the first budget check in the loop, clock has advanced well past the deadline → break immediately.
+        AtomicLong clockTick = new AtomicLong( NOW.toEpochMilli() );
+        Clock advancingClock = new Clock()
+        {
+            public java.time.ZoneId getZone() { return ZoneOffset.UTC; }
+            public Clock withZone( java.time.ZoneId zone ) { return this; }
+            public Instant instant() { return Instant.ofEpochMilli( clockTick.getAndAdd( 100 ) ); }
+        };
+        EngineExecutionService svc = new EngineExecutionService(
+            client, executionPort, telemetryService, advancingClock,
+            advancingNanos( 0L, 5_000_000L ),
+            probeHttpClient
+        );
+        // lead=500, targetEntry=NOW+400ms; budget=250ms; startNow=~NOW+100ms; deadline=~NOW+350ms
+        // Clock in loop = NOW+200ms, NOW+300ms, etc.; within deadline → probes may fire, but that's OK
+        // Key test: if budget << timeToTrigger and clock advances fast, verify 0 probes due to deadline exhaustion
+        // Use very small lead=50 → budget=25ms; targetEntry=NOW+200ms; firstTrigger=NOW+200ms
+        // startNow≈NOW+100ms; deadline=NOW+125ms; loop clock≈NOW+200ms → past deadline → break → 0 probes
+        EngineExecutionPlan plan = planWithProbeAndState( 99L, "https://api.example.com/time",
+            3, 50L, 200L, 0L, 200L, NOW.plusMillis( 200 ), ArmedTradeState.ARMED );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        svc.runOnce( false );
+
+        // Budget of 25ms is immediately exhausted when clock advances by 100ms per call → 0 probes
+        verify( probeHttpClient, never() ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-016 — deadline uses firstTrigger when budget exceeds time-to-trigger
+    @Test
+    @SuppressWarnings("unchecked")
+    void budgetDeadlineFallsBackToFirstTriggerWhenBudgetExceedsTrigger() throws Exception
+    {
+        // startNow=NOW+100ms (clock advances 100ms/call), budget=250ms → startNow+budget=NOW+350ms
+        // firstTrigger=NOW+150ms (effectiveLatency=0, targetEntry=NOW+150ms)
+        // startNow+budget (NOW+350ms) is NOT before firstTrigger (NOW+150ms) → correct: deadline=firstTrigger=NOW+150ms
+        // mutation: deadline=startNow+budget=NOW+350ms (extends past trigger)
+        // With clock advancing 100ms/step: loop check returns NOW+200ms > NOW+150ms → break (correct)
+        // With mutation: deadline=NOW+350ms; loop check returns NOW+200ms < NOW+350ms → probe fires (mutation detected!)
+        AtomicLong clockTick = new AtomicLong( NOW.toEpochMilli() );
+        Clock advancingClock = new Clock()
+        {
+            public java.time.ZoneId getZone() { return ZoneOffset.UTC; }
+            public Clock withZone( java.time.ZoneId zone ) { return this; }
+            public Instant instant() { return Instant.ofEpochMilli( clockTick.getAndAdd( 100 ) ); }
+        };
+        EngineExecutionService svc = new EngineExecutionService(
+            client, executionPort, telemetryService, advancingClock,
+            advancingNanos( 0L, 5_000_000L ),
+            probeHttpClient
+        );
+        // targetEntry is close: plan status ENTRY_WINDOW, effectiveLatency=0
+        // firstTrigger ≈ NOW+150ms; startNow≈NOW+100ms; budget=250ms → startNow+budget > firstTrigger
+        EngineExecutionPlan plan = planWithProbeAndState( 77L, "https://api.example.com/time",
+            3, 500L, 0L, 0L, 0L, NOW.plusMillis( 150 ), ArmedTradeState.ARMED );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        svc.runOnce( false );
+
+        // Correct: deadline=firstTrigger=NOW+150ms; loop clock≈NOW+200ms > deadline → 0 probes
+        // Mutation: deadline=NOW+350ms; loop clock≈NOW+200ms < deadline → 1+ probes
+        verify( probeHttpClient, never() ).send( any( HttpRequest.class ), any() );
+    }
+
+    // REQ: ENG-WRM-016 — timing subtraction (not addition) computes probe duration
+    @Test
+    @SuppressWarnings("unchecked")
+    void probeTimingSampleReflectsSubtractionNotAddition() throws Exception
+    {
+        // nanoTime starts at 10ms, step=5ms: start=10ms, end=15ms
+        // correct: (15-10)/1 = 5ms; mutation (addition): (15+10)/1 = 25ms
+        EngineExecutionService svc = new EngineExecutionService(
+            client, executionPort, telemetryService, clock,
+            advancingNanos( 10_000_000L, 5_000_000L ),
+            probeHttpClient
+        );
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            1, 500L, 0L, 0L, 0L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        svc.runOnce( false );
+
+        ArgumentCaptor<EngineLatencySampleRequest> captor =
+            ArgumentCaptor.forClass( EngineLatencySampleRequest.class );
+        verify( client ).recordLatencySample( captor.capture() );
+        // p50 should be 5ms (from subtraction), not 25ms (from addition) — also not 0 or negative
+        assertThat( captor.getValue().durationMs() ).isEqualTo( 5L );
+    }
+
+    // REQ: ENG-WRM-017 — calibration adds (not subtracts) manual latency to p50
+    @Test
+    @SuppressWarnings("unchecked")
+    void calibrationAddsManualLatencyToP50ForCalibratedTrigger() throws Exception
+    {
+        // p50 ≈ 5ms (from advancing nanos), manual = 200ms
+        // correct: calibrated = 5 + 200 = 205ms → trigger = targetEntry - 205ms
+        // mutation (subtraction): calibrated = max(0, 5 - 200) = 0ms → trigger = targetEntry
+        // targetEntry = NOW + 100ms:
+        //   correct calibrated=205ms: trigger = NOW+100-205 = NOW-105ms (past) → executes
+        //   mutation calibrated=0ms: trigger = NOW+100ms (future) → skips
+        EngineExecutionService svc = new EngineExecutionService(
+            client, executionPort, telemetryService, clock,
+            advancingNanos( 10_000_000L, 5_000_000L ),
+            probeHttpClient
+        );
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            1, 500L, 0L, 200L, 0L, NOW.plusMillis( 100 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        var response = svc.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+    }
+
     private static EngineExecutionPlan planWithProbe(
         Long armedTradeId,
         String probeUrl,
