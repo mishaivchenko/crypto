@@ -1,7 +1,7 @@
 import { api } from "./api.js";
 import { createAppState } from "./app/state.js";
 import { createNodes } from "./app/dom.js";
-import { emptyState, groupAttemptsByTrade, resetDrawer, toIsoOrNull } from "./app/shared.js";
+import { closeModal, emptyState, groupAttemptsByTrade, resetDrawer, toIsoOrNull } from "./app/shared.js";
 import {
     handleRunEngineOnce,
     handleUpdateEngineRuntime,
@@ -73,14 +73,18 @@ async function refreshCurrentScreen() {
         if (state.screen === "dashboard") {
             setLoading(nodes.dashboardSummary, "Собираю срез контура…");
             setLoading(nodes.dashboardVenues, "Собираю пульс площадок…");
-            const [overview, runtimeResult] = await Promise.all([
+            const [overview, runtimeResult, engineMetrics, pnlAggregate] = await Promise.all([
                 api.getOverview(),
                 api.getEngineRuntime()
                     .then((runtime) => ({ runtime, error: null }))
-                    .catch((error) => ({ runtime: null, error: error.message }))
+                    .catch((error) => ({ runtime: null, error: error.message })),
+                api.getEngineMetrics(),
+                api.getPnlAggregate()
             ]);
             state.engineRuntime = runtimeResult.runtime;
             state.engineRuntimeError = runtimeResult.error;
+            state.engineMetrics = engineMetrics;
+            state.pnlAggregate = pnlAggregate;
             renderDashboard({
                 nodes,
                 overview,
@@ -129,10 +133,13 @@ async function refreshCurrentScreen() {
                 api.listArmedTrades({ includeHistorical: true }),
                 api.listAllOrderAttempts()
             ]);
+            const tradeIds = trades.map((t) => t.id);
+            const outcomesByTrade = await api.getOutcomesByTradeIds(tradeIds);
             renderHistory({
                 nodes,
                 trades,
                 attemptsByTrade: groupAttemptsByTrade(attempts),
+                outcomesByTrade,
                 filters: state.historyFilters,
                 onOpenHistoryTrade: openHistoryTrade
             });
@@ -231,6 +238,18 @@ nodes.drawerClose.addEventListener("click", () => {
     resetDrawer(nodes);
 });
 
+nodes.modalClose.addEventListener("click", () => closeModal(nodes));
+
+nodes.inspectorModal.addEventListener("click", (e) => {
+    if (e.target === nodes.inspectorModal || e.target.classList.contains("inspector-backdrop")) {
+        closeModal(nodes);
+    }
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !nodes.inspectorModal.hidden) closeModal(nodes);
+});
+
 const handleDrawerAction = createDrawerActionHandler({
     nodes,
     refreshCurrentScreen,
@@ -245,6 +264,8 @@ const handleDrawerAction = createDrawerActionHandler({
 
 nodes.drawerContent.addEventListener("submit", handleDrawerAction);
 nodes.drawerContent.addEventListener("click", handleDrawerAction);
+nodes.modalContent.addEventListener("submit", handleDrawerAction);
+nodes.modalContent.addEventListener("click", handleDrawerAction);
 
 async function loadGlobalMode() {
     try {

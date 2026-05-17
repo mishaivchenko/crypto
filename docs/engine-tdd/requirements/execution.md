@@ -9,3 +9,4 @@ Primary class: `EngineExecutionService`.
 - `ENG-EXE-005`: attempt keys stay deterministic as `entry:<armedTradeId>:<attemptNumber>:<targetEntryAt>`.
 - `ENG-EXE-006`: recorded order-attempt payloads mirror the execution result returned by the execution port.
 - `ENG-EXE-007`: execution runs update telemetry for run counts, run timing, and submit status accounting.
+- `ENG-EXE-008`: WAITING_EXIT plans with SL/TP set trigger early exit when mark price breaches threshold; plans without SL/TP or with unavailable mark price are not exited early.

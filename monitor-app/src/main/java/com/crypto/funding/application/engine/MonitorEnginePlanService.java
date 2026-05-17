@@ -235,7 +235,9 @@ public class MonitorEnginePlanService
             metadata == null ? null : metadata.getLastSyncedAt(),
             timing == null ? null : timing.getSampledAt(),
             positionQuantity( position ),
-            position == null ? null : position.getEntryPrice()
+            position == null ? null : position.getEntryPrice(),
+            trade.stopLossUsd(),
+            trade.takeProfitUsd()
         );
     }
 

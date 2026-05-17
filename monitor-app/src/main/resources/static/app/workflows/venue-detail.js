@@ -9,6 +9,7 @@ import {
     formatNumber,
     metaRow,
     modeLabel,
+    openModal,
     section,
     venueHealthBadge
 } from "../shared.js";
@@ -60,9 +61,10 @@ export async function openVenueDetail({ venueName, nodes, showError }) {
             api.listVenueTimings(venueName)
         ]);
 
-        nodes.drawerType.textContent = "Venue Access";
-        nodes.drawerTitle.textContent = venue.venue;
-        nodes.drawerContent.innerHTML = buildVenueDrawerContent({ venue, instruments, timings });
+        nodes.modalType.textContent = "Venue Access";
+        nodes.modalTitle.textContent = venue.venue;
+        nodes.modalContent.innerHTML = buildVenueDrawerContent({ venue, instruments, timings });
+        openModal(nodes);
     } catch (error) {
         showError(error.message);
     }

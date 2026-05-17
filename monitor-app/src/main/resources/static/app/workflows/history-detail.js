@@ -1,6 +1,6 @@
 import { api } from "../../api.js";
 import { tradeHistoryDetailMarkup } from "../../history.js";
-import { escapeHtml, optionalRequest, pipelineStageMarkup, section } from "../shared.js";
+import { escapeHtml, openModal, optionalRequest, pipelineStageMarkup, section } from "../shared.js";
 
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED", "OPEN", "EXIT_PENDING"]);
 
@@ -21,8 +21,8 @@ export async function openHistoryTradeDetail({ id, nodes, showError, onRefresh }
         ]);
         const attempts = await api.listOrderAttempts(id);
 
-        nodes.drawerType.textContent = "Trade History";
-        nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Trade #${trade.id}`;
+        nodes.modalType.textContent = "Trade History";
+        nodes.modalTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Trade #${trade.id}`;
 
         let cancelHtml = "";
         if (CANCELLABLE_STATES.has(trade.state)) {
@@ -32,9 +32,10 @@ export async function openHistoryTradeDetail({ id, nodes, showError, onRefresh }
             `);
         }
 
-        nodes.drawerContent.innerHTML = buildHistoryTradeDrawerContent({ trade, event, candidate, journal, attempts, position, outcome }) + cancelHtml;
+        nodes.modalContent.innerHTML = buildHistoryTradeDrawerContent({ trade, event, candidate, journal, attempts, position, outcome }) + cancelHtml;
+        openModal(nodes);
 
-        const cancelBtn = nodes.drawerContent.querySelector("[data-cancel-trade]");
+        const cancelBtn = nodes.modalContent.querySelector("[data-cancel-trade]");
         if (cancelBtn) {
             cancelBtn.addEventListener("click", async () => {
                 cancelBtn.disabled = true;

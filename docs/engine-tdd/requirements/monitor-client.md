@@ -7,3 +7,4 @@ Primary classes: `EnginePlanClient`, `EngineProperties`.
 - `ENG-CLI-003`: `publishMetricsSnapshot` posts the current snapshot wire shape with the internal token header.
 - `ENG-CLI-004`: `getPlan` fetches a single plan by path without changing endpoint shape.
 - `ENG-CLI-005`: engine client properties keep the default monitor base URL, blank internal token, and safe loop defaults.
+- `ENG-CLI-006`: `fetchMarkPrice` fetches mark price from the monitor price endpoint; errors return `Optional.empty()` without propagating.

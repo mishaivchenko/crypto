@@ -7,6 +7,7 @@ import {
     formatRelative,
     kv,
     metaRow,
+    openModal,
     pipelineStageMarkup,
     section,
     sourceLabel,
@@ -151,9 +152,10 @@ export function buildCandidateDrawerContent(candidate) {
 export async function openCandidateDetail({ id, nodes, showError }) {
     try {
         const candidate = await api.getCandidate(id);
-        nodes.drawerType.textContent = "Signal";
-        nodes.drawerTitle.textContent = candidate.normalizedSymbol ?? candidate.rawSymbol;
-        nodes.drawerContent.innerHTML = buildCandidateDrawerContent(candidate);
+        nodes.modalType.textContent = "Signal";
+        nodes.modalTitle.textContent = candidate.normalizedSymbol ?? candidate.rawSymbol;
+        nodes.modalContent.innerHTML = buildCandidateDrawerContent(candidate);
+        openModal(nodes);
     } catch (error) {
         showError(error.message);
     }

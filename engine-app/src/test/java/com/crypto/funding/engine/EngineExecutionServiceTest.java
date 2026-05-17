@@ -4,6 +4,7 @@ import com.crypto.funding.application.port.ExecutionPort;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
 import com.crypto.funding.contract.engine.EngineExecutionAttemptResult;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.MarkPriceResponse;
 import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
 import com.crypto.funding.contract.engine.EnginePositionResponse;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
@@ -31,6 +32,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
@@ -475,6 +477,21 @@ class EngineExecutionServiceTest
     }
 
     @Test
+    void acknowledgedExitWithZeroFilledQuantityDoesNotClosePosition()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( openPlan( 5L ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( acknowledgedZeroFillExitAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.results() ).singleElement().satisfies( result -> assertThat( result.status() ).isEqualTo( OrderAttemptStatus.ACKNOWLEDGED ) );
+        verify( client, never() ).recordPosition( any() );
+        verify( client, never() ).recordTradeOutcome( any() );
+        verify( client, never() ).updateTradeState( any(), any() );
+    }
+
+    @Test
     void entryAttemptRecordsRequestDurationMs()
     {
         when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
@@ -673,6 +690,252 @@ class EngineExecutionServiceTest
         verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
     }
 
+    // REQ: ENG-EXE-008
+    @Test
+    void stopLossTriggersEarlyExitFromWaitingExit()
+    {
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, BigDecimal.valueOf( 20 ), null );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.valueOf( 100 ), NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void takeProfitTriggersEarlyExitFromWaitingExit()
+    {
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, null, BigDecimal.ONE );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.ONE, NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void noEarlyExitWhenMarkPriceFetchReturnsEmpty()
+    {
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, BigDecimal.valueOf( 20 ), null );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn( Optional.empty() );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void noEarlyExitWhenMarkPriceDoesNotBreachThreshold()
+    {
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, BigDecimal.valueOf( 100 ), BigDecimal.valueOf( 100 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.valueOf( 2.4 ), NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void stopLossExactlyAtThresholdDoesNotTriggerEarlyExit()
+    {
+        // grossPnl = (2.5 - 2.4) * 10 = 1.0; stopLoss = 1.0; -stopLoss = -1.0; grossPnl (-1.0) is NOT < -1.0 (boundary)
+        // Actually for a SHORT trade: entryPrice=2.5, mark=2.5+1/10=2.6, grossPnl=(2.5-2.6)*10=-1.0, stopLoss=1.0
+        // With SHORT, entryPrice=2.5, mark=2.6, qty=10: grossPnl = (2.5-2.6)*10 = -1.0; -stopLoss = -1.0; NOT < (only ==)
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, BigDecimal.ONE, null );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.valueOf( 2.6 ), NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void takeProfitExactlyAtThresholdDoesNotTriggerEarlyExit()
+    {
+        // SHORT, entryPrice=2.5, mark=2.4, qty=10: grossPnl=(2.5-2.4)*10=1.0; takeProfit=1.0; NOT > (only ==)
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, null, BigDecimal.ONE );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.valueOf( 2.4 ), NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void earlyExitKeyAlreadyReservedCountsAsSkippedNotSubmitted()
+    {
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, BigDecimal.valueOf( 20 ), null );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan, waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.valueOf( 100 ), NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( response.attemptsSkipped() ).isGreaterThanOrEqualTo( 1 );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void noEarlyExitWhenPositionQuantityZeroOnSlTpPlan()
+    {
+        EngineExecutionPlan plan = new EngineExecutionPlan(
+            5L, 13L, "bybit", "REQ/USDT", TradeSide.SHORT, BigDecimal.valueOf( 25 ),
+            ArmedTradeState.OPEN, NOW.minusSeconds( 60 ), NOW.minusSeconds( 120 ), NOW.plusSeconds( 300 ),
+            1, 0L, 0L, 0L, 0L, List.of( pastAttempt( 1, 0 ) ), EnginePlanStatus.WAITING_EXIT,
+            NOW.plusSeconds( 300 ), 300_000L, -60_000L, "waiting sl/tp exit", "REQUSDT",
+            BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf( 5 ), NOW.minusSeconds( 3600 ), NOW.minusSeconds( 300 ),
+            BigDecimal.ZERO, BigDecimal.valueOf( 2.5 ), BigDecimal.valueOf( 20 ), null
+        );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( client, never() ).fetchMarkPrice( any(), any() );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void noEarlyExitWhenMarkPriceNullInResponse()
+    {
+        EngineExecutionPlan waitingPlan = openPlanWithSlTp( 5L, BigDecimal.valueOf( 20 ), null );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", null, NOW ) )
+        );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void stopLossTriggersEarlyExitForLongPosition()
+    {
+        EngineExecutionPlan plan = new EngineExecutionPlan(
+            5L, 13L, "bybit", "REQ/USDT", TradeSide.LONG, BigDecimal.valueOf( 25 ),
+            ArmedTradeState.OPEN, NOW.minusSeconds( 60 ), NOW.minusSeconds( 120 ), NOW.plusSeconds( 300 ),
+            1, 0L, 0L, 0L, 0L, List.of( pastAttempt( 1, 0 ) ), EnginePlanStatus.WAITING_EXIT,
+            NOW.plusSeconds( 300 ), 300_000L, -60_000L, "waiting sl/tp exit", "REQUSDT",
+            BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf( 5 ), NOW.minusSeconds( 3600 ), NOW.minusSeconds( 300 ),
+            BigDecimal.TEN, BigDecimal.valueOf( 5 ), BigDecimal.valueOf( 20 ), null
+        );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+        when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
+            Optional.of( new MarkPriceResponse( "bybit", "REQUSDT", BigDecimal.ONE, NOW ) )
+        );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", TradeSide.SHORT, NOW, BigDecimal.valueOf( 1 ), BigDecimal.TEN, null, NOW ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isEqualTo( 1 );
+        verify( executionPort ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void noEarlyExitWhenPositionQuantityMissingOnSlTpPlan()
+    {
+        EngineExecutionPlan plan = new EngineExecutionPlan(
+            5L, 13L, "bybit", "REQ/USDT", TradeSide.SHORT, BigDecimal.valueOf( 25 ),
+            ArmedTradeState.OPEN, NOW.minusSeconds( 60 ), NOW.minusSeconds( 120 ), NOW.plusSeconds( 300 ),
+            1, 0L, 0L, 0L, 0L, List.of( pastAttempt( 1, 0 ) ), EnginePlanStatus.WAITING_EXIT,
+            NOW.plusSeconds( 300 ), 300_000L, -60_000L, "waiting sl/tp exit", "REQUSDT",
+            BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf( 5 ), NOW.minusSeconds( 3600 ), NOW.minusSeconds( 300 ),
+            null, BigDecimal.valueOf( 2.5 ), BigDecimal.valueOf( 20 ), null
+        );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( client, never() ).fetchMarkPrice( any(), any() );
+    }
+
+    // REQ: ENG-EXE-008
+    @Test
+    void noEarlyExitWhenSlTpNotSetOnWaitingExitPlan()
+    {
+        EngineExecutionPlan waitingPlan = openPlan( 5L, EnginePlanStatus.WAITING_EXIT );
+        when( client.listPlans( false ) ).thenReturn( List.of( waitingPlan ) );
+
+        var response = service.runOnce( false );
+
+        assertThat( response.attemptsSubmitted() ).isZero();
+        verify( executionPort, never() ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+        verify( client, never() ).fetchMarkPrice( any(), any() );
+    }
+
+    private static EngineExecutionPlan openPlanWithSlTp( Long armedTradeId, BigDecimal stopLossUsd, BigDecimal takeProfitUsd )
+    {
+        return new EngineExecutionPlan(
+            armedTradeId,
+            13L,
+            "bybit",
+            "REQ/USDT",
+            TradeSide.SHORT,
+            BigDecimal.valueOf( 25 ),
+            ArmedTradeState.OPEN,
+            NOW.minusSeconds( 60 ),
+            NOW.minusSeconds( 120 ),
+            NOW.plusSeconds( 300 ),
+            1,
+            0L,
+            0L,
+            0L,
+            0L,
+            List.of( pastAttempt( 1, 0 ) ),
+            EnginePlanStatus.WAITING_EXIT,
+            NOW.plusSeconds( 300 ),
+            300_000L,
+            -60_000L,
+            "waiting sl/tp exit",
+            "REQUSDT",
+            BigDecimal.ONE,
+            BigDecimal.ONE,
+            BigDecimal.valueOf( 5 ),
+            NOW.minusSeconds( 3600 ),
+            NOW.minusSeconds( 300 ),
+            BigDecimal.TEN,
+            BigDecimal.valueOf( 2.5 ),
+            stopLossUsd,
+            takeProfitUsd
+        );
+    }
+
     private static LongSupplier advancingNanos( long startingNanos, long stepNanos )
     {
         AtomicLong current = new AtomicLong( startingNanos );
@@ -709,6 +972,8 @@ class EngineExecutionServiceTest
             BigDecimal.valueOf( 5 ),
             NOW.minusSeconds( 60 ),
             NOW.minusSeconds( 60 ),
+            null,
+            null,
             null,
             null
         );
@@ -766,7 +1031,9 @@ class EngineExecutionServiceTest
             NOW.minusSeconds( 3600 ),
             NOW.minusSeconds( 300 ),
             quantity,
-            entryPrice
+            entryPrice,
+            null,
+            null
         );
     }
 
@@ -863,6 +1130,35 @@ class EngineExecutionServiceTest
             null,
             null,
             null,
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    private static OrderAttempt acknowledgedZeroFillExitAttempt( Long armedTradeId, String venue, String symbol, Instant submittedAt )
+    {
+        return new OrderAttempt(
+            null,
+            null,
+            armedTradeId,
+            null,
+            venue,
+            symbol,
+            TradeSide.SHORT,
+            ExecutionType.MARKET,
+            BigDecimal.TEN,
+            null,
+            OrderAttemptStatus.ACKNOWLEDGED,
+            "external-ack",
+            null,
+            null,
+            submittedAt,
+            submittedAt,
+            null,
+            BigDecimal.valueOf( 2.4 ),
+            BigDecimal.ZERO,
             null,
             null,
             null,

@@ -140,6 +140,13 @@ export const api = {
     listFundingEventJournal(id) {
         return request(`/api/v1/funding-events/${id}/journal`);
     },
+    updateArmedTrade(id, payload) {
+        return request(`/api/v1/armed-trades/${id}`, {
+            method: "PUT",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
     cancelArmedTrade(id) {
         return request(`/api/v1/armed-trades/${id}`, { method: "DELETE" });
     },
@@ -168,6 +175,19 @@ export const api = {
     },
     getTradeOutcome(id) {
         return request(`/api/v1/armed-trades/${id}/outcome`).catch(() => null);
+    },
+    getEngineMetrics() {
+        return request("/api/v2/monitor/dev/engine/metrics").catch(() => null);
+    },
+    getPnlAggregate() {
+        return request("/api/v1/outcomes/aggregate").catch(() => null);
+    },
+    getOutcomesByTradeIds(tradeIds) {
+        if (!tradeIds || tradeIds.length === 0) {
+            return Promise.resolve({});
+        }
+        const params = new URLSearchParams({ armedTradeIds: tradeIds.join(",") });
+        return request(`/api/v1/outcomes?${params}`).catch(() => ({}));
     },
     probeVenueLatency(venue) {
         return request(`/api/v1/venues/${venue}/latency-probe`, { method: "POST" });

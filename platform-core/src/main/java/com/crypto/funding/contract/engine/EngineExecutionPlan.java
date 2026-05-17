@@ -36,7 +36,9 @@ public record EngineExecutionPlan(
     Instant metadataLastSyncedAt,
     Instant latencySampledAt,
     BigDecimal positionQuantity,
-    BigDecimal positionEntryPrice
+    BigDecimal positionEntryPrice,
+    BigDecimal stopLossUsd,
+    BigDecimal takeProfitUsd
 )
 {
     public EngineExecutionPlan(
@@ -85,6 +87,8 @@ public record EngineExecutionPlan(
             millisUntilAction,
             millisUntilFunding,
             summary,
+            null,
+            null,
             null,
             null,
             null,

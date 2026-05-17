@@ -63,6 +63,8 @@ export function createDrawerActionHandler({
                         entryAttemptCount: numberOrNull(data.get("entryAttemptCount")),
                         entrySpacingMs: numberOrNull(data.get("entrySpacingMs")),
                         manualLatencyAdjustmentMs: numberOrNull(data.get("manualLatencyAdjustmentMs")),
+                        stopLossUsd: numberOrNull(data.get("stopLossUsd")),
+                        takeProfitUsd: numberOrNull(data.get("takeProfitUsd")),
                         notes: data.get("notes") || null
                     });
                     showSuccess("Prepared Trade created.");
@@ -114,7 +116,7 @@ export function createDrawerActionHandler({
 
         const devRunButton = event.target.closest("[data-action='run-dev-test-entry'], [data-action='run-dev-test-exit']");
         if (devRunButton) {
-            const productionConfirm = nodes.drawerContent.querySelector("[data-production-confirm]")?.value ?? null;
+            const productionConfirm = nodes.modalContent.querySelector("[data-production-confirm]")?.value ?? null;
             const payload = productionConfirm ? { productionConfirm } : {};
             const run = {
                 armedTradeId: devRunButton.dataset.armedTradeId,

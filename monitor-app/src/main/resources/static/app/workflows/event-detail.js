@@ -8,6 +8,7 @@ import {
     journalMarkup,
     metaRow,
     offsetIso,
+    openModal,
     pipelineStageMarkup,
     section,
     sourceLabel,
@@ -39,42 +40,63 @@ export function buildEventDrawerContent({ event, journal }) {
             <div class="action-card primary">
                 <p class="helper-text">Создай Prepared Trade для engine flow. Реальный order здесь не ставится.</p>
                 <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>Notional, USD</span>
-                            <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="25">
-                        </label>
-                        <label class="field">
-                            <span>Side</span>
-                            <input name="intendedSide" type="text" value="SHORT" readonly>
-                            <small>Funding strategy is SHORT-only.</small>
-                        </label>
-                    </div>
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>Planned entry</span>
-                            <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(defaultEntry)}">
-                        </label>
+                    <fieldset class="form-group">
+                        <legend>Entry Window</legend>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Notional, USD</span>
+                                <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="25">
+                            </label>
+                            <label class="field">
+                                <span>Side</span>
+                                <input name="intendedSide" type="text" value="SHORT" readonly>
+                                <small>Funding strategy is SHORT-only.</small>
+                            </label>
+                        </div>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Planned entry</span>
+                                <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(defaultEntry)}">
+                            </label>
+                            <label class="field">
+                                <span>Entry attempts</span>
+                                <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
+                            </label>
+                        </div>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Spacing, ms</span>
+                                <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
+                            </label>
+                            <label class="field">
+                                <span>Manual latency adj, ms</span>
+                                <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
+                                <small>Engine triggers earlier by measured latency + this.</small>
+                            </label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="form-group">
+                        <legend>Exit Window</legend>
                         <label class="field">
                             <span>Planned exit</span>
                             <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(defaultExit)}">
                         </label>
-                    </div>
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>Entry attempts</span>
-                            <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
-                        </label>
-                        <label class="field">
-                            <span>Spacing, ms</span>
-                            <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
-                        </label>
-                    </div>
-                    <label class="field">
-                        <span>Manual latency adj, ms</span>
-                        <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
-                        <small>Engine will trigger attempts earlier by measured latency plus this adjustment.</small>
-                    </label>
+                    </fieldset>
+                    <fieldset class="form-group">
+                        <legend>Risk Management</legend>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Stop Loss, USD</span>
+                                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00">
+                                <small>Max loss before auto-exit. Leave blank to disable.</small>
+                            </label>
+                            <label class="field">
+                                <span>Take Profit, USD</span>
+                                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00">
+                                <small>Target gain before auto-exit. Leave blank to disable.</small>
+                            </label>
+                        </div>
+                    </fieldset>
                     <label class="field">
                         <span>Preparation note</span>
                         <textarea name="notes" placeholder="Почему этот Event должен перейти в Prepared Trade"></textarea>
@@ -101,9 +123,10 @@ export async function openEventDetail({ id, nodes, showError }) {
             api.listFundingEventJournal(id)
         ]);
 
-        nodes.drawerType.textContent = "Funding Event";
-        nodes.drawerTitle.textContent = `${event.symbol} · ${event.venue}`;
-        nodes.drawerContent.innerHTML = buildEventDrawerContent({ event, journal });
+        nodes.modalType.textContent = "Funding Event";
+        nodes.modalTitle.textContent = `${event.symbol} · ${event.venue}`;
+        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal });
+        openModal(nodes);
     } catch (error) {
         showError(error.message);
     }

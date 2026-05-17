@@ -133,7 +133,9 @@ public class DevTestRunService
                 1,
                 0L,
                 0L,
-                SOURCE_TYPE + " " + mode + " " + venue + " " + symbol
+                SOURCE_TYPE + " " + mode + " " + venue + " " + symbol,
+                null,
+                null
             ),
             TradeArmSource.DIRECT_TRADE_API,
             TradeJournalActorType.OPERATOR,

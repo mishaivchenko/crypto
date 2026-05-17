@@ -147,17 +147,29 @@ function translate(kind, value) {
     return statusLabels[kind]?.[value] ?? String(value);
 }
 
+export function formatTimeMs(value) {
+    if (!value) return "—";
+    const d = new Date(value);
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    const ms = String(d.getMilliseconds()).padStart(3, "0");
+    return `${hh}:${mm}:${ss}.${ms}`;
+}
+
 export function formatInstant(value) {
-    if (!value) {
-        return "—";
-    }
-    return new Date(value).toLocaleString("ru-RU", {
+    if (!value) return "—";
+    const d = new Date(value);
+    const base = d.toLocaleString("ru-RU", {
         year: "numeric",
         month: "short",
         day: "2-digit",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
+        second: "2-digit"
     });
+    const ms = String(d.getMilliseconds()).padStart(3, "0");
+    return `${base}.${ms}`;
 }
 
 export function formatRelative(value) {

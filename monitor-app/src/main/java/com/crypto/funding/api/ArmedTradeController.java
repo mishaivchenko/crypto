@@ -2,6 +2,7 @@ package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.ArmedTradeResponse;
 import com.crypto.funding.api.dto.CreateArmedTradeRequest;
+import com.crypto.funding.api.dto.UpdateArmedTradeRequest;
 import com.crypto.funding.api.dto.EngineRunOnceResponse;
 import com.crypto.funding.api.dto.TradeJournalEntryResponse;
 import com.crypto.funding.api.dto.TradeOutcomeResponse;
@@ -13,6 +14,7 @@ import com.crypto.funding.application.monitor.EngineControlService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
+import com.crypto.funding.application.trade.UpdateArmedTradeCommand;
 import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.application.event.FundingEventQueryService;
 import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -87,10 +90,31 @@ public class ArmedTradeController
                 request.entryAttemptCount(),
                 request.entrySpacingMs(),
                 request.manualLatencyAdjustmentMs(),
-                request.notes()
+                request.notes(),
+                request.stopLossUsd(),
+                request.takeProfitUsd()
             )
         );
         return toResponse( created );
+    }
+
+    @PutMapping("/{id}")
+    public ArmedTradeResponse update( @PathVariable Long id, @Valid @RequestBody UpdateArmedTradeRequest request )
+    {
+        return toResponse( armedTradeCommandService.update(
+            new UpdateArmedTradeCommand(
+                id,
+                request.notionalUsd(),
+                request.plannedEntryAt(),
+                request.plannedExitAt(),
+                request.entryAttemptCount(),
+                request.entrySpacingMs(),
+                request.manualLatencyAdjustmentMs(),
+                request.stopLossUsd(),
+                request.takeProfitUsd(),
+                request.notes()
+            )
+        ) );
     }
 
     @GetMapping
@@ -176,6 +200,8 @@ public class ArmedTradeController
             trade.state(),
             trade.notes(),
             trade.mode() == null ? null : trade.mode().propertyValue(),
+            trade.stopLossUsd(),
+            trade.takeProfitUsd(),
             trade.createdAt(),
             trade.updatedAt()
         );
