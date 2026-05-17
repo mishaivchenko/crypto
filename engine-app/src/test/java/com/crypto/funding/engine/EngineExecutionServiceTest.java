@@ -561,6 +561,23 @@ class EngineExecutionServiceTest
     }
 
     @Test
+    void failedExitIsRetriedOnNextScheduledRun()
+    {
+        EngineExecutionPlan plan = openPlan( 5L );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ), List.of( plan ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) ) )
+            .thenReturn( rejectedAttempt( 5L, "bybit", "REQ/USDT", NOW ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+
+        var first = service.runOnce( false );
+        var second = service.runOnce( false );
+
+        assertThat( first.attemptsSubmitted() ).isEqualTo( 1 );
+        assertThat( second.attemptsSubmitted() ).isEqualTo( 1 );
+        verify( executionPort, times( 2 ) ).submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( true ) );
+    }
+
+    @Test
     void isolatesEntryFailuresAndContinuesProcessingOtherTrades()
     {
         when( client.listPlans( false ) ).thenReturn( List.of(

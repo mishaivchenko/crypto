@@ -302,7 +302,7 @@ public class EngineExecutionService
             attempt,
             submitDurationMs
         );
-        applyExitLifecycle( plan, recorded, attempt );
+        applyExitLifecycle( plan, recorded, attempt, attemptKey );
 
         return toResult( recorded );
     }
@@ -371,7 +371,7 @@ public class EngineExecutionService
         }
     }
 
-    private void applyExitLifecycle( EngineExecutionPlan plan, EngineOrderAttemptResponse recorded, OrderAttempt attempt )
+    private void applyExitLifecycle( EngineExecutionPlan plan, EngineOrderAttemptResponse recorded, OrderAttempt attempt, String exitAttemptKey )
     {
         if( isCompletedExit( recorded, attempt ) )
         {
@@ -405,6 +405,7 @@ public class EngineExecutionService
         }
         else if( isTerminalFailure( recorded.status() ) )
         {
+            releaseAttemptKey( exitAttemptKey );
             client.updateTradeState(
                 plan.armedTradeId(),
                 new EngineTradeStateUpdateRequest( ArmedTradeState.FAILED, recorded.failureReason() )
@@ -522,6 +523,11 @@ public class EngineExecutionService
     private boolean reserveAttemptKey( String attemptKey )
     {
         return submittedAttemptKeys.add( attemptKey );
+    }
+
+    private void releaseAttemptKey( String attemptKey )
+    {
+        submittedAttemptKeys.remove( attemptKey );
     }
 
     private static TradeSide opposite( TradeSide side )
