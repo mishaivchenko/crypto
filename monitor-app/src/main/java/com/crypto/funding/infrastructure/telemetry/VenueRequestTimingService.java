@@ -3,7 +3,10 @@ package com.crypto.funding.infrastructure.telemetry;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -13,6 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 public class VenueRequestTimingService
 {
+    static final int ROLLING_WINDOW_SIZE = 20;
+
     public record Snapshot(
         String venue,
         String operation,
@@ -24,7 +29,10 @@ public class VenueRequestTimingService
         Integer lastHttpStatus,
         String lastError,
         Instant lastOccurredAt,
-        long lastPayloadSize
+        long lastPayloadSize,
+        Long p50DurationMs,
+        Long p95DurationMs,
+        Long p99DurationMs
     )
     {
     }
@@ -79,7 +87,10 @@ public class VenueRequestTimingService
                 null,
                 null,
                 null,
-                0L
+                0L,
+                null,
+                null,
+                null
             );
         }
         return stats.snapshot( normalizedVenue, normalizedOperation );
@@ -118,6 +129,7 @@ public class VenueRequestTimingService
         private volatile String lastError;
         private volatile Instant lastOccurredAt;
         private volatile long lastPayloadSize;
+        private final Deque<Long> rollingWindow = new ArrayDeque<>( ROLLING_WINDOW_SIZE );
 
         void recordSuccess( long durationNanos, long payloadSize, Integer httpStatus )
         {
@@ -130,6 +142,7 @@ public class VenueRequestTimingService
             lastError = null;
             lastOccurredAt = Instant.now();
             lastPayloadSize = payloadSize;
+            addToWindow( durationMs );
         }
 
         void recordFailure( long durationNanos, String error )
@@ -143,12 +156,31 @@ public class VenueRequestTimingService
             lastError = error;
             lastOccurredAt = Instant.now();
             lastPayloadSize = 0L;
+            addToWindow( durationMs );
+        }
+
+        private synchronized void addToWindow( long durationMs )
+        {
+            if( rollingWindow.size() >= ROLLING_WINDOW_SIZE )
+            {
+                rollingWindow.pollFirst();
+            }
+            rollingWindow.addLast( durationMs );
         }
 
         Snapshot snapshot( String venue, String operation )
         {
             long requestCount = requests.get();
             long avg = requestCount == 0 ? 0L : totalDurationMs.get() / requestCount;
+            List<Long> sorted;
+            synchronized( this )
+            {
+                sorted = new ArrayList<>( rollingWindow );
+            }
+            sorted.sort( Comparator.naturalOrder() );
+            Long p50 = sorted.isEmpty() ? null : percentile( sorted, 50 );
+            Long p95 = sorted.isEmpty() ? null : percentile( sorted, 95 );
+            Long p99 = sorted.isEmpty() ? null : percentile( sorted, 99 );
             return new Snapshot(
                 venue,
                 operation,
@@ -160,8 +192,17 @@ public class VenueRequestTimingService
                 lastHttpStatus,
                 lastError,
                 lastOccurredAt,
-                lastPayloadSize
+                lastPayloadSize,
+                p50,
+                p95,
+                p99
             );
+        }
+
+        static long percentile( List<Long> sorted, int pct )
+        {
+            int idx = (int) Math.max( 0, Math.ceil( pct / 100.0 * sorted.size() ) - 1 );
+            return sorted.get( idx );
         }
     }
 }

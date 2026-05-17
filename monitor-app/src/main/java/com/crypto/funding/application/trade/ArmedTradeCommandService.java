@@ -220,9 +220,10 @@ public class ArmedTradeCommandService
         entity.setEntrySpacingMs(
             command.entrySpacingMs() == null ? preparationProperties.getDefaultEntrySpacingMs() : command.entrySpacingMs()
         );
-        Long manualLatencyAdjustmentMs = command.manualLatencyAdjustmentMs() == null
-            ? preparationProperties.getDefaultManualLatencyAdjustmentMs()
-            : command.manualLatencyAdjustmentMs();
+        Long venueDefaultLatencyMs = venueProfileService.getProfile( normalizedVenue ).defaultManualLatencyAdjustmentMs();
+        Long manualLatencyAdjustmentMs = command.manualLatencyAdjustmentMs() != null
+            ? command.manualLatencyAdjustmentMs()
+            : ( venueDefaultLatencyMs != null ? venueDefaultLatencyMs : preparationProperties.getDefaultManualLatencyAdjustmentMs() );
         entity.setManualLatencyAdjustmentMs( manualLatencyAdjustmentMs );
         Long measuredEntryLatencyMs = venueLatencyService.estimateEntryLatencyMs( fundingEvent.getVenue() );
         entity.setMeasuredEntryLatencyMs( measuredEntryLatencyMs );

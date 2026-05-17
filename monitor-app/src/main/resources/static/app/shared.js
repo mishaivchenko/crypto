@@ -16,6 +16,7 @@ import {
     pipelineStageMarkup,
     section
 } from "../ui.js";
+import { t } from "../i18n.js";
 
 export {
     emptyState,
@@ -42,47 +43,47 @@ export function sourceLabel(value) {
     }
     const normalized = String(value).toLowerCase();
     if (normalized === "funding_api" || normalized === "funding-api") {
-        return "API фандинга";
+        return t("label_api_funding");
     }
     if (normalized === "manual") {
-        return "manual";
+        return t("label_manual");
     }
     return String(value);
 }
 
 export function sideLabel(value) {
     if (!value) {
-        return "Side не задан";
+        return t("label_side_not_set");
     }
-    return value === "LONG" ? "Long" : value === "SHORT" ? "Short" : value;
+    return value === "LONG" ? t("label_long") : value === "SHORT" ? t("label_short") : value;
 }
 
 export function modeLabel(mode) {
     if (!mode) {
-        return "mode не задан";
+        return t("label_mode_not_set");
     }
-    return mode === "testnet" ? "Testnet" : mode === "production" ? "Production" : String(mode);
+    return mode === "testnet" ? t("label_testnet") : mode === "production" ? t("label_production") : String(mode);
 }
 
 export function credentialsBadge(venue) {
     if (venue.credentialsConfigured) {
-        return formatBadge("venue", "Keys OK", "good");
+        return formatBadge("venue", t("label_keys_ok"), "good");
     }
-    return formatBadge("venue", venue.credentialsRequired ? "Нет keys" : "Keys empty", "warning");
+    return formatBadge("venue", venue.credentialsRequired ? t("label_no_keys") : t("label_keys_empty"), "warning");
 }
 
 export function venueHealthBadge(venue) {
     if (!venue.activeInstrumentCount) {
-        return formatBadge("venue", "No instruments", "warning");
+        return formatBadge("venue", t("label_no_instruments"), "warning");
     }
     if (!venue.lastSyncedAt) {
-        return formatBadge("venue", "No sync", "warning");
+        return formatBadge("venue", t("label_no_sync"), "warning");
     }
-    return formatBadge("venue", "Registry ready", "good");
+    return formatBadge("venue", t("label_registry_ready"), "good");
 }
 
 export function connectionLine(venue) {
-    const message = venue.connectionMessage ? escapeHtml(venue.connectionMessage) : "Проверка ещё не запускалась.";
+    const message = venue.connectionMessage ? escapeHtml(venue.connectionMessage) : t("label_connection_not_checked");
     const http = venue.lastConnectionHttpStatus ? ` · HTTP ${venue.lastConnectionHttpStatus}` : "";
     return `${message}${http}`;
 }
@@ -103,18 +104,18 @@ export function venueCard(venue) {
             <header>
                 <div>
                     <h3 class="item-title">${escapeHtml(venue.venue)}</h3>
-                    <p class="muted">${escapeHtml(modeLabel(venue.mode ?? venue.configuredMode))} · ${formatNumber(venue.activeInstrumentCount)} active instruments</p>
+                    <p class="muted">${escapeHtml(modeLabel(venue.mode ?? venue.configuredMode))} · ${formatNumber(venue.activeInstrumentCount)} ${t("label_active_instruments")}</p>
                 </div>
                 <div class="actions">
                     ${credentialsBadge(venue)}
                     ${formatConnectionBadge(venue.connectionStatus)}
                     ${venueHealthBadge(venue)}
-                    <button class="button secondary" type="button" data-open-venue="${escapeHtml(venue.venue)}">Открыть</button>
+                    <button class="button secondary" type="button" data-open-venue="${escapeHtml(venue.venue)}">${t("label_open")}</button>
                 </div>
             </header>
             <div class="item-row">
                 <span class="muted">${connectionLine(venue)}</span>
-                <span class="muted">Last sync ${formatInstant(venue.lastSyncedAt)} · avg ${formatDurationMs(venue.averageRequestTimeMs)} · req ${formatNumber(venue.requests ?? 0)}</span>
+                <span class="muted">${t("label_last_sync")} ${formatInstant(venue.lastSyncedAt)} · ${t("card_avg")} ${formatDurationMs(venue.averageRequestTimeMs)} · ${t("card_req")} ${formatNumber(venue.requests ?? 0)}</span>
             </div>
         </article>
     `;
@@ -122,15 +123,15 @@ export function venueCard(venue) {
 
 export function candidateStateLine(candidate) {
     if (candidate.fundingEventId) {
-        return `Связан с Funding Event #${candidate.fundingEventId}`;
+        return `${t("candidate_state_linked")}${candidate.fundingEventId}`;
     }
     if (candidate.normalizationFailureReason) {
         return candidate.normalizationFailureReason;
     }
     if (candidate.venueHints?.length) {
-        return `Venue hints: ${candidate.venueHints.join(", ")}`;
+        return `${t("label_venue_hints")} ${candidate.venueHints.join(", ")}`;
     }
-    return "Ожидает operator review";
+    return t("candidate_state_review");
 }
 
 export function candidateCard(candidate) {
@@ -139,11 +140,11 @@ export function candidateCard(candidate) {
             <header>
                 <div>
                     <h3 class="item-title">${escapeHtml(candidate.normalizedSymbol ?? candidate.rawSymbol)}</h3>
-                    <p class="muted">source ${escapeHtml(candidate.sourceVenue ?? sourceLabel(candidate.sourceType))} · raw ${escapeHtml(candidate.rawSymbol)}</p>
+                    <p class="muted">${t("label_source")} ${escapeHtml(candidate.sourceVenue ?? sourceLabel(candidate.sourceType))} · ${t("label_raw")} ${escapeHtml(candidate.rawSymbol)}</p>
                 </div>
                 <div class="actions">
                     ${formatBadge("candidate", candidate.status)}
-                    <button class="button secondary" type="button" data-open-candidate="${candidate.id}">Inspect</button>
+                    <button class="button secondary" type="button" data-open-candidate="${candidate.id}">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="item-row">
@@ -160,15 +161,15 @@ export function eventCard(event) {
             <header>
                 <div>
                     <h3 class="item-title">${escapeHtml(event.symbol)}</h3>
-                    <p class="muted">${escapeHtml(event.venue)} · funding ${formatInstant(event.fundingTime)}</p>
+                    <p class="muted">${escapeHtml(event.venue)} · ${t("label_funding")} ${formatInstant(event.fundingTime)}</p>
                 </div>
                 <div class="actions">
                     ${formatBadge("event", event.status)}
-                    <button class="button secondary" type="button" data-open-event="${event.id}">Inspect</button>
+                    <button class="button secondary" type="button" data-open-event="${event.id}">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="item-row">
-                <span class="muted">signal ${event.signalCandidateId ?? "manual"} · rate ${formatDecimal(event.fundingRatePct, 6)}</span>
+                <span class="muted">${t("card_signal")} ${event.signalCandidateId ?? t("label_manual")} · ${t("card_rate")} ${formatDecimal(event.fundingRatePct, 6)}</span>
                 <span class="muted">${formatFundingCountdown(event.fundingTime)}</span>
             </div>
         </article>
@@ -182,7 +183,7 @@ export function formatPnlBadge(outcome) {
     const net = Number(outcome.netPnlUsd);
     const sign = net >= 0 ? "+" : "";
     const tone = net >= 0 ? "good" : "bad";
-    const fees = outcome.feesUsd != null ? ` (fees ${formatDecimal(outcome.feesUsd, 4)})` : "";
+    const fees = outcome.feesUsd != null ? ` (${t("card_fees")} ${formatDecimal(outcome.feesUsd, 4)})` : "";
     return formatBadge("outcome", `${sign}${formatDecimal(net, 4)} USD${fees}`, tone);
 }
 
@@ -191,18 +192,18 @@ export function tradeCard(trade, outcome = null) {
         <article class="list-item trade-card">
             <header>
                 <div>
-                    <h3 class="item-title">${escapeHtml(trade.symbol ?? `Сделка #${trade.id}`)}</h3>
-                    <p class="muted">${escapeHtml(trade.venue ?? "venue не задана")} · event ${trade.fundingEventId} · ${formatDecimal(trade.notionalUsd, 2)} USD</p>
+                    <h3 class="item-title">${escapeHtml(trade.symbol ?? `${t("card_trade_prefix")}${trade.id}`)}</h3>
+                    <p class="muted">${escapeHtml(trade.venue ?? t("card_venue_not_set"))} · ${t("card_event_prefix")} ${trade.fundingEventId} · ${formatDecimal(trade.notionalUsd, 2)} USD</p>
                 </div>
                 <div class="actions">
                     ${formatBadge("trade", trade.state)}
-                    ${trade.mode === "testnet" ? formatBadge("venue", "Testnet", "info") : ""}
+                    ${trade.mode === "testnet" ? formatBadge("venue", t("label_testnet"), "info") : ""}
                     ${formatPnlBadge(outcome)}
-                    <button class="button secondary" type="button" data-open-trade="${trade.id}">Inspect</button>
+                    <button class="button secondary" type="button" data-open-trade="${trade.id}">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="item-row">
-                <span class="muted">${escapeHtml(sideLabel(trade.intendedSide))} · ${formatNumber(trade.entryAttemptCount ?? 1)} attempts · spacing ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
+                <span class="muted">${escapeHtml(sideLabel(trade.intendedSide))} · ${formatNumber(trade.entryAttemptCount ?? 1)} attempts · ${t("card_spacing")} ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
                 <span class="muted">entry ${formatInstant(trade.plannedEntryAt)} · exit ${formatInstant(trade.plannedExitAt)}</span>
             </div>
         </article>
@@ -277,7 +278,7 @@ export function openModal(nodes) {
 export function closeModal(nodes) {
     nodes.inspectorModal.hidden = true;
     document.body.style.overflow = "";
-    nodes.modalType.textContent = "Inspector";
+    nodes.modalType.textContent = t("inspector_type");
     nodes.modalTitle.textContent = "—";
     nodes.modalContent.innerHTML = "";
 }

@@ -33,6 +33,7 @@ import {
 import {
     createDrawerActionHandler
 } from "./app/workflows/drawer-actions.js";
+import { getLang, setLang, t } from "./i18n.js";
 
 const state = createAppState();
 const nodes = createNodes(document);
@@ -52,12 +53,13 @@ function showSuccess(message) {
     showBanner(nodes.globalSuccess, message);
 }
 
-function setLoading(target, label = "Загрузка…") {
-    target.innerHTML = emptyState(label, "Подожди, desk обновляет состояние.");
+function setLoading(target, label) {
+    const loadingLabel = label ?? t("loading_default");
+    target.innerHTML = emptyState(loadingLabel, t("loading_detail"));
 }
 
 function setLoadError(target, message) {
-    target.innerHTML = emptyState("Ошибка загрузки", message);
+    target.innerHTML = emptyState(t("loading_error_title"), message);
 }
 
 const openCandidate = (id) => openCandidateDetail({ id, nodes, showError });
@@ -71,8 +73,8 @@ async function refreshCurrentScreen() {
     let loadingTarget = null;
     try {
         if (state.screen === "dashboard") {
-            setLoading(nodes.dashboardSummary, "Собираю срез контура…");
-            setLoading(nodes.dashboardVenues, "Собираю пульс площадок…");
+            setLoading(nodes.dashboardSummary, t("loading_dashboard"));
+            setLoading(nodes.dashboardVenues, t("loading_venues_pulse"));
             const [overview, runtimeResult, engineMetrics, pnlAggregate] = await Promise.all([
                 api.getOverview(),
                 api.getEngineRuntime()
@@ -98,7 +100,7 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "candidates") {
             loadingTarget = nodes.candidatesList;
-            setLoading(loadingTarget, "Загружаю входящие сигналы…");
+            setLoading(loadingTarget, t("loading_candidates"));
             renderCandidates({
                 nodes,
                 page: await api.listCandidates(state.candidateFilters),
@@ -108,7 +110,7 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "events") {
             loadingTarget = nodes.eventsList;
-            setLoading(loadingTarget, "Загружаю подтверждённые события…");
+            setLoading(loadingTarget, t("loading_events"));
             renderFundingEvents({
                 nodes,
                 page: await api.listFundingEvents(state.eventFilters),
@@ -118,7 +120,7 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "trades") {
             loadingTarget = nodes.tradesList;
-            setLoading(loadingTarget, "Загружаю подготовленные сделки…");
+            setLoading(loadingTarget, t("loading_trades"));
             renderTrades({
                 nodes,
                 trades: await api.listArmedTrades(),
@@ -128,12 +130,12 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "history") {
             loadingTarget = nodes.historyList;
-            setLoading(loadingTarget, "Собираю историю сделок…");
+            setLoading(loadingTarget, t("loading_history"));
             const [trades, attempts] = await Promise.all([
                 api.listArmedTrades({ includeHistorical: true }),
                 api.listAllOrderAttempts()
             ]);
-            const tradeIds = trades.map((t) => t.id);
+            const tradeIds = trades.map((tr) => tr.id);
             const outcomesByTrade = await api.getOutcomesByTradeIds(tradeIds);
             renderHistory({
                 nodes,
@@ -147,7 +149,7 @@ async function refreshCurrentScreen() {
         }
         if (state.screen === "venues") {
             loadingTarget = nodes.venuesList;
-            setLoading(loadingTarget, "Загружаю диагностику площадок…");
+            setLoading(loadingTarget, t("loading_venues"));
             renderVenues({
                 nodes,
                 venues: await api.listVenues(),
@@ -160,6 +162,182 @@ async function refreshCurrentScreen() {
             setLoadError(loadingTarget, error.message);
         }
     }
+}
+
+function applyStaticTranslations() {
+    const nav = nodes.nav;
+    nav.querySelectorAll(".nav-link[data-screen]").forEach((btn) => {
+        const screenKey = `nav_${btn.dataset.screen.replace("-", "_")}`;
+        const mapped = {
+            dashboard: "nav_overview",
+            candidates: "nav_signal_queue",
+            events: "nav_funding_events",
+            trades: "nav_prepared_trades",
+            history: "nav_trade_history",
+            venues: "nav_venue_access"
+        };
+        const key = mapped[btn.dataset.screen] ?? screenKey;
+        btn.textContent = t(key);
+    });
+
+    const operatorTokenLabel = document.querySelector("#operator-token-form label span");
+    if (operatorTokenLabel) operatorTokenLabel.textContent = t("topbar_operator_token");
+    nodes.operatorTokenInput.placeholder = t("topbar_token_placeholder");
+    const saveTokenBtn = document.querySelector("#operator-token-form button[type='submit']");
+    if (saveTokenBtn) saveTokenBtn.textContent = t("topbar_save_token");
+
+    const accessModeLabel = document.querySelector("#global-mode-form label span");
+    if (accessModeLabel) accessModeLabel.textContent = t("topbar_access_mode");
+    const applyModeBtn = document.querySelector("#global-mode-form button[type='submit']");
+    if (applyModeBtn) applyModeBtn.textContent = t("topbar_apply_mode");
+    nodes.refreshAllButton.textContent = t("topbar_refresh");
+
+    const testnetOption = nodes.globalModeSelect.querySelector("option[value='TESTNET']");
+    if (testnetOption) testnetOption.textContent = t("topbar_testnet");
+    const productionOption = nodes.globalModeSelect.querySelector("option[value='PRODUCTION']");
+    if (productionOption) productionOption.textContent = t("topbar_production");
+
+    const drawerType = document.getElementById("drawer-type");
+    if (drawerType) drawerType.textContent = t("inspector_type");
+    const drawerTitle = document.getElementById("drawer-title");
+    if (drawerTitle && drawerTitle.textContent.trim() === nodes.drawerTitle?.textContent?.trim()) {
+        drawerTitle.textContent = t("inspector_title_default");
+    }
+    const drawerPlaceholder = document.querySelector("#detail-drawer .drawer-body p.muted");
+    if (drawerPlaceholder) drawerPlaceholder.textContent = t("inspector_placeholder");
+
+    const venuePulseHeader = document.querySelector("#screen-dashboard .panel-header h3");
+    if (venuePulseHeader && !venuePulseHeader.closest("#dashboard-dev-tools") && !venuePulseHeader.closest("#dashboard-metrics")) {
+        venuePulseHeader.textContent = t("venue_pulse");
+    }
+
+    const overviewEyebrow = document.querySelector("#screen-dashboard .section-header .eyebrow");
+    if (overviewEyebrow) overviewEyebrow.textContent = t("nav_overview");
+    const overviewH2 = document.querySelector("#screen-dashboard .section-header h2");
+    if (overviewH2) overviewH2.textContent = t("section_overview_h2");
+
+    const candidatesEyebrow = document.querySelector("#screen-candidates .section-header .eyebrow");
+    if (candidatesEyebrow) candidatesEyebrow.textContent = t("nav_signal_queue");
+    const candidatesH2 = document.querySelector("#screen-candidates .section-header h2");
+    if (candidatesH2) candidatesH2.textContent = t("section_candidates_h2");
+
+    const eventsEyebrow = document.querySelector("#screen-events .section-header .eyebrow");
+    if (eventsEyebrow) eventsEyebrow.textContent = t("nav_funding_events");
+    const eventsH2 = document.querySelector("#screen-events .section-header h2");
+    if (eventsH2) eventsH2.textContent = t("section_events_h2");
+
+    const tradesEyebrow = document.querySelector("#screen-trades .section-header .eyebrow");
+    if (tradesEyebrow) tradesEyebrow.textContent = t("nav_prepared_trades");
+    const tradesH2 = document.querySelector("#screen-trades .section-header h2");
+    if (tradesH2) tradesH2.textContent = t("section_trades_h2");
+
+    const historyEyebrow = document.querySelector("#screen-history .section-header .eyebrow");
+    if (historyEyebrow) historyEyebrow.textContent = t("nav_trade_history");
+    const historyH2 = document.querySelector("#screen-history .section-header h2");
+    if (historyH2) historyH2.textContent = t("section_history_h2");
+
+    const venuesEyebrow = document.querySelector("#screen-venues .section-header .eyebrow");
+    if (venuesEyebrow) venuesEyebrow.textContent = t("nav_venue_access");
+    const venuesH2 = document.querySelector("#screen-venues .section-header h2");
+    if (venuesH2) venuesH2.textContent = t("section_venues_h2");
+
+    const candidateFiltersForm = document.getElementById("candidate-filters");
+    if (candidateFiltersForm) {
+        const symbolInput = candidateFiltersForm.querySelector("input[name='symbol']");
+        if (symbolInput) symbolInput.placeholder = t("filter_symbol");
+        const venueInput = candidateFiltersForm.querySelector("input[name='venue']");
+        if (venueInput) venueInput.placeholder = t("filter_venue");
+        const detectedInput = candidateFiltersForm.querySelector("input[name='detectedFrom']");
+        if (detectedInput) detectedInput.placeholder = t("filter_detected_from");
+        const statusSelect = candidateFiltersForm.querySelector("select[name='status']");
+        if (statusSelect) {
+            statusSelect.options[0].textContent = t("filter_all_statuses");
+            statusSelect.options[1].textContent = t("status_candidate_NEW");
+            statusSelect.options[2].textContent = t("status_candidate_NORMALIZED");
+            statusSelect.options[3].textContent = t("status_candidate_FAILED");
+            statusSelect.options[4].textContent = t("status_candidate_REJECTED");
+            statusSelect.options[5].textContent = t("status_candidate_EVENT_CREATED");
+            statusSelect.options[6].textContent = t("status_candidate_DELETED");
+        }
+        const applyBtn = candidateFiltersForm.querySelector("button[type='submit']");
+        if (applyBtn) applyBtn.textContent = t("filter_apply");
+    }
+
+    const eventFiltersForm = document.getElementById("event-filters");
+    if (eventFiltersForm) {
+        const symbolInput = eventFiltersForm.querySelector("input[name='symbol']");
+        if (symbolInput) symbolInput.placeholder = t("filter_symbol");
+        const venueInput = eventFiltersForm.querySelector("input[name='venue']");
+        if (venueInput) venueInput.placeholder = t("filter_venue");
+        const statusSelect = eventFiltersForm.querySelector("select[name='status']");
+        if (statusSelect) {
+            statusSelect.options[0].textContent = t("filter_active_statuses");
+            statusSelect.options[1].textContent = t("status_event_DISCOVERED");
+            statusSelect.options[2].textContent = t("status_event_ARMED");
+            statusSelect.options[3].textContent = t("status_event_EXPIRED");
+            statusSelect.options[4].textContent = t("status_event_CANCELLED");
+        }
+        const applyBtn = eventFiltersForm.querySelector("button[type='submit']");
+        if (applyBtn) applyBtn.textContent = t("filter_apply");
+    }
+
+    const historyFiltersForm = document.getElementById("history-filters");
+    if (historyFiltersForm) {
+        const symbolLabel = historyFiltersForm.querySelector("label:nth-of-type(1) span");
+        if (symbolLabel) symbolLabel.textContent = t("filter_symbol");
+        const venueLabel = historyFiltersForm.querySelector("label:nth-of-type(2) span");
+        if (venueLabel) venueLabel.textContent = t("filter_venue");
+        const stateLabel = historyFiltersForm.querySelector("label:has(select[name='state']) span");
+        if (stateLabel) stateLabel.textContent = t("filter_state");
+        const stateSelect = historyFiltersForm.querySelector("select[name='state']");
+        if (stateSelect) {
+            stateSelect.options[0].textContent = t("filter_all_states");
+            stateSelect.options[1].textContent = t("status_historyStage_PREPARED");
+            stateSelect.options[2].textContent = t("status_historyStage_ENTRY_PENDING");
+            stateSelect.options[3].textContent = t("status_historyStage_ENTRY_ATTEMPTED");
+            stateSelect.options[4].textContent = t("status_historyStage_ATTEMPTS_FAILED");
+            stateSelect.options[5].textContent = t("status_historyStage_MISSED_WINDOW");
+            stateSelect.options[6].textContent = t("status_historyStage_OPEN");
+            stateSelect.options[7].textContent = t("status_historyStage_EXIT_PENDING");
+            stateSelect.options[8].textContent = t("status_historyStage_CLOSED");
+            stateSelect.options[9].textContent = t("status_historyStage_CANCELLED");
+            stateSelect.options[10].textContent = t("status_historyStage_FAILED");
+        }
+        const healthLabel = historyFiltersForm.querySelector("label:has(select[name='health']) span");
+        if (healthLabel) healthLabel.textContent = t("filter_health");
+        const healthSelect = historyFiltersForm.querySelector("select[name='health']");
+        if (healthSelect) {
+            healthSelect.options[0].textContent = t("filter_all_health");
+        }
+        const fundingFromLabel = historyFiltersForm.querySelector("label:has(input[name='dateFrom']) span");
+        if (fundingFromLabel) fundingFromLabel.textContent = t("filter_funding_from");
+        const fundingToLabel = historyFiltersForm.querySelector("label:has(input[name='dateTo']) span");
+        if (fundingToLabel) fundingToLabel.textContent = t("filter_funding_to");
+        const onlyFailedLabel = historyFiltersForm.querySelector("label:has(input[name='onlyFailed']) span");
+        if (onlyFailedLabel) onlyFailedLabel.textContent = t("filter_only_failed");
+        const onlyManualLabel = historyFiltersForm.querySelector("label:has(input[name='onlyManual']) span");
+        if (onlyManualLabel) onlyManualLabel.textContent = t("filter_only_manual");
+        const applyBtn = historyFiltersForm.querySelector("button[type='submit']");
+        if (applyBtn) applyBtn.textContent = t("filter_apply_filters");
+    }
+}
+
+function updateLangToggle() {
+    const lang = getLang();
+    const btn = document.getElementById("lang-toggle");
+    if (btn) {
+        btn.textContent = lang === "ru" ? "EN" : "RU";
+        btn.setAttribute("aria-label", lang === "ru" ? "Switch to English" : "Переключить на русский");
+    }
+    document.documentElement.lang = lang;
+}
+
+function switchLang() {
+    const next = getLang() === "ru" ? "en" : "ru";
+    setLang(next);
+    updateLangToggle();
+    applyStaticTranslations();
+    refreshCurrentScreen();
 }
 
 function switchScreen(screen) {
@@ -183,7 +361,7 @@ nodes.nav.addEventListener("click", (event) => {
 
 nodes.refreshAllButton.addEventListener("click", async () => {
     await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
-    showSuccess("Контур обновлён.");
+    showSuccess(t("app_refreshed"));
 });
 
 nodes.operatorTokenInput.value = api.getOperatorToken();
@@ -191,7 +369,7 @@ nodes.operatorTokenForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     api.setOperatorToken(nodes.operatorTokenInput.value);
     await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
-    showSuccess("Operator token сохранён в localStorage.");
+    showSuccess(t("app_token_saved"));
 });
 
 nodes.globalModeForm.addEventListener("submit", async (event) => {
@@ -199,7 +377,7 @@ nodes.globalModeForm.addEventListener("submit", async (event) => {
     try {
         await api.setGlobalVenueMode(nodes.globalModeSelect.value);
         await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
-        showSuccess("Global access mode обновлён.");
+        showSuccess(t("app_mode_updated"));
     } catch (error) {
         showError(error.message);
     }
@@ -250,6 +428,11 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !nodes.inspectorModal.hidden) closeModal(nodes);
 });
 
+const langToggle = document.getElementById("lang-toggle");
+if (langToggle) {
+    langToggle.addEventListener("click", switchLang);
+}
+
 const handleDrawerAction = createDrawerActionHandler({
     nodes,
     refreshCurrentScreen,
@@ -276,5 +459,7 @@ async function loadGlobalMode() {
     }
 }
 
+applyStaticTranslations();
+updateLangToggle();
 await loadGlobalMode();
 await refreshCurrentScreen();

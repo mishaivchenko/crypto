@@ -15,6 +15,7 @@ import {
     toLocalInputValue
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
+import { t } from "../../i18n.js";
 
 export function buildEventDrawerContent({ event, journal }) {
     const defaultEntry = toLocalInputValue(offsetIso(event.fundingTime, -45));
@@ -23,95 +24,95 @@ export function buildEventDrawerContent({ event, journal }) {
 
     return `
         ${pipelineStageMarkup("event")}
-        ${section("Event snapshot", `
+        ${section(t("event_snapshot"), `
             <div class="meta-grid">
-                ${metaRow("Статус", formatBadge("event", event.status))}
-                ${metaRow("Funding time", formatInstant(event.fundingTime), formatFundingCountdown(event.fundingTime))}
-                ${metaRow("Funding rate", formatDecimal(event.fundingRatePct, 6))}
-                ${metaRow("Venue", escapeHtml(event.venue))}
-                ${metaRow("Source", escapeHtml(sourceLabel(event.sourceType)))}
-                ${metaRow("Linked signal", event.signalCandidateId ? `#${event.signalCandidateId}` : "manual")}
+                ${metaRow(t("event_status"), formatBadge("event", event.status))}
+                ${metaRow(t("event_funding_time"), formatInstant(event.fundingTime), formatFundingCountdown(event.fundingTime))}
+                ${metaRow(t("event_funding_rate"), formatDecimal(event.fundingRatePct, 6))}
+                ${metaRow(t("event_venue"), escapeHtml(event.venue))}
+                ${metaRow(t("event_source"), escapeHtml(sourceLabel(event.sourceType)))}
+                ${metaRow(t("event_linked_signal"), event.signalCandidateId ? `#${event.signalCandidateId}` : t("label_manual"))}
                 ${event.armedTradeId
-                    ? metaRow("Prepared Trade", `<button class="button secondary small" type="button" data-open-trade="${event.armedTradeId}">→ Trade #${event.armedTradeId}</button>`)
-                    : metaRow("Prepared Trade", "—")}
+                    ? metaRow(t("event_prepared_trade"), `<button class="button secondary small" type="button" data-open-trade="${event.armedTradeId}">→ Trade #${event.armedTradeId}</button>`)
+                    : metaRow(t("event_prepared_trade"), "—")}
             </div>
         `)}
-        ${section("Arm Prepared Trade", canArm ? `
+        ${section(t("event_arm_title"), canArm ? `
             <div class="action-card primary">
-                <p class="helper-text">Создай Prepared Trade для engine flow. Реальный order здесь не ставится.</p>
+                <p class="helper-text">${t("event_arm_helper")}</p>
                 <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
                     <fieldset class="form-group">
-                        <legend>Entry Window</legend>
+                        <legend>${t("event_entry_window")}</legend>
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
-                                <span>Notional, USD</span>
+                                <span>${t("event_notional_usd")}</span>
                                 <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="25">
                             </label>
                             <label class="field">
-                                <span>Side</span>
+                                <span>${t("event_side")}</span>
                                 <input name="intendedSide" type="text" value="SHORT" readonly>
-                                <small>Funding strategy is SHORT-only.</small>
+                                <small>${t("event_short_only")}</small>
                             </label>
                         </div>
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
-                                <span>Planned entry</span>
+                                <span>${t("event_planned_entry")}</span>
                                 <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(defaultEntry)}">
                             </label>
                             <label class="field">
-                                <span>Entry attempts</span>
+                                <span>${t("event_entry_attempts")}</span>
                                 <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
                             </label>
                         </div>
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
-                                <span>Spacing, ms</span>
+                                <span>${t("event_spacing_ms")}</span>
                                 <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
                             </label>
                             <label class="field">
-                                <span>Manual latency adj, ms</span>
+                                <span>${t("event_manual_latency")}</span>
                                 <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
-                                <small>Engine triggers earlier by measured latency + this.</small>
+                                <small>${t("event_engine_triggers_earlier")}</small>
                             </label>
                         </div>
                     </fieldset>
                     <fieldset class="form-group">
-                        <legend>Exit Window</legend>
+                        <legend>${t("event_exit_window")}</legend>
                         <label class="field">
-                            <span>Planned exit</span>
+                            <span>${t("event_planned_exit")}</span>
                             <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(defaultExit)}">
                         </label>
                     </fieldset>
                     <fieldset class="form-group">
-                        <legend>Risk Management</legend>
+                        <legend>${t("event_risk_management")}</legend>
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
-                                <span>Stop Loss, USD</span>
-                                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00">
-                                <small>Max loss before auto-exit. Leave blank to disable.</small>
+                                <span>${t("event_stop_loss")}</span>
+                                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="${t("event_stop_loss_placeholder")}">
+                                <small>${t("event_stop_loss_note")}</small>
                             </label>
                             <label class="field">
-                                <span>Take Profit, USD</span>
-                                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00">
-                                <small>Target gain before auto-exit. Leave blank to disable.</small>
+                                <span>${t("event_take_profit")}</span>
+                                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="${t("event_take_profit_placeholder")}">
+                                <small>${t("event_take_profit_note")}</small>
                             </label>
                         </div>
                     </fieldset>
                     <label class="field">
-                        <span>Preparation note</span>
-                        <textarea name="notes" placeholder="Почему этот Event должен перейти в Prepared Trade"></textarea>
+                        <span>${t("event_prep_note")}</span>
+                        <textarea name="notes" placeholder="${t("event_prep_note_placeholder")}"></textarea>
                     </label>
                     <div class="actions">
-                        <button class="button" type="submit">Create Prepared Trade</button>
+                        <button class="button" type="submit">${t("event_create_trade")}</button>
                     </div>
                 </form>
             </div>
         ` : `
             <div class="action-card">
-                <p class="helper-text">Event уже находится в статусе ${escapeHtml(event.status.toLowerCase())} и больше не может быть armed из этого desk.</p>
+                <p class="helper-text">${t("event_already_armed")} ${escapeHtml(event.status.toLowerCase())} ${t("event_cannot_arm")}</p>
             </div>
         `)}
-        ${event.signalCandidateId ? buildDeleteCandidateSection({ id: event.signalCandidateId }, "Delete source signal") : ""}
+        ${event.signalCandidateId ? buildDeleteCandidateSection({ id: event.signalCandidateId }, t("event_delete_source")) : ""}
         ${section("Journal", journalMarkup(journal))}
     `;
 }
@@ -123,7 +124,7 @@ export async function openEventDetail({ id, nodes, showError }) {
             api.listFundingEventJournal(id)
         ]);
 
-        nodes.modalType.textContent = "Funding Event";
+        nodes.modalType.textContent = t("event_modal_type");
         nodes.modalTitle.textContent = `${event.symbol} · ${event.venue}`;
         nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal });
         openModal(nodes);

@@ -38,7 +38,10 @@ public record EngineExecutionPlan(
     BigDecimal positionQuantity,
     BigDecimal positionEntryPrice,
     BigDecimal stopLossUsd,
-    BigDecimal takeProfitUsd
+    BigDecimal takeProfitUsd,
+    String probeUrl,
+    Integer warmupProbeCount,
+    Long warmupProbeLeadMs
 )
 {
     public EngineExecutionPlan(
@@ -87,6 +90,9 @@ public record EngineExecutionPlan(
             millisUntilAction,
             millisUntilFunding,
             summary,
+            null,
+            null,
+            null,
             null,
             null,
             null,

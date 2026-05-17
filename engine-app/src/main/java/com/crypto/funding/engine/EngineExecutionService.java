@@ -24,11 +24,20 @@ import com.crypto.funding.domain.trade.TradeSide;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,22 +46,40 @@ import java.util.function.LongSupplier;
 @Service
 public class EngineExecutionService
 {
+    private static final Logger log = LoggerFactory.getLogger( EngineExecutionService.class );
+
+    record WarmupCalibration(
+        long p50Ms,
+        long p95Ms,
+        long p99Ms,
+        int sampleCount,
+        boolean fallbackUsed,
+        long calibratedEffectiveLatencyMs,
+        Instant doneAt
+    )
+    {
+    }
+
     private final EnginePlanClient client;
     private final ExecutionPort executionPort;
     private final EngineTelemetryService telemetryService;
     private final Clock clock;
     private final LongSupplier nanoTimeSupplier;
+    private final HttpClient probeHttpClient;
     private final Set<String> submittedAttemptKeys = ConcurrentHashMap.newKeySet();
+    private final Map<Long, WarmupCalibration> warmupByTrade = new ConcurrentHashMap<>();
 
     @Autowired
     public EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, EngineTelemetryService telemetryService )
     {
-        this( client, executionPort, telemetryService, Clock.systemUTC(), System::nanoTime );
+        this( client, executionPort, telemetryService, Clock.systemUTC(), System::nanoTime,
+              HttpClient.newBuilder().build() );
     }
 
     EngineExecutionService( EnginePlanClient client, ExecutionPort executionPort, EngineTelemetryService telemetryService, Clock clock )
     {
-        this( client, executionPort, telemetryService, clock, System::nanoTime );
+        this( client, executionPort, telemetryService, clock, System::nanoTime,
+              HttpClient.newBuilder().build() );
     }
 
     EngineExecutionService(
@@ -63,11 +90,25 @@ public class EngineExecutionService
         LongSupplier nanoTimeSupplier
     )
     {
+        this( client, executionPort, telemetryService, clock, nanoTimeSupplier,
+              HttpClient.newBuilder().build() );
+    }
+
+    EngineExecutionService(
+        EnginePlanClient client,
+        ExecutionPort executionPort,
+        EngineTelemetryService telemetryService,
+        Clock clock,
+        LongSupplier nanoTimeSupplier,
+        HttpClient probeHttpClient
+    )
+    {
         this.client = client;
         this.executionPort = executionPort;
         this.telemetryService = telemetryService;
         this.clock = clock;
         this.nanoTimeSupplier = nanoTimeSupplier;
+        this.probeHttpClient = probeHttpClient;
     }
 
     public EngineExecutionRunResponse runOnce( boolean force )
@@ -127,9 +168,38 @@ public class EngineExecutionService
                     }
                     continue;
                 }
+                // Warm-up probe phase: run before the first entry trigger window
+                if( plan.probeUrl() != null && !force )
+                {
+                    Instant firstTrigger = plan.entryAttempts().get( 0 ).targetEntryAt()
+                                               .minusMillis( plan.effectiveEntryLatencyMs() != null ? plan.effectiveEntryLatencyMs() : 0L );
+                    long lead = plan.warmupProbeLeadMs() != null ? plan.warmupProbeLeadMs() : 500L;
+                    Instant now = Instant.now( clock );
+                    boolean inWarmupWindow = now.isAfter( firstTrigger.minusMillis( lead ) ) && now.isBefore( firstTrigger );
+                    if( inWarmupWindow && !warmupByTrade.containsKey( plan.armedTradeId() ) )
+                    {
+                        WarmupCalibration cal = executeWarmupProbes( plan, firstTrigger, now );
+                        warmupByTrade.put( plan.armedTradeId(), cal );
+                        reportWarmupSamples( plan, cal );
+                        log.info( "warm-up done tradeId={} venue={} sampleCount={} p50={}ms p95={}ms p99={}ms budgetMs={} fallback={} calibratedTrigger={}",
+                            plan.armedTradeId(), plan.venue(), cal.sampleCount(),
+                            cal.p50Ms(), cal.p95Ms(), cal.p99Ms(),
+                            warmupBudgetMs( lead ), cal.fallbackUsed(),
+                            plan.entryAttempts().get( 0 ).targetEntryAt().minusMillis( cal.calibratedEffectiveLatencyMs() ) );
+                    }
+                }
+
+                // Clean up warm-up state for terminal plans
+                if( plan.tradeState() == ArmedTradeState.CLOSED
+                    || plan.tradeState() == ArmedTradeState.CANCELLED
+                    || plan.tradeState() == ArmedTradeState.FAILED )
+                {
+                    warmupByTrade.remove( plan.armedTradeId() );
+                }
+
                 for( EngineEntryAttemptPlan attemptPlan : plan.entryAttempts() )
                 {
-                    if( !force && attemptPlan.triggerAt().isAfter( Instant.now( clock ) ) )
+                    if( !force && calibratedTrigger( plan, attemptPlan ).isAfter( Instant.now( clock ) ) )
                     {
                         skipped++;
                         continue;
@@ -507,7 +577,7 @@ public class EngineExecutionService
                    || plan.status() == EnginePlanStatus.OVERDUE;
         }
         return plan.status() == EnginePlanStatus.ENTRY_WINDOW
-               && !attemptPlan.triggerAt().isAfter( Instant.now( clock ) );
+               && !calibratedTrigger( plan, attemptPlan ).isAfter( Instant.now( clock ) );
     }
 
     private boolean shouldProcessTargetExit( EngineExecutionPlan plan, boolean force )
@@ -620,6 +690,104 @@ public class EngineExecutionService
             return safeEntry.subtract( safeCurrent ).multiply( safeQty );
         }
         return safeCurrent.subtract( safeEntry ).multiply( safeQty );
+    }
+
+    // Single source of truth for calibrated trigger time
+    Instant calibratedTrigger( EngineExecutionPlan plan, EngineEntryAttemptPlan attempt )
+    {
+        WarmupCalibration cal = warmupByTrade.get( plan.armedTradeId() );
+        long effectiveLatencyMs = cal != null
+                                  ? cal.calibratedEffectiveLatencyMs()
+                                  : ( plan.effectiveEntryLatencyMs() != null ? plan.effectiveEntryLatencyMs() : 0L );
+        effectiveLatencyMs = Math.max( 0L, effectiveLatencyMs );
+        return attempt.targetEntryAt().minusMillis( effectiveLatencyMs );
+    }
+
+    static long warmupBudgetMs( long leadMs )
+    {
+        return Math.min( leadMs / 2, 250L );
+    }
+
+    static long perProbeTimeoutMs( long budgetMs, int probeCount )
+    {
+        return Math.max( budgetMs / probeCount, 10L );
+    }
+
+    private WarmupCalibration executeWarmupProbes( EngineExecutionPlan plan, Instant firstTrigger, Instant startNow )
+    {
+        int count = plan.warmupProbeCount() != null ? plan.warmupProbeCount() : 3;
+        long lead = plan.warmupProbeLeadMs() != null ? plan.warmupProbeLeadMs() : 500L;
+        long budgetMs = warmupBudgetMs( lead );
+        long perProbeMs = perProbeTimeoutMs( budgetMs, count );
+        Instant budgetDeadline = startNow.plusMillis( budgetMs ).isBefore( firstTrigger )
+                                 ? startNow.plusMillis( budgetMs ) : firstTrigger;
+
+        List<Long> samples = new ArrayList<>( count );
+        for( int i = 0; i < count; i++ )
+        {
+            if( !Instant.now( clock ).isBefore( budgetDeadline ) )
+            {
+                break;
+            }
+            HttpRequest req = HttpRequest.newBuilder()
+                                         .uri( URI.create( plan.probeUrl() ) )
+                                         .GET()
+                                         .timeout( Duration.ofMillis( perProbeMs ) )
+                                         .build();
+            long start = nanoTimeSupplier.getAsLong();
+            try
+            {
+                probeHttpClient.send( req, HttpResponse.BodyHandlers.discarding() );
+                samples.add( ( nanoTimeSupplier.getAsLong() - start ) / 1_000_000L );
+            }
+            catch( Exception ignored )
+            {
+                // timeout or network error — skip sample, continue
+            }
+        }
+        return buildCalibration( samples, plan );
+    }
+
+    private WarmupCalibration buildCalibration( List<Long> samples, EngineExecutionPlan plan )
+    {
+        long fallbackLatency = plan.effectiveEntryLatencyMs() != null ? plan.effectiveEntryLatencyMs() : 0L;
+        long manual = plan.manualLatencyAdjustmentMs() != null ? plan.manualLatencyAdjustmentMs() : 0L;
+
+        if( samples.isEmpty() )
+        {
+            return new WarmupCalibration( 0L, 0L, 0L, 0, true, fallbackLatency, Instant.now( clock ) );
+        }
+
+        List<Long> sorted = samples.stream().sorted().toList();
+        long p50 = percentile( sorted, 50 );
+        long p95 = percentile( sorted, 95 );
+        long p99 = percentile( sorted, 99 );
+        long calibrated = Math.max( 0L, p50 + manual );
+        return new WarmupCalibration( p50, p95, p99, samples.size(), false, calibrated, Instant.now( clock ) );
+    }
+
+    static long percentile( List<Long> sorted, int pct )
+    {
+        int idx = (int) Math.max( 0, Math.ceil( pct / 100.0 * sorted.size() ) - 1 );
+        return sorted.get( idx );
+    }
+
+    private void reportWarmupSamples( EngineExecutionPlan plan, WarmupCalibration cal )
+    {
+        try
+        {
+            client.recordLatencySample( new EngineLatencySampleRequest(
+                plan.venue(),
+                "_all_",
+                "warmup-probe",
+                cal.p50Ms(),
+                cal.doneAt()
+            ) );
+        }
+        catch( Exception ignored )
+        {
+            // best-effort; never block execution
+        }
     }
 
     private void reportLatencySample( String venue, String symbol, long durationMs, Instant sampledAt )

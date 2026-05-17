@@ -1,72 +1,76 @@
-const statusLabels = {
-    candidate: {
-        NEW: "Новый signal",
-        NORMALIZED: "Готов к review",
-        FAILED: "Ошибка normalization",
-        REJECTED: "Rejected",
-        EVENT_CREATED: "Event created",
-        DELETED: "Удалён"
-    },
-    event: {
-        DISCOVERED: "Discovered",
-        ARMED: "Armed",
-        EXPIRED: "Expired",
-        CANCELLED: "Cancelled"
-    },
-    historyStage: {
-        PREPARED: "Prepared",
-        ENTRY_PENDING: "Entry pending",
-        ENTRY_ATTEMPTED: "Entry attempted",
-        ATTEMPTS_FAILED: "Attempts failed",
-        MISSED_WINDOW: "Missed window",
-        OPEN: "Open",
-        EXIT_PENDING: "Exit pending",
-        CLOSED: "Closed",
-        CANCELLED: "Cancelled",
-        FAILED: "Failed",
-        DEV_TEST: "DEV_TEST"
-    },
-    trade: {
-        ARMED: "Prepared",
-        ENTRY_PENDING: "Entry pending",
-        ENTRY_ATTEMPTED: "Entry attempted",
-        OPEN: "Open",
-        EXIT_PENDING: "Exit pending",
-        CLOSED: "Closed",
-        CANCELLED: "Cancelled",
-        FAILED: "Failed"
-    },
-    orderAttempt: {
-        PLANNED: "Planned",
-        CREATED: "Created",
-        SUBMITTED: "Submitted",
-        ACKNOWLEDGED: "Acknowledged",
-        FILLED: "Filled",
-        CANCELLED: "Cancelled",
-        REJECTED: "Rejected",
-        FAILED: "Failed",
-        EXPIRED: "Expired"
-    },
-    actor: {
-        SYSTEM: "Система",
-        OPERATOR: "Оператор"
-    },
-    connection: {
-        NOT_CONNECTED: "Ключи не подключены",
-        CONNECTED: "Connected",
-        INVALID_CREDENTIALS: "Invalid credentials",
-        ERROR: "Ошибка check",
-        UNSUPPORTED: "Unsupported"
-    },
-    journal: {
-        CANDIDATE_APPROVED: "Candidate approved",
-        CANDIDATE_REJECTED: "Candidate rejected",
-        CANDIDATE_DELETED: "Candidate deleted",
-        FUNDING_EVENT_CREATED: "Funding Event created",
-        FUNDING_EVENT_ARMED: "Funding Event armed",
-        ARMED_TRADE_CREATED: "Prepared Trade created"
-    }
-};
+import { t, getLocale } from "./i18n.js";
+
+function buildStatusLabels() {
+    return {
+        candidate: {
+            NEW: t("status_candidate_NEW"),
+            NORMALIZED: t("status_candidate_NORMALIZED"),
+            FAILED: t("status_candidate_FAILED"),
+            REJECTED: t("status_candidate_REJECTED"),
+            EVENT_CREATED: t("status_candidate_EVENT_CREATED"),
+            DELETED: t("status_candidate_DELETED")
+        },
+        event: {
+            DISCOVERED: t("status_event_DISCOVERED"),
+            ARMED: t("status_event_ARMED"),
+            EXPIRED: t("status_event_EXPIRED"),
+            CANCELLED: t("status_event_CANCELLED")
+        },
+        historyStage: {
+            PREPARED: t("status_historyStage_PREPARED"),
+            ENTRY_PENDING: t("status_historyStage_ENTRY_PENDING"),
+            ENTRY_ATTEMPTED: t("status_historyStage_ENTRY_ATTEMPTED"),
+            ATTEMPTS_FAILED: t("status_historyStage_ATTEMPTS_FAILED"),
+            MISSED_WINDOW: t("status_historyStage_MISSED_WINDOW"),
+            OPEN: t("status_historyStage_OPEN"),
+            EXIT_PENDING: t("status_historyStage_EXIT_PENDING"),
+            CLOSED: t("status_historyStage_CLOSED"),
+            CANCELLED: t("status_historyStage_CANCELLED"),
+            FAILED: t("status_historyStage_FAILED"),
+            DEV_TEST: t("status_historyStage_DEV_TEST")
+        },
+        trade: {
+            ARMED: t("status_trade_ARMED"),
+            ENTRY_PENDING: t("status_trade_ENTRY_PENDING"),
+            ENTRY_ATTEMPTED: t("status_trade_ENTRY_ATTEMPTED"),
+            OPEN: t("status_trade_OPEN"),
+            EXIT_PENDING: t("status_trade_EXIT_PENDING"),
+            CLOSED: t("status_trade_CLOSED"),
+            CANCELLED: t("status_trade_CANCELLED"),
+            FAILED: t("status_trade_FAILED")
+        },
+        orderAttempt: {
+            PLANNED: t("status_orderAttempt_PLANNED"),
+            CREATED: t("status_orderAttempt_CREATED"),
+            SUBMITTED: t("status_orderAttempt_SUBMITTED"),
+            ACKNOWLEDGED: t("status_orderAttempt_ACKNOWLEDGED"),
+            FILLED: t("status_orderAttempt_FILLED"),
+            CANCELLED: t("status_orderAttempt_CANCELLED"),
+            REJECTED: t("status_orderAttempt_REJECTED"),
+            FAILED: t("status_orderAttempt_FAILED"),
+            EXPIRED: t("status_orderAttempt_EXPIRED")
+        },
+        actor: {
+            SYSTEM: t("status_actor_SYSTEM"),
+            OPERATOR: t("status_actor_OPERATOR")
+        },
+        connection: {
+            NOT_CONNECTED: t("status_connection_NOT_CONNECTED"),
+            CONNECTED: t("status_connection_CONNECTED"),
+            INVALID_CREDENTIALS: t("status_connection_INVALID_CREDENTIALS"),
+            ERROR: t("status_connection_ERROR"),
+            UNSUPPORTED: t("status_connection_UNSUPPORTED")
+        },
+        journal: {
+            CANDIDATE_APPROVED: t("status_journal_CANDIDATE_APPROVED"),
+            CANDIDATE_REJECTED: t("status_journal_CANDIDATE_REJECTED"),
+            CANDIDATE_DELETED: t("status_journal_CANDIDATE_DELETED"),
+            FUNDING_EVENT_CREATED: t("status_journal_FUNDING_EVENT_CREATED"),
+            FUNDING_EVENT_ARMED: t("status_journal_FUNDING_EVENT_ARMED"),
+            ARMED_TRADE_CREATED: t("status_journal_ARMED_TRADE_CREATED")
+        }
+    };
+}
 
 const badgeTones = {
     candidate: {
@@ -126,7 +130,9 @@ const badgeTones = {
     }
 };
 
-const relativeFormatter = new Intl.RelativeTimeFormat("ru-RU", { numeric: "auto" });
+function getRelativeFormatter() {
+    return new Intl.RelativeTimeFormat(getLocale(), { numeric: "auto" });
+}
 
 function escapeHtml(value) {
     if (value === null || value === undefined) {
@@ -144,7 +150,8 @@ function translate(kind, value) {
     if (value === null || value === undefined) {
         return "—";
     }
-    return statusLabels[kind]?.[value] ?? String(value);
+    const labels = buildStatusLabels();
+    return labels[kind]?.[value] ?? String(value);
 }
 
 export function formatTimeMs(value) {
@@ -160,7 +167,7 @@ export function formatTimeMs(value) {
 export function formatInstant(value) {
     if (!value) return "—";
     const d = new Date(value);
-    const base = d.toLocaleString("ru-RU", {
+    const base = d.toLocaleString(getLocale(), {
         year: "numeric",
         month: "short",
         day: "2-digit",
@@ -179,42 +186,43 @@ export function formatRelative(value) {
     const timestamp = new Date(value).getTime();
     const deltaMs = timestamp - Date.now();
     const absMs = Math.abs(deltaMs);
+    const fmt = getRelativeFormatter();
 
     if (absMs < 60_000) {
-        return relativeFormatter.format(Math.round(deltaMs / 1000), "second");
+        return fmt.format(Math.round(deltaMs / 1000), "second");
     }
     if (absMs < 3_600_000) {
-        return relativeFormatter.format(Math.round(deltaMs / 60_000), "minute");
+        return fmt.format(Math.round(deltaMs / 60_000), "minute");
     }
     if (absMs < 86_400_000) {
-        return relativeFormatter.format(Math.round(deltaMs / 3_600_000), "hour");
+        return fmt.format(Math.round(deltaMs / 3_600_000), "hour");
     }
-    return relativeFormatter.format(Math.round(deltaMs / 86_400_000), "day");
+    return fmt.format(Math.round(deltaMs / 86_400_000), "day");
 }
 
 export function formatFundingCountdown(value) {
     if (!value) {
-        return "Funding time не задан";
+        return t("label_funding_not_set");
     }
     const deltaMs = new Date(value).getTime() - Date.now();
     if (deltaMs >= 0) {
-        return `до funding ${formatRelative(value)}`;
+        return `${t("label_until_funding")} ${formatRelative(value)}`;
     }
-    return `funding ${formatRelative(value)}`;
+    return `${t("label_funding")} ${formatRelative(value)}`;
 }
 
 export function formatNumber(value) {
     if (value === null || value === undefined) {
         return "—";
     }
-    return new Intl.NumberFormat("ru-RU").format(value);
+    return new Intl.NumberFormat(getLocale()).format(value);
 }
 
 export function formatDecimal(value, digits = 4) {
     if (value === null || value === undefined || value === "") {
         return "—";
     }
-    return new Intl.NumberFormat("ru-RU", {
+    return new Intl.NumberFormat(getLocale(), {
         minimumFractionDigits: 0,
         maximumFractionDigits: digits
     }).format(Number(value));
@@ -225,11 +233,11 @@ export function formatDurationMs(value) {
         return "—";
     }
     const absValue = Math.abs(value);
-    const sign = value < 0 ? "after" : "before";
+    const sign = value < 0 ? t("unit_after") : t("unit_before");
     if (absValue < 1000) {
-        return `${formatNumber(absValue)} мс ${sign}`;
+        return `${formatNumber(absValue)} ${t("unit_ms")} ${sign}`;
     }
-    return `${formatDecimal(absValue / 1000, 2)} с ${sign}`;
+    return `${formatDecimal(absValue / 1000, 2)} ${t("unit_s")} ${sign}`;
 }
 
 export function formatSignedMs(value) {
@@ -237,7 +245,7 @@ export function formatSignedMs(value) {
         return "—";
     }
     const sign = value > 0 ? "+" : "";
-    return `${sign}${formatNumber(value)} мс`;
+    return `${sign}${formatNumber(value)} ${t("unit_ms")}`;
 }
 
 function resolveTone(kind, text) {
@@ -276,7 +284,7 @@ export function emptyState(title, detail = "") {
 
 export function journalMarkup(entries) {
     if (!entries?.length) {
-        return emptyState("Journal пока пуст.", "Записи появятся после первого действия системы или оператора.");
+        return emptyState(t("empty_journal"), t("empty_journal_detail"));
     }
     return `
         <div class="journal-list">
@@ -287,7 +295,7 @@ export function journalMarkup(entries) {
                         <span class="muted">${formatInstant(entry.createdAt)}</span>
                     </header>
                     <p class="muted">${escapeHtml(entry.oldState ?? "—")} → ${escapeHtml(entry.newState ?? "—")}</p>
-                    <p>${escapeHtml(entry.note ?? "Без комментария")}</p>
+                    <p>${escapeHtml(entry.note ?? t("label_no_comment"))}</p>
                     <p class="muted">${escapeHtml(translate("actor", entry.actorType))}${entry.actorRef ? ` · ${escapeHtml(entry.actorRef)}` : ""}</p>
                 </article>
             `).join("")}
@@ -313,13 +321,13 @@ export function formatConnectionBadge(status) {
 
 export function pipelineStageMarkup(current) {
     const stages = ["signal", "event", "trade", "executed"];
-    const labels = { signal: "Signal", event: "Event", trade: "Trade", executed: "Executed" };
     const currentIndex = stages.indexOf(current);
     return `
         <div class="pipeline-strip">
             ${stages.map((stage, i) => {
                 const cls = stage === current ? "is-current" : i < currentIndex ? "is-done" : "";
-                return `<span class="pipeline-step ${cls}">${escapeHtml(labels[stage])}</span>${i < stages.length - 1 ? `<span class="pipeline-arrow">→</span>` : ""}`;
+                const label = t(`pipeline_${stage}`);
+                return `<span class="pipeline-step ${cls}">${escapeHtml(label)}</span>${i < stages.length - 1 ? `<span class="pipeline-arrow">→</span>` : ""}`;
             }).join("")}
         </div>
     `;

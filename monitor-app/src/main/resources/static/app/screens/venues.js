@@ -1,9 +1,10 @@
 import { emptyState, venueCard, wireOpenButtons } from "../shared.js";
+import { t } from "../../i18n.js";
 
 export function venuesListMarkup(venues = []) {
     return venues.length
         ? venues.map(venueCard).join("")
-        : emptyState("Venue Access пуст.", "Проверь enabled venues и registry sync.");
+        : emptyState(t("empty_venues"), t("empty_venues_detail"));
 }
 
 export function renderVenues({ nodes, venues, onOpenVenue }) {

@@ -32,6 +32,7 @@
                 <button class="button secondary" type="submit">Apply mode</button>
             </form>
             <button id="refresh-all-button" class="button secondary" type="button">Refresh</button>
+            <button id="lang-toggle" class="button secondary" type="button" aria-label="Switch language">EN</button>
         </div>
     </header>
 
@@ -55,7 +56,7 @@
                 <div class="section-header">
                     <div>
                         <p class="eyebrow">Overview</p>
-                        <h2>Операционный срез</h2>
+                        <h2>Operations snapshot</h2>
                     </div>
                 </div>
                 <div id="dashboard-summary" class="summary-grid"></div>
@@ -73,17 +74,17 @@
                 <div class="section-header">
                     <div>
                         <p class="eyebrow">Signal Queue</p>
-                        <h2>Сигналы</h2>
+                        <h2>Signals</h2>
                     </div>
                     <form id="candidate-filters" class="filters">
                         <input name="symbol" type="text" placeholder="Symbol">
                         <input name="venue" type="text" placeholder="Venue">
                         <input name="detectedFrom" type="datetime-local" placeholder="Detected from">
                         <select name="status">
-                            <option value="">Все статусы</option>
-                            <option value="NEW">New</option>
+                            <option value="">All statuses</option>
+                            <option value="NEW">New signal</option>
                             <option value="NORMALIZED">Ready for review</option>
-                            <option value="FAILED">Failed</option>
+                            <option value="FAILED">Normalization error</option>
                             <option value="REJECTED">Rejected</option>
                             <option value="EVENT_CREATED">Event created</option>
                             <option value="DELETED">Deleted</option>
@@ -98,7 +99,7 @@
                 <div class="section-header">
                     <div>
                         <p class="eyebrow">Funding Events</p>
-                        <h2>События</h2>
+                        <h2>Events</h2>
                     </div>
                     <form id="event-filters" class="filters">
                         <input name="symbol" type="text" placeholder="Symbol">
@@ -120,7 +121,7 @@
                 <div class="section-header">
                     <div>
                         <p class="eyebrow">Prepared Trades</p>
-                        <h2>Подготовка</h2>
+                        <h2>Trades</h2>
                     </div>
                 </div>
                 <div id="trades-list" class="list-stack"></div>
@@ -130,7 +131,7 @@
                 <div class="section-header">
                     <div>
                         <p class="eyebrow">Trade History</p>
-                        <h2>История сделок</h2>
+                        <h2>Trade History</h2>
                     </div>
                     <span id="history-count" class="chip">0 trades</span>
                 </div>
@@ -148,7 +149,7 @@
                             <label class="field">
                                 <span>State</span>
                                 <select name="state">
-                                    <option value="">Все states</option>
+                                    <option value="">All states</option>
                                     <option value="PREPARED">Prepared</option>
                                     <option value="ENTRY_PENDING">Entry pending</option>
                                     <option value="ENTRY_ATTEMPTED">Entry attempted</option>
@@ -164,7 +165,7 @@
                             <label class="field">
                                 <span>Health</span>
                                 <select name="health">
-                                    <option value="">Все health</option>
+                                    <option value="">All health</option>
                                     <option value="clean">clean</option>
                                     <option value="burst plan">burst plan</option>
                                     <option value="latency watch">latency watch</option>
@@ -201,7 +202,7 @@
                 <div class="section-header">
                     <div>
                         <p class="eyebrow">Venue Access</p>
-                        <h2>Площадки</h2>
+                        <h2>Venues</h2>
                     </div>
                 </div>
                 <div id="venues-list" class="list-stack"></div>
@@ -212,12 +213,12 @@
             <div class="drawer-header">
                 <div>
                     <p class="eyebrow" id="drawer-type">Inspector</p>
-                    <h2 id="drawer-title">Выбери объект</h2>
+                    <h2 id="drawer-title">Select an object</h2>
                 </div>
                 <button id="drawer-close" class="icon-button" type="button">×</button>
             </div>
             <div id="drawer-content" class="drawer-body">
-                <p class="muted">Выбери объект из списка.</p>
+                <p class="muted">Select an object from the list.</p>
             </div>
         </aside>
     </main>
@@ -231,7 +232,7 @@
                 <p class="eyebrow" id="modal-type">Inspector</p>
                 <h2 id="modal-title">—</h2>
             </div>
-            <button id="modal-close" class="icon-button" type="button" aria-label="Закрыть">×</button>
+            <button id="modal-close" class="icon-button" type="button" aria-label="Close">×</button>
         </div>
         <div id="modal-content" class="inspector-body"></div>
     </div>

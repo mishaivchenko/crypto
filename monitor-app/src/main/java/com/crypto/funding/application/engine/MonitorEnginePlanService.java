@@ -6,6 +6,8 @@ import com.crypto.funding.application.engine.planning.EnginePlanLookaheadFilter;
 import com.crypto.funding.application.engine.planning.EnginePlanStatusCalculator;
 import com.crypto.funding.application.engine.planning.EnginePlanSummaryFormatter;
 import com.crypto.funding.application.query.TradeQueryService;
+import com.crypto.funding.application.venue.VenueLatencyProbeService;
+import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.config.MonitorEnginePlanProperties;
 import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
@@ -61,6 +63,8 @@ public class MonitorEnginePlanService
     private final EnginePlanStatusCalculator statusCalculator;
     private final EnginePlanLookaheadFilter lookaheadFilter;
     private final EnginePlanSummaryFormatter summaryFormatter;
+    private final VenueLatencyProbeService latencyProbeService;
+    private final VenueProfileService venueProfileService;
     private final Clock clock;
 
     @Autowired
@@ -75,7 +79,9 @@ public class MonitorEnginePlanService
         EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
         EnginePlanStatusCalculator statusCalculator,
         EnginePlanLookaheadFilter lookaheadFilter,
-        EnginePlanSummaryFormatter summaryFormatter
+        EnginePlanSummaryFormatter summaryFormatter,
+        VenueLatencyProbeService latencyProbeService,
+        VenueProfileService venueProfileService
     )
     {
         this(
@@ -90,6 +96,8 @@ public class MonitorEnginePlanService
             statusCalculator,
             lookaheadFilter,
             summaryFormatter,
+            latencyProbeService,
+            venueProfileService,
             Clock.systemUTC()
         );
     }
@@ -106,6 +114,8 @@ public class MonitorEnginePlanService
         EnginePlanStatusCalculator statusCalculator,
         EnginePlanLookaheadFilter lookaheadFilter,
         EnginePlanSummaryFormatter summaryFormatter,
+        VenueLatencyProbeService latencyProbeService,
+        VenueProfileService venueProfileService,
         Clock clock
     )
     {
@@ -120,6 +130,8 @@ public class MonitorEnginePlanService
         this.statusCalculator = statusCalculator;
         this.lookaheadFilter = lookaheadFilter;
         this.summaryFormatter = summaryFormatter;
+        this.latencyProbeService = latencyProbeService;
+        this.venueProfileService = venueProfileService;
         this.clock = clock;
     }
 
@@ -206,6 +218,9 @@ public class MonitorEnginePlanService
             .findFirstByVenueAndSymbolOrderBySampledAtDesc( fundingEvent.getVenue(), fundingEvent.getSymbol() )
             .orElse( null );
 
+        VenueProfileService.VenueAccessProfile venueProfile = venueProfileService.getProfile( fundingEvent.getVenue() );
+        String probeUrl = latencyProbeService.probeUrlFor( fundingEvent.getVenue(), venueProfile.mode() );
+
         return new EngineExecutionPlan(
             trade.id(),
             trade.fundingEventId(),
@@ -237,7 +252,10 @@ public class MonitorEnginePlanService
             positionQuantity( position ),
             position == null ? null : position.getEntryPrice(),
             trade.stopLossUsd(),
-            trade.takeProfitUsd()
+            trade.takeProfitUsd(),
+            probeUrl,
+            3,
+            500L
         );
     }
 

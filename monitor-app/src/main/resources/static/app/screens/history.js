@@ -1,11 +1,12 @@
 import { filterHistoryTrades, historyTradeRow } from "../../history.js";
 import { emptyState, formatNumber } from "../shared.js";
+import { t } from "../../i18n.js";
 
 export function historyListMarkup({ trades = [], attemptsByTrade = {}, outcomesByTrade = {}, filters = {} }) {
     const filtered = filterHistoryTrades(trades, filters, attemptsByTrade);
     const listMarkup = filtered.length
         ? filtered.map((trade) => historyTradeRow(trade, attemptsByTrade[trade.id] ?? [], outcomesByTrade[trade.id] ?? null)).join("")
-        : emptyState("История сделок пуста.", "Когда появятся armed trades, здесь будет разбор Signal -> Decision -> Plan -> Attempts -> Outcome.");
+        : emptyState(t("empty_history"), t("empty_history_detail"));
 
     return {
         countLabel: `${formatNumber(filtered.length)} / ${formatNumber(trades.length)} trades`,

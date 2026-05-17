@@ -1,15 +1,16 @@
 import { api } from "../../api.js";
 import { emptyState, tradeCard, wireOpenButtons } from "../shared.js";
+import { t } from "../../i18n.js";
 
 const OUTCOME_STATES = new Set(["CLOSED", "FAILED"]);
 
 async function loadOutcomes(trades) {
-    const closedTrades = trades.filter((t) => OUTCOME_STATES.has(t.state));
+    const closedTrades = trades.filter((tr) => OUTCOME_STATES.has(tr.state));
     if (!closedTrades.length) {
         return {};
     }
     const results = await Promise.allSettled(
-        closedTrades.map((t) => api.getTradeOutcome(t.id).then((o) => ({ id: t.id, outcome: o })))
+        closedTrades.map((tr) => api.getTradeOutcome(tr.id).then((o) => ({ id: tr.id, outcome: o })))
     );
     return Object.fromEntries(
         results
@@ -20,8 +21,8 @@ async function loadOutcomes(trades) {
 
 export function tradesListMarkup(trades = [], outcomes = {}) {
     return trades.length
-        ? trades.map((t) => tradeCard(t, outcomes[t.id] ?? null)).join("")
-        : emptyState("Prepared Trades пока нет.", "Arm Funding Event, чтобы создать первую подготовленную сделку.");
+        ? trades.map((tr) => tradeCard(tr, outcomes[tr.id] ?? null)).join("")
+        : emptyState(t("empty_trades"), t("empty_trades_detail"));
 }
 
 export async function renderTrades({ nodes, trades, onOpenTrade }) {

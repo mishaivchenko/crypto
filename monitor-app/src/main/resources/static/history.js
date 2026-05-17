@@ -14,6 +14,7 @@ import {
     section
 } from "./ui.js";
 import { modeLabel } from "./app/shared.js";
+import { t } from "./i18n.js";
 
 const FAILURE_ATTEMPT_STATUSES = new Set(["CANCELLED", "REJECTED", "FAILED", "EXPIRED"]);
 const ACTIVE_ATTEMPT_STATUSES = new Set(["CREATED", "SUBMITTED", "ACKNOWLEDGED"]);
@@ -43,7 +44,7 @@ export function buildAttemptPlan(trade) {
 
 export function deriveHistoryStage(trade, event = null, attempts = []) {
     if (!trade) {
-        return { code: "FAILED", tone: "bad", label: "Failed", reason: "Нет данных по сделке" };
+        return { code: "FAILED", tone: "bad", label: t("status_historyStage_FAILED"), reason: t("history_derive_no_data") };
     }
 
     const summary = summarizeAttempts(attempts);
@@ -51,38 +52,38 @@ export function deriveHistoryStage(trade, event = null, attempts = []) {
     const windowPassed = fundingMs !== null && fundingMs < Date.now();
 
     if (trade.state === "FAILED") {
-        return { code: "FAILED", tone: "bad", label: "Failed", reason: "Trade state failed" };
+        return { code: "FAILED", tone: "bad", label: t("status_historyStage_FAILED"), reason: "Trade state failed" };
     }
     if (trade.state === "CANCELLED") {
-        return { code: "CANCELLED", tone: "bad", label: "Cancelled", reason: "Trade cancelled" };
+        return { code: "CANCELLED", tone: "bad", label: t("status_historyStage_CANCELLED"), reason: "Trade cancelled" };
     }
     if (trade.state === "CLOSED") {
-        return { code: "CLOSED", tone: "muted", label: "Closed", reason: "Trade lifecycle завершён" };
+        return { code: "CLOSED", tone: "muted", label: t("status_historyStage_CLOSED"), reason: t("history_derive_lifecycle_complete") };
     }
     if (trade.state === "OPEN") {
-        return { code: "OPEN", tone: "good", label: "Open", reason: "Position уже открыта" };
+        return { code: "OPEN", tone: "good", label: t("status_historyStage_OPEN"), reason: t("history_derive_position_open") };
     }
     if (trade.state === "EXIT_PENDING") {
-        return { code: "EXIT_PENDING", tone: "warning", label: "Exit pending", reason: "Ждём exit-side действие" };
+        return { code: "EXIT_PENDING", tone: "warning", label: t("status_historyStage_EXIT_PENDING"), reason: t("history_derive_exit_pending") };
     }
     if (trade.state === "ENTRY_PENDING") {
-        return { code: "ENTRY_PENDING", tone: "warning", label: "Entry pending", reason: "Trade ждёт окно входа" };
+        return { code: "ENTRY_PENDING", tone: "warning", label: t("status_historyStage_ENTRY_PENDING"), reason: t("history_derive_entry_pending") };
     }
     if (trade.state === "ENTRY_ATTEMPTED") {
-        return { code: "ENTRY_ATTEMPTED", tone: "warning", label: "Entry attempted", reason: "Trade уже делала попытку входа" };
+        return { code: "ENTRY_ATTEMPTED", tone: "warning", label: t("status_historyStage_ENTRY_ATTEMPTED"), reason: t("history_derive_entry_attempted") };
     }
     if (summary.total > 0 && summary.failed === summary.total) {
-        return { code: "ATTEMPTS_FAILED", tone: "bad", label: "Attempts failed", reason: "Все записанные entry attempts завершились ошибкой" };
+        return { code: "ATTEMPTS_FAILED", tone: "bad", label: t("status_historyStage_ATTEMPTS_FAILED"), reason: t("history_derive_attempts_failed") };
     }
     if (trade.state === "ARMED" && windowPassed && summary.total === 0) {
-        return { code: "MISSED_WINDOW", tone: "warning", label: "Missed window", reason: "Funding window уже прошёл, а execution attempts не были записаны" };
+        return { code: "MISSED_WINDOW", tone: "warning", label: t("status_historyStage_MISSED_WINDOW"), reason: t("history_derive_missed") };
     }
-    return { code: "PREPARED", tone: "info", label: "Prepared", reason: "Trade ещё находится в armed/pre-entry состоянии" };
+    return { code: "PREPARED", tone: "info", label: t("status_historyStage_PREPARED"), reason: t("history_derive_prepared") };
 }
 
 export function deriveTradeHealth(trade, attempts = [], event = null) {
     if (!trade) {
-        return { label: "unknown", tone: "muted", reason: "Нет данных" };
+        return { label: "unknown", tone: "muted", reason: t("history_derive_unknown") };
     }
 
     const historyStage = deriveHistoryStage(trade, event, attempts);
@@ -96,15 +97,15 @@ export function deriveTradeHealth(trade, attempts = [], event = null) {
         return { label: "missed window", tone: "warning", reason: historyStage.reason };
     }
     if (Number(trade.manualLatencyAdjustmentMs ?? 0) !== 0) {
-        return { label: "manual override", tone: "warning", reason: "Есть ручная latency поправка" };
+        return { label: "manual override", tone: "warning", reason: t("history_health_manual_override") };
     }
     if (Number(trade.effectiveEntryLatencyMs ?? 0) > 250) {
-        return { label: "latency watch", tone: "warning", reason: "Высокий effective trigger lead" };
+        return { label: "latency watch", tone: "warning", reason: t("history_health_high_latency") };
     }
     if (Number(trade.entryAttemptCount ?? 1) > 1) {
-        return { label: "burst plan", tone: "info", reason: "Несколько entry attempts" };
+        return { label: "burst plan", tone: "info", reason: t("history_health_multiple_attempts") };
     }
-    return { label: "clean", tone: "good", reason: "Без явных risk flags" };
+    return { label: "clean", tone: "good", reason: t("history_health_no_manual_flags") };
 }
 
 export function filterHistoryTrades(trades, filters = {}, attemptsByTrade = {}) {
@@ -155,8 +156,8 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
     const spacingMs = Number(trade.entrySpacingMs ?? 0);
     const manualAdjustment = Number(trade.manualLatencyAdjustmentMs ?? 0);
     const attemptSummary = summary.total
-        ? `${formatNumber(summary.failed)} fail / ${formatNumber(summary.total)} recorded`
-        : "attempts not recorded";
+        ? `${formatNumber(summary.failed)} ${t("history_fail_count")} / ${formatNumber(summary.total)} ${t("history_recorded_count")}`
+        : t("history_attempts_not_recorded");
     const pnlBadge = outcome?.netPnlUsd != null
         ? `<span class="badge ${Number(outcome.netPnlUsd) >= 0 ? "good" : "bad"}">${Number(outcome.netPnlUsd) >= 0 ? "+" : ""}${formatDecimal(outcome.netPnlUsd, 2)} USD</span>`
         : "";
@@ -164,9 +165,9 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
     return `
         <article class="history-row" data-open-history-trade="${escapeHtml(trade.id)}">
             <div class="history-row-main">
-                <strong class="history-symbol">${escapeHtml(trade.symbol ?? `Trade #${trade.id}`)}${isTestnet ? ` ${formatBadge("venue", "Testnet", "info")}` : ""}</strong>
+                <strong class="history-symbol">${escapeHtml(trade.symbol ?? `${t("card_trade_prefix")}${trade.id}`)}${isTestnet ? ` ${formatBadge("venue", t("label_testnet"), "info")}` : ""}</strong>
                 <span class="history-venue">${escapeHtml(trade.venue ?? "venue —")}</span>
-                <span class="history-time">funding ${formatInstant(trade.fundingTime)}</span>
+                <span class="history-time">${t("label_funding")} ${formatInstant(trade.fundingTime)}</span>
                 <span class="history-side">${escapeHtml(trade.intendedSide ?? "SHORT")}</span>
                 ${pnlBadge}
             </div>
@@ -185,7 +186,7 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
 export function attemptLadderMarkup(trade, attempts = []) {
     const plannedAttempts = buildAttemptPlan(trade);
     if (!plannedAttempts.length) {
-        return emptyState("Attempt plan отсутствует.", "У prepared trade не задан planned entry.");
+        return emptyState(t("empty_attempt_plan"), t("empty_attempt_plan_detail"));
     }
 
     const recordedByNumber = new Map(normalizedAttempts(attempts).map((attempt) => [Number(attempt.attemptNumber), attempt]));
@@ -195,10 +196,10 @@ export function attemptLadderMarkup(trade, attempts = []) {
             ${plannedAttempts.map((attempt) => {
                 const recorded = recordedByNumber.get(attempt.attemptNumber);
                 const status = recorded?.status ?? "PLANNED";
-                const reqDuration = recorded?.requestDurationMs != null ? ` · exchange req ${formatDurationMs(recorded.requestDurationMs)}` : "";
+                const reqDuration = recorded?.requestDurationMs != null ? ` · ${t("history_exchange_req")} ${formatDurationMs(recorded.requestDurationMs)}` : "";
                 const helper = recorded
-                    ? `${recorded.failureReason ?? "Execution attempt записан"} · recorded ${formatInstant(recorded.createdAt)}${reqDuration}`
-                    : `Trigger ${formatInstant(attempt.triggerAt)} · offset ${formatPlainMs(attempt.offsetMs)} · lead ${formatDurationMs(attempt.effectiveLatencyMs)}`;
+                    ? `${recorded.failureReason ?? t("trade_no_error")} · ${t("trade_recorded")} ${formatInstant(recorded.createdAt)}${reqDuration}`
+                    : `${t("history_trigger_step")} ${formatInstant(attempt.triggerAt)} · offset ${formatPlainMs(attempt.offsetMs)} · lead ${formatDurationMs(attempt.effectiveLatencyMs)}`;
                 return `
                     <article class="attempt-step">
                         <span class="attempt-number">#${attempt.attemptNumber}</span>
@@ -217,7 +218,7 @@ export function attemptLadderMarkup(trade, attempts = []) {
 export function latencyStripMarkup(trade, attempts = []) {
     const firstAttempt = buildAttemptPlan(trade)[0];
     if (!firstAttempt) {
-        return emptyState("Latency strip недоступен.", "Нужен planned entry.");
+        return emptyState(t("empty_latency_strip"), t("empty_latency_strip_detail"));
     }
 
     const summary = summarizeAttempts(attempts);
@@ -230,28 +231,28 @@ export function latencyStripMarkup(trade, attempts = []) {
     return `
         <div class="latency-strip">
             <div class="latency-node is-known">
-                <span>planned trigger</span>
+                <span>${t("history_planned_trigger")}</span>
                 <strong>${formatInstant(firstAttempt.triggerAt)}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${firstSubmittedAt ? "is-known" : ""}">
-                <span>submitted</span>
-                <strong>${firstSubmittedAt ? formatInstant(firstSubmittedAt) : "pending"}</strong>
+                <span>${t("history_submitted_step")}</span>
+                <strong>${firstSubmittedAt ? formatInstant(firstSubmittedAt) : t("history_pending")}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${requestDurationMs != null ? "is-known" : ""}">
-                <span>exchange req</span>
+                <span>${t("history_exchange_req")}</span>
                 <strong>${requestDurationMs != null ? formatDurationMs(requestDurationMs) : "—"}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${hasFailuresOnly ? "is-known" : ""}">
-                <span>ack / fail</span>
-                <strong>${hasFailuresOnly ? "failed" : "pending"}</strong>
+                <span>${t("history_ack_fail")}</span>
+                <strong>${hasFailuresOnly ? t("history_failed_state") : t("history_pending")}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${firstFilledAt ? "is-known" : ""}">
-                <span>filled</span>
-                <strong>${firstFilledAt ? formatInstant(firstFilledAt) : "not filled"}</strong>
+                <span>${t("history_filled_step")}</span>
+                <strong>${firstFilledAt ? formatInstant(firstFilledAt) : t("history_not_filled")}</strong>
             </div>
         </div>
     `;
@@ -271,18 +272,18 @@ export function exitTimingStripMarkup(trade, attempts = []) {
     return `
         <div class="latency-strip">
             <div class="latency-node is-known">
-                <span>planned exit</span>
+                <span>${t("history_planned_exit_label")}</span>
                 <strong>${formatInstant(trade.plannedExitAt)}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${exitSubmittedAt ? "is-known" : ""}">
-                <span>submitted</span>
-                <strong>${exitSubmittedAt ? formatInstant(exitSubmittedAt) : "pending"}</strong>
+                <span>${t("history_submitted_step")}</span>
+                <strong>${exitSubmittedAt ? formatInstant(exitSubmittedAt) : t("history_pending")}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${exitFilledAt ? "is-known" : ""}">
-                <span>filled</span>
-                <strong>${exitFilledAt ? formatInstant(exitFilledAt) : "not filled"}</strong>
+                <span>${t("history_filled_step")}</span>
+                <strong>${exitFilledAt ? formatInstant(exitFilledAt) : t("history_not_filled")}</strong>
             </div>
         </div>
     `;
@@ -297,10 +298,10 @@ export function lifecycleTimelineMarkup(trade, event, candidate, attempts = [], 
     const phases = [];
 
     if (candidate?.detectedAt) {
-        phases.push({ type: "milestone", label: "Signal detected", ts: candidate.detectedAt, variant: "known" });
+        phases.push({ type: "milestone", label: t("history_signal_detected"), ts: candidate.detectedAt, variant: "known" });
     }
     if (trade.armedAt) {
-        phases.push({ type: "milestone", label: "Armed", ts: trade.armedAt, variant: "known" });
+        phases.push({ type: "milestone", label: t("history_armed"), ts: trade.armedAt, variant: "known" });
     }
     if (trade.plannedEntryAt || entryAttempts.length > 0) {
         const mappedAttempts = entryAttempts.map((a) => {
@@ -308,22 +309,22 @@ export function lifecycleTimelineMarkup(trade, event, candidate, attempts = [], 
             const filledAt = (a.status === "FILLED" || a.status === "ACKNOWLEDGED") ? (a.exchangeTimestamp ?? null) : null;
             return { number: a.attemptNumber, triggerAt: planned?.triggerAt ?? null, submittedAt: a.submittedAt ?? null, filledAt, status: a.status };
         });
-        phases.push({ type: "window", label: "Entry window", plannedAt: trade.plannedEntryAt, attempts: mappedAttempts });
+        phases.push({ type: "window", label: t("history_entry_window"), plannedAt: trade.plannedEntryAt, attempts: mappedAttempts });
     }
     if (position?.openedAt) {
-        phases.push({ type: "milestone", label: "Position OPEN", ts: position.openedAt, variant: "highlight" });
+        phases.push({ type: "milestone", label: t("history_position_open"), ts: position.openedAt, variant: "highlight" });
     }
     if (trade.plannedExitAt || exitAttempt) {
         const exitFilledAt = (exitAttempt?.status === "FILLED" || exitAttempt?.status === "ACKNOWLEDGED") ? (exitAttempt?.exchangeTimestamp ?? null) : null;
         const exitAttempts = exitAttempt ? [{ number: null, triggerAt: null, submittedAt: exitAttempt.submittedAt ?? null, filledAt: exitFilledAt, status: exitAttempt.status }] : [];
-        phases.push({ type: "window", label: "Exit window", plannedAt: trade.plannedExitAt, attempts: exitAttempts });
+        phases.push({ type: "window", label: t("history_exit_window"), plannedAt: trade.plannedExitAt, attempts: exitAttempts });
     }
     if (position?.closedAt) {
-        phases.push({ type: "milestone", label: "Closed", ts: position.closedAt, variant: "highlight" });
+        phases.push({ type: "milestone", label: t("history_closed"), ts: position.closedAt, variant: "highlight" });
     }
 
     if (!phases.length) {
-        return emptyState("Timeline пуст.", "Данных для построения timeline нет.");
+        return emptyState(t("empty_timeline"), t("empty_timeline_detail"));
     }
 
     let prevKnownMs = null;
@@ -353,11 +354,11 @@ export function lifecycleTimelineMarkup(trade, event, candidate, attempts = [], 
                 <div class="phase-dot is-window"></div>
                 <div class="phase-header">
                     <span class="phase-label">${escapeHtml(phase.label)}</span>
-                    ${phase.plannedAt ? `<span class="phase-planned">planned ${formatTimeMs(phase.plannedAt)}</span>` : ""}
+                    ${phase.plannedAt ? `<span class="phase-planned">${t("history_planned")} ${formatTimeMs(phase.plannedAt)}</span>` : ""}
                 </div>
                 ${isLast ? "" : `<div class="phase-line"></div>`}
                 <div class="phase-detail">
-                    ${phase.attempts.length ? phase.attempts.map((a) => attemptRowHtml(a)).join("") : `<span class="attempt-empty">No attempts yet</span>`}
+                    ${phase.attempts.length ? phase.attempts.map((a) => attemptRowHtml(a)).join("") : `<span class="attempt-empty">${t("empty_no_attempts_yet")}</span>`}
                 </div>
             </div>`;
     });
@@ -370,10 +371,10 @@ function attemptRowHtml({ number, triggerAt, submittedAt, filledAt, status }) {
     const latencyHtml = latencyMs !== null ? `<span class="attempt-delta">${formatDeltaMs(latencyMs)}</span>` : "";
     return `
         <div class="phase-attempt">
-            <span class="attempt-badge">${number != null ? "#" + escapeHtml(String(number)) : "exit"}</span>
-            ${triggerAt ? `<span class="phase-step">trigger</span><span class="attempt-time">${formatTimeMs(triggerAt)}</span><span class="attempt-arrow">→</span>` : ""}
-            ${submittedAt ? `<span class="phase-step">submitted</span><span class="attempt-time">${formatTimeMs(submittedAt)}</span>${filledAt ? `<span class="attempt-arrow">→</span>` : ""}` : ""}
-            ${filledAt ? `<span class="phase-step is-filled">filled</span><span class="attempt-time">${formatTimeMs(filledAt)}</span>` : ""}
+            <span class="attempt-badge">${number != null ? "#" + escapeHtml(String(number)) : t("history_exit_label")}</span>
+            ${triggerAt ? `<span class="phase-step">${t("history_trigger_step")}</span><span class="attempt-time">${formatTimeMs(triggerAt)}</span><span class="attempt-arrow">→</span>` : ""}
+            ${submittedAt ? `<span class="phase-step">${t("history_submitted_step")}</span><span class="attempt-time">${formatTimeMs(submittedAt)}</span>${filledAt ? `<span class="attempt-arrow">→</span>` : ""}` : ""}
+            ${filledAt ? `<span class="phase-step is-filled">${t("history_filled_step")}</span><span class="attempt-time">${formatTimeMs(filledAt)}</span>` : ""}
             ${latencyHtml}
             ${formatBadge("orderAttempt", status)}
         </div>`;
@@ -394,94 +395,94 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
     const summary = summarizeAttempts(attempts);
 
     return `
-        ${section("0. Timeline", lifecycleTimelineMarkup(trade, event, candidate, attempts, position))}
-        ${section("Health", `
+        ${section(t("history_0_timeline"), lifecycleTimelineMarkup(trade, event, candidate, attempts, position))}
+        ${section(t("history_health"), `
             <div class="history-health-card ${escapeHtml(health.tone)}">
                 <strong>${escapeHtml(health.label)}</strong>
                 <span>${escapeHtml(health.reason)}</span>
             </div>
         `)}
-        ${section("1. Source", `
+        ${section(t("history_1_source"), `
             <div class="meta-grid">
-                ${metaRow("Source type", escapeHtml(candidate?.sourceType ?? event?.sourceType ?? "—"))}
-                ${metaRow("Raw symbol", escapeHtml(candidate?.rawSymbol ?? "—"))}
-                ${metaRow("Normalized", escapeHtml(sourceSymbol))}
-                ${metaRow("Candidate", trade.signalCandidateId ? `#${trade.signalCandidateId}` : "manual")}
-                ${metaRow("Detected", formatInstant(candidate?.detectedAt))}
-                ${metaRow("Review note", escapeHtml(candidate?.reviewNotes ?? "—"))}
+                ${metaRow(t("history_source_type"), escapeHtml(candidate?.sourceType ?? event?.sourceType ?? "—"))}
+                ${metaRow(t("history_raw_symbol"), escapeHtml(candidate?.rawSymbol ?? "—"))}
+                ${metaRow(t("history_normalized"), escapeHtml(sourceSymbol))}
+                ${metaRow(t("history_candidate"), trade.signalCandidateId ? `#${trade.signalCandidateId}` : t("label_manual"))}
+                ${metaRow(t("history_detected"), formatInstant(candidate?.detectedAt))}
+                ${metaRow(t("history_review_note"), escapeHtml(candidate?.reviewNotes ?? "—"))}
             </div>
         `)}
-        ${section("2. Event", `
+        ${section(t("history_2_event"), `
             <div class="meta-grid">
-                ${metaRow("Funding Event", `#${trade.fundingEventId}`)}
-                ${metaRow("History stage", formatBadge("historyStage", historyStage.code), historyStage.reason)}
-                ${metaRow("Raw trade state", formatBadge("trade", trade.state))}
-                ${metaRow("Venue", escapeHtml(trade.venue ?? event?.venue ?? "—"))}
-                ${metaRow("Mode", trade.mode ? formatBadge("venue", modeLabel(trade.mode), trade.mode === "testnet" ? "info" : "bad") : "—")}
-                ${metaRow("Symbol", escapeHtml(trade.symbol ?? event?.symbol ?? "—"))}
-                ${metaRow("Funding time", formatInstant(trade.fundingTime ?? event?.fundingTime), formatFundingCountdown(trade.fundingTime ?? event?.fundingTime))}
-                ${metaRow("Funding rate", formatDecimal(event?.fundingRatePct, 6))}
-                ${metaRow("Event status", event?.status ? formatBadge("event", event.status) : "—")}
+                ${metaRow(t("history_funding_event"), `#${trade.fundingEventId}`)}
+                ${metaRow(t("history_history_stage"), formatBadge("historyStage", historyStage.code), historyStage.reason)}
+                ${metaRow(t("history_raw_state"), formatBadge("trade", trade.state))}
+                ${metaRow(t("history_symbol"), escapeHtml(trade.venue ?? event?.venue ?? "—"))}
+                ${metaRow(t("trade_mode"), trade.mode ? formatBadge("venue", modeLabel(trade.mode), trade.mode === "testnet" ? "info" : "bad") : "—")}
+                ${metaRow(t("history_symbol"), escapeHtml(trade.symbol ?? event?.symbol ?? "—"))}
+                ${metaRow(t("event_funding_time"), formatInstant(trade.fundingTime ?? event?.fundingTime), formatFundingCountdown(trade.fundingTime ?? event?.fundingTime))}
+                ${metaRow(t("history_funding_rate"), formatDecimal(event?.fundingRatePct, 6))}
+                ${metaRow(t("history_event_status"), event?.status ? formatBadge("event", event.status) : "—")}
             </div>
         `)}
-        ${section("3. Plan", `
+        ${section(t("history_3_plan"), `
             <div class="meta-grid">
-                ${metaRow("Side", escapeHtml(trade.intendedSide ?? "SHORT"))}
-                ${metaRow("Notional", `${formatDecimal(trade.notionalUsd, 2)} USD`)}
-                ${metaRow("Planned entry", formatInstant(trade.plannedEntryAt))}
-                ${metaRow("Planned exit", formatInstant(trade.plannedExitAt))}
-                ${metaRow("Entry attempts", formatNumber(trade.entryAttemptCount ?? 1), `spacing ${formatPlainMs(trade.entrySpacingMs ?? 0)}`)}
-                ${metaRow("Attempts recorded", formatNumber(summary.total))}
-                ${metaRow("Failed attempts", formatNumber(summary.failed))}
-                ${metaRow("Measured latency", formatDurationMs(trade.measuredEntryLatencyMs))}
-                ${metaRow("Manual adjustment", formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
-                ${metaRow("Effective trigger lead", formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
-                ${metaRow("Arm source", escapeHtml(trade.armSource ?? "—"))}
-                ${metaRow("Note", escapeHtml(trade.notes ?? "—"))}
+                ${metaRow(t("trade_side"), escapeHtml(trade.intendedSide ?? "SHORT"))}
+                ${metaRow(t("trade_notional"), `${formatDecimal(trade.notionalUsd, 2)} USD`)}
+                ${metaRow(t("history_planned_entry"), formatInstant(trade.plannedEntryAt))}
+                ${metaRow(t("history_planned_exit"), formatInstant(trade.plannedExitAt))}
+                ${metaRow(t("history_entry_attempts"), formatNumber(trade.entryAttemptCount ?? 1), `${t("history_spacing")} ${formatPlainMs(trade.entrySpacingMs ?? 0)}`)}
+                ${metaRow(t("history_attempts_recorded"), formatNumber(summary.total))}
+                ${metaRow(t("history_failed_attempts"), formatNumber(summary.failed))}
+                ${metaRow(t("history_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+                ${metaRow(t("history_manual_adj"), formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
+                ${metaRow(t("history_effective_trigger"), formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
+                ${metaRow(t("history_arm_source"), escapeHtml(trade.armSource ?? "—"))}
+                ${metaRow(t("history_note"), escapeHtml(trade.notes ?? "—"))}
             </div>
         `)}
-        ${section("4. Attempts", `
+        ${section(t("history_4_attempts"), `
             ${attemptLadderMarkup(trade, attempts)}
             ${attempts.length ? attempts.map((attempt) => `
                 <div class="meta-row">
                     <span class="meta-label">#${escapeHtml(attempt.attemptNumber ?? "—")} · ${formatBadge("orderAttempt", attempt.status)}</span>
                     <strong class="meta-value">${escapeHtml(attempt.symbol ?? trade.symbol ?? "—")}</strong>
-                    <span class="meta-helper">${escapeHtml(attempt.failureReason ?? "Без ошибки")} · trigger ${formatInstant(attempt.triggerAt)} · recorded ${formatInstant(attempt.createdAt)}</span>
+                    <span class="meta-helper">${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)} · ${t("trade_recorded")} ${formatInstant(attempt.createdAt)}</span>
                 </div>
             `).join("") : `
                 <div class="empty-state compact">
-                    <strong>Execution attempts пока нет.</strong>
-                    <p>Запусти engine run-once, чтобы здесь появились FAILED/SUBMITTED attempts.</p>
+                    <strong>${t("empty_attempts")}</strong>
+                    <p>${t("empty_attempts_detail")}</p>
                 </div>
             `}
         `)}
-        ${section("5. Position", position ? `
+        ${section(t("history_5_position"), position ? `
             <div class="meta-grid">
-                ${metaRow("State", formatBadge("position", position.state))}
-                ${metaRow("Quantity", formatDecimal(position.quantity, 6))}
-                ${metaRow("Entry price", position.entryPrice != null ? formatDecimal(position.entryPrice, 6) : "—")}
-                ${metaRow("Exit price", position.exitPrice != null ? formatDecimal(position.exitPrice, 6) : "—")}
-                ${metaRow("Opened at", formatInstant(position.openedAt))}
-                ${metaRow("Closed at", position.closedAt ? formatInstant(position.closedAt) : "—")}
+                ${metaRow(t("history_state_section"), formatBadge("position", position.state))}
+                ${metaRow(t("history_quantity"), formatDecimal(position.quantity, 6))}
+                ${metaRow(t("history_entry_price"), position.entryPrice != null ? formatDecimal(position.entryPrice, 6) : "—")}
+                ${metaRow(t("history_exit_price"), position.exitPrice != null ? formatDecimal(position.exitPrice, 6) : "—")}
+                ${metaRow(t("history_opened_at"), formatInstant(position.openedAt))}
+                ${metaRow(t("history_closed_at"), position.closedAt ? formatInstant(position.closedAt) : "—")}
             </div>
         ` : `
             <div class="empty-state compact">
-                <strong>Position ещё не записана.</strong>
-                <p>Появится после FILLED entry attempt.</p>
+                <strong>${t("empty_position")}</strong>
+                <p>${t("empty_position_detail")}</p>
             </div>
         `)}
-        ${section("6. Outcome", outcome ? `
+        ${section(t("history_6_outcome"), outcome ? `
             <div class="meta-grid">
-                ${metaRow("Net PnL", formatBadge("outcome", (outcome.netPnlUsd >= 0 ? "+" : "") + formatDecimal(outcome.netPnlUsd, 4) + " USD", outcome.netPnlUsd >= 0 ? "good" : "bad"))}
-                ${metaRow("Gross PnL", formatDecimal(outcome.grossPnlUsd, 4) + " USD")}
-                ${metaRow("Fees", outcome.feesUsd != null ? formatDecimal(outcome.feesUsd, 4) + " USD" : "—")}
-                ${metaRow("Code", escapeHtml(outcome.outcomeCode ?? "—"))}
-                ${metaRow("Evaluated at", formatInstant(outcome.evaluatedAt))}
+                ${metaRow(t("history_net_pnl"), formatBadge("outcome", (outcome.netPnlUsd >= 0 ? "+" : "") + formatDecimal(outcome.netPnlUsd, 4) + " USD", outcome.netPnlUsd >= 0 ? "good" : "bad"))}
+                ${metaRow(t("history_gross_pnl"), formatDecimal(outcome.grossPnlUsd, 4) + " USD")}
+                ${metaRow(t("history_fees"), outcome.feesUsd != null ? formatDecimal(outcome.feesUsd, 4) + " USD" : "—")}
+                ${metaRow(t("history_code"), escapeHtml(outcome.outcomeCode ?? "—"))}
+                ${metaRow(t("history_evaluated_at"), formatInstant(outcome.evaluatedAt))}
             </div>
         ` : `
             <div class="empty-state compact">
-                <strong>Outcome пока не рассчитан.</strong>
-                <p>Появится после закрытия позиции.</p>
+                <strong>${t("empty_outcome")}</strong>
+                <p>${t("empty_outcome_detail")}</p>
             </div>
         `)}
         ${section("Journal", journalMarkup(journal))}
@@ -547,5 +548,5 @@ function formatPlainMs(value) {
     if (value === null || value === undefined) {
         return "—";
     }
-    return `${formatNumber(value)} мс`;
+    return `${formatNumber(value)} ${t("unit_ms")}`;
 }

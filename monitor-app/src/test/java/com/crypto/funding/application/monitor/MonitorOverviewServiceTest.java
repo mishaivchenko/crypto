@@ -92,7 +92,10 @@ class MonitorOverviewServiceTest
                 200,
                 null,
                 Instant.parse( "2030-01-01T00:05:00Z" ),
-                12
+                12,
+                null,
+                null,
+                null
             )
         ) );
         when( venueProfileService.getGlobalAccessProfile() ).thenReturn(

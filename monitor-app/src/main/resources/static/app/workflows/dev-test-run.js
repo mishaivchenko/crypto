@@ -8,11 +8,12 @@ import {
     openModal,
     section
 } from "../shared.js";
+import { t } from "../../i18n.js";
 
 export async function openDevTestRunTool({ nodes, showError }) {
-    nodes.modalType.textContent = "Dev Tool";
-    nodes.modalTitle.textContent = "Bybit/Gate test run";
-    nodes.modalContent.innerHTML = emptyState("Загружаю dev test run options.", "Нужны active instruments из synced metadata.");
+    nodes.modalType.textContent = t("dev_tool_type");
+    nodes.modalTitle.textContent = t("dev_tool_title");
+    nodes.modalContent.innerHTML = emptyState(t("dev_loading"), t("dev_loading_detail"));
     openModal(nodes);
     try {
         const options = await api.getDevTestRunOptions();
@@ -23,14 +24,14 @@ export async function openDevTestRunTool({ nodes, showError }) {
 }
 
 export function renderDevTestRunStart({ nodes, options }) {
-    nodes.modalType.textContent = "Dev Tool";
-    nodes.modalTitle.textContent = "Bybit/Gate test run";
+    nodes.modalType.textContent = t("dev_tool_type");
+    nodes.modalTitle.textContent = t("dev_tool_title");
     nodes.modalContent.innerHTML = buildDevTestRunStart(options);
     wireSymbolPicker(nodes, options);
 }
 
 export function renderDevTestRunCreated({ nodes, options, run, execution = null }) {
-    nodes.modalType.textContent = "Dev Tool";
+    nodes.modalType.textContent = t("dev_tool_type");
     nodes.modalTitle.textContent = `${run.venue} ${run.symbol}`;
     nodes.modalContent.innerHTML = buildDevTestRunCreated({ options, run, execution });
 }
@@ -45,26 +46,26 @@ function buildDevTestRunStart(options) {
     const firstSymbols = venues[0]?.symbols ?? [];
 
     return `
-        ${section("Mode", `
+        ${section(t("dev_mode"), `
             <div class="meta-grid">
-                ${metaRow("Current mode", formatBadge("venue", mode, production ? "bad" : "good"), production ? "REAL PRODUCTION ORDER requires typed confirmation." : "Testnet order path.")}
-                ${metaRow("Max notional", `${formatDecimal(options.engineRuntime?.maxNotionalUsd ?? 25, 2)} USDT`)}
-                ${metaRow("Live orders", options.engineRuntime?.liveOrderEnabled ? "ON" : "OFF")}
-                ${metaRow("Kill switch", options.engineRuntime?.killSwitchEnabled ? "ON" : "OFF")}
+                ${metaRow(t("dev_current_mode"), formatBadge("venue", mode, production ? "bad" : "good"), production ? t("dev_production_confirm_required") : t("dev_testnet_order_path"))}
+                ${metaRow(t("dev_max_notional"), `${formatDecimal(options.engineRuntime?.maxNotionalUsd ?? 25, 2)} USDT`)}
+                ${metaRow(t("dev_live_orders"), options.engineRuntime?.liveOrderEnabled ? "ON" : "OFF")}
+                ${metaRow(t("dev_kill_switch"), options.engineRuntime?.killSwitchEnabled ? "ON" : "OFF")}
             </div>
             ${safetyIssues(options)}
         `)}
-        ${section("Create", disabled ? emptyState("Dev test run недоступен.", "Проверь MONITOR_DEV_TEST_TOOL_ENABLED и synced active instruments.") : `
+        ${section(t("dev_create"), disabled ? emptyState(t("dev_unavailable"), t("dev_unavailable_detail")) : `
             <form class="drawer-form" data-action="create-dev-test-run">
                 <div class="drawer-form-row labeled-row">
                     <label class="field">
-                        <span>Venue</span>
+                        <span>${t("dev_venue")}</span>
                         <select name="venue" data-dev-test-venue-select>
                             ${venues.map((venue) => `<option value="${escapeHtml(venue.venue)}">${escapeHtml(venue.venue)}</option>`).join("")}
                         </select>
                     </label>
                     <label class="field">
-                        <span>Symbol</span>
+                        <span>${t("dev_symbol")}</span>
                         <input name="symbol" list="dev-test-symbols" data-dev-test-symbol-input value="${escapeHtml(firstSymbols[0]?.symbol ?? "")}">
                         <datalist id="dev-test-symbols" data-dev-test-symbol-list>
                             ${symbolOptions(firstSymbols)}
@@ -73,16 +74,16 @@ function buildDevTestRunStart(options) {
                 </div>
                 <div class="drawer-form-row labeled-row">
                     <label class="field">
-                        <span>Notional, USDT</span>
+                        <span>${t("dev_notional")}</span>
                         <input name="notionalUsd" type="number" min="1" max="25" step="0.01" value="25">
                     </label>
                     <label class="field">
-                        <span>Scope</span>
+                        <span>${t("dev_scope")}</span>
                         <input value="${escapeHtml(firstVenue)} single trade" readonly>
                     </label>
                 </div>
                 <div class="actions">
-                    <button class="button" type="submit">Create</button>
+                    <button class="button" type="submit">${t("dev_create_button")}</button>
                 </div>
             </form>
         `)}
@@ -97,30 +98,30 @@ function buildDevTestRunCreated({ options, run, execution }) {
     const requiredConfirm = `${run.venue} ${run.symbol} LIVE`;
 
     return `
-        ${section("Run", `
+        ${section(t("dev_run"), `
             <div class="meta-grid">
-                ${metaRow("Armed Trade", `#${escapeHtml(run.armedTradeId)}`, "DEV_TEST")}
-                ${metaRow("Mode", formatBadge("venue", mode, production ? "bad" : "good"), production ? "REAL PRODUCTION ORDER" : "testnet execution")}
-                ${metaRow("Venue", escapeHtml(run.venue))}
-                ${metaRow("Symbol", escapeHtml(run.symbol))}
-                ${metaRow("Notional", `${formatDecimal(run.notionalUsd, 2)} USDT`)}
-                ${metaRow("State", formatBadge("trade", run.status ?? "ARMED"))}
+                ${metaRow(t("dev_armed_trade"), `#${escapeHtml(run.armedTradeId)}`, t("dev_dev_test"))}
+                ${metaRow(t("dev_mode"), formatBadge("venue", mode, production ? "bad" : "good"), production ? t("dev_real_order") : "testnet execution")}
+                ${metaRow(t("dev_venue_label"), escapeHtml(run.venue))}
+                ${metaRow(t("dev_symbol"), escapeHtml(run.symbol))}
+                ${metaRow(t("dev_notional"), `${formatDecimal(run.notionalUsd, 2)} USDT`)}
+                ${metaRow(t("dev_state"), formatBadge("trade", run.status ?? "ARMED"))}
             </div>
             ${safetyIssues(options)}
         `)}
-        ${production ? section("Production confirm", `
+        ${production ? section(t("dev_production_confirm"), `
             <div class="action-card danger-zone">
-                <span class="chip dev-chip">REAL PRODUCTION ORDER</span>
-                <p class="helper-text">Typed confirm: <strong>${escapeHtml(requiredConfirm)}</strong></p>
+                <span class="chip dev-chip">${t("dev_real_order")}</span>
+                <p class="helper-text">${t("dev_typed_confirm")} <strong>${escapeHtml(requiredConfirm)}</strong></p>
                 <input name="productionConfirm" data-production-confirm type="text" autocomplete="off" placeholder="${escapeHtml(requiredConfirm)}">
             </div>
         `) : ""}
-        ${section("Actions", `
+        ${section(t("dev_actions"), `
             <div class="actions">
-                <button class="button" type="button" data-action="run-dev-test-entry" data-armed-trade-id="${escapeHtml(run.armedTradeId)}" data-venue="${escapeHtml(run.venue)}" data-symbol="${escapeHtml(run.symbol)}" data-mode="${escapeHtml(mode)}" data-notional-usd="${escapeHtml(run.notionalUsd)}" ${liveDisabled ? "disabled" : ""}>Run entry</button>
-                <button class="button secondary" type="button" data-action="run-dev-test-exit" data-armed-trade-id="${escapeHtml(run.armedTradeId)}" data-venue="${escapeHtml(run.venue)}" data-symbol="${escapeHtml(run.symbol)}" data-mode="${escapeHtml(mode)}" data-notional-usd="${escapeHtml(run.notionalUsd)}" ${liveDisabled ? "disabled" : ""}>Run exit</button>
+                <button class="button" type="button" data-action="run-dev-test-entry" data-armed-trade-id="${escapeHtml(run.armedTradeId)}" data-venue="${escapeHtml(run.venue)}" data-symbol="${escapeHtml(run.symbol)}" data-mode="${escapeHtml(mode)}" data-notional-usd="${escapeHtml(run.notionalUsd)}" ${liveDisabled ? "disabled" : ""}>${t("dev_run_entry")}</button>
+                <button class="button secondary" type="button" data-action="run-dev-test-exit" data-armed-trade-id="${escapeHtml(run.armedTradeId)}" data-venue="${escapeHtml(run.venue)}" data-symbol="${escapeHtml(run.symbol)}" data-mode="${escapeHtml(mode)}" data-notional-usd="${escapeHtml(run.notionalUsd)}" ${liveDisabled ? "disabled" : ""}>${t("dev_run_exit")}</button>
             </div>
-            ${execution ? executionResult(execution) : `<p class="helper-text">Entry creates/updates position, exit closes it with reduce-only MARKET.</p>`}
+            ${execution ? executionResult(execution) : `<p class="helper-text">${t("dev_entry_note")}</p>`}
         `)}
     `;
 }
@@ -128,7 +129,7 @@ function buildDevTestRunCreated({ options, run, execution }) {
 function safetyIssues(options) {
     const issues = options.safetyIssues ?? [];
     if (!issues.length) {
-        return `<p class="helper-text">Safety gates aligned for current mode.</p>`;
+        return `<p class="helper-text">${t("dev_safety_aligned")}</p>`;
     }
     return `
         <div class="action-note">
@@ -140,7 +141,7 @@ function safetyIssues(options) {
 function executionResult(execution) {
     return `
         <div class="action-note">
-            <p class="helper-text">${escapeHtml(execution.phase)} submitted ${escapeHtml(execution.execution?.attemptsSubmitted ?? 0)}, skipped ${escapeHtml(execution.execution?.attemptsSkipped ?? 0)}.</p>
+            <p class="helper-text">${escapeHtml(execution.phase)} ${t("dev_submitted")} ${escapeHtml(execution.execution?.attemptsSubmitted ?? 0)}, ${t("dev_skipped")} ${escapeHtml(execution.execution?.attemptsSkipped ?? 0)}.</p>
         </div>
     `;
 }

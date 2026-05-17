@@ -404,6 +404,9 @@ class CredentialAwareExecutionPortTest
             BigDecimal.TEN,
             positionEntryPrice,
             null,
+            null,
+            null,
+            null,
             null
         );
     }
@@ -439,6 +442,9 @@ class CredentialAwareExecutionPortTest
             metadataLastSyncedAt,
             latencySampledAt,
             BigDecimal.TEN,
+            null,
+            null,
+            null,
             null,
             null,
             null

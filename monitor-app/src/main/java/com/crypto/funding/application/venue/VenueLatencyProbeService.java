@@ -19,18 +19,27 @@ public class VenueLatencyProbeService
     static final String OPERATION = "latency-probe";
 
     private static final Map<String, String> PROBE_PATHS = Map.of(
-        "gate", "/futures/usdt/tickers?contract=BTC_USDT",
-        "bybit", "/v5/market/time"
+        "gate",   "/futures/usdt/tickers?contract=BTC_USDT",
+        "bybit",  "/v5/market/time",
+        "okx",    "/api/v5/public/time",
+        "kucoin", "/api/v1/timestamp",
+        "bitget", "/api/v2/public/time"
     );
 
     private static final Map<String, String> TESTNET_BASE_URLS = Map.of(
-        "gate", "https://api-testnet.gateapi.io/api/v4",
-        "bybit", "https://api-testnet.bybit.com"
+        "gate",   "https://api-testnet.gateapi.io/api/v4",
+        "bybit",  "https://api-testnet.bybit.com",
+        "okx",    "https://www.okx.com",
+        "kucoin", "https://api.kucoin.com",
+        "bitget", "https://api.bitget.com"
     );
 
     private static final Map<String, String> PRODUCTION_BASE_URLS = Map.of(
-        "gate", "https://fx-api.gateio.ws/api/v4",
-        "bybit", "https://api.bybit.com"
+        "gate",   "https://fx-api.gateio.ws/api/v4",
+        "bybit",  "https://api.bybit.com",
+        "okx",    "https://www.okx.com",
+        "kucoin", "https://api.kucoin.com",
+        "bitget", "https://api.bitget.com"
     );
 
     private final VenueProfileService venueProfileService;
@@ -92,6 +101,21 @@ public class VenueLatencyProbeService
         ) );
 
         return new ProbeResult( venue, durationMs, sampledAt );
+    }
+
+    public String probeUrlFor( String rawVenue, com.crypto.funding.domain.venue.VenueAccessMode mode )
+    {
+        String venue = rawVenue == null ? "" : rawVenue.trim().toLowerCase( Locale.ROOT );
+        String probePath = PROBE_PATHS.get( venue );
+        if( probePath == null )
+        {
+            return null;
+        }
+        boolean testnet = mode != null && mode.propertyValue().equals( "testnet" );
+        String baseUrl = testnet
+                         ? TESTNET_BASE_URLS.getOrDefault( venue, PRODUCTION_BASE_URLS.getOrDefault( venue, "" ) )
+                         : PRODUCTION_BASE_URLS.getOrDefault( venue, "" );
+        return baseUrl + probePath;
     }
 
     private String resolveBaseUrl( String venue, VenueProfileService.ResolvedCredentials credentials )

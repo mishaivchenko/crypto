@@ -42,7 +42,8 @@ public class VenueProfileService
         VenueConnectionStatus connectionStatus,
         String connectionMessage,
         Integer lastConnectionHttpStatus,
-        Instant lastCheckedAt
+        Instant lastCheckedAt,
+        Long defaultManualLatencyAdjustmentMs
     )
     {
         public boolean credentialsLoaded()
@@ -113,7 +114,8 @@ public class VenueProfileService
             entity == null || entity.getConnectionStatus() == null ? VenueConnectionStatus.NOT_CONNECTED : entity.getConnectionStatus(),
             entity == null ? "Ключи не подключены." : entity.getConnectionMessage(),
             entity == null ? null : entity.getLastConnectionHttpStatus(),
-            entity == null ? null : entity.getLastCheckedAt()
+            entity == null ? null : entity.getLastCheckedAt(),
+            entity == null ? null : entity.getDefaultManualLatencyAdjustmentMs()
         );
     }
 
@@ -161,6 +163,22 @@ public class VenueProfileService
         entity.setLastCheckedAt( null );
         repository.save( entity );
         return getGlobalAccessProfile();
+    }
+
+    @Transactional
+    public VenueAccessProfile updateDefaultLatency( String rawVenue, Long defaultManualLatencyAdjustmentMs )
+    {
+        String venue = normalizeVenue( rawVenue );
+        VenueProfileEntity entity = repository.findById( venue ).orElseGet( () -> {
+            VenueProfileEntity created = new VenueProfileEntity();
+            created.setVenue( venue );
+            created.setConnectionStatus( VenueConnectionStatus.NOT_CONNECTED );
+            created.setSelectedMode( resolveModeForVenue( venue, availableModes( venue ), getGlobalAccessProfile().mode() ) );
+            return created;
+        } );
+        entity.setDefaultManualLatencyAdjustmentMs( defaultManualLatencyAdjustmentMs );
+        repository.save( entity );
+        return getProfile( venue );
     }
 
     @Transactional

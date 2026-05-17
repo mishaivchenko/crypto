@@ -39,6 +39,9 @@ public class VenueProfileEntity
     @Column(name = "last_checked_at")
     private Instant lastCheckedAt;
 
+    @Column(name = "default_manual_latency_adjustment_ms")
+    private Long defaultManualLatencyAdjustmentMs;
+
     public String getVenue()
     {
         return venue;
@@ -97,5 +100,15 @@ public class VenueProfileEntity
     public void setLastCheckedAt( Instant lastCheckedAt )
     {
         this.lastCheckedAt = lastCheckedAt;
+    }
+
+    public Long getDefaultManualLatencyAdjustmentMs()
+    {
+        return defaultManualLatencyAdjustmentMs;
+    }
+
+    public void setDefaultManualLatencyAdjustmentMs( Long defaultManualLatencyAdjustmentMs )
+    {
+        this.defaultManualLatencyAdjustmentMs = defaultManualLatencyAdjustmentMs;
     }
 }

@@ -14,34 +14,35 @@ import {
     toLocalInputValue
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
+import { t } from "../../i18n.js";
 
 function recommendationRows(candidate) {
     return [
-        kv("Source", candidate.sourceVenue ?? sourceLabel(candidate.sourceType)),
-        kv("Canonical symbol", candidate.normalizedSymbol ?? "Не определён"),
+        kv(t("event_source"), candidate.sourceVenue ?? sourceLabel(candidate.sourceType)),
+        kv(t("candidate_canonical_symbol"), candidate.normalizedSymbol ?? "—"),
         kv("Suggested venue", candidate.suggestedVenue ?? candidate.sourceVenue ?? "Manual select"),
         kv("Suggested funding time", formatInstant(candidate.suggestedFundingTime)),
-        kv("Funding rate", formatDecimal(candidate.suggestedFundingRatePct, 6))
+        kv(t("candidate_funding_rate"), formatDecimal(candidate.suggestedFundingRatePct, 6))
     ].join("");
 }
 
 function buildApproveSection(candidate) {
     if (candidate.status === "EVENT_CREATED") {
         return section(
-            "Funding Event уже создан",
+            t("candidate_event_created_title"),
             `
                 <div class="action-card primary">
-                    <p class="helper-text">Этот signal уже переведён в Funding Event #${escapeHtml(candidate.fundingEventId)}.</p>
+                    <p class="helper-text">${t("candidate_event_created_detail")}${escapeHtml(candidate.fundingEventId)}.</p>
                 </div>
             `
         );
     }
     if (candidate.status === "REJECTED") {
         return section(
-            "Candidate закрыт",
+            t("candidate_closed_title"),
             `
                 <div class="action-card">
-                    <p class="helper-text">Signal уже отклонён и больше не участвует в operator flow.</p>
+                    <p class="helper-text">${t("candidate_closed_detail")}</p>
                 </div>
             `
         );
@@ -51,13 +52,13 @@ function buildApproveSection(candidate) {
     const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
     const fundingTime = toLocalInputValue(candidate.suggestedFundingTime);
     const fundingRatePct = candidate.suggestedFundingRatePct ?? "";
-    const actionLabel = candidate.status === "FAILED" ? "Исправить и create Event" : "Approve → Funding Event";
+    const actionLabel = candidate.status === "FAILED" ? t("candidate_repair_label") : t("candidate_approve_label");
     const helper = candidate.status === "FAILED"
-        ? "Signal нужно поправить вручную, прежде чем переводить его в Funding Event."
-        : "Используй suggested venue и funding snapshot или переопредели поля перед approve.";
+        ? t("candidate_repair_helper")
+        : t("candidate_approve_helper");
 
     return section(
-        candidate.status === "FAILED" ? "Repair candidate" : "Approve to Funding Event",
+        candidate.status === "FAILED" ? t("candidate_repair_title") : t("candidate_approve_title"),
         `
             <div class="action-card primary">
                 <p class="helper-text">${escapeHtml(helper)}</p>
@@ -67,27 +68,27 @@ function buildApproveSection(candidate) {
                 <form class="drawer-form" data-action="approve-candidate" data-id="${candidate.id}">
                     <div class="drawer-form-row labeled-row">
                         <label class="field">
-                            <span>Venue</span>
-                            <input name="venue" type="text" placeholder="Например, gate" value="${escapeHtml(venue)}">
+                            <span>${t("candidate_venue_label")}</span>
+                            <input name="venue" type="text" placeholder="${t("candidate_venue_placeholder")}" value="${escapeHtml(venue)}">
                         </label>
                         <label class="field">
-                            <span>Canonical symbol</span>
-                            <input name="symbol" type="text" placeholder="Например, NOM/USDT" value="${escapeHtml(symbol)}">
+                            <span>${t("candidate_symbol_label")}</span>
+                            <input name="symbol" type="text" placeholder="${t("candidate_symbol_placeholder")}" value="${escapeHtml(symbol)}">
                         </label>
                     </div>
                     <div class="drawer-form-row labeled-row">
                         <label class="field">
-                            <span>Funding time</span>
+                            <span>${t("candidate_funding_time")}</span>
                             <input name="fundingTime" type="datetime-local" value="${escapeHtml(fundingTime)}">
                         </label>
                         <label class="field">
-                            <span>Funding rate, %</span>
+                            <span>${t("candidate_funding_rate")}</span>
                             <input name="fundingRatePct" type="number" step="0.000001" placeholder="-0.012500" value="${escapeHtml(fundingRatePct)}">
                         </label>
                     </div>
                     <label class="field">
-                        <span>Operator note</span>
-                        <textarea name="reviewNotes" placeholder="Почему этот signal стоит двигать дальше">${escapeHtml(candidate.reviewNotes ?? "")}</textarea>
+                        <span>${t("candidate_operator_note")}</span>
+                        <textarea name="reviewNotes" placeholder="${t("candidate_operator_note_placeholder")}">${escapeHtml(candidate.reviewNotes ?? "")}</textarea>
                     </label>
                     <div class="actions">
                         <button class="button" type="submit">${escapeHtml(actionLabel)}</button>
@@ -103,17 +104,17 @@ function buildRejectSection(candidate) {
         return "";
     }
     return section(
-        "Отклонить сигнал",
+        t("candidate_reject_title"),
         `
             <div class="action-card">
-                <p class="helper-text">Reject только если signal точно не должен становиться Funding Event.</p>
+                <p class="helper-text">${t("candidate_reject_helper")}</p>
                 <form class="drawer-form" data-action="reject-candidate" data-id="${candidate.id}">
                     <label class="field">
-                        <span>Reject note</span>
-                        <textarea name="reviewNotes" placeholder="Коротко зафиксируй причину отказа"></textarea>
+                        <span>${t("candidate_reject_note")}</span>
+                        <textarea name="reviewNotes" placeholder="${t("candidate_reject_note_placeholder")}"></textarea>
                     </label>
                     <div class="actions">
-                        <button class="button danger" type="submit">Reject candidate</button>
+                        <button class="button danger" type="submit">${t("candidate_reject_button")}</button>
                     </div>
                 </form>
             </div>
@@ -124,21 +125,21 @@ function buildRejectSection(candidate) {
 export function buildCandidateDrawerContent(candidate) {
     return `
         ${pipelineStageMarkup("signal")}
-        ${section("Signal snapshot", `
+        ${section(t("candidate_signal_snapshot"), `
             <div class="meta-grid">
-                ${metaRow("Статус", formatBadge("candidate", candidate.status))}
-                ${metaRow("Detected at", formatInstant(candidate.detectedAt), formatRelative(candidate.detectedAt))}
-                ${metaRow("Source venue", escapeHtml(candidate.sourceVenue ?? "—"))}
-                ${metaRow("Raw symbol", escapeHtml(candidate.rawSymbol))}
-                ${metaRow("Canonical symbol", escapeHtml(candidate.normalizedSymbol ?? "—"))}
-                ${metaRow("Venue hints", escapeHtml(candidate.venueHints?.join(", ") || "—"))}
-                ${metaRow("Review", escapeHtml(candidate.reviewDecision ?? "Pending"))}
+                ${metaRow(t("candidate_status"), formatBadge("candidate", candidate.status))}
+                ${metaRow(t("candidate_detected_at"), formatInstant(candidate.detectedAt), formatRelative(candidate.detectedAt))}
+                ${metaRow(t("candidate_source_venue"), escapeHtml(candidate.sourceVenue ?? "—"))}
+                ${metaRow(t("candidate_raw_symbol"), escapeHtml(candidate.rawSymbol))}
+                ${metaRow(t("candidate_canonical_symbol"), escapeHtml(candidate.normalizedSymbol ?? "—"))}
+                ${metaRow(t("candidate_venue_hints"), escapeHtml(candidate.venueHints?.join(", ") || "—"))}
+                ${metaRow(t("candidate_review"), escapeHtml(candidate.reviewDecision ?? t("candidate_review_pending")))}
                 ${candidate.fundingEventId
-                    ? metaRow("Funding Event", `<button class="button secondary small" type="button" data-open-event="${candidate.fundingEventId}">→ Event #${candidate.fundingEventId}</button>`)
-                    : metaRow("Funding Event", "—")}
+                    ? metaRow(t("candidate_funding_event"), `<button class="button secondary small" type="button" data-open-event="${candidate.fundingEventId}">→ Event #${candidate.fundingEventId}</button>`)
+                    : metaRow(t("candidate_funding_event"), "—")}
             </div>
         `)}
-        ${candidate.normalizationFailureReason ? section("Normalization note", `
+        ${candidate.normalizationFailureReason ? section(t("candidate_norm_note"), `
             <div class="action-card">
                 <p class="helper-text">${escapeHtml(candidate.normalizationFailureReason)}</p>
             </div>
@@ -152,7 +153,7 @@ export function buildCandidateDrawerContent(candidate) {
 export async function openCandidateDetail({ id, nodes, showError }) {
     try {
         const candidate = await api.getCandidate(id);
-        nodes.modalType.textContent = "Signal";
+        nodes.modalType.textContent = t("candidate_modal_type");
         nodes.modalTitle.textContent = candidate.normalizedSymbol ?? candidate.rawSymbol;
         nodes.modalContent.innerHTML = buildCandidateDrawerContent(candidate);
         openModal(nodes);

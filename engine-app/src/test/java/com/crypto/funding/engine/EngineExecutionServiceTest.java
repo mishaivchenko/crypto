@@ -814,7 +814,7 @@ class EngineExecutionServiceTest
             1, 0L, 0L, 0L, 0L, List.of( pastAttempt( 1, 0 ) ), EnginePlanStatus.WAITING_EXIT,
             NOW.plusSeconds( 300 ), 300_000L, -60_000L, "waiting sl/tp exit", "REQUSDT",
             BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf( 5 ), NOW.minusSeconds( 3600 ), NOW.minusSeconds( 300 ),
-            BigDecimal.ZERO, BigDecimal.valueOf( 2.5 ), BigDecimal.valueOf( 20 ), null
+            BigDecimal.ZERO, BigDecimal.valueOf( 2.5 ), BigDecimal.valueOf( 20 ), null, null, null, null
         );
         when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
 
@@ -850,7 +850,7 @@ class EngineExecutionServiceTest
             1, 0L, 0L, 0L, 0L, List.of( pastAttempt( 1, 0 ) ), EnginePlanStatus.WAITING_EXIT,
             NOW.plusSeconds( 300 ), 300_000L, -60_000L, "waiting sl/tp exit", "REQUSDT",
             BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf( 5 ), NOW.minusSeconds( 3600 ), NOW.minusSeconds( 300 ),
-            BigDecimal.TEN, BigDecimal.valueOf( 5 ), BigDecimal.valueOf( 20 ), null
+            BigDecimal.TEN, BigDecimal.valueOf( 5 ), BigDecimal.valueOf( 20 ), null, null, null, null
         );
         when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
         when( client.fetchMarkPrice( "bybit", "REQUSDT" ) ).thenReturn(
@@ -875,7 +875,7 @@ class EngineExecutionServiceTest
             1, 0L, 0L, 0L, 0L, List.of( pastAttempt( 1, 0 ) ), EnginePlanStatus.WAITING_EXIT,
             NOW.plusSeconds( 300 ), 300_000L, -60_000L, "waiting sl/tp exit", "REQUSDT",
             BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf( 5 ), NOW.minusSeconds( 3600 ), NOW.minusSeconds( 300 ),
-            null, BigDecimal.valueOf( 2.5 ), BigDecimal.valueOf( 20 ), null
+            null, BigDecimal.valueOf( 2.5 ), BigDecimal.valueOf( 20 ), null, null, null, null
         );
         when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
 
@@ -932,7 +932,10 @@ class EngineExecutionServiceTest
             BigDecimal.TEN,
             BigDecimal.valueOf( 2.5 ),
             stopLossUsd,
-            takeProfitUsd
+            takeProfitUsd,
+            null,
+            null,
+            null
         );
     }
 
@@ -972,6 +975,9 @@ class EngineExecutionServiceTest
             BigDecimal.valueOf( 5 ),
             NOW.minusSeconds( 60 ),
             NOW.minusSeconds( 60 ),
+            null,
+            null,
+            null,
             null,
             null,
             null,
@@ -1032,6 +1038,9 @@ class EngineExecutionServiceTest
             NOW.minusSeconds( 300 ),
             quantity,
             entryPrice,
+            null,
+            null,
+            null,
             null,
             null
         );

@@ -3,12 +3,14 @@ package com.crypto.funding.api;
 import com.crypto.funding.api.dto.GlobalVenueModeResponse;
 import com.crypto.funding.api.dto.InstrumentMetadataResponse;
 import com.crypto.funding.api.dto.SetGlobalVenueModeRequest;
+import com.crypto.funding.api.dto.SetVenueDefaultLatencyRequest;
 import com.crypto.funding.api.dto.SetVenueModeRequest;
 import com.crypto.funding.api.dto.VenueLatencyProbeResponse;
 import com.crypto.funding.api.dto.VenueRequestTimingResponse;
 import com.crypto.funding.api.dto.VenueSummaryResponse;
 import com.crypto.funding.application.venue.VenueDiagnosticsService;
 import com.crypto.funding.application.venue.VenueLatencyProbeService;
+import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.domain.venue.InstrumentMetadata;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import jakarta.validation.Valid;
@@ -28,14 +30,17 @@ public class VenueDiagnosticsController
 {
     private final VenueDiagnosticsService venueDiagnosticsService;
     private final VenueLatencyProbeService latencyProbeService;
+    private final VenueProfileService venueProfileService;
 
     public VenueDiagnosticsController(
         VenueDiagnosticsService venueDiagnosticsService,
-        VenueLatencyProbeService latencyProbeService
+        VenueLatencyProbeService latencyProbeService,
+        VenueProfileService venueProfileService
     )
     {
         this.venueDiagnosticsService = venueDiagnosticsService;
         this.latencyProbeService = latencyProbeService;
+        this.venueProfileService = venueProfileService;
     }
 
     @GetMapping
@@ -105,6 +110,22 @@ public class VenueDiagnosticsController
         return new VenueLatencyProbeResponse( result.venue(), result.durationMs(), result.sampledAt() );
     }
 
+    @PostMapping("/{venue}/default-latency")
+    public VenueDefaultLatencyResponse setDefaultLatency(
+        @PathVariable String venue,
+        @RequestBody SetVenueDefaultLatencyRequest request
+    )
+    {
+        VenueProfileService.VenueAccessProfile profile = venueProfileService.updateDefaultLatency(
+            venue, request.defaultManualLatencyAdjustmentMs()
+        );
+        return new VenueDefaultLatencyResponse( profile.venue(), profile.defaultManualLatencyAdjustmentMs() );
+    }
+
+    public record VenueDefaultLatencyResponse( String venue, Long defaultManualLatencyAdjustmentMs )
+    {
+    }
+
     private VenueSummaryResponse toResponse( VenueDiagnosticsService.VenueSummary summary )
     {
         return new VenueSummaryResponse(
@@ -171,7 +192,10 @@ public class VenueDiagnosticsController
             snapshot.lastHttpStatus(),
             snapshot.lastError(),
             snapshot.lastOccurredAt(),
-            snapshot.lastPayloadSize()
+            snapshot.lastPayloadSize(),
+            snapshot.p50DurationMs(),
+            snapshot.p95DurationMs(),
+            snapshot.p99DurationMs()
         );
     }
 }

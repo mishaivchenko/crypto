@@ -13,7 +13,10 @@ public record VenueRequestTimingResponse(
     Integer lastHttpStatus,
     String lastError,
     Instant lastOccurredAt,
-    long lastPayloadSize
+    long lastPayloadSize,
+    Long p50DurationMs,
+    Long p95DurationMs,
+    Long p99DurationMs
 )
 {
 }
