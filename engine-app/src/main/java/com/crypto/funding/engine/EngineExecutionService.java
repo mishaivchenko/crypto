@@ -268,7 +268,8 @@ public class EngineExecutionService
             attemptPlan.targetEntryAt(),
             attemptPlan.triggerAt(),
             plan,
-            attempt
+            attempt,
+            submitDurationMs
         );
         applyEntryLifecycle( plan, recorded, attempt );
 
@@ -298,7 +299,8 @@ public class EngineExecutionService
             plan.plannedExitAt(),
             triggerAt,
             plan,
-            attempt
+            attempt,
+            submitDurationMs
         );
         applyExitLifecycle( plan, recorded, attempt );
 
@@ -311,7 +313,8 @@ public class EngineExecutionService
         Instant targetAt,
         Instant triggerAt,
         EngineExecutionPlan plan,
-        OrderAttempt attempt
+        OrderAttempt attempt,
+        long requestDurationMs
     )
     {
         return client.recordOrderAttempt( new EngineOrderAttemptRecordRequest(
@@ -333,7 +336,8 @@ public class EngineExecutionService
             attempt.failureReason(),
             attempt.averageFillPrice(),
             attempt.filledQuantity(),
-            attempt.feeUsd()
+            attempt.feeUsd(),
+            requestDurationMs
         ) );
     }
 

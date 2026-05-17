@@ -475,6 +475,20 @@ class EngineExecutionServiceTest
     }
 
     @Test
+    void entryAttemptRecordsRequestDurationMs()
+    {
+        when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
+        when( executionPort.submitOrder( any( EngineExecutionPlan.class ), any( OrderIntent.class ), eq( false ) ) )
+            .thenReturn( filledAttempt( 5L, "bybit", "REQ/USDT", NOW ) );
+        ArgumentCaptor<EngineOrderAttemptRecordRequest> attemptCaptor = ArgumentCaptor.forClass( EngineOrderAttemptRecordRequest.class );
+
+        service.runOnce( false );
+
+        verify( client ).recordOrderAttempt( attemptCaptor.capture() );
+        assertThat( attemptCaptor.getValue().requestDurationMs() ).isNotNull().isGreaterThanOrEqualTo( 0L );
+    }
+
+    @Test
     void filledEntryFallsBackToSubmittedAtAndOrderQuantityWhenFillDetailsArePartial()
     {
         when( client.listPlans( false ) ).thenReturn( List.of( plan( 5L, EnginePlanStatus.ENTRY_WINDOW, List.of( pastAttempt( 1, 0 ) ) ) ) );
@@ -775,6 +789,7 @@ class EngineExecutionServiceTest
             null,
             null,
             null,
+            null,
             null
         );
     }
@@ -833,6 +848,7 @@ class EngineExecutionServiceTest
             null,
             null,
             null,
+            null,
             null
         );
     }
@@ -861,6 +877,7 @@ class EngineExecutionServiceTest
             BigDecimal.TEN,
             BigDecimal.valueOf( 0.01 ),
             null,
+            null,
             null
         );
     }
@@ -885,6 +902,7 @@ class EngineExecutionServiceTest
             submittedAt,
             null,
             "exchange rejected",
+            null,
             null,
             null,
             null,
@@ -927,6 +945,7 @@ class EngineExecutionServiceTest
             filledQuantity,
             feeUsd,
             null,
+            null,
             null
         );
     }
@@ -954,6 +973,7 @@ class EngineExecutionServiceTest
             request.averageFillPrice(),
             request.filledQuantity(),
             request.feeUsd(),
+            request.requestDurationMs(),
             NOW,
             NOW
         );

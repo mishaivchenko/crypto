@@ -28,6 +28,7 @@ public record EngineOrderAttemptResponse(
     BigDecimal averageFillPrice,
     BigDecimal filledQuantity,
     BigDecimal feeUsd,
+    Long requestDurationMs,
     Instant createdAt,
     Instant updatedAt
 )
@@ -72,6 +73,7 @@ public record EngineOrderAttemptResponse(
             submittedAt,
             exchangeTimestamp,
             failureReason,
+            null,
             null,
             null,
             null,

@@ -83,6 +83,7 @@ public class OrderAttemptRecordService
         entity.setAverageFillPrice( request.averageFillPrice() );
         entity.setFilledQuantity( request.filledQuantity() );
         entity.setFeeUsd( request.feeUsd() );
+        entity.setRequestDurationMs( request.requestDurationMs() );
         return entity;
     }
 
@@ -109,6 +110,7 @@ public class OrderAttemptRecordService
             entity.getAverageFillPrice(),
             entity.getFilledQuantity(),
             entity.getFeeUsd(),
+            entity.getRequestDurationMs(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

@@ -434,6 +434,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             filledQuantity,
             feeUsd,
             null,
+            null,
             null
         );
     }
@@ -458,6 +459,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             attemptedAt,
             null,
             reason,
+            null,
             null,
             null,
             null,
@@ -493,6 +495,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             attemptedAt,
             null,
             reason,
+            null,
             null,
             null,
             null,

@@ -100,6 +100,9 @@ public class OrderAttemptEntity extends AuditableEntity
     @Column(name = "fee_usd", precision = 19, scale = 8)
     private BigDecimal feeUsd;
 
+    @Column(name = "request_duration_ms")
+    private Long requestDurationMs;
+
     public Long getId()
     {
         return id;
@@ -293,5 +296,15 @@ public class OrderAttemptEntity extends AuditableEntity
     public void setFeeUsd( BigDecimal feeUsd )
     {
         this.feeUsd = feeUsd;
+    }
+
+    public Long getRequestDurationMs()
+    {
+        return requestDurationMs;
+    }
+
+    public void setRequestDurationMs( Long requestDurationMs )
+    {
+        this.requestDurationMs = requestDurationMs;
     }
 }

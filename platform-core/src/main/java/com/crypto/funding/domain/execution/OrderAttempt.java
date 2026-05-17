@@ -26,6 +26,7 @@ public record OrderAttempt(
     BigDecimal averageFillPrice,
     BigDecimal filledQuantity,
     BigDecimal feeUsd,
+    Long requestDurationMs,
     Instant createdAt,
     Instant updatedAt
 )
@@ -70,6 +71,7 @@ public record OrderAttempt(
             submittedAt,
             exchangeTimestamp,
             failureReason,
+            null,
             null,
             null,
             null,

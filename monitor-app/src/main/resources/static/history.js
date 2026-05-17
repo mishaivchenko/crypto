@@ -190,8 +190,9 @@ export function attemptLadderMarkup(trade, attempts = []) {
             ${plannedAttempts.map((attempt) => {
                 const recorded = recordedByNumber.get(attempt.attemptNumber);
                 const status = recorded?.status ?? "PLANNED";
+                const reqDuration = recorded?.requestDurationMs != null ? ` · exchange req ${formatDurationMs(recorded.requestDurationMs)}` : "";
                 const helper = recorded
-                    ? `${recorded.failureReason ?? "Execution attempt записан"} · recorded ${formatInstant(recorded.createdAt)}`
+                    ? `${recorded.failureReason ?? "Execution attempt записан"} · recorded ${formatInstant(recorded.createdAt)}${reqDuration}`
                     : `Trigger ${formatInstant(attempt.triggerAt)} · offset ${formatPlainMs(attempt.offsetMs)} · lead ${formatDurationMs(attempt.effectiveLatencyMs)}`;
                 return `
                     <article class="attempt-step">
@@ -216,8 +217,10 @@ export function latencyStripMarkup(trade, attempts = []) {
 
     const summary = summarizeAttempts(attempts);
     const hasFailuresOnly = summary.total > 0 && summary.failed === summary.total;
-    const firstSubmittedAt = normalizedAttempts(attempts).find((attempt) => attempt.submittedAt)?.submittedAt ?? null;
-    const firstFilledAt = normalizedAttempts(attempts).find((attempt) => attempt.status === "FILLED")?.exchangeTimestamp ?? null;
+    const normalAttempts = normalizedAttempts(attempts);
+    const firstSubmittedAt = normalAttempts.find((a) => a.submittedAt)?.submittedAt ?? null;
+    const firstFilledAt = normalAttempts.find((a) => a.status === "FILLED")?.exchangeTimestamp ?? null;
+    const requestDurationMs = normalAttempts.find((a) => a.requestDurationMs != null)?.requestDurationMs ?? null;
 
     return `
         <div class="latency-strip">
@@ -229,6 +232,11 @@ export function latencyStripMarkup(trade, attempts = []) {
             <div class="latency-node ${firstSubmittedAt ? "is-known" : ""}">
                 <span>submitted</span>
                 <strong>${firstSubmittedAt ? formatInstant(firstSubmittedAt) : "pending"}</strong>
+            </div>
+            <div class="latency-line"></div>
+            <div class="latency-node ${requestDurationMs != null ? "is-known" : ""}">
+                <span>exchange req</span>
+                <strong>${requestDurationMs != null ? formatDurationMs(requestDurationMs) : "—"}</strong>
             </div>
             <div class="latency-line"></div>
             <div class="latency-node ${hasFailuresOnly ? "is-known" : ""}">

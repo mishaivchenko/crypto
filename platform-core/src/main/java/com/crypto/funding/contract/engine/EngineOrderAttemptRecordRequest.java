@@ -26,7 +26,8 @@ public record EngineOrderAttemptRecordRequest(
     String failureReason,
     BigDecimal averageFillPrice,
     BigDecimal filledQuantity,
-    BigDecimal feeUsd
+    BigDecimal feeUsd,
+    Long requestDurationMs
 )
 {
     public EngineOrderAttemptRecordRequest(
@@ -65,6 +66,7 @@ public record EngineOrderAttemptRecordRequest(
             submittedAt,
             exchangeTimestamp,
             failureReason,
+            null,
             null,
             null,
             null
