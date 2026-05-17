@@ -593,11 +593,15 @@ public class EngineExecutionService
             return false;
         }
         Optional<MarkPriceResponse> markPriceResponse = client.fetchMarkPrice( plan.venue(), plan.venueSymbol() );
-        if( markPriceResponse.isEmpty() || markPriceResponse.get().markPrice() == null )
+        if( markPriceResponse.isEmpty() )
         {
             return false;
         }
         BigDecimal markPrice = markPriceResponse.get().markPrice();
+        if( markPrice == null )
+        {
+            return false;
+        }
         BigDecimal grossPnl = grossPnlForPrice( plan.intendedSide(), plan.positionEntryPrice(), markPrice, plan.positionQuantity() );
         if( plan.stopLossUsd() != null && grossPnl.compareTo( plan.stopLossUsd().negate() ) < 0 )
         {
