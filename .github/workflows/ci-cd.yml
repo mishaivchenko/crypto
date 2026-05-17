@@ -10,48 +10,55 @@ on:
     - cron: '0 4 * * 1'
 
 jobs:
+
+  # ── 1. Build & Test ──────────────────────────────────────────────────────────
   build:
     name: Build & Test
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
           cache: gradle
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+      - run: chmod +x gradlew
 
-      - name: Build backend (runs tests)
+      - name: Build & test
         run: ./gradlew clean build --no-daemon
 
+      - name: Upload JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jars
+          path: |
+            monitor-app/build/libs/monitor-app-*-monitor.jar
+            engine-app/build/libs/engine-app-*-engine.jar
+          retention-days: 1
+
+  # ── 2. Engine TDD gate (PR only) ────────────────────────────────────────────
   engine_tdd:
     name: Engine TDD Gate
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
           cache: gradle
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+      - run: chmod +x gradlew
 
       - name: Run engine TDD gate
         run: ./gradlew engineTddGate --no-daemon
 
+  # ── 3. Security scan (scheduled + manual) ───────────────────────────────────
   security:
     name: Security Scan
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
@@ -59,24 +66,22 @@ jobs:
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
           cache: gradle
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+      - run: chmod +x gradlew
 
       - name: Run dependency scan
         run: ./gradlew security --no-daemon
 
+  # ── 4. Docker build & push ───────────────────────────────────────────────────
   docker:
-    name: Build & Push Docker images
+    name: Docker (${{ matrix.app.image_suffix }})
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -93,35 +98,28 @@ jobs:
             image_suffix: funding-engine
             port: 8091
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - name: Download JARs
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: '25'
-          cache: gradle
+          name: app-jars
+          path: .
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+      - name: Restore JAR paths
+        run: |
+          mkdir -p ${{ matrix.app.module }}/build/libs
+          find . -maxdepth 1 -name "${{ matrix.app.module }}-*-${{ matrix.app.classifier }}.jar" \
+            -exec mv {} ${{ matrix.app.module }}/build/libs/ \;
 
-      - name: Build JARs
-        run: ./gradlew :${{ matrix.app.module }}:bootJar --no-daemon
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set image name
-        run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.app.image_suffix }}" >> $GITHUB_ENV
-
-      - name: Build and push
+      - name: Build & push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -131,7 +129,51 @@ jobs:
             APP_CLASSIFIER=${{ matrix.app.classifier }}
             APP_PORT=${{ matrix.app.port }}
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.app.image_suffix }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.app.image_suffix }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ── 5. Deploy → staging (Mac mini) ──────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging (Mac mini)
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [ self-hosted, mac-mini, staging ]
+    environment: staging
+    env:
+      PROJECT_DIR: /Volumes/DevDisk/dev/projects/crypto
+    steps:
+      - name: Pull latest code
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          git pull origin main
+
+      - name: Pull Docker images
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/funding-monitor:${{ github.sha }}
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/funding-engine:${{ github.sha }}
+
+      - name: Restart services
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          IMAGE_MONITOR=${{ secrets.DOCKERHUB_USERNAME }}/funding-monitor:${{ github.sha }} \
+          IMAGE_ENGINE=${{ secrets.DOCKERHUB_USERNAME }}/funding-engine:${{ github.sha }} \
+          docker compose up -d --remove-orphans monitor engine
+
+      - name: Smoke test
+        run: |
+          sleep 15
+          curl -f http://localhost:8090/actuator/health
+          curl -f http://localhost:8091/actuator/health
+
+  # ── 6. Deploy → production (VPS) ────────────────────────────────────────────
+  deploy-prod:
+    name: Deploy → Production (VPS)
+    needs: deploy-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Not yet configured
+        run: echo "VPS not provisioned yet — add VPS_HOST, VPS_USER, VPS_SSH_KEY secrets to enable"

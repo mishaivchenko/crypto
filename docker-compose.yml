@@ -1,10 +1,12 @@
 services:
     monitor:
+        image: ${IMAGE_MONITOR:-funding-monitor:local}
         build:
             context: .
             dockerfile: Dockerfile
             args:
-                APP_JAR: monitor-app/build/libs/monitor-app-2.0.0-monitor.jar
+                APP_MODULE: monitor-app
+                APP_CLASSIFIER: monitor
                 APP_PORT: 8090
         container_name: funding-monitor
         env_file:
@@ -41,11 +43,13 @@ services:
         restart: unless-stopped
 
     engine:
+        image: ${IMAGE_ENGINE:-funding-engine:local}
         build:
             context: .
             dockerfile: Dockerfile
             args:
-                APP_JAR: engine-app/build/libs/engine-app-2.0.0-engine.jar
+                APP_MODULE: engine-app
+                APP_CLASSIFIER: engine
                 APP_PORT: 8091
         container_name: funding-engine
         env_file:
