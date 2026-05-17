@@ -165,6 +165,9 @@ jobs:
           find . -maxdepth 1 -name "monitor-app-*-monitor.jar" -exec mv {} monitor-app/build/libs/ \;
           find . -maxdepth 1 -name "engine-app-*-engine.jar" -exec mv {} engine-app/build/libs/ \;
 
+      - name: Ensure .env exists
+        run: touch ${{ env.PROJECT_DIR }}/.env
+
       - name: Build images locally
         run: |
           cd ${{ env.PROJECT_DIR }}
