@@ -119,15 +119,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Build & push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           build-args: |
             APP_MODULE=${{ matrix.app.module }}
             APP_CLASSIFIER=${{ matrix.app.classifier }}
@@ -139,9 +136,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ── 5. Deploy → staging (Mac mini) ──────────────────────────────────────────
+  # Builds natively on arm64 Mac mini — no QEMU, no DockerHub pull needed.
+  # Depends on `build` (not `docker`) so it runs in parallel with Docker push.
   deploy-staging:
     name: Deploy → Staging (Mac mini)
-    needs: docker
+    needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [ self-hosted, mac-mini, staging ]
     environment: staging
@@ -153,16 +152,32 @@ jobs:
           cd ${{ env.PROJECT_DIR }}
           git pull origin main
 
-      - name: Pull Docker images
+      - name: Download JARs
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jars
+          path: ${{ env.PROJECT_DIR }}
+
+      - name: Restore JAR paths
         run: |
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/funding-monitor:${{ github.sha }}
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/funding-engine:${{ github.sha }}
+          cd ${{ env.PROJECT_DIR }}
+          mkdir -p monitor-app/build/libs engine-app/build/libs
+          find . -maxdepth 1 -name "monitor-app-*-monitor.jar" -exec mv {} monitor-app/build/libs/ \;
+          find . -maxdepth 1 -name "engine-app-*-engine.jar" -exec mv {} engine-app/build/libs/ \;
+
+      - name: Build images locally
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          docker build --build-arg APP_MODULE=monitor-app --build-arg APP_CLASSIFIER=monitor --build-arg APP_PORT=8090 \
+            -t funding-monitor:staging .
+          docker build --build-arg APP_MODULE=engine-app --build-arg APP_CLASSIFIER=engine --build-arg APP_PORT=8091 \
+            -t funding-engine:staging .
 
       - name: Restart services
         run: |
           cd ${{ env.PROJECT_DIR }}
-          IMAGE_MONITOR=${{ secrets.DOCKERHUB_USERNAME }}/funding-monitor:${{ github.sha }} \
-          IMAGE_ENGINE=${{ secrets.DOCKERHUB_USERNAME }}/funding-engine:${{ github.sha }} \
+          IMAGE_MONITOR=funding-monitor:staging \
+          IMAGE_ENGINE=funding-engine:staging \
           docker compose up -d --remove-orphans monitor engine
 
       - name: Smoke test
