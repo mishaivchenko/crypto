@@ -8,6 +8,7 @@ import {
     formatInstant,
     formatNumber,
     formatSignedMs,
+    formatTimeMs,
     journalMarkup,
     metaRow,
     section
@@ -287,6 +288,105 @@ export function exitTimingStripMarkup(trade, attempts = []) {
     `;
 }
 
+export function lifecycleTimelineMarkup(trade, event, candidate, attempts = [], position = null) {
+    const normalAttempts = normalizedAttempts(attempts);
+    const entryAttempts = normalAttempts.filter((a) => a.attemptNumber != null);
+    const exitAttempt = normalAttempts.find((a) => a.attemptNumber == null);
+    const plannedAttempts = buildAttemptPlan(trade);
+
+    const phases = [];
+
+    if (candidate?.detectedAt) {
+        phases.push({ type: "milestone", label: "Signal detected", ts: candidate.detectedAt, variant: "known" });
+    }
+    if (trade.armedAt) {
+        phases.push({ type: "milestone", label: "Armed", ts: trade.armedAt, variant: "known" });
+    }
+    if (trade.plannedEntryAt || entryAttempts.length > 0) {
+        const mappedAttempts = entryAttempts.map((a) => {
+            const planned = plannedAttempts.find((p) => p.attemptNumber === Number(a.attemptNumber));
+            const filledAt = (a.status === "FILLED" || a.status === "ACKNOWLEDGED") ? (a.exchangeTimestamp ?? null) : null;
+            return { number: a.attemptNumber, triggerAt: planned?.triggerAt ?? null, submittedAt: a.submittedAt ?? null, filledAt, status: a.status };
+        });
+        phases.push({ type: "window", label: "Entry window", plannedAt: trade.plannedEntryAt, attempts: mappedAttempts });
+    }
+    if (position?.openedAt) {
+        phases.push({ type: "milestone", label: "Position OPEN", ts: position.openedAt, variant: "highlight" });
+    }
+    if (trade.plannedExitAt || exitAttempt) {
+        const exitFilledAt = (exitAttempt?.status === "FILLED" || exitAttempt?.status === "ACKNOWLEDGED") ? (exitAttempt?.exchangeTimestamp ?? null) : null;
+        const exitAttempts = exitAttempt ? [{ number: null, triggerAt: null, submittedAt: exitAttempt.submittedAt ?? null, filledAt: exitFilledAt, status: exitAttempt.status }] : [];
+        phases.push({ type: "window", label: "Exit window", plannedAt: trade.plannedExitAt, attempts: exitAttempts });
+    }
+    if (position?.closedAt) {
+        phases.push({ type: "milestone", label: "Closed", ts: position.closedAt, variant: "highlight" });
+    }
+
+    if (!phases.length) {
+        return emptyState("Timeline пуст.", "Данных для построения timeline нет.");
+    }
+
+    let prevKnownMs = null;
+    const segments = phases.map((phase, i) => {
+        const isLast = i === phases.length - 1;
+        if (phase.type === "milestone") {
+            const tsMs = phase.ts ? new Date(phase.ts).getTime() : null;
+            const known = tsMs !== null && Number.isFinite(tsMs);
+            const deltaHtml = (known && prevKnownMs !== null)
+                ? `<span class="phase-delta">${formatDeltaMs(tsMs - prevKnownMs)}</span>`
+                : "";
+            if (known) prevKnownMs = tsMs;
+            const dotClass = phase.variant === "highlight" ? "is-highlight" : (known ? "is-known" : "");
+            return `
+                <div class="phase-segment">
+                    <div class="phase-dot ${dotClass}"></div>
+                    <div class="phase-header">
+                        <span class="phase-label">${escapeHtml(phase.label)}</span>
+                        <strong class="phase-time">${formatTimeMs(phase.ts)}</strong>
+                        ${deltaHtml}
+                    </div>
+                    ${isLast ? "" : `<div class="phase-line"></div><div class="phase-detail"></div>`}
+                </div>`;
+        }
+        return `
+            <div class="phase-segment">
+                <div class="phase-dot is-window"></div>
+                <div class="phase-header">
+                    <span class="phase-label">${escapeHtml(phase.label)}</span>
+                    ${phase.plannedAt ? `<span class="phase-planned">planned ${formatTimeMs(phase.plannedAt)}</span>` : ""}
+                </div>
+                ${isLast ? "" : `<div class="phase-line"></div>`}
+                <div class="phase-detail">
+                    ${phase.attempts.length ? phase.attempts.map((a) => attemptRowHtml(a)).join("") : `<span class="attempt-empty">No attempts yet</span>`}
+                </div>
+            </div>`;
+    });
+
+    return `<div class="phase-timeline">${segments.join("")}</div>`;
+}
+
+function attemptRowHtml({ number, triggerAt, submittedAt, filledAt, status }) {
+    const latencyMs = triggerAt && filledAt ? new Date(filledAt).getTime() - new Date(triggerAt).getTime() : null;
+    const latencyHtml = latencyMs !== null ? `<span class="attempt-delta">${formatDeltaMs(latencyMs)}</span>` : "";
+    return `
+        <div class="phase-attempt">
+            <span class="attempt-badge">${number != null ? "#" + escapeHtml(String(number)) : "exit"}</span>
+            ${triggerAt ? `<span class="phase-step">trigger</span><span class="attempt-time">${formatTimeMs(triggerAt)}</span><span class="attempt-arrow">→</span>` : ""}
+            ${submittedAt ? `<span class="phase-step">submitted</span><span class="attempt-time">${formatTimeMs(submittedAt)}</span>${filledAt ? `<span class="attempt-arrow">→</span>` : ""}` : ""}
+            ${filledAt ? `<span class="phase-step is-filled">filled</span><span class="attempt-time">${formatTimeMs(filledAt)}</span>` : ""}
+            ${latencyHtml}
+            ${formatBadge("orderAttempt", status)}
+        </div>`;
+}
+
+function formatDeltaMs(ms) {
+    if (ms < 0) return `${formatNumber(ms)}ms`;
+    if (ms < 1000) return `+${formatNumber(ms)}ms`;
+    const s = Math.floor(ms / 1000);
+    const rem = ms % 1000;
+    return `+${formatNumber(s)}s ${formatNumber(rem)}ms`;
+}
+
 export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts = [], position = null, outcome = null }) {
     const historyStage = deriveHistoryStage(trade, event, attempts);
     const health = deriveTradeHealth(trade, attempts, event);
@@ -294,6 +394,7 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
     const summary = summarizeAttempts(attempts);
 
     return `
+        ${section("0. Timeline", lifecycleTimelineMarkup(trade, event, candidate, attempts, position))}
         ${section("Health", `
             <div class="history-health-card ${escapeHtml(health.tone)}">
                 <strong>${escapeHtml(health.label)}</strong>
@@ -340,8 +441,6 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
             </div>
         `)}
         ${section("4. Attempts", `
-            ${latencyStripMarkup(trade, attempts)}
-            ${exitTimingStripMarkup(trade, attempts)}
             ${attemptLadderMarkup(trade, attempts)}
             ${attempts.length ? attempts.map((attempt) => `
                 <div class="meta-row">

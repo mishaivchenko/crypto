@@ -1,7 +1,7 @@
 import { api } from "./api.js";
 import { createAppState } from "./app/state.js";
 import { createNodes } from "./app/dom.js";
-import { emptyState, groupAttemptsByTrade, resetDrawer, toIsoOrNull } from "./app/shared.js";
+import { closeModal, emptyState, groupAttemptsByTrade, resetDrawer, toIsoOrNull } from "./app/shared.js";
 import {
     handleRunEngineOnce,
     handleUpdateEngineRuntime,
@@ -238,6 +238,18 @@ nodes.drawerClose.addEventListener("click", () => {
     resetDrawer(nodes);
 });
 
+nodes.modalClose.addEventListener("click", () => closeModal(nodes));
+
+nodes.inspectorModal.addEventListener("click", (e) => {
+    if (e.target === nodes.inspectorModal || e.target.classList.contains("inspector-backdrop")) {
+        closeModal(nodes);
+    }
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !nodes.inspectorModal.hidden) closeModal(nodes);
+});
+
 const handleDrawerAction = createDrawerActionHandler({
     nodes,
     refreshCurrentScreen,
@@ -252,6 +264,8 @@ const handleDrawerAction = createDrawerActionHandler({
 
 nodes.drawerContent.addEventListener("submit", handleDrawerAction);
 nodes.drawerContent.addEventListener("click", handleDrawerAction);
+nodes.modalContent.addEventListener("submit", handleDrawerAction);
+nodes.modalContent.addEventListener("click", handleDrawerAction);
 
 async function loadGlobalMode() {
     try {

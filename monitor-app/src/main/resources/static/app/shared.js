@@ -265,8 +265,19 @@ export function numberOrNull(value) {
     return Number.isNaN(parsed) ? null : parsed;
 }
 
-export function resetDrawer(nodes, message = "Выбери объект из списка.") {
-    nodes.drawerType.textContent = "Inspector";
-    nodes.drawerTitle.textContent = "Выбери объект";
-    nodes.drawerContent.innerHTML = `<p class="muted">${escapeHtml(message)}</p>`;
+export function resetDrawer(nodes) {
+    closeModal(nodes);
+}
+
+export function openModal(nodes) {
+    nodes.inspectorModal.hidden = false;
+    document.body.style.overflow = "hidden";
+}
+
+export function closeModal(nodes) {
+    nodes.inspectorModal.hidden = true;
+    document.body.style.overflow = "";
+    nodes.modalType.textContent = "Inspector";
+    nodes.modalTitle.textContent = "—";
+    nodes.modalContent.innerHTML = "";
 }

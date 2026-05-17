@@ -12,9 +12,11 @@ import {
     journalMarkup,
     metaRow,
     modeLabel,
+    openModal,
     pipelineStageMarkup,
     section,
-    sideLabel
+    sideLabel,
+    toLocalInputValue
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 
@@ -79,6 +81,67 @@ export function buildTradeDrawerContent({ trade, journal, attempts }) {
             </div>
         `).join("") : emptyState("Execution attempts пока нет.", "Запусти engine run-once, чтобы увидеть FAILED/SUBMITTED попытки."))}
         ${buildCancelSection(trade)}
+        ${trade.state === "ARMED" ? section("Edit Trade", `
+            <details class="technical-details">
+                <summary>Изменить параметры</summary>
+                <form class="drawer-form" data-action="edit-trade" data-id="${trade.id}">
+                    <fieldset class="form-group">
+                        <legend>Entry Window</legend>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Notional, USD</span>
+                                <input name="notionalUsd" type="number" step="0.01" value="${escapeHtml(String(trade.notionalUsd ?? ""))}">
+                            </label>
+                            <label class="field">
+                                <span>Entry attempts</span>
+                                <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="${escapeHtml(String(trade.entryAttemptCount ?? 1))}">
+                            </label>
+                        </div>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Planned entry</span>
+                                <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(toLocalInputValue(trade.plannedEntryAt) ?? "")}">
+                            </label>
+                            <label class="field">
+                                <span>Spacing, ms</span>
+                                <input name="entrySpacingMs" type="number" min="0" step="1" value="${escapeHtml(String(trade.entrySpacingMs ?? 0))}">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>Manual latency adj, ms</span>
+                            <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="${escapeHtml(String(trade.manualLatencyAdjustmentMs ?? 0))}">
+                        </label>
+                    </fieldset>
+                    <fieldset class="form-group">
+                        <legend>Exit Window</legend>
+                        <label class="field">
+                            <span>Planned exit</span>
+                            <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(toLocalInputValue(trade.plannedExitAt) ?? "")}">
+                        </label>
+                    </fieldset>
+                    <fieldset class="form-group">
+                        <legend>Risk Management</legend>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>Stop Loss, USD</span>
+                                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00" value="${escapeHtml(trade.stopLossUsd != null ? String(trade.stopLossUsd) : "")}">
+                            </label>
+                            <label class="field">
+                                <span>Take Profit, USD</span>
+                                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00" value="${escapeHtml(trade.takeProfitUsd != null ? String(trade.takeProfitUsd) : "")}">
+                            </label>
+                        </div>
+                    </fieldset>
+                    <label class="field">
+                        <span>Note</span>
+                        <textarea name="notes">${escapeHtml(trade.notes ?? "")}</textarea>
+                    </label>
+                    <div class="actions">
+                        <button class="button" type="submit">Сохранить изменения</button>
+                    </div>
+                </form>
+            </details>
+        `) : ""}
         ${trade.signalCandidateId ? buildDeleteCandidateSection({ id: trade.signalCandidateId }, "Delete source signal") : ""}
         ${section("Journal", journalMarkup(journal))}
     `;
@@ -92,11 +155,12 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
             api.listOrderAttempts(id)
         ]);
 
-        nodes.drawerType.textContent = "Prepared Trade";
-        nodes.drawerTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Сделка #${trade.id}`;
-        nodes.drawerContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts });
+        nodes.modalType.textContent = "Prepared Trade";
+        nodes.modalTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `Сделка #${trade.id}`;
+        nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts });
+        openModal(nodes);
 
-        const cancelBtn = nodes.drawerContent.querySelector("[data-cancel-trade]");
+        const cancelBtn = nodes.modalContent.querySelector("[data-cancel-trade]");
         if (cancelBtn) {
             cancelBtn.addEventListener("click", async () => {
                 cancelBtn.disabled = true;
@@ -113,7 +177,7 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
             });
         }
 
-        const closeBtn = nodes.drawerContent.querySelector("[data-close-trade]");
+        const closeBtn = nodes.modalContent.querySelector("[data-close-trade]");
         if (closeBtn) {
             closeBtn.addEventListener("click", async () => {
                 closeBtn.disabled = true;
@@ -126,6 +190,38 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
                     showError(err.message);
                     closeBtn.disabled = false;
                     closeBtn.textContent = "Закрыть позицию";
+                }
+            });
+        }
+
+        const editForm = nodes.modalContent.querySelector("[data-action='edit-trade']");
+        if (editForm) {
+            editForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const data = new FormData(editForm);
+                const submitBtn = editForm.querySelector("[type='submit']");
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Сохраняем…";
+                try {
+                    const toInstant = (v) => v ? new Date(v).toISOString() : null;
+                    const toNum = (v) => v !== "" && v != null ? Number(v) : null;
+                    await api.updateArmedTrade(trade.id, {
+                        notionalUsd: toNum(data.get("notionalUsd")),
+                        plannedEntryAt: toInstant(data.get("plannedEntryAt")),
+                        plannedExitAt: toInstant(data.get("plannedExitAt")),
+                        entryAttemptCount: toNum(data.get("entryAttemptCount")),
+                        entrySpacingMs: toNum(data.get("entrySpacingMs")),
+                        manualLatencyAdjustmentMs: toNum(data.get("manualLatencyAdjustmentMs")),
+                        stopLossUsd: toNum(data.get("stopLossUsd")),
+                        takeProfitUsd: toNum(data.get("takeProfitUsd")),
+                        notes: data.get("notes") || null
+                    });
+                    if (onRefresh) onRefresh();
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Сохранить изменения";
                 }
             });
         }

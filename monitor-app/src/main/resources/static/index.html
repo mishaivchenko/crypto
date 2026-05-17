@@ -223,6 +223,20 @@
     </main>
 </div>
 
+<div id="inspector-modal" class="inspector-modal" role="dialog" aria-modal="true" hidden>
+    <div class="inspector-backdrop"></div>
+    <div class="inspector-panel">
+        <div class="inspector-header">
+            <div class="inspector-header-left">
+                <p class="eyebrow" id="modal-type">Inspector</p>
+                <h2 id="modal-title">—</h2>
+            </div>
+            <button id="modal-close" class="icon-button" type="button" aria-label="Закрыть">×</button>
+        </div>
+        <div id="modal-content" class="inspector-body"></div>
+    </div>
+</div>
+
 <script type="module" src="/app.js"></script>
 </body>
 </html>

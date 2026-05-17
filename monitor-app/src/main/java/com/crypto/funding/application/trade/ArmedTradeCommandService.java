@@ -97,6 +97,63 @@ public class ArmedTradeCommandService
     }
 
     @Transactional
+    public ArmedTrade update( UpdateArmedTradeCommand command )
+    {
+        ArmedTradeEntity entity = armedTradeRepository.findById( command.id() )
+                                                      .orElseThrow( () -> new ResourceNotFoundException( "Подготовленная сделка не найдена: " + command.id() ) );
+        if( entity.getState() != ArmedTradeState.ARMED )
+        {
+            throw new DomainValidationException( "Редактирование возможно только в статусе ARMED. Текущий статус: " + entity.getState() );
+        }
+        if( command.entryAttemptCount() != null && command.entryAttemptCount() < 1 )
+        {
+            throw new DomainValidationException( "entryAttemptCount must be positive." );
+        }
+        if( command.entrySpacingMs() != null && command.entrySpacingMs() < 0 )
+        {
+            throw new DomainValidationException( "entrySpacingMs must not be negative." );
+        }
+        if( command.plannedEntryAt() != null && command.plannedExitAt() != null && command.plannedExitAt().isBefore( command.plannedEntryAt() ) )
+        {
+            throw new DomainValidationException( "plannedExitAt must not be before plannedEntryAt." );
+        }
+
+        entity.setNotionalUsd( command.notionalUsd() );
+        entity.setPlannedEntryAt( command.plannedEntryAt() );
+        entity.setPlannedExitAt( command.plannedExitAt() );
+        if( command.entryAttemptCount() != null ) entity.setEntryAttemptCount( command.entryAttemptCount() );
+        if( command.entrySpacingMs() != null ) entity.setEntrySpacingMs( command.entrySpacingMs() );
+
+        Long manualLatencyAdjustmentMs = command.manualLatencyAdjustmentMs() != null
+            ? command.manualLatencyAdjustmentMs()
+            : entity.getManualLatencyAdjustmentMs();
+        entity.setManualLatencyAdjustmentMs( manualLatencyAdjustmentMs );
+        entity.setEffectiveEntryLatencyMs( venueLatencyService.effectiveEntryLatencyMs( entity.getMeasuredEntryLatencyMs(), manualLatencyAdjustmentMs ) );
+
+        FundingEventEntity fundingEvent = fundingEventRepository.findById( entity.getFundingEventId() )
+                                                               .orElseThrow( () -> new ResourceNotFoundException( "Событие фандинга не найдено: " + entity.getFundingEventId() ) );
+        entity.setEntryLeadMs( command.plannedEntryAt() == null ? null : Duration.between( command.plannedEntryAt(), fundingEvent.getFundingTime() ).toMillis() );
+        entity.setExitLeadMs( command.plannedExitAt() == null ? null : Duration.between( command.plannedExitAt(), fundingEvent.getFundingTime() ).toMillis() );
+
+        entity.setStopLossUsd( command.stopLossUsd() );
+        entity.setTakeProfitUsd( command.takeProfitUsd() );
+        entity.setNotes( command.notes() == null || command.notes().isBlank() ? null : command.notes().trim() );
+
+        ArmedTradeEntity saved = armedTradeRepository.save( entity );
+        tradeJournalService.append(
+            TradeJournalEntityType.ARMED_TRADE,
+            saved.getId(),
+            TradeJournalEventCode.ARMED_TRADE_UPDATED,
+            ArmedTradeState.ARMED.name(),
+            ArmedTradeState.ARMED.name(),
+            TradeJournalActorType.OPERATOR,
+            "api",
+            saved.getNotes()
+        );
+        return ArmedTradeMapper.toDomain( saved );
+    }
+
+    @Transactional
     public ArmedTrade create( CreateArmedTradeCommand command )
     {
         return create( command, TradeArmSource.DIRECT_TRADE_API, TradeJournalActorType.OPERATOR, "api" );

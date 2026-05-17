@@ -140,6 +140,13 @@ export const api = {
     listFundingEventJournal(id) {
         return request(`/api/v1/funding-events/${id}/journal`);
     },
+    updateArmedTrade(id, payload) {
+        return request(`/api/v1/armed-trades/${id}`, {
+            method: "PUT",
+            headers: jsonHeaders,
+            body: JSON.stringify(payload)
+        });
+    },
     cancelArmedTrade(id) {
         return request(`/api/v1/armed-trades/${id}`, { method: "DELETE" });
     },

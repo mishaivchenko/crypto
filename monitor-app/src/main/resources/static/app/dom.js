@@ -32,6 +32,11 @@ export function createNodes(doc = document) {
         drawerType: doc.getElementById("drawer-type"),
         drawerTitle: doc.getElementById("drawer-title"),
         drawerContent: doc.getElementById("drawer-content"),
-        drawerClose: doc.getElementById("drawer-close")
+        drawerClose: doc.getElementById("drawer-close"),
+        inspectorModal: doc.getElementById("inspector-modal"),
+        modalType: doc.getElementById("modal-type"),
+        modalTitle: doc.getElementById("modal-title"),
+        modalContent: doc.getElementById("modal-content"),
+        modalClose: doc.getElementById("modal-close")
     };
 }

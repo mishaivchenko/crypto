@@ -5,13 +5,15 @@ import {
     formatBadge,
     formatDecimal,
     metaRow,
+    openModal,
     section
 } from "../shared.js";
 
 export async function openDevTestRunTool({ nodes, showError }) {
-    nodes.drawerType.textContent = "Dev Tool";
-    nodes.drawerTitle.textContent = "Bybit/Gate test run";
-    nodes.drawerContent.innerHTML = emptyState("Загружаю dev test run options.", "Нужны active instruments из synced metadata.");
+    nodes.modalType.textContent = "Dev Tool";
+    nodes.modalTitle.textContent = "Bybit/Gate test run";
+    nodes.modalContent.innerHTML = emptyState("Загружаю dev test run options.", "Нужны active instruments из synced metadata.");
+    openModal(nodes);
     try {
         const options = await api.getDevTestRunOptions();
         renderDevTestRunStart({ nodes, options });
@@ -21,16 +23,16 @@ export async function openDevTestRunTool({ nodes, showError }) {
 }
 
 export function renderDevTestRunStart({ nodes, options }) {
-    nodes.drawerType.textContent = "Dev Tool";
-    nodes.drawerTitle.textContent = "Bybit/Gate test run";
-    nodes.drawerContent.innerHTML = buildDevTestRunStart(options);
+    nodes.modalType.textContent = "Dev Tool";
+    nodes.modalTitle.textContent = "Bybit/Gate test run";
+    nodes.modalContent.innerHTML = buildDevTestRunStart(options);
     wireSymbolPicker(nodes, options);
 }
 
 export function renderDevTestRunCreated({ nodes, options, run, execution = null }) {
-    nodes.drawerType.textContent = "Dev Tool";
-    nodes.drawerTitle.textContent = `${run.venue} ${run.symbol}`;
-    nodes.drawerContent.innerHTML = buildDevTestRunCreated({ options, run, execution });
+    nodes.modalType.textContent = "Dev Tool";
+    nodes.modalTitle.textContent = `${run.venue} ${run.symbol}`;
+    nodes.modalContent.innerHTML = buildDevTestRunCreated({ options, run, execution });
 }
 
 function buildDevTestRunStart(options) {
@@ -144,9 +146,9 @@ function executionResult(execution) {
 }
 
 function wireSymbolPicker(nodes, options) {
-    const venueSelect = nodes.drawerContent.querySelector("[data-dev-test-venue-select]");
-    const symbolInput = nodes.drawerContent.querySelector("[data-dev-test-symbol-input]");
-    const symbolList = nodes.drawerContent.querySelector("[data-dev-test-symbol-list]");
+    const venueSelect = nodes.modalContent.querySelector("[data-dev-test-venue-select]");
+    const symbolInput = nodes.modalContent.querySelector("[data-dev-test-symbol-input]");
+    const symbolList = nodes.modalContent.querySelector("[data-dev-test-symbol-list]");
     if (!venueSelect || !symbolInput || !symbolList) {
         return;
     }

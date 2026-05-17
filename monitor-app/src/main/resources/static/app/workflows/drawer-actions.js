@@ -116,7 +116,7 @@ export function createDrawerActionHandler({
 
         const devRunButton = event.target.closest("[data-action='run-dev-test-entry'], [data-action='run-dev-test-exit']");
         if (devRunButton) {
-            const productionConfirm = nodes.drawerContent.querySelector("[data-production-confirm]")?.value ?? null;
+            const productionConfirm = nodes.modalContent.querySelector("[data-production-confirm]")?.value ?? null;
             const payload = productionConfirm ? { productionConfirm } : {};
             const run = {
                 armedTradeId: devRunButton.dataset.armedTradeId,
