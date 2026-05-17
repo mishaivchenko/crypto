@@ -54,6 +54,8 @@ export function buildTradeDrawerContent({ trade, journal, attempts }) {
                 ${metaRow("Planned entry", formatInstant(trade.plannedEntryAt))}
                 ${metaRow("Planned exit", formatInstant(trade.plannedExitAt))}
                 ${metaRow("Entry attempts", formatNumber(trade.entryAttemptCount ?? 1), `spacing ${formatDurationMs(trade.entrySpacingMs ?? 0)}`)}
+                ${trade.stopLossUsd != null ? metaRow("Stop Loss", `${formatDecimal(trade.stopLossUsd, 2)} USD`) : ""}
+                ${trade.takeProfitUsd != null ? metaRow("Take Profit", `${formatDecimal(trade.takeProfitUsd, 2)} USD`) : ""}
                 ${metaRow("Note", escapeHtml(trade.notes ?? "—"))}
             </div>
             <details class="technical-details">

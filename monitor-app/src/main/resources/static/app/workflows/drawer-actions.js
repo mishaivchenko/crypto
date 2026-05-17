@@ -63,6 +63,8 @@ export function createDrawerActionHandler({
                         entryAttemptCount: numberOrNull(data.get("entryAttemptCount")),
                         entrySpacingMs: numberOrNull(data.get("entrySpacingMs")),
                         manualLatencyAdjustmentMs: numberOrNull(data.get("manualLatencyAdjustmentMs")),
+                        stopLossUsd: numberOrNull(data.get("stopLossUsd")),
+                        takeProfitUsd: numberOrNull(data.get("takeProfitUsd")),
                         notes: data.get("notes") || null
                     });
                     showSuccess("Prepared Trade created.");

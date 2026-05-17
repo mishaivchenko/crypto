@@ -75,6 +75,18 @@ export function buildEventDrawerContent({ event, journal }) {
                         <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
                         <small>Engine will trigger attempts earlier by measured latency plus this adjustment.</small>
                     </label>
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>Stop Loss, USD</span>
+                            <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00">
+                            <small>Max loss before auto-exit. Leave blank to disable.</small>
+                        </label>
+                        <label class="field">
+                            <span>Take Profit, USD</span>
+                            <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="e.g. 50.00">
+                            <small>Target gain before auto-exit. Leave blank to disable.</small>
+                        </label>
+                    </div>
                     <label class="field">
                         <span>Preparation note</span>
                         <textarea name="notes" placeholder="Почему этот Event должен перейти в Prepared Trade"></textarea>
