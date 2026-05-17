@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -64,13 +65,22 @@ public class TradeOutcomeQueryService
     @Transactional(readOnly = true)
     public PnlAggregate aggregate()
     {
-        Object[] totals = tradeOutcomeRepository.aggregateTotals();
-        BigDecimal totalNet = totals[0] instanceof BigDecimal bd ? bd : new BigDecimal( totals[0].toString() );
-        BigDecimal totalGross = totals[1] instanceof BigDecimal bd ? bd : new BigDecimal( totals[1].toString() );
-        BigDecimal totalFees = totals[2] instanceof BigDecimal bd ? bd : new BigDecimal( totals[2].toString() );
-        long closedTrades = ((Number) totals[3]).longValue();
-        long profitable = tradeOutcomeRepository.countProfitable();
-        return new PnlAggregate( totalNet, totalGross, totalFees, closedTrades, profitable );
+        List<TradeOutcomeEntity> all = tradeOutcomeRepository.findAll();
+        BigDecimal totalNet = BigDecimal.ZERO;
+        BigDecimal totalGross = BigDecimal.ZERO;
+        BigDecimal totalFees = BigDecimal.ZERO;
+        long profitable = 0;
+        for( TradeOutcomeEntity entity : all )
+        {
+            if( entity.getNetPnlUsd() != null )
+            {
+                totalNet = totalNet.add( entity.getNetPnlUsd() );
+                if( entity.getNetPnlUsd().signum() > 0 ) profitable++;
+            }
+            if( entity.getGrossPnlUsd() != null ) totalGross = totalGross.add( entity.getGrossPnlUsd() );
+            if( entity.getFeesUsd() != null ) totalFees = totalFees.add( entity.getFeesUsd() );
+        }
+        return new PnlAggregate( totalNet, totalGross, totalFees, all.size(), profitable );
     }
 
     private OutcomeSummary toSummary( TradeOutcomeEntity entity )
