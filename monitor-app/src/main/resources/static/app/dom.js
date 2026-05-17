@@ -18,6 +18,7 @@ export function createNodes(doc = document) {
         },
         dashboardSummary: doc.getElementById("dashboard-summary"),
         dashboardDevTools: doc.getElementById("dashboard-dev-tools"),
+        dashboardMetrics: doc.getElementById("dashboard-metrics"),
         dashboardVenues: doc.getElementById("dashboard-venues"),
         candidatesList: doc.getElementById("candidates-list"),
         eventsList: doc.getElementById("events-list"),

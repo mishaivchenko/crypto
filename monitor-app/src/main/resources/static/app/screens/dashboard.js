@@ -2,6 +2,7 @@ import { api } from "../../api.js";
 import {
     emptyState,
     escapeHtml,
+    formatDecimal,
     formatDurationMs,
     formatInstant,
     formatNumber,
@@ -93,10 +94,59 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     `;
 }
 
+export function criticalMetricsPanelMarkup(metrics, pnl) {
+    const venueSubmitRows = metrics
+        ? Object.entries(metrics.averageSubmitDurationMsByVenue ?? {}).map(([venue, avg]) => {
+            const last = metrics.lastSubmitDurationMsByVenue?.[venue] ?? null;
+            return metaRow(escapeHtml(venue), formatDurationMs(avg), last != null ? `last ${formatDurationMs(last)}` : "");
+        }).join("")
+        : "";
+
+    const exchangeLatencySection = venueSubmitRows
+        ? `<div class="meta-grid">${venueSubmitRows}</div>`
+        : `<p class="muted">Нет данных по latency (engine ещё не отправлял snapshot).</p>`;
+
+    const internalTimingSection = metrics ? `
+        <div class="meta-grid">
+            ${metaRow("Plan fetch", formatDurationMs(metrics.averagePlanFetchDurationMs), `last ${formatDurationMs(metrics.lastPlanFetchDurationMs)}`)}
+            ${metaRow("Attempt record", formatDurationMs(metrics.averageAttemptRecordDurationMs), `last ${formatDurationMs(metrics.lastAttemptRecordDurationMs)}`)}
+            ${metaRow("Execution run", formatDurationMs(metrics.averageExecutionRunDurationMs), `last ${formatDurationMs(metrics.lastExecutionRunDurationMs)}`)}
+        </div>
+    ` : `<p class="muted">Нет данных (engine ещё не отправлял snapshot).</p>`;
+
+    const pnlSection = pnl ? `
+        <div class="meta-grid">
+            ${metaRow("Net PnL", `${pnl.totalNetPnlUsd >= 0 ? "+" : ""}${formatDecimal(pnl.totalNetPnlUsd, 4)} USD`)}
+            ${metaRow("Gross PnL", `${formatDecimal(pnl.totalGrossPnlUsd, 4)} USD`)}
+            ${metaRow("Total fees", `${formatDecimal(pnl.totalFeesUsd, 4)} USD`)}
+            ${metaRow("Closed trades", formatNumber(pnl.closedTrades), `${formatNumber(pnl.profitableTrades)} profitable`)}
+        </div>
+    ` : `<p class="muted">Нет закрытых сделок.</p>`;
+
+    return `
+        <div class="panel-header">
+            <h3>Critical Metrics</h3>
+        </div>
+        <details open>
+            <summary class="meta-label">Exchange submit latency (avg / last)</summary>
+            ${exchangeLatencySection}
+        </details>
+        <details>
+            <summary class="meta-label">Engine internal timing</summary>
+            ${internalTimingSection}
+        </details>
+        <details>
+            <summary class="meta-label">PnL summary</summary>
+            ${pnlSection}
+        </details>
+    `;
+}
+
 export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
     nodes.dashboardSummary.innerHTML = dashboardSummaryMarkup(overview);
     nodes.dashboardDevTools.innerHTML = dashboardDevToolsMarkup(state.engineRuntime, state.engineRuntimeError);
+    nodes.dashboardMetrics.innerHTML = criticalMetricsPanelMarkup(state.engineMetrics, state.pnlAggregate);
     nodes.dashboardVenues.innerHTML = overview.venues.length
         ? overview.venues.map((venue) => venueCard(venue)).join("")
         : emptyState("Venue diagnostics пока пуст.", "Сделай sync, чтобы подтянуть instrument metadata.");

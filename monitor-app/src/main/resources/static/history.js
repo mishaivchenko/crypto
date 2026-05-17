@@ -145,7 +145,7 @@ export function filterHistoryTrades(trades, filters = {}, attemptsByTrade = {}) 
     });
 }
 
-export function historyTradeRow(trade, attempts = []) {
+export function historyTradeRow(trade, attempts = [], outcome = null) {
     const historyStage = deriveHistoryStage(trade, null, attempts);
     const health = deriveTradeHealth(trade, attempts);
     const summary = summarizeAttempts(attempts);
@@ -156,6 +156,9 @@ export function historyTradeRow(trade, attempts = []) {
     const attemptSummary = summary.total
         ? `${formatNumber(summary.failed)} fail / ${formatNumber(summary.total)} recorded`
         : "attempts not recorded";
+    const pnlBadge = outcome?.netPnlUsd != null
+        ? `<span class="badge ${Number(outcome.netPnlUsd) >= 0 ? "good" : "bad"}">${Number(outcome.netPnlUsd) >= 0 ? "+" : ""}${formatDecimal(outcome.netPnlUsd, 2)} USD</span>`
+        : "";
 
     return `
         <article class="history-row" data-open-history-trade="${escapeHtml(trade.id)}">
@@ -164,6 +167,7 @@ export function historyTradeRow(trade, attempts = []) {
                 <span class="history-venue">${escapeHtml(trade.venue ?? "venue —")}</span>
                 <span class="history-time">funding ${formatInstant(trade.fundingTime)}</span>
                 <span class="history-side">${escapeHtml(trade.intendedSide ?? "SHORT")}</span>
+                ${pnlBadge}
             </div>
             <div class="history-row-plan">
                 <span>${formatNumber(configuredAttempts)} attempts / ${formatPlainMs(spacingMs)}</span>
@@ -252,6 +256,37 @@ export function latencyStripMarkup(trade, attempts = []) {
     `;
 }
 
+export function exitTimingStripMarkup(trade, attempts = []) {
+    if (!trade?.plannedExitAt) {
+        return "";
+    }
+    const normalAttempts = normalizedAttempts(attempts);
+    const exitAttempt = normalAttempts.find((a) => a.attemptNumber == null);
+    const exitSubmittedAt = exitAttempt?.submittedAt ?? null;
+    const exitFilledAt = exitAttempt?.status === "FILLED" || exitAttempt?.status === "ACKNOWLEDGED"
+        ? (exitAttempt?.exchangeTimestamp ?? exitAttempt?.submittedAt ?? null)
+        : null;
+
+    return `
+        <div class="latency-strip">
+            <div class="latency-node is-known">
+                <span>planned exit</span>
+                <strong>${formatInstant(trade.plannedExitAt)}</strong>
+            </div>
+            <div class="latency-line"></div>
+            <div class="latency-node ${exitSubmittedAt ? "is-known" : ""}">
+                <span>submitted</span>
+                <strong>${exitSubmittedAt ? formatInstant(exitSubmittedAt) : "pending"}</strong>
+            </div>
+            <div class="latency-line"></div>
+            <div class="latency-node ${exitFilledAt ? "is-known" : ""}">
+                <span>filled</span>
+                <strong>${exitFilledAt ? formatInstant(exitFilledAt) : "not filled"}</strong>
+            </div>
+        </div>
+    `;
+}
+
 export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts = [], position = null, outcome = null }) {
     const historyStage = deriveHistoryStage(trade, event, attempts);
     const health = deriveTradeHealth(trade, attempts, event);
@@ -306,6 +341,7 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
         `)}
         ${section("4. Attempts", `
             ${latencyStripMarkup(trade, attempts)}
+            ${exitTimingStripMarkup(trade, attempts)}
             ${attemptLadderMarkup(trade, attempts)}
             ${attempts.length ? attempts.map((attempt) => `
                 <div class="meta-row">

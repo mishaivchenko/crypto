@@ -10,10 +10,13 @@ import com.crypto.funding.api.dto.EngineRuntimeSettingsRequest;
 import com.crypto.funding.api.dto.EngineRuntimeSettingsResponse;
 import com.crypto.funding.application.monitor.DevTestRunService;
 import com.crypto.funding.application.monitor.EngineControlService;
+import com.crypto.funding.application.observability.EngineMetricsSnapshotStore;
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
 import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
+import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
+import org.springframework.http.ResponseEntity;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,17 +28,35 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/v2/monitor/dev")
 public class MonitorDevToolsController
 {
     private final EngineControlService engineControlService;
     private final DevTestRunService devTestRunService;
+    private final Optional<EngineMetricsSnapshotStore> snapshotStore;
 
-    public MonitorDevToolsController( EngineControlService engineControlService, DevTestRunService devTestRunService )
+    public MonitorDevToolsController(
+        EngineControlService engineControlService,
+        DevTestRunService devTestRunService,
+        Optional<EngineMetricsSnapshotStore> snapshotStore
+    )
     {
         this.engineControlService = engineControlService;
         this.devTestRunService = devTestRunService;
+        this.snapshotStore = snapshotStore;
+    }
+
+    @GetMapping("/engine/metrics")
+    public ResponseEntity<EngineMetricsSnapshot> metrics()
+    {
+        return snapshotStore
+            .map( store -> store.current() )
+            .filter( snapshot -> snapshot != null )
+            .map( ResponseEntity::ok )
+            .orElse( ResponseEntity.noContent().build() );
     }
 
     @PostMapping("/engine/run-once")

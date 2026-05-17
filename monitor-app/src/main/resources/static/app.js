@@ -73,14 +73,18 @@ async function refreshCurrentScreen() {
         if (state.screen === "dashboard") {
             setLoading(nodes.dashboardSummary, "Собираю срез контура…");
             setLoading(nodes.dashboardVenues, "Собираю пульс площадок…");
-            const [overview, runtimeResult] = await Promise.all([
+            const [overview, runtimeResult, engineMetrics, pnlAggregate] = await Promise.all([
                 api.getOverview(),
                 api.getEngineRuntime()
                     .then((runtime) => ({ runtime, error: null }))
-                    .catch((error) => ({ runtime: null, error: error.message }))
+                    .catch((error) => ({ runtime: null, error: error.message })),
+                api.getEngineMetrics(),
+                api.getPnlAggregate()
             ]);
             state.engineRuntime = runtimeResult.runtime;
             state.engineRuntimeError = runtimeResult.error;
+            state.engineMetrics = engineMetrics;
+            state.pnlAggregate = pnlAggregate;
             renderDashboard({
                 nodes,
                 overview,
@@ -129,10 +133,13 @@ async function refreshCurrentScreen() {
                 api.listArmedTrades({ includeHistorical: true }),
                 api.listAllOrderAttempts()
             ]);
+            const tradeIds = trades.map((t) => t.id);
+            const outcomesByTrade = await api.getOutcomesByTradeIds(tradeIds);
             renderHistory({
                 nodes,
                 trades,
                 attemptsByTrade: groupAttemptsByTrade(attempts),
+                outcomesByTrade,
                 filters: state.historyFilters,
                 onOpenHistoryTrade: openHistoryTrade
             });
