@@ -95,6 +95,12 @@ public class ArmedTradeEntity extends AuditableEntity
     @Column(name = "mode")
     private VenueAccessMode mode;
 
+    @Column(name = "stop_loss_usd", precision = 19, scale = 8)
+    private BigDecimal stopLossUsd;
+
+    @Column(name = "take_profit_usd", precision = 19, scale = 8)
+    private BigDecimal takeProfitUsd;
+
     public Long getId()
     {
         return id;
@@ -278,5 +284,25 @@ public class ArmedTradeEntity extends AuditableEntity
     public void setMode( VenueAccessMode mode )
     {
         this.mode = mode;
+    }
+
+    public BigDecimal getStopLossUsd()
+    {
+        return stopLossUsd;
+    }
+
+    public void setStopLossUsd( BigDecimal stopLossUsd )
+    {
+        this.stopLossUsd = stopLossUsd;
+    }
+
+    public BigDecimal getTakeProfitUsd()
+    {
+        return takeProfitUsd;
+    }
+
+    public void setTakeProfitUsd( BigDecimal takeProfitUsd )
+    {
+        this.takeProfitUsd = takeProfitUsd;
     }
 }

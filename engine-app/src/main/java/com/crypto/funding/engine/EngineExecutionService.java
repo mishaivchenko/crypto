@@ -5,6 +5,7 @@ import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
 import com.crypto.funding.contract.engine.EngineExecutionAttemptResult;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
+import com.crypto.funding.contract.engine.MarkPriceResponse;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
@@ -28,6 +29,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongSupplier;
@@ -82,6 +84,26 @@ public class EngineExecutionService
 
             for( EngineExecutionPlan plan : plans )
             {
+                if( plan != null && plan.status() == EnginePlanStatus.WAITING_EXIT && !force && shouldEarlyExit( plan ) )
+                {
+                    String exitAttemptKey = exitAttemptKey( plan );
+                    if( reserveAttemptKey( exitAttemptKey ) )
+                    {
+                        try
+                        {
+                            results.add( executeExit( plan ) );
+                        }
+                        catch( Exception e )
+                        {
+                            results.add( isolatedFailure( plan.armedTradeId(), null, exitAttemptKey, e ) );
+                        }
+                    }
+                    else
+                    {
+                        skipped++;
+                    }
+                    continue;
+                }
                 if( !shouldProcessPlan( plan, force ) )
                 {
                     skipped++;
@@ -560,6 +582,40 @@ public class EngineExecutionService
     private static BigDecimal zeroIfNull( BigDecimal value )
     {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private boolean shouldEarlyExit( EngineExecutionPlan plan )
+    {
+        if( ( plan.stopLossUsd() == null && plan.takeProfitUsd() == null )
+            || plan.positionQuantity() == null || plan.positionQuantity().signum() <= 0
+            || plan.positionEntryPrice() == null || plan.venueSymbol() == null )
+        {
+            return false;
+        }
+        Optional<MarkPriceResponse> markPriceResponse = client.fetchMarkPrice( plan.venue(), plan.venueSymbol() );
+        if( markPriceResponse.isEmpty() || markPriceResponse.get().markPrice() == null )
+        {
+            return false;
+        }
+        BigDecimal markPrice = markPriceResponse.get().markPrice();
+        BigDecimal grossPnl = grossPnlForPrice( plan.intendedSide(), plan.positionEntryPrice(), markPrice, plan.positionQuantity() );
+        if( plan.stopLossUsd() != null && grossPnl.compareTo( plan.stopLossUsd().negate() ) < 0 )
+        {
+            return true;
+        }
+        return plan.takeProfitUsd() != null && grossPnl.compareTo( plan.takeProfitUsd() ) > 0;
+    }
+
+    private static BigDecimal grossPnlForPrice( TradeSide side, BigDecimal entryPrice, BigDecimal currentPrice, BigDecimal quantity )
+    {
+        BigDecimal safeEntry = zeroIfNull( entryPrice );
+        BigDecimal safeCurrent = zeroIfNull( currentPrice );
+        BigDecimal safeQty = zeroIfNull( quantity );
+        if( side == TradeSide.SHORT )
+        {
+            return safeEntry.subtract( safeCurrent ).multiply( safeQty );
+        }
+        return safeCurrent.subtract( safeEntry ).multiply( safeQty );
     }
 
     private void reportLatencySample( String venue, String symbol, long durationMs, Instant sampledAt )

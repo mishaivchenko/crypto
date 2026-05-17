@@ -40,6 +40,8 @@ class EnginePlanSummaryFormatterTest
             ArmedTradeState.ARMED,
             null,
             null,
+            null,
+            null,
             Instant.parse( "2029-12-31T23:00:00Z" ),
             Instant.parse( "2029-12-31T23:00:00Z" )
         );

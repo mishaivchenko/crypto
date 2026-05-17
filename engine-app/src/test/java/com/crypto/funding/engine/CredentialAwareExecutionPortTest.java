@@ -402,7 +402,9 @@ class CredentialAwareExecutionPortTest
             Instant.parse( "2029-12-31T00:00:00Z" ),
             Instant.parse( "2029-12-31T00:00:00Z" ),
             BigDecimal.TEN,
-            positionEntryPrice
+            positionEntryPrice,
+            null,
+            null
         );
     }
 
@@ -437,6 +439,8 @@ class CredentialAwareExecutionPortTest
             metadataLastSyncedAt,
             latencySampledAt,
             BigDecimal.TEN,
+            null,
+            null,
             null
         );
     }

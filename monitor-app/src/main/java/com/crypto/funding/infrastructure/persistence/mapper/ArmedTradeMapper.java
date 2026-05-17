@@ -31,6 +31,8 @@ public final class ArmedTradeMapper
             entity.getState(),
             entity.getNotes(),
             entity.getMode(),
+            entity.getStopLossUsd(),
+            entity.getTakeProfitUsd(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

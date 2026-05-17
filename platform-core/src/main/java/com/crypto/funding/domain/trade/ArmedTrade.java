@@ -25,6 +25,8 @@ public record ArmedTrade(
     ArmedTradeState state,
     String notes,
     VenueAccessMode mode,
+    BigDecimal stopLossUsd,
+    BigDecimal takeProfitUsd,
     Instant createdAt,
     Instant updatedAt
 )

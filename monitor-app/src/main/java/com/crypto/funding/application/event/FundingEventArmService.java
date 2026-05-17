@@ -55,7 +55,9 @@ public class FundingEventArmService
                 command.entryAttemptCount(),
                 command.entrySpacingMs(),
                 command.manualLatencyAdjustmentMs(),
-                command.notes()
+                command.notes(),
+                null,
+                null
             ),
             TradeArmSource.EVENT_API,
             TradeJournalActorType.OPERATOR,

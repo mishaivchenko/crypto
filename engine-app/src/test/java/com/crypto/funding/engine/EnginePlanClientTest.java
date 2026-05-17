@@ -1,5 +1,6 @@
 package com.crypto.funding.engine;
 
+import com.crypto.funding.contract.engine.MarkPriceResponse;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
@@ -32,6 +34,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class EnginePlanClientTest
@@ -310,6 +313,43 @@ class EnginePlanClientTest
 
         assertThat( nullTokenClient.listPlans() ).isEmpty();
         nullTokenServer.verify();
+    }
+
+    // REQ: ENG-CLI-006
+    @Test
+    void fetchMarkPriceReturnsPriceOnSuccess()
+    {
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/mark-price?venue=bybit&symbol=REQUSDT" ) )
+              .andExpect( method( HttpMethod.GET ) )
+              .andExpect( header( "X-Internal-Token", "internal-token" ) )
+              .andRespond( withSuccess( """
+                  {
+                    "venue": "bybit",
+                    "symbol": "REQUSDT",
+                    "markPrice": 2.50,
+                    "fetchedAt": "2030-01-01T00:00:00Z"
+                  }
+                  """, MediaType.APPLICATION_JSON ) );
+
+        Optional<MarkPriceResponse> result = client.fetchMarkPrice( "bybit", "REQUSDT" );
+
+        assertThat( result ).isPresent();
+        assertThat( result.get().markPrice() ).isEqualByComparingTo( "2.50" );
+        server.verify();
+    }
+
+    // REQ: ENG-CLI-006
+    @Test
+    void fetchMarkPriceReturnsEmptyOnServerError()
+    {
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/mark-price?venue=bybit&symbol=REQUSDT" ) )
+              .andExpect( method( HttpMethod.GET ) )
+              .andRespond( withServerError() );
+
+        Optional<MarkPriceResponse> result = client.fetchMarkPrice( "bybit", "REQUSDT" );
+
+        assertThat( result ).isEmpty();
+        server.verify();
     }
 
     private static EngineProperties properties()

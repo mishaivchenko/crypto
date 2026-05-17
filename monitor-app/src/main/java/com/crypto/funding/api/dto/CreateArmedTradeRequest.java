@@ -19,7 +19,9 @@ public record CreateArmedTradeRequest(
     @Min(1) @Max(25) Integer entryAttemptCount,
     @PositiveOrZero Long entrySpacingMs,
     @Min(-60000) @Max(60000) Long manualLatencyAdjustmentMs,
-    String notes
+    String notes,
+    BigDecimal stopLossUsd,
+    BigDecimal takeProfitUsd
 )
 {
 }

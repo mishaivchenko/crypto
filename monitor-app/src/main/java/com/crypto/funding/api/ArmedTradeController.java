@@ -87,7 +87,9 @@ public class ArmedTradeController
                 request.entryAttemptCount(),
                 request.entrySpacingMs(),
                 request.manualLatencyAdjustmentMs(),
-                request.notes()
+                request.notes(),
+                request.stopLossUsd(),
+                request.takeProfitUsd()
             )
         );
         return toResponse( created );
@@ -176,6 +178,8 @@ public class ArmedTradeController
             trade.state(),
             trade.notes(),
             trade.mode() == null ? null : trade.mode().propertyValue(),
+            trade.stopLossUsd(),
+            trade.takeProfitUsd(),
             trade.createdAt(),
             trade.updatedAt()
         );

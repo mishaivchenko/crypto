@@ -5,6 +5,7 @@ import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
+import com.crypto.funding.contract.engine.MarkPriceResponse;
 import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
 import com.crypto.funding.contract.engine.EnginePositionResponse;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.LongSupplier;
 
 @Component
@@ -158,6 +160,26 @@ public class EnginePlanClient
                   .body( request )
                   .retrieve()
                   .toBodilessEntity();
+    }
+
+    public Optional<MarkPriceResponse> fetchMarkPrice( String venue, String symbol )
+    {
+        try
+        {
+            MarkPriceResponse response = restClient.get()
+                                                   .uri( uriBuilder -> uriBuilder.path( "/internal/v1/engine/mark-price" )
+                                                                                 .queryParam( "venue", venue )
+                                                                                 .queryParam( "symbol", symbol )
+                                                                                 .build() )
+                                                   .headers( this::internalHeaders )
+                                                   .retrieve()
+                                                   .body( MarkPriceResponse.class );
+            return Optional.ofNullable( response );
+        }
+        catch( Exception ignored )
+        {
+            return Optional.empty();
+        }
     }
 
     private void internalHeaders( HttpHeaders headers )

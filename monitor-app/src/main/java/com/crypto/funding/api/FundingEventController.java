@@ -134,6 +134,8 @@ public class FundingEventController
             trade.state(),
             trade.notes(),
             trade.mode() == null ? null : trade.mode().propertyValue(),
+            trade.stopLossUsd(),
+            trade.takeProfitUsd(),
             trade.createdAt(),
             trade.updatedAt()
         );

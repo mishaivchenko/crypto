@@ -179,6 +179,8 @@ public class ArmedTradeCommandService
         entity.setState( ArmedTradeState.ARMED );
         entity.setNotes( command.notes() == null || command.notes().isBlank() ? null : command.notes().trim() );
         entity.setMode( venueProfileService.getGlobalAccessProfile().mode() );
+        entity.setStopLossUsd( command.stopLossUsd() );
+        entity.setTakeProfitUsd( command.takeProfitUsd() );
 
         ArmedTradeEntity saved = armedTradeRepository.save( entity );
         fundingEvent.setStatus( FundingEventStatus.ARMED );

@@ -30,6 +30,8 @@ public record ArmedTradeResponse(
     ArmedTradeState state,
     String notes,
     String mode,
+    BigDecimal stopLossUsd,
+    BigDecimal takeProfitUsd,
     Instant createdAt,
     Instant updatedAt
 )

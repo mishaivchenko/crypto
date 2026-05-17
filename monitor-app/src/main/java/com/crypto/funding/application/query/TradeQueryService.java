@@ -89,6 +89,8 @@ public class TradeQueryService
             entity.getState(),
             entity.getNotes(),
             entity.getMode(),
+            entity.getStopLossUsd(),
+            entity.getTakeProfitUsd(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

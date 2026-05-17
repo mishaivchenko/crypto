@@ -14,7 +14,9 @@ public record CreateArmedTradeCommand(
     Integer entryAttemptCount,
     Long entrySpacingMs,
     Long manualLatencyAdjustmentMs,
-    String notes
+    String notes,
+    BigDecimal stopLossUsd,
+    BigDecimal takeProfitUsd
 )
 {
 }
