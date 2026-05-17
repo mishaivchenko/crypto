@@ -181,7 +181,7 @@ jobs:
           cd ${{ env.PROJECT_DIR }}
           IMAGE_MONITOR=funding-monitor:staging \
           IMAGE_ENGINE=funding-engine:staging \
-          docker compose up -d --remove-orphans monitor engine
+          docker compose up -d --remove-orphans monitor engine prometheus grafana
 
       - name: Smoke test
         run: |
