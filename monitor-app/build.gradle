@@ -30,7 +30,8 @@ tasks.register('frontendTest', Exec) {
     group = 'verification'
     description = 'Run monitor static UI tests'
     workingDir projectDir
-    commandLine 'node', '--test', 'src/test/js/**/*.test.mjs'
+    def testFiles = fileTree('src/test/js').include('**/*.test.mjs').files.collect { it.absolutePath }
+    commandLine(['node', '--test'] + testFiles)
 }
 
 tasks.named('check') {
