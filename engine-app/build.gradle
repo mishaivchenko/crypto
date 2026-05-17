@@ -101,6 +101,7 @@ pitest {
         'com.crypto.funding.engine.CredentialAwareExecutionPortTest',
         'com.crypto.funding.engine.EngineControllerTest',
         'com.crypto.funding.engine.EngineExecutionServiceTest',
+        'com.crypto.funding.engine.EngineExecutionServiceWarmupTest',
         'com.crypto.funding.engine.EngineExecutionSchedulerTest',
         'com.crypto.funding.engine.EngineMetricsPublishPropertiesTest',
         'com.crypto.funding.engine.EngineMetricsPublisherDisabledIntegrationTest',

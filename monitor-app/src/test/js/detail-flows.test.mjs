@@ -1,3 +1,6 @@
+import { setLang } from "../../main/resources/static/i18n.js";
+setLang("en");
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

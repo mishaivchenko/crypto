@@ -1,3 +1,6 @@
+import { setLang } from "../../main/resources/static/i18n.js";
+setLang("en");
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -8,7 +11,7 @@ import { historyListMarkup } from "../../main/resources/static/app/screens/histo
 import { venuesListMarkup } from "../../main/resources/static/app/screens/venues.js";
 
 test("candidates screen renders empty and loaded states", () => {
-    assert.match(candidatesListMarkup({ content: [] }), /Signal Queue пуста/);
+    assert.match(candidatesListMarkup({ content: [] }), /Signal Queue is empty/);
 
     const loaded = candidatesListMarkup({
         content: [
@@ -29,8 +32,8 @@ test("candidates screen renders empty and loaded states", () => {
 });
 
 test("events and trades screens keep empty-state guidance", () => {
-    assert.match(eventsListMarkup({ content: [] }), /Funding Events пока нет/);
-    assert.match(tradesListMarkup([]), /Prepared Trades пока нет/);
+    assert.match(eventsListMarkup({ content: [] }), /No Funding Events yet/);
+    assert.match(tradesListMarkup([]), /No Prepared Trades yet/);
 });
 
 test("history screen renders filtered count and rows", () => {
@@ -65,7 +68,7 @@ test("history screen renders filtered count and rows", () => {
 });
 
 test("venues screen renders empty and loaded states", () => {
-    assert.match(venuesListMarkup([]), /Venue Access пуст/);
+    assert.match(venuesListMarkup([]), /Venue Access is empty/);
 
     const loaded = venuesListMarkup([
         {

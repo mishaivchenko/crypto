@@ -1,3 +1,6 @@
+import { setLang } from "../../main/resources/static/i18n.js";
+setLang("en");
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -87,9 +90,9 @@ test("history row exposes key trading context", () => {
 
     assert.match(row, /WET\/USDT/);
     assert.match(row, /gate/);
-    assert.match(row, /3 attempts \/ 150 мс/);
+    assert.match(row, /3 attempts \/ 150 ms/);
     assert.match(row, /Attempts failed/);
-    assert.match(row, /manual \+10 мс/);
+    assert.match(row, /manual \+10 ms/);
 });
 
 test("detail markup tells the full source-to-outcome story", () => {

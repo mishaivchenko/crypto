@@ -1,3 +1,6 @@
+import { setLang } from "../../main/resources/static/i18n.js";
+setLang("en");
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -27,7 +30,7 @@ test("dashboard summary keeps current operator snapshot messaging", () => {
 test("dashboard dev tools shows runtime error state", () => {
     const markup = dashboardDevToolsMarkup(null, "engine unavailable");
 
-    assert.match(markup, /Runtime control временно недоступен/);
+    assert.match(markup, /Runtime control temporarily unavailable/);
     assert.match(markup, /engine unavailable/);
     assert.match(markup, /Run once · dev/);
 });

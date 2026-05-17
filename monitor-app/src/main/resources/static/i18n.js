@@ -1146,7 +1146,8 @@ const translations = {
     }
 };
 
-let currentLang = localStorage.getItem(STORAGE_KEY) || "ru";
+const _storage = typeof localStorage !== "undefined" && typeof localStorage.getItem === "function" ? localStorage : null;
+let currentLang = (_storage ? _storage.getItem(STORAGE_KEY) : null) || "ru";
 
 export function getLang() {
     return currentLang;
@@ -1155,7 +1156,7 @@ export function getLang() {
 export function setLang(lang) {
     if (lang !== "en" && lang !== "ru") return;
     currentLang = lang;
-    localStorage.setItem(STORAGE_KEY, lang);
+    if (_storage) _storage.setItem(STORAGE_KEY, lang);
 }
 
 export function t(key) {
