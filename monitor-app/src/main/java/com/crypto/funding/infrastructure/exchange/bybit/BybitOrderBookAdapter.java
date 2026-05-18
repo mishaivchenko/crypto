@@ -7,7 +7,6 @@ import com.crypto.funding.domain.liquidity.OrderBookLevel;
 import com.crypto.funding.domain.liquidity.OrderBookSnapshot;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -29,19 +28,16 @@ public class BybitOrderBookAdapter implements VenueOrderBookPort
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final VenueHttpProperties venueHttpProperties;
-    private final Environment environment;
     private final VenueProfileService venueProfileService;
 
     public BybitOrderBookAdapter(
         HttpClient httpClient,
         VenueHttpProperties venueHttpProperties,
-        Environment environment,
         VenueProfileService venueProfileService
     )
     {
         this.httpClient = httpClient;
         this.venueHttpProperties = venueHttpProperties;
-        this.environment = environment;
         this.venueProfileService = venueProfileService;
     }
 
@@ -113,9 +109,6 @@ public class BybitOrderBookAdapter implements VenueOrderBookPort
 
     private String baseUrl()
     {
-        return environment.getProperty(
-            "trading.bybit.metadata-base-url",
-            venueProfileService.resolveCredentials( venue() ).baseUrl()
-        );
+        return venueProfileService.resolveCredentials( venue() ).baseUrl();
     }
 }

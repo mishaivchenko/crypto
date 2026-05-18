@@ -2,6 +2,7 @@ package com.crypto.funding.application.event;
 
 import com.crypto.funding.application.DomainValidationException;
 import com.crypto.funding.application.ResourceNotFoundException;
+import com.crypto.funding.application.liquidity.LiquidityAutoAssessService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
 import com.crypto.funding.domain.event.FundingEventStatus;
@@ -19,16 +20,19 @@ public class FundingEventArmService
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeCommandService armedTradeCommandService;
     private final FundingEventLifecycleService fundingEventLifecycleService;
+    private final LiquidityAutoAssessService liquidityAutoAssessService;
 
     public FundingEventArmService(
         FundingEventJpaRepository fundingEventRepository,
         ArmedTradeCommandService armedTradeCommandService,
-        FundingEventLifecycleService fundingEventLifecycleService
+        FundingEventLifecycleService fundingEventLifecycleService,
+        LiquidityAutoAssessService liquidityAutoAssessService
     )
     {
         this.fundingEventRepository = fundingEventRepository;
         this.armedTradeCommandService = armedTradeCommandService;
         this.fundingEventLifecycleService = fundingEventLifecycleService;
+        this.liquidityAutoAssessService = liquidityAutoAssessService;
     }
 
     @Transactional
@@ -63,6 +67,7 @@ public class FundingEventArmService
             TradeJournalActorType.OPERATOR,
             "api"
         );
+        liquidityAutoAssessService.assessAfterArm( armedTrade.id(), fundingEvent.getVenue(), fundingEvent.getSymbol() );
         return armedTrade;
     }
 }
