@@ -37,39 +37,19 @@ export {
     section
 };
 
-const VENUE_ICONS = {
-    gate: `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Gate.io">
-        <circle cx="12" cy="12" r="12" fill="#0052FF"/>
-        <path d="M17 8.5H13.5V10.5H15.5V13.5H13.5V15.5H17V8.5Z" fill="white"/>
-        <path d="M7 8.5H11.5V10.5H9V13.5H11.5V15.5H7V8.5Z" fill="white"/>
-    </svg>`,
-    bybit: `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Bybit">
-        <circle cx="12" cy="12" r="12" fill="#F7A600"/>
-        <path d="M7 7.5H11.2C12.9 7.5 14 8.4 14 9.8C14 10.6 13.6 11.2 12.9 11.5C13.8 11.8 14.4 12.5 14.4 13.5C14.4 15 13.2 16 11.3 16H7V7.5ZM10.9 10.9C11.5 10.9 11.9 10.6 11.9 10.1C11.9 9.6 11.5 9.3 10.9 9.3H9V10.9H10.9ZM11.1 14.2C11.7 14.2 12.2 13.9 12.2 13.3C12.2 12.8 11.8 12.4 11.1 12.4H9V14.2H11.1Z" fill="black"/>
-        <path d="M15.5 11.2L17 7.5H17.2L17 11.2V16H15.5V11.2Z" fill="black"/>
-    </svg>`,
-    okx: `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="OKX">
-        <circle cx="12" cy="12" r="12" fill="#1A1A1A"/>
-        <rect x="7" y="7" width="4" height="4" rx="0.8" fill="white"/>
-        <rect x="13" y="7" width="4" height="4" rx="0.8" fill="white"/>
-        <rect x="7" y="13" width="4" height="4" rx="0.8" fill="white"/>
-        <rect x="13" y="13" width="4" height="4" rx="0.8" fill="white"/>
-    </svg>`,
-    kucoin: `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="KuCoin">
-        <circle cx="12" cy="12" r="12" fill="#23AF91"/>
-        <path d="M8 7.5V16.5L12.5 12L14.5 14L17 11.5L14.5 9L12.5 11L8 7.5Z" fill="white"/>
-    </svg>`,
-    bitget: `<svg class="venue-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Bitget">
-        <circle cx="12" cy="12" r="12" fill="#00F0FF" fill-opacity="0.15"/>
-        <circle cx="12" cy="12" r="12" stroke="#00F0FF" stroke-width="1.5" fill="none"/>
-        <path d="M8 9.5H13C14.4 9.5 15 10.2 15 11.2C15 11.9 14.6 12.4 14 12.6C14.8 12.9 15.4 13.5 15.4 14.4C15.4 15.5 14.5 16.2 13 16.2H8V9.5ZM12.6 12.1C13.2 12.1 13.5 11.8 13.5 11.3C13.5 10.8 13.2 10.5 12.6 10.5H9.5V12.1H12.6ZM12.8 15.2C13.4 15.2 13.8 14.9 13.8 14.3C13.8 13.7 13.4 13.4 12.8 13.4H9.5V15.2H12.8Z" fill="white"/>
-    </svg>`
+const VENUE_ICON_URLS = {
+    gate: "https://coin-images.coingecko.com/markets/images/60/small/Frame_1.png?1747795534",
+    bybit: "https://coin-images.coingecko.com/markets/images/698/small/bybit_spot.png?1706864649",
+    okx: "https://coin-images.coingecko.com/markets/images/96/small/WeChat_Image_20220117220452.png?1706864283",
+    kucoin: "https://coin-images.coingecko.com/markets/images/61/small/kucoin.png?1706864282",
+    bitget: "https://coin-images.coingecko.com/markets/images/540/small/2023-07-25_21.47.43.jpg?1706864507"
 };
 
 export function venueIcon(venueName) {
     if (!venueName) return "";
     const key = String(venueName).toLowerCase().replace(/[^a-z]/g, "");
-    return VENUE_ICONS[key] ?? "";
+    const url = VENUE_ICON_URLS[key];
+    return url ? `<img class="venue-icon" src="${url}" alt="${escapeHtml(venueName)}">` : "";
 }
 
 export function sourceLabel(value) {
