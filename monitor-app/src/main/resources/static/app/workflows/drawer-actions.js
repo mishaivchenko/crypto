@@ -83,6 +83,13 @@ export function createDrawerActionHandler({
                     await Promise.all([refreshCurrentScreen(), openVenueDetail(form.dataset.venue)]);
                     return;
                 }
+                if (action === "set-venue-default-latency") {
+                    const ms = numberOrNull(data.get("defaultManualLatencyAdjustmentMs"));
+                    await api.setVenueDefaultLatency(form.dataset.venue, ms);
+                    showSuccess(`${t("venue_default_latency_save")} → ${form.dataset.venue}: ${ms ?? "cleared"} ms`);
+                    await openVenueDetail(form.dataset.venue);
+                    return;
+                }
                 if (action === "create-dev-test-run") {
                     const run = await api.createDevTestRun({
                         venue: data.get("venue"),
@@ -159,6 +166,24 @@ export function createDrawerActionHandler({
                 await refreshCurrentScreen();
                 showSuccess(`${execution.phase} completed: ${t("dev_submitted")} ${execution.execution.attemptsSubmitted}, ${t("dev_skipped")} ${execution.execution.attemptsSkipped}.`);
             } catch (error) {
+                showError(error.message);
+            }
+            return;
+        }
+
+        const probeButton = event.target.closest("[data-action='probe-venue-latency']");
+        if (probeButton) {
+            const venue = probeButton.dataset.venue;
+            const inlineEl = probeButton.closest(".actions")?.parentElement?.querySelector("#venue-probe-inline");
+            if (inlineEl) inlineEl.textContent = "…";
+            try {
+                const result = await api.probeVenueLatency(venue);
+                const msg = `${result.durationMs} ms`;
+                if (inlineEl) inlineEl.textContent = msg;
+                const p50El = probeButton.closest(".modal-content, .drawer-content")?.querySelector("#venue-probe-result");
+                if (p50El) p50El.textContent = msg;
+            } catch (error) {
+                if (inlineEl) inlineEl.textContent = `✗ ${error.message}`;
                 showError(error.message);
             }
             return;
