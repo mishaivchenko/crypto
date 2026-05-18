@@ -11,7 +11,8 @@ import {
     modeLabel,
     openModal,
     section,
-    venueHealthBadge
+    venueHealthBadge,
+    venueIcon
 } from "../shared.js";
 import { t } from "../../i18n.js";
 
@@ -128,7 +129,7 @@ export async function openVenueDetail({ venueName, nodes, showError }) {
         ]);
 
         nodes.modalType.textContent = t("venue_modal_type");
-        nodes.modalTitle.textContent = venue.venue;
+        nodes.modalTitle.innerHTML = `${venueIcon(venue.venue)}${escapeHtml(venue.venue)}`;
         nodes.modalContent.innerHTML = buildVenueDrawerContent({ venue, instruments, timings });
         openModal(nodes);
     } catch (error) {
