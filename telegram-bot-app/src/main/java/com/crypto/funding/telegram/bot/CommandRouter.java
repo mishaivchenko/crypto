@@ -8,6 +8,8 @@ import com.crypto.funding.telegram.config.TelegramBotProperties;
 import com.pengrad.telegrambot.model.CallbackQuery;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.message.MaybeInaccessibleMessage;
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.AnswerCallbackQuery;
 import com.pengrad.telegrambot.request.BaseRequest;
@@ -62,7 +64,7 @@ public class CommandRouter
         {
             case "/start" -> List.of( buildWelcome( chatId, message.from().firstName() ) );
             case "/help" -> List.of( new SendMessage( chatId, MessageFormatter.help() )
-                .parseMode( ParseMode.MarkdownV2 ) );
+                .parseMode( ParseMode.MarkdownV2 ).replyMarkup( buildMainKeyboard() ) );
             case "/faq" -> List.of( faqCommand.buildMenu( chatId ) );
             case "/links" -> List.of( linksCommand.build( chatId ) );
             case "/status" -> List.of( statusCommand.build( chatId ) );
@@ -86,6 +88,31 @@ public class CommandRouter
                 .parseMode( ParseMode.MarkdownV2 ) );
         }
 
+        if( "menu:main".equals( data ) )
+        {
+            return List.of( ack, buildWelcome( chatId, callbackQuery.from().firstName() ) );
+        }
+
+        if( "menu:faq".equals( data ) )
+        {
+            return List.of( ack, faqCommand.buildMenu( chatId ) );
+        }
+
+        if( "menu:links".equals( data ) )
+        {
+            return List.of( ack, linksCommand.build( chatId ) );
+        }
+
+        if( "menu:status".equals( data ) )
+        {
+            return List.of( ack, statusCommand.build( chatId ) );
+        }
+
+        if( "menu:signals".equals( data ) )
+        {
+            return List.of( ack, signalsCommand.build( chatId ) );
+        }
+
         if( "faq:menu".equals( data ) )
         {
             return List.of( ack, faqCommand.buildMenu( chatId ) );
@@ -102,7 +129,18 @@ public class CommandRouter
     private SendMessage buildWelcome( long chatId, String firstName )
     {
         return new SendMessage( chatId, MessageFormatter.welcome( firstName ) )
-            .parseMode( ParseMode.MarkdownV2 );
+            .parseMode( ParseMode.MarkdownV2 )
+            .replyMarkup( buildMainKeyboard() );
+    }
+
+    private InlineKeyboardMarkup buildMainKeyboard()
+    {
+        return new InlineKeyboardMarkup(
+            new InlineKeyboardButton[]{ new InlineKeyboardButton( "📚 FAQ" ).callbackData( "menu:faq" ),
+                new InlineKeyboardButton( "🔗 Ссылки" ).callbackData( "menu:links" ) },
+            new InlineKeyboardButton[]{ new InlineKeyboardButton( "📊 Статус" ).callbackData( "menu:status" ),
+                new InlineKeyboardButton( "📡 Сигналы" ).callbackData( "menu:signals" ) }
+        );
     }
 
     private boolean isAccessDenied( long userId )

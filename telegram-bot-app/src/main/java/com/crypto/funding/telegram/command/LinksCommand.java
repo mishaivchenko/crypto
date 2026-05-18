@@ -10,6 +10,7 @@ import com.pengrad.telegrambot.request.SendMessage;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,10 +32,7 @@ public class LinksCommand
         String text = MessageFormatter.linksMessage( linksProperties, ngrok );
         InlineKeyboardMarkup keyboard = buildQuickAccessKeyboard( ngrok );
         SendMessage msg = new SendMessage( chatId, text ).parseMode( ParseMode.MarkdownV2 );
-        if( keyboard != null )
-        {
-            msg.replyMarkup( keyboard );
-        }
+        msg.replyMarkup( keyboard != null ? withHomeButton( keyboard ) : homeKeyboard() );
         return msg;
     }
 
@@ -75,5 +73,19 @@ public class LinksCommand
             return null;
         }
         return new InlineKeyboardMarkup( buttons.toArray( new InlineKeyboardButton[0] ) );
+    }
+
+    private InlineKeyboardMarkup withHomeButton( InlineKeyboardMarkup keyboard )
+    {
+        List<InlineKeyboardButton[]> rows = new ArrayList<>( Arrays.asList( keyboard.inlineKeyboard() ) );
+        rows.add( new InlineKeyboardButton[]{ new InlineKeyboardButton( "🏠 Меню" ).callbackData( "menu:main" ) } );
+        return new InlineKeyboardMarkup( rows.toArray( new InlineKeyboardButton[0][] ) );
+    }
+
+    private InlineKeyboardMarkup homeKeyboard()
+    {
+        return new InlineKeyboardMarkup(
+            new InlineKeyboardButton( "🏠 Меню" ).callbackData( "menu:main" )
+        );
     }
 }
