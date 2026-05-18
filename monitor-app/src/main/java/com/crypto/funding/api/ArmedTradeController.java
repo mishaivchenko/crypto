@@ -15,6 +15,7 @@ import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.UpdateArmedTradeCommand;
 import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.application.event.FundingEventQueryService;
+import com.crypto.funding.application.venue.InstrumentRegistryService;
 import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.trade.ArmedTrade;
@@ -54,6 +55,7 @@ public class ArmedTradeController
     private final PositionQueryService positionQueryService;
     private final TradeOutcomeQueryService tradeOutcomeQueryService;
     private final EngineControlService engineControlService;
+    private final InstrumentRegistryService instrumentRegistryService;
 
     public ArmedTradeController(
         ArmedTradeCommandService armedTradeCommandService,
@@ -62,7 +64,8 @@ public class ArmedTradeController
         FundingEventQueryService fundingEventQueryService,
         PositionQueryService positionQueryService,
         TradeOutcomeQueryService tradeOutcomeQueryService,
-        EngineControlService engineControlService
+        EngineControlService engineControlService,
+        InstrumentRegistryService instrumentRegistryService
     )
     {
         this.armedTradeCommandService = armedTradeCommandService;
@@ -72,6 +75,7 @@ public class ArmedTradeController
         this.positionQueryService = positionQueryService;
         this.tradeOutcomeQueryService = tradeOutcomeQueryService;
         this.engineControlService = engineControlService;
+        this.instrumentRegistryService = instrumentRegistryService;
     }
 
     @PutMapping("/{id}")
@@ -152,12 +156,16 @@ public class ArmedTradeController
     private ArmedTradeResponse toResponse( ArmedTrade trade )
     {
         FundingEvent fundingEvent = fundingEventQueryService.getFundingEvent( trade.fundingEventId() );
+        String venueSymbol = instrumentRegistryService
+            .resolveVenueSymbol( fundingEvent.venue(), fundingEvent.symbol() )
+            .orElse( null );
         return new ArmedTradeResponse(
             trade.id(),
             trade.fundingEventId(),
             fundingEvent.signalCandidateId(),
             fundingEvent.venue(),
             fundingEvent.symbol(),
+            venueSymbol,
             fundingEvent.fundingTime(),
             trade.notionalUsd(),
             trade.intendedSide(),

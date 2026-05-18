@@ -41,16 +41,23 @@ function warmupSection(trade) {
 }
 
 function buildLiquiditySection(liquidity, trade) {
+    const effectiveSymbol = trade.venueSymbol ?? trade.symbol;
+    const assessBtn = (trade.venue && effectiveSymbol)
+        ? `<button class="button" type="button" data-assess-liquidity="${trade.id}" data-venue="${escapeHtml(trade.venue)}" data-symbol="${escapeHtml(effectiveSymbol)}">${t("liquidity_assess_button")}</button>`
+        : "";
     if (!liquidity) {
-        return section(t("liquidity_section_title"), emptyState(t("liquidity_no_assessment"), t("liquidity_no_assessment_detail")));
+        return section(t("liquidity_section_title"), `
+            ${emptyState(t("liquidity_no_assessment"), t("liquidity_no_assessment_detail"))}
+            ${assessBtn}
+        `);
     }
     const warning = liquidity.score === "UNTRADABLE"
         ? `<div class="banner">${t("liquidity_warning_untradable")}</div>`
         : liquidity.score === "THIN"
             ? `<div class="banner" style="border-color:rgba(255,190,60,0.22);background:linear-gradient(180deg,rgba(58,44,10,0.96),rgba(36,27,6,0.94))">${t("liquidity_warning_thin")}</div>`
             : "";
-    const refreshBtn = (trade.venue && trade.symbol)
-        ? `<button class="button" type="button" data-refresh-liquidity="${trade.id}" data-venue="${escapeHtml(trade.venue)}" data-symbol="${escapeHtml(trade.symbol)}">${t("liquidity_refresh_button")}</button>`
+    const refreshBtn = (trade.venue && effectiveSymbol)
+        ? `<button class="button" type="button" data-refresh-liquidity="${trade.id}" data-venue="${escapeHtml(trade.venue)}" data-symbol="${escapeHtml(effectiveSymbol)}">${t("liquidity_refresh_button")}</button>`
         : "";
     return section(t("liquidity_section_title"), `
         ${warning}
@@ -209,6 +216,24 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
         nodes.modalTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `${t("card_trade_prefix")}${trade.id}`;
         nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts, liquidity });
         openModal(nodes);
+
+        const assessLiqBtn = nodes.modalContent.querySelector("[data-assess-liquidity]");
+        if (assessLiqBtn) {
+            assessLiqBtn.addEventListener("click", async () => {
+                const venue = assessLiqBtn.dataset.venue;
+                const symbol = assessLiqBtn.dataset.symbol;
+                assessLiqBtn.disabled = true;
+                assessLiqBtn.textContent = t("liquidity_refreshing");
+                try {
+                    await api.assessLiquidity(venue, symbol, id);
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    assessLiqBtn.disabled = false;
+                    assessLiqBtn.textContent = t("liquidity_assess_button");
+                }
+            });
+        }
 
         const refreshLiqBtn = nodes.modalContent.querySelector("[data-refresh-liquidity]");
         if (refreshLiqBtn) {

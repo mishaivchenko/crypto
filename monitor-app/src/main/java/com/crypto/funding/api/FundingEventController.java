@@ -6,6 +6,7 @@ import com.crypto.funding.api.dto.FundingEventResponse;
 import com.crypto.funding.application.event.FundingEventArmService;
 import com.crypto.funding.application.event.FundingEventQueryService;
 import com.crypto.funding.application.trade.TradeJournalService;
+import com.crypto.funding.application.venue.InstrumentRegistryService;
 import com.crypto.funding.api.dto.TradeJournalEntryResponse;
 import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.domain.event.FundingEvent;
@@ -32,16 +33,19 @@ public class FundingEventController
     private final FundingEventQueryService fundingEventQueryService;
     private final FundingEventArmService fundingEventArmService;
     private final TradeJournalService tradeJournalService;
+    private final InstrumentRegistryService instrumentRegistryService;
 
     public FundingEventController(
         FundingEventQueryService fundingEventQueryService,
         FundingEventArmService fundingEventArmService,
-        TradeJournalService tradeJournalService
+        TradeJournalService tradeJournalService,
+        InstrumentRegistryService instrumentRegistryService
     )
     {
         this.fundingEventQueryService = fundingEventQueryService;
         this.fundingEventArmService = fundingEventArmService;
         this.tradeJournalService = tradeJournalService;
+        this.instrumentRegistryService = instrumentRegistryService;
     }
 
     @GetMapping
@@ -85,12 +89,16 @@ public class FundingEventController
             )
         );
         FundingEvent event = fundingEventQueryService.getFundingEvent( trade.fundingEventId() );
+        String venueSymbol = instrumentRegistryService
+            .resolveVenueSymbol( event.venue(), event.symbol() )
+            .orElse( null );
         return new com.crypto.funding.api.dto.ArmedTradeResponse(
             trade.id(),
             trade.fundingEventId(),
             event.signalCandidateId(),
             event.venue(),
             event.symbol(),
+            venueSymbol,
             event.fundingTime(),
             trade.notionalUsd(),
             trade.intendedSide(),
