@@ -123,7 +123,8 @@ pitest {
         'com.crypto.funding.engine.EnginePropertiesTest',
         'com.crypto.funding.engine.EngineRuntimeControlServiceTest',
         'com.crypto.funding.engine.EngineRuntimeProfilesIntegrationTest',
-        'com.crypto.funding.engine.EngineTelemetryServiceTest'
+        'com.crypto.funding.engine.EngineTelemetryServiceTest',
+        'com.crypto.funding.engine.LiquidityCapTest'
     ]
     mutationThreshold = 100
     threads = 1

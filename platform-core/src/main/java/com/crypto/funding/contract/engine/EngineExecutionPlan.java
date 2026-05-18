@@ -1,5 +1,6 @@
 package com.crypto.funding.contract.engine;
 
+import com.crypto.funding.domain.liquidity.LiquidityScore;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.TradeSide;
 
@@ -42,13 +43,17 @@ public record EngineExecutionPlan(
     String probeUrl,
     Integer warmupProbeCount,
     Long warmupProbeLeadMs,
+    BigDecimal maxOrderNotional,
+    String liquidityAssessmentId,
+    LiquidityScore liquidityScore,
+    Instant liquiditySampledAt,
     Long warmupP50Ms,
     Long warmupP95Ms,
     Boolean warmupFallbackUsed,
     Instant warmupDoneAt
 )
 {
-    // Backward-compatible constructor: 34 fields (no warmup output)
+    // Backward-compatible constructor: 34 fields (no warmup output, no liquidity fields)
     public EngineExecutionPlan(
         Long armedTradeId,
         Long fundingEventId,
@@ -124,11 +129,15 @@ public record EngineExecutionPlan(
             null,
             null,
             null,
+            null,
+            null,
+            null,
+            null,
             null
         );
     }
 
-    // Minimal constructor: 21 fields (summary-only, all optional fields null)
+    // Minimal 21-field constructor (summary-only, all optional fields null)
     public EngineExecutionPlan(
         Long armedTradeId,
         Long fundingEventId,
@@ -175,6 +184,10 @@ public record EngineExecutionPlan(
             millisUntilAction,
             millisUntilFunding,
             summary,
+            null,
+            null,
+            null,
+            null,
             null,
             null,
             null,

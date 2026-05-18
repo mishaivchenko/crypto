@@ -5,9 +5,11 @@ import com.crypto.funding.application.engine.planning.EngineEntryAttemptSchedule
 import com.crypto.funding.application.engine.planning.EnginePlanLookaheadFilter;
 import com.crypto.funding.application.engine.planning.EnginePlanStatusCalculator;
 import com.crypto.funding.application.engine.planning.EnginePlanSummaryFormatter;
+import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.venue.VenueLatencyProbeService;
 import com.crypto.funding.application.venue.VenueProfileService;
+import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import com.crypto.funding.config.MonitorEnginePlanProperties;
 import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
@@ -65,6 +67,7 @@ public class MonitorEnginePlanService
     private final EnginePlanSummaryFormatter summaryFormatter;
     private final VenueLatencyProbeService latencyProbeService;
     private final VenueProfileService venueProfileService;
+    private final LiquidityAssessmentService liquidityAssessmentService;
     private final Clock clock;
 
     @Autowired
@@ -81,7 +84,8 @@ public class MonitorEnginePlanService
         EnginePlanLookaheadFilter lookaheadFilter,
         EnginePlanSummaryFormatter summaryFormatter,
         VenueLatencyProbeService latencyProbeService,
-        VenueProfileService venueProfileService
+        VenueProfileService venueProfileService,
+        LiquidityAssessmentService liquidityAssessmentService
     )
     {
         this(
@@ -98,6 +102,7 @@ public class MonitorEnginePlanService
             summaryFormatter,
             latencyProbeService,
             venueProfileService,
+            liquidityAssessmentService,
             Clock.systemUTC()
         );
     }
@@ -116,6 +121,7 @@ public class MonitorEnginePlanService
         EnginePlanSummaryFormatter summaryFormatter,
         VenueLatencyProbeService latencyProbeService,
         VenueProfileService venueProfileService,
+        LiquidityAssessmentService liquidityAssessmentService,
         Clock clock
     )
     {
@@ -132,6 +138,7 @@ public class MonitorEnginePlanService
         this.summaryFormatter = summaryFormatter;
         this.latencyProbeService = latencyProbeService;
         this.venueProfileService = venueProfileService;
+        this.liquidityAssessmentService = liquidityAssessmentService;
         this.clock = clock;
     }
 
@@ -152,7 +159,7 @@ public class MonitorEnginePlanService
         return tradeQueryService.listArmedTrades( true )
                                 .stream()
                                 .filter( stateFilter )
-                                .map( trade -> toPlan( trade, now ) )
+                                .map( trade -> withLiquidity( toPlan( trade, now ), trade.id() ) )
                                 .filter( plan -> lookaheadFilter.shouldInclude( plan, includeAll ) )
                                 .sorted( Comparator.comparing( EngineExecutionPlan::nextActionAt, Comparator.nullsLast( Comparator.naturalOrder() ) )
                                                    .thenComparing( EngineExecutionPlan::armedTradeId ) )
@@ -164,7 +171,7 @@ public class MonitorEnginePlanService
     {
         Instant now = Instant.now( clock );
         ArmedTrade trade = tradeQueryService.getArmedTrade( armedTradeId );
-        return toPlan( trade, now );
+        return withLiquidity( toPlan( trade, now ), armedTradeId );
     }
 
     @Transactional(readOnly = true)
@@ -256,10 +263,40 @@ public class MonitorEnginePlanService
             probeUrl,
             3,
             500L,
+            null,
+            null,
+            null,
+            null,
             trade.warmupP50Ms(),
             trade.warmupP95Ms(),
             trade.warmupFallbackUsed(),
             trade.warmupDoneAt()
+        );
+    }
+
+    private EngineExecutionPlan withLiquidity( EngineExecutionPlan plan, Long tradeId )
+    {
+        LiquidityAssessment liq = liquidityAssessmentService.findLatestForTrade( tradeId )
+                                                             .filter( a -> !liquidityAssessmentService.isExpired( a ) )
+                                                             .orElse( null );
+        if( liq == null )
+        {
+            return plan;
+        }
+        return new EngineExecutionPlan(
+            plan.armedTradeId(), plan.fundingEventId(), plan.venue(), plan.symbol(),
+            plan.intendedSide(), plan.notionalUsd(), plan.tradeState(), plan.fundingTime(),
+            plan.plannedEntryAt(), plan.plannedExitAt(), plan.entryAttemptCount(), plan.entrySpacingMs(),
+            plan.measuredEntryLatencyMs(), plan.manualLatencyAdjustmentMs(), plan.effectiveEntryLatencyMs(),
+            plan.entryAttempts(), plan.status(), plan.nextActionAt(), plan.millisUntilAction(),
+            plan.millisUntilFunding(), plan.summary(), plan.venueSymbol(),
+            plan.minOrderQty(), plan.qtyStep(), plan.minNotionalValue(),
+            plan.metadataLastSyncedAt(), plan.latencySampledAt(),
+            plan.positionQuantity(), plan.positionEntryPrice(),
+            plan.stopLossUsd(), plan.takeProfitUsd(),
+            plan.probeUrl(), plan.warmupProbeCount(), plan.warmupProbeLeadMs(),
+            liq.recommendedMaxOrderNotional(), liq.id(), liq.score(), liq.sampledAt(),
+            plan.warmupP50Ms(), plan.warmupP95Ms(), plan.warmupFallbackUsed(), plan.warmupDoneAt()
         );
     }
 

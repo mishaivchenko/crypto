@@ -246,5 +246,18 @@ export const api = {
             headers: jsonHeaders,
             body: JSON.stringify({ defaultManualLatencyAdjustmentMs })
         });
+    },
+    getTradeLiquidity(tradeId) {
+        return request(`/api/v1/trades/${tradeId}/liquidity`).catch(() => null);
+    },
+    refreshTradeLiquidity(tradeId, venue, venueSymbol) {
+        const params = new URLSearchParams({ venue, venueSymbol });
+        return request(`/api/v1/trades/${tradeId}/refresh-liquidity?${params}`, { method: "POST" });
+    },
+    assessLiquidity(venue, venueSymbol, tradeId) {
+        const params = new URLSearchParams({ tradeId: String(tradeId) });
+        return request(`/api/v1/venues/${venue}/symbols/${encodeURIComponent(venueSymbol)}/liquidity-assessment?${params}`, {
+            method: "POST"
+        });
     }
 };

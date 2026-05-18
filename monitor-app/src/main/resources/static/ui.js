@@ -127,6 +127,13 @@ const badgeTones = {
         INVALID_CREDENTIALS: "bad",
         ERROR: "warning",
         UNSUPPORTED: "muted"
+    },
+    liquidity: {
+        EXCELLENT: "good",
+        GOOD: "good",
+        MEDIUM: "info",
+        THIN: "warning",
+        UNTRADABLE: "bad"
     }
 };
 
