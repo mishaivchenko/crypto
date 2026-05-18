@@ -105,15 +105,6 @@ public class VenueDiagnosticsService
     }
 
     @Transactional
-    public VenueSummary setMode( String rawVenue, VenueAccessMode mode )
-    {
-        String venue = normalizeVenue( rawVenue );
-        ensureEnabledVenue( venue );
-        venueProfileService.setMode( venue, mode );
-        return buildSummary( venue );
-    }
-
-    @Transactional
     public VenueProfileService.GlobalAccessProfile setGlobalMode( VenueAccessMode mode )
     {
         return venueProfileService.setGlobalMode( mode );

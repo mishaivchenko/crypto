@@ -1,7 +1,6 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.ArmedTradeResponse;
-import com.crypto.funding.api.dto.CreateArmedTradeRequest;
 import com.crypto.funding.api.dto.UpdateArmedTradeRequest;
 import com.crypto.funding.api.dto.EngineRunOnceResponse;
 import com.crypto.funding.api.dto.TradeJournalEntryResponse;
@@ -13,7 +12,6 @@ import com.crypto.funding.application.execution.TradeOutcomeQueryService;
 import com.crypto.funding.application.monitor.EngineControlService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.trade.ArmedTradeCommandService;
-import com.crypto.funding.application.trade.CreateArmedTradeCommand;
 import com.crypto.funding.application.trade.UpdateArmedTradeCommand;
 import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.application.event.FundingEventQueryService;
@@ -74,28 +72,6 @@ public class ArmedTradeController
         this.positionQueryService = positionQueryService;
         this.tradeOutcomeQueryService = tradeOutcomeQueryService;
         this.engineControlService = engineControlService;
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ArmedTradeResponse create( @Valid @RequestBody CreateArmedTradeRequest request )
-    {
-        ArmedTrade created = armedTradeCommandService.create(
-            new CreateArmedTradeCommand(
-                request.fundingEventId(),
-                request.notionalUsd(),
-                request.intendedSide(),
-                request.plannedEntryAt(),
-                request.plannedExitAt(),
-                request.entryAttemptCount(),
-                request.entrySpacingMs(),
-                request.manualLatencyAdjustmentMs(),
-                request.notes(),
-                request.stopLossUsd(),
-                request.takeProfitUsd()
-            )
-        );
-        return toResponse( created );
     }
 
     @PutMapping("/{id}")

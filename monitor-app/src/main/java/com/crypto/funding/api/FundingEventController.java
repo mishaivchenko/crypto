@@ -1,12 +1,9 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.ArmFundingEventRequest;
-import com.crypto.funding.api.dto.CreateFundingEventRequest;
 import com.crypto.funding.api.dto.FundingEventListItemResponse;
 import com.crypto.funding.api.dto.FundingEventResponse;
-import com.crypto.funding.application.event.CreateFundingEventCommand;
 import com.crypto.funding.application.event.FundingEventArmService;
-import com.crypto.funding.application.event.FundingEventCommandService;
 import com.crypto.funding.application.event.FundingEventQueryService;
 import com.crypto.funding.application.trade.TradeJournalService;
 import com.crypto.funding.api.dto.TradeJournalEntryResponse;
@@ -18,7 +15,6 @@ import com.crypto.funding.domain.trade.TradeJournalEntityType;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,19 +29,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/funding-events")
 public class FundingEventController
 {
-    private final FundingEventCommandService fundingEventCommandService;
     private final FundingEventQueryService fundingEventQueryService;
     private final FundingEventArmService fundingEventArmService;
     private final TradeJournalService tradeJournalService;
 
     public FundingEventController(
-        FundingEventCommandService fundingEventCommandService,
         FundingEventQueryService fundingEventQueryService,
         FundingEventArmService fundingEventArmService,
         TradeJournalService tradeJournalService
     )
     {
-        this.fundingEventCommandService = fundingEventCommandService;
         this.fundingEventQueryService = fundingEventQueryService;
         this.fundingEventArmService = fundingEventArmService;
         this.tradeJournalService = tradeJournalService;
@@ -69,24 +62,6 @@ public class FundingEventController
     public FundingEventResponse getById( @PathVariable Long id )
     {
         return toResponse( fundingEventQueryService.getFundingEvent( id ) );
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public FundingEventResponse create( @Valid @RequestBody CreateFundingEventRequest request )
-    {
-        FundingEvent created = fundingEventCommandService.create(
-            new CreateFundingEventCommand(
-                request.venue(),
-                request.symbol(),
-                request.fundingTime(),
-                request.fundingRatePct(),
-                request.sourceType(),
-                request.sourceRef(),
-                null
-            )
-        );
-        return toResponse( created );
     }
 
     @PostMapping("/{id}/arm")

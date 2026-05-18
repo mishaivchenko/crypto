@@ -4,7 +4,6 @@ import com.crypto.funding.api.dto.GlobalVenueModeResponse;
 import com.crypto.funding.api.dto.InstrumentMetadataResponse;
 import com.crypto.funding.api.dto.SetGlobalVenueModeRequest;
 import com.crypto.funding.api.dto.SetVenueDefaultLatencyRequest;
-import com.crypto.funding.api.dto.SetVenueModeRequest;
 import com.crypto.funding.api.dto.VenueLatencyProbeResponse;
 import com.crypto.funding.api.dto.VenueRequestTimingResponse;
 import com.crypto.funding.api.dto.VenueSummaryResponse;
@@ -71,12 +70,6 @@ public class VenueDiagnosticsController
     public VenueSummaryResponse sync( @PathVariable String venue )
     {
         return toResponse( venueDiagnosticsService.syncVenue( venue ) );
-    }
-
-    @PostMapping("/{venue}/mode")
-    public VenueSummaryResponse setMode( @PathVariable String venue, @Valid @RequestBody SetVenueModeRequest request )
-    {
-        return toResponse( venueDiagnosticsService.setMode( venue, request.mode() ) );
     }
 
     @PostMapping("/{venue}/check")

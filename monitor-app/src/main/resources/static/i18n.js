@@ -113,12 +113,6 @@ const translations = {
         status_journal_FUNDING_EVENT_ARMED: "Funding Event armed",
         status_journal_ARMED_TRADE_CREATED: "Prepared Trade created",
 
-        // Pipeline stages
-        pipeline_signal: "Signal",
-        pipeline_event: "Event",
-        pipeline_trade: "Trade",
-        pipeline_executed: "Executed",
-
         // Loading / empty states
         loading_default: "Loading…",
         loading_detail: "Please wait, desk is updating.",
@@ -191,8 +185,6 @@ const translations = {
         label_testnet: "Testnet",
         label_production: "Production",
         label_connection_not_checked: "Connection not checked yet.",
-        label_operator_awaiting_review: "Awaiting operator review",
-        label_linked_event: "Linked to Funding Event #",
         label_venue_hints: "Venue hints:",
 
         // Duration units
@@ -383,8 +375,6 @@ const translations = {
         history_raw_state: "Raw trade state",
         history_symbol: "Symbol",
         history_event_status: "Event status",
-        history_side: "Side",
-        history_notional: "Notional",
         history_planned_entry: "Planned entry",
         history_planned_exit: "Planned exit",
         history_entry_attempts: "Entry attempts",
@@ -463,10 +453,8 @@ const translations = {
         venue_check_keys: "Check keys",
         venue_sync_instruments: "Sync instruments",
         venue_request_timings: "Request timings",
-        venue_timings_detail: "req · ok · fail · last",
         venue_latency_section: "Latency calibration",
         venue_probe_btn: "Probe now",
-        venue_probe_result: "Last probe",
         venue_p50: "p50",
         venue_p95: "p95",
         venue_p99: "p99",
@@ -474,7 +462,6 @@ const translations = {
         venue_default_latency_override: "Default latency override, ms",
         venue_default_latency_save: "Save default",
         venue_synced_instruments: "Synced instruments",
-        venue_instrument_detail: "status · step · min qty",
 
         // Dev test run
         dev_tool_type: "Dev Tool",
@@ -579,7 +566,6 @@ const translations = {
         history_health_multiple_attempts: "Multiple entry attempts",
         history_health_high_latency: "High effective trigger lead",
         history_health_manual_override: "Manual latency adjustment applied",
-        history_health_no_data: "No data",
     },
 
     ru: {
@@ -694,12 +680,6 @@ const translations = {
         status_journal_FUNDING_EVENT_ARMED: "Событие фандинга подготовлено",
         status_journal_ARMED_TRADE_CREATED: "Подготовленная сделка создана",
 
-        // Pipeline stages
-        pipeline_signal: "Сигнал",
-        pipeline_event: "Событие",
-        pipeline_trade: "Сделка",
-        pipeline_executed: "Исполнено",
-
         // Loading / empty states
         loading_default: "Загрузка…",
         loading_detail: "Подожди, desk обновляет состояние.",
@@ -772,8 +752,6 @@ const translations = {
         label_testnet: "Тестовая сеть",
         label_production: "Боевая сеть",
         label_connection_not_checked: "Проверка ещё не запускалась.",
-        label_operator_awaiting_review: "Ожидает ревью оператора",
-        label_linked_event: "Связан с событием #",
         label_venue_hints: "Подсказки площадки:",
 
         // Duration units
@@ -964,8 +942,6 @@ const translations = {
         history_raw_state: "Сырое состояние",
         history_symbol: "Символ",
         history_event_status: "Статус события",
-        history_side: "Сторона",
-        history_notional: "Объём",
         history_planned_entry: "Плановый вход",
         history_planned_exit: "Плановый выход",
         history_entry_attempts: "Попытки входа",
@@ -1044,10 +1020,8 @@ const translations = {
         venue_check_keys: "Проверить ключи",
         venue_sync_instruments: "Синхронизировать инструменты",
         venue_request_timings: "Тайминги запросов",
-        venue_timings_detail: "запросов · ок · ошибок · последний",
         venue_latency_section: "Калибровка задержки",
         venue_probe_btn: "Пинговать",
-        venue_probe_result: "Последний замер",
         venue_p50: "p50",
         venue_p95: "p95",
         venue_p99: "p99",
@@ -1055,7 +1029,6 @@ const translations = {
         venue_default_latency_override: "Задержка по умолчанию, мс",
         venue_default_latency_save: "Сохранить",
         venue_synced_instruments: "Синхронизированные инструменты",
-        venue_instrument_detail: "статус · шаг · мин. кол-во",
 
         // Dev test run
         dev_tool_type: "Dev Tool",
@@ -1160,7 +1133,6 @@ const translations = {
         history_health_multiple_attempts: "Несколько попыток входа",
         history_health_high_latency: "Высокий effective trigger lead",
         history_health_manual_override: "Есть ручная коррекция задержки",
-        history_health_no_data: "Нет данных",
     }
 };
 
