@@ -188,13 +188,6 @@ public class ArmedTradeCommandService
         {
             throw new DomainValidationException( "Venue " + fundingEvent.getVenue() + " is disabled for trading." );
         }
-        long activeTrades = armedTradeRepository.countByStateIn( ACTIVE_STATES );
-        if( activeTrades >= riskProperties.getMaxConcurrentArmedTrades() )
-        {
-            throw new DomainValidationException(
-                "Max concurrent armed trades limit reached (" + riskProperties.getMaxConcurrentArmedTrades() + "). Close existing trades first."
-            );
-        }
         if( command.intendedSide() != null && command.intendedSide() != TradeSide.SHORT )
         {
             throw new DomainValidationException( "Funding trades support SHORT side only." );
