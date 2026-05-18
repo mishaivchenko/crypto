@@ -10,13 +10,13 @@ import com.pengrad.telegrambot.request.SendMessage;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
-@ConditionalOnBean(TelegramBot.class)
+@ConditionalOnProperty(name = "telegram.bot.token", matchIfMissing = false)
 public class FundingBot
 {
     private static final Logger log = LoggerFactory.getLogger( FundingBot.class );

@@ -7,17 +7,16 @@ import com.crypto.funding.telegram.client.PageResponse;
 import com.crypto.funding.telegram.client.dto.CandidateSummary;
 import com.crypto.funding.telegram.config.TelegramBotProperties;
 import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
-import com.pengrad.telegrambot.TelegramBot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
-@ConditionalOnBean(TelegramBot.class)
+@ConditionalOnProperty(name = "telegram.bot.token", matchIfMissing = false)
 public class SignalNotificationScheduler
 {
     private static final Logger log = LoggerFactory.getLogger( SignalNotificationScheduler.class );
