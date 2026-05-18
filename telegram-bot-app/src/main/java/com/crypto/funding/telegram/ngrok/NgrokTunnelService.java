@@ -15,7 +15,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 /**
- * Reads active tunnel URLs from the local ngrok agent API (default: localhost:4040).
+ * Reads active tunnel URLs from the local ngrok agent API.
  * Used to auto-discover the public staging URL without hardcoding it.
  */
 @Service
@@ -47,6 +47,7 @@ public class NgrokTunnelService
             HttpRequest request = HttpRequest.newBuilder()
                 .uri( URI.create( properties.apiUrl() + "/api/tunnels" ) )
                 .timeout( Duration.ofSeconds( 3 ) )
+                .header( "Host", "localhost" )
                 .GET()
                 .build();
 
