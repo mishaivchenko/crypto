@@ -74,7 +74,8 @@ public class FaqCommand
     private InlineKeyboardMarkup buildBackKeyboard()
     {
         return new InlineKeyboardMarkup(
-            new InlineKeyboardButton( "◀️ Назад к FAQ" ).callbackData( "faq:menu" )
+            new InlineKeyboardButton[]{ new InlineKeyboardButton( "◀️ Назад к FAQ" ).callbackData( "faq:menu" ),
+                new InlineKeyboardButton( "🏠 Меню" ).callbackData( "menu:main" ) }
         );
     }
 
