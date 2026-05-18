@@ -63,11 +63,8 @@ services:
             TELEGRAM_ALLOWED_USER_IDS: ${TELEGRAM_ALLOWED_USER_IDS:-}
             TELEGRAM_SIGNAL_POLL_INTERVAL_MS: ${TELEGRAM_SIGNAL_POLL_INTERVAL_MS:-30000}
             MONITOR_BASE_URL: http://monitor:8090
-            # ngrok agent runs on the host — reachable via host.docker.internal
-            NGROK_API_URL: http://host.docker.internal:4040
+            NGROK_API_URL: ${NGROK_API_URL:-http://host.docker.internal:4040}
             NGROK_ENABLED: "true"
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
         depends_on:
             - monitor
         restart: unless-stopped
