@@ -48,7 +48,7 @@ public class GateOrderBookAdapter implements VenueOrderBookPort
     @Override
     public OrderBookSnapshot fetchOrderBook( String venueSymbol, int depth ) throws IOException, InterruptedException
     {
-        String url = venueProfileService.resolveCredentials( venue() ).baseUrl() + "/futures/usdt/order_book?contract=" + venueSymbol + "&limit=" + depth;
+        String url = venueProfileService.resolveProductionBaseUrl( venue() ) + "/futures/usdt/order_book?contract=" + venueSymbol + "&limit=" + depth;
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri( URI.create( url ) )
                                          .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )

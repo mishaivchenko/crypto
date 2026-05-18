@@ -1,0 +1,33 @@
+spring:
+    application:
+        name: funding-telegram-bot
+    cloud:
+        compatibility-verifier:
+            enabled: false
+    main:
+        web-application-type: none
+
+telegram:
+    bot:
+        token: ${TELEGRAM_BOT_TOKEN:}
+        notification-chat-id: ${TELEGRAM_NOTIFICATION_CHAT_ID:}
+        allowed-user-ids: ${TELEGRAM_ALLOWED_USER_IDS:}
+        signal-poll-interval-ms: ${TELEGRAM_SIGNAL_POLL_INTERVAL_MS:30000}
+
+env:
+    links:
+        staging:
+            ui: ${STAGING_UI_URL:}
+            grafana: ${STAGING_GRAFANA_URL:}
+            engine: ${STAGING_ENGINE_URL:}
+        production:
+            ui: ${PROD_UI_URL:}
+            grafana: ${PROD_GRAFANA_URL:}
+            engine: ${PROD_ENGINE_URL:}
+
+monitor:
+    base-url: ${MONITOR_BASE_URL:http://localhost:8090}
+
+ngrok:
+    enabled: ${NGROK_ENABLED:false}
+    api-url: ${NGROK_API_URL:http://localhost:4040}

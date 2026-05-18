@@ -1,0 +1,24 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':platform-core')
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    implementation 'com.github.pengrad:java-telegram-bot-api:8.3.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+}
+
+springBoot {
+    mainClass = 'com.crypto.funding.telegram.TelegramBotApplication'
+}
+
+bootJar {
+    archiveClassifier = 'telegram-bot'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:deprecation']
+}

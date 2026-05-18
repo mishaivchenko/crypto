@@ -206,6 +206,12 @@ public class VenueProfileService
         return resolveCredentials( profile.venue(), profile.mode() );
     }
 
+    public String resolveProductionBaseUrl( String rawVenue )
+    {
+        String venue = normalizeVenue( rawVenue );
+        return environment.getProperty( "trading." + venue + ".production.base-url" );
+    }
+
     @Transactional(readOnly = true)
     public boolean hasChecker( String rawVenue )
     {

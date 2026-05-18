@@ -104,10 +104,26 @@ project( ':engine-app' ) {
     }
 }
 
+project( ':telegram-bot-app' ) {
+    plugins.withId( 'org.springframework.boot' ) {
+        tasks.named( 'bootRun' ) {
+            environment 'SPRING_PROFILES_ACTIVE', System.getenv( 'SPRING_PROFILES_ACTIVE' ) ?: localBootProfile
+            environment 'TELEGRAM_BOT_TOKEN', System.getenv( 'TELEGRAM_BOT_TOKEN' ) ?: ''
+            environment 'MONITOR_BASE_URL', System.getenv( 'MONITOR_BASE_URL' ) ?: 'http://localhost:8090'
+        }
+    }
+}
+
+tasks.register('bootRunTelegramBot') {
+    group = 'application'
+    description = 'Run the Telegram bot with local-safe defaults when env is not provided'
+    dependsOn ':telegram-bot-app:bootRun'
+}
+
 tasks.register('security') {
     group = 'verification'
     description = 'Run the OWASP dependency check across all modules'
-    dependsOn ':platform-core:dependencyCheckAnalyze', ':monitor-app:dependencyCheckAnalyze', ':engine-app:dependencyCheckAnalyze'
+    dependsOn ':platform-core:dependencyCheckAnalyze', ':monitor-app:dependencyCheckAnalyze', ':engine-app:dependencyCheckAnalyze', ':telegram-bot-app:dependencyCheckAnalyze'
 }
 
 spotless {

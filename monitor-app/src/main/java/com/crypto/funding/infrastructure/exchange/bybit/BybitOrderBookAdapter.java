@@ -109,6 +109,6 @@ public class BybitOrderBookAdapter implements VenueOrderBookPort
 
     private String baseUrl()
     {
-        return venueProfileService.resolveCredentials( venue() ).baseUrl();
+        return venueProfileService.resolveProductionBaseUrl( venue() );
     }
 }

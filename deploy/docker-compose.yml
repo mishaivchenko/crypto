@@ -1,6 +1,6 @@
 services:
     monitor:
-        image: funding-monitor:2.0.0
+        image: ${IMAGE_MONITOR:-funding-monitor:2.0.0}
         container_name: funding-monitor
         env_file:
             - .env
@@ -28,7 +28,7 @@ services:
         restart: unless-stopped
 
     engine:
-        image: funding-engine:2.0.0
+        image: ${IMAGE_ENGINE:-funding-engine:2.0.0}
         container_name: funding-engine
         env_file:
             - .env
@@ -47,6 +47,27 @@ services:
             GATE_TESTNET_BASE_URL: ${GATE_TESTNET_BASE_URL:-https://api-testnet.gateapi.io/api/v4}
         ports:
             - "${ENGINE_SERVER_PORT:-8091}:8091"
+        depends_on:
+            - monitor
+        restart: unless-stopped
+
+    telegram-bot:
+        image: ${IMAGE_TELEGRAM_BOT:-funding-telegram-bot:2.0.0}
+        container_name: funding-telegram-bot
+        env_file:
+            - .env
+        environment:
+            SPRING_PROFILES_ACTIVE: staging
+            TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+            TELEGRAM_NOTIFICATION_CHAT_ID: ${TELEGRAM_NOTIFICATION_CHAT_ID:-}
+            TELEGRAM_ALLOWED_USER_IDS: ${TELEGRAM_ALLOWED_USER_IDS:-}
+            TELEGRAM_SIGNAL_POLL_INTERVAL_MS: ${TELEGRAM_SIGNAL_POLL_INTERVAL_MS:-30000}
+            MONITOR_BASE_URL: http://monitor:8090
+            # ngrok agent runs on the host — reachable via host.docker.internal
+            NGROK_API_URL: http://host.docker.internal:4040
+            NGROK_ENABLED: "true"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         depends_on:
             - monitor
         restart: unless-stopped
