@@ -43,7 +43,11 @@ class EnginePlanSummaryFormatterTest
             null,
             null,
             Instant.parse( "2029-12-31T23:00:00Z" ),
-            Instant.parse( "2029-12-31T23:00:00Z" )
+            Instant.parse( "2029-12-31T23:00:00Z" ),
+            null,
+            null,
+            null,
+            null
         );
         FundingEventEntity event = new FundingEventEntity();
         event.setVenue( "gate" );

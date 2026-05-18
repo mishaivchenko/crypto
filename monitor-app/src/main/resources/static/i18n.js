@@ -362,6 +362,16 @@ const translations = {
         trade_entry_attempts_label: "Entry attempts",
         trade_spacing_ms: "Spacing, ms",
 
+        // Warmup calibration
+        warmup_section_title: "Warmup calibration",
+        warmup_p50: "p50 (calibrated latency)",
+        warmup_p95: "p95",
+        warmup_fallback: "Fallback used",
+        warmup_fallback_yes: "Yes — no probe data, using plan default",
+        warmup_fallback_no: "No — live probe data",
+        warmup_done_at: "Probes completed at",
+        warmup_note: "Calibrated latency = p50 + manual adj. Applied to trigger timing.",
+
         // History
         history_modal_type: "Trade History",
         history_trade_prefix: "Trade #",
@@ -933,6 +943,16 @@ const translations = {
         trade_notional_usd: "Объём, USD",
         trade_entry_attempts_label: "Попытки входа",
         trade_spacing_ms: "Интервал, мс",
+
+        // Warmup calibration
+        warmup_section_title: "Прогрев (калибровка задержки)",
+        warmup_p50: "p50 (откалиброванная задержка)",
+        warmup_p95: "p95",
+        warmup_fallback: "Использован fallback",
+        warmup_fallback_yes: "Да — нет данных прогрева, применяется задержка по умолчанию",
+        warmup_fallback_no: "Нет — данные от живых проб",
+        warmup_done_at: "Пробы завершены в",
+        warmup_note: "Откалиброванная задержка = p50 + ручная коррекция. Применяется к расчёту триггера.",
 
         // History
         history_modal_type: "История сделок",

@@ -2,6 +2,7 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
+import com.crypto.funding.contract.engine.WarmupCalibrationRequest;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
@@ -155,6 +156,17 @@ public class EnginePlanClient
     {
         restClient.post()
                   .uri( "/internal/v1/engine/latency-samples" )
+                  .contentType( MediaType.APPLICATION_JSON )
+                  .headers( this::internalHeaders )
+                  .body( request )
+                  .retrieve()
+                  .toBodilessEntity();
+    }
+
+    public void recordWarmupCalibration( Long armedTradeId, WarmupCalibrationRequest request )
+    {
+        restClient.post()
+                  .uri( "/internal/v1/engine/trades/{armedTradeId}/warmup-calibration", armedTradeId )
                   .contentType( MediaType.APPLICATION_JSON )
                   .headers( this::internalHeaders )
                   .body( request )

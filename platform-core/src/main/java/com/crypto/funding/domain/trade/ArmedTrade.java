@@ -28,7 +28,11 @@ public record ArmedTrade(
     BigDecimal stopLossUsd,
     BigDecimal takeProfitUsd,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    Long warmupP50Ms,
+    Long warmupP95Ms,
+    Boolean warmupFallbackUsed,
+    Instant warmupDoneAt
 )
 {
     public ArmedTrade

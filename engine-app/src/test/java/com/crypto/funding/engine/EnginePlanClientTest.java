@@ -352,6 +352,25 @@ class EnginePlanClientTest
         server.verify();
     }
 
+    // REQ: ENG-CLI-007
+    @Test
+    void postsWarmupCalibrationToCorrectPathWithInternalToken()
+    {
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/trades/7/warmup-calibration" ) )
+              .andExpect( method( HttpMethod.POST ) )
+              .andExpect( header( "X-Internal-Token", "internal-token" ) )
+              .andExpect( content().contentTypeCompatibleWith( MediaType.APPLICATION_JSON ) )
+              .andExpect( jsonPath( "$.p50Ms" ).value( 12 ) )
+              .andExpect( jsonPath( "$.p95Ms" ).value( 25 ) )
+              .andExpect( jsonPath( "$.fallbackUsed" ).value( false ) )
+              .andRespond( withSuccess() );
+
+        client.recordWarmupCalibration( 7L, new com.crypto.funding.contract.engine.WarmupCalibrationRequest(
+            12L, 25L, false, Instant.parse( "2030-01-01T00:00:05Z" ) ) );
+
+        server.verify();
+    }
+
     private static EngineProperties properties()
     {
         EngineProperties properties = new EngineProperties();

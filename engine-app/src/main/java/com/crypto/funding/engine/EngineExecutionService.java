@@ -8,6 +8,7 @@ import com.crypto.funding.contract.engine.EngineExecutionRunResponse;
 import com.crypto.funding.contract.engine.MarkPriceResponse;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
+import com.crypto.funding.contract.engine.WarmupCalibrationRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
@@ -58,6 +59,10 @@ public class EngineExecutionService
         Instant doneAt
     )
     {
+        static WarmupCalibration pending()
+        {
+            return new WarmupCalibration( 0L, 0L, 0L, 0, true, 0L, null );
+        }
     }
 
     private final EnginePlanClient client;
@@ -176,11 +181,12 @@ public class EngineExecutionService
                     long lead = plan.warmupProbeLeadMs() != null ? plan.warmupProbeLeadMs() : 500L;
                     Instant now = Instant.now( clock );
                     boolean inWarmupWindow = now.isAfter( firstTrigger.minusMillis( lead ) ) && now.isBefore( firstTrigger );
-                    if( inWarmupWindow && !warmupByTrade.containsKey( plan.armedTradeId() ) )
+                    if( inWarmupWindow && warmupByTrade.putIfAbsent( plan.armedTradeId(), WarmupCalibration.pending() ) == null )
                     {
                         WarmupCalibration cal = executeWarmupProbes( plan, firstTrigger, now );
                         warmupByTrade.put( plan.armedTradeId(), cal );
                         reportWarmupSamples( plan, cal );
+                        reportWarmupCalibration( plan, cal );
                         log.info( "warm-up done tradeId={} venue={} sampleCount={} p50={}ms p95={}ms p99={}ms budgetMs={} fallback={} calibratedTrigger={}",
                             plan.armedTradeId(), plan.venue(), cal.sampleCount(),
                             cal.p50Ms(), cal.p95Ms(), cal.p99Ms(),
@@ -781,6 +787,23 @@ public class EngineExecutionService
                 "_all_",
                 "warmup-probe",
                 cal.p50Ms(),
+                cal.doneAt()
+            ) );
+        }
+        catch( Exception ignored )
+        {
+            // best-effort; never block execution
+        }
+    }
+
+    private void reportWarmupCalibration( EngineExecutionPlan plan, WarmupCalibration cal )
+    {
+        try
+        {
+            client.recordWarmupCalibration( plan.armedTradeId(), new WarmupCalibrationRequest(
+                cal.p50Ms(),
+                cal.p95Ms(),
+                cal.fallbackUsed(),
                 cal.doneAt()
             ) );
         }

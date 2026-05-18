@@ -5,6 +5,7 @@ import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
+import com.crypto.funding.contract.engine.WarmupCalibrationRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import com.crypto.funding.domain.execution.ExecutionType;
@@ -299,6 +300,26 @@ class EngineExecutionServiceWarmupTest
         assertThat( sample.symbol() ).isEqualTo( "_all_" );
     }
 
+    // REQ: ENG-WRM-012 — warmup probe posts calibration result back to monitor
+    @Test
+    @SuppressWarnings("unchecked")
+    void warmupProbePostsCalibrationResultToMonitor() throws Exception
+    {
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, 500L, 0L, 0L, 0L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        service.runOnce( false );
+
+        ArgumentCaptor<WarmupCalibrationRequest> captor =
+            ArgumentCaptor.forClass( WarmupCalibrationRequest.class );
+        verify( client, times( 1 ) ).recordWarmupCalibration( eq( 1L ), captor.capture() );
+        WarmupCalibrationRequest req = captor.getValue();
+        assertThat( req.p50Ms() ).isGreaterThanOrEqualTo( 0L );
+        assertThat( req.fallbackUsed() ).isFalse();
+        assertThat( req.doneAt() ).isNotNull();
+    }
+
     // REQ: ENG-WRM-013 — warmup window uses effectiveLatencyMs=null as 0 to compute firstTrigger
     @Test
     @SuppressWarnings("unchecked")
@@ -543,6 +564,48 @@ class EngineExecutionServiceWarmupTest
         verify( client ).recordLatencySample( captor.capture() );
         // p50 should be 5ms (from subtraction), not 25ms (from addition) — also not 0 or negative
         assertThat( captor.getValue().durationMs() ).isEqualTo( 5L );
+    }
+
+    // REQ: ENG-WRM-018 — concurrent runOnce calls fire warmup probes exactly once per trade
+    @Test
+    @SuppressWarnings("unchecked")
+    void concurrentRunOnceFiresWarmupProbesExactlyOnce() throws Exception
+    {
+        // Two threads call runOnce simultaneously for the same plan.
+        // putIfAbsent sentinel ensures only one thread executes probes.
+        EngineExecutionService svc = new EngineExecutionService(
+            client, executionPort, telemetryService, clock,
+            advancingNanos( 0L, 5_000_000L ),
+            probeHttpClient
+        );
+        EngineExecutionPlan plan = planWithProbe( 1L, "https://api.example.com/time",
+            3, 500L, 0L, 0L, 0L, NOW.plusMillis( 250 ) );
+        when( client.listPlans( false ) ).thenReturn( List.of( plan ) );
+
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch( 1 );
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch( 2 );
+        Runnable task = () -> {
+            try
+            {
+                start.await();
+                svc.runOnce( false );
+            }
+            catch( InterruptedException e )
+            {
+                Thread.currentThread().interrupt();
+            }
+            finally
+            {
+                done.countDown();
+            }
+        };
+        new Thread( task ).start();
+        new Thread( task ).start();
+        start.countDown();
+        done.await( 5, java.util.concurrent.TimeUnit.SECONDS );
+
+        // Regardless of how many threads ran, probes must have fired exactly 3 times total
+        verify( probeHttpClient, times( 3 ) ).send( any( HttpRequest.class ), any() );
     }
 
     // REQ: ENG-WRM-017 — calibration adds (not subtracts) manual latency to p50

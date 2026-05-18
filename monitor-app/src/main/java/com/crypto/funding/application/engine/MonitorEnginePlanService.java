@@ -255,7 +255,11 @@ public class MonitorEnginePlanService
             trade.takeProfitUsd(),
             probeUrl,
             3,
-            500L
+            500L,
+            trade.warmupP50Ms(),
+            trade.warmupP95Ms(),
+            trade.warmupFallbackUsed(),
+            trade.warmupDoneAt()
         );
     }
 
