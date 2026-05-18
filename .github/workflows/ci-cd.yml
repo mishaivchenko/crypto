@@ -195,9 +195,14 @@ jobs:
 
       - name: Smoke test
         run: |
-          sleep 15
-          curl -f http://localhost:8090/actuator/health
-          curl -f http://localhost:8091/actuator/health
+          for svc in 8090 8091; do
+            echo "Waiting for :$svc..."
+            for i in $(seq 1 24); do
+              curl -sf http://localhost:$svc/actuator/health && echo ":$svc OK" && break
+              [ $i -eq 24 ] && echo ":$svc not ready after 120s" && exit 1
+              sleep 5
+            done
+          done
 
   # ── 6. Deploy → production (VPS) ────────────────────────────────────────────
   deploy-prod:
