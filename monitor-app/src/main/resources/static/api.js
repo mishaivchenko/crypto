@@ -239,5 +239,12 @@ export const api = {
     listVenueTimings(venue) {
         const suffix = venue ? `?venue=${encodeURIComponent(venue)}` : "";
         return request(`/api/v1/venues/timings${suffix}`);
+    },
+    setVenueDefaultLatency(venue, defaultManualLatencyAdjustmentMs) {
+        return request(`/api/v1/venues/${venue}/default-latency`, {
+            method: "POST",
+            headers: jsonHeaders,
+            body: JSON.stringify({ defaultManualLatencyAdjustmentMs })
+        });
     }
 };
