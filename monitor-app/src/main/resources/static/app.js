@@ -191,6 +191,13 @@ function applyStaticTranslations() {
     const applyModeBtn = document.querySelector("#global-mode-form button[type='submit']");
     if (applyModeBtn) applyModeBtn.textContent = t("topbar_apply_mode");
     nodes.refreshAllButton.textContent = t("topbar_refresh");
+    const settingsToggleBtn = document.getElementById("settings-toggle");
+    if (settingsToggleBtn) settingsToggleBtn.setAttribute("aria-label", t("topbar_settings_label"));
+    const hft = document.getElementById("history-filter-toggle");
+    if (hft) {
+        const isCollapsed = document.getElementById("history-filter-rail")?.classList.contains("is-collapsed");
+        hft.textContent = t(isCollapsed ? "history_filters_show" : "history_filters_hide");
+    }
 
     const testnetOption = nodes.globalModeSelect.querySelector("option[value='TESTNET']");
     if (testnetOption) testnetOption.textContent = t("topbar_testnet");
@@ -369,6 +376,7 @@ nodes.operatorTokenForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     api.setOperatorToken(nodes.operatorTokenInput.value);
     await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
+    closeSettings();
     showSuccess(t("app_token_saved"));
 });
 
@@ -377,6 +385,7 @@ nodes.globalModeForm.addEventListener("submit", async (event) => {
     try {
         await api.setGlobalVenueMode(nodes.globalModeSelect.value);
         await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
+        closeSettings();
         showSuccess(t("app_mode_updated"));
     } catch (error) {
         showError(error.message);
@@ -431,6 +440,49 @@ document.addEventListener("keydown", (e) => {
 const langToggle = document.getElementById("lang-toggle");
 if (langToggle) {
     langToggle.addEventListener("click", switchLang);
+}
+
+function openSettings() {
+    document.getElementById("settings-panel").hidden = false;
+    document.getElementById("settings-toggle").setAttribute("aria-expanded", "true");
+}
+
+function closeSettings() {
+    const panel = document.getElementById("settings-panel");
+    if (panel) panel.hidden = true;
+    const toggle = document.getElementById("settings-toggle");
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+}
+
+const settingsToggle = document.getElementById("settings-toggle");
+if (settingsToggle) {
+    settingsToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const panel = document.getElementById("settings-panel");
+        if (panel.hidden) {
+            openSettings();
+        } else {
+            closeSettings();
+        }
+    });
+    document.addEventListener("click", (e) => {
+        const panel = document.getElementById("settings-panel");
+        if (panel && !panel.hidden && !panel.contains(e.target) && e.target !== settingsToggle) {
+            closeSettings();
+        }
+    });
+}
+
+const historyFilterToggle = document.getElementById("history-filter-toggle");
+const historyFilterRail = document.getElementById("history-filter-rail");
+if (historyFilterToggle && historyFilterRail) {
+    const historyBoard = historyFilterRail.closest(".history-board");
+    historyFilterToggle.addEventListener("click", () => {
+        const isCollapsed = historyFilterRail.classList.toggle("is-collapsed");
+        historyBoard?.classList.toggle("rail-collapsed", isCollapsed);
+        historyFilterToggle.setAttribute("aria-expanded", String(!isCollapsed));
+        historyFilterToggle.textContent = t(isCollapsed ? "history_filters_show" : "history_filters_hide");
+    });
 }
 
 const handleDrawerAction = createDrawerActionHandler({
