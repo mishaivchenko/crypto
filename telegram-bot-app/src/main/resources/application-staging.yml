@@ -1,0 +1,17 @@
+telegram:
+    bot:
+        token: ${TELEGRAM_BOT_TOKEN}
+        notification-chat-id: ${TELEGRAM_NOTIFICATION_CHAT_ID:}
+        allowed-user-ids: ${TELEGRAM_ALLOWED_USER_IDS:}
+
+monitor:
+    base-url: ${MONITOR_BASE_URL:http://monitor:8090}
+
+# ngrok agent runs on the host at :4040; inside Docker reach it via host.docker.internal
+ngrok:
+    enabled: true
+    api-url: ${NGROK_API_URL:http://host.docker.internal:4040}
+
+logging:
+    level:
+        com.crypto.funding.telegram: INFO

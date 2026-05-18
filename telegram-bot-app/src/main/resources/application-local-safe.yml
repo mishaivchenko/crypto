@@ -1,0 +1,15 @@
+telegram:
+    bot:
+        token: ${TELEGRAM_BOT_TOKEN:}
+        notification-chat-id: ${TELEGRAM_NOTIFICATION_CHAT_ID:}
+        allowed-user-ids: ${TELEGRAM_ALLOWED_USER_IDS:}
+
+monitor:
+    base-url: http://localhost:8090
+
+ngrok:
+    enabled: false
+
+logging:
+    level:
+        com.crypto.funding.telegram: DEBUG

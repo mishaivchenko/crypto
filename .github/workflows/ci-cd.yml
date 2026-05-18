@@ -37,6 +37,7 @@ jobs:
           path: |
             monitor-app/build/libs/monitor-app-*-monitor.jar
             engine-app/build/libs/engine-app-*-engine.jar
+            telegram-bot-app/build/libs/telegram-bot-app-*-telegram-bot.jar
           retention-days: 1
 
   # ── 2. Engine TDD gate (PR only) ────────────────────────────────────────────
@@ -97,6 +98,10 @@ jobs:
             classifier: engine
             image_suffix: funding-engine
             port: 8091
+          - module: telegram-bot-app
+            classifier: telegram-bot
+            image_suffix: funding-telegram-bot
+            port: 8092
     steps:
       - uses: actions/checkout@v4
 
@@ -161,9 +166,10 @@ jobs:
       - name: Restore JAR paths
         run: |
           cd ${{ env.PROJECT_DIR }}
-          mkdir -p monitor-app/build/libs engine-app/build/libs
+          mkdir -p monitor-app/build/libs engine-app/build/libs telegram-bot-app/build/libs
           find . -maxdepth 1 -name "monitor-app-*-monitor.jar" -exec mv {} monitor-app/build/libs/ \;
           find . -maxdepth 1 -name "engine-app-*-engine.jar" -exec mv {} engine-app/build/libs/ \;
+          find . -maxdepth 1 -name "telegram-bot-app-*-telegram-bot.jar" -exec mv {} telegram-bot-app/build/libs/ \;
 
       - name: Ensure .env exists
         run: touch ${{ env.PROJECT_DIR }}/.env
@@ -175,13 +181,16 @@ jobs:
             -t funding-monitor:staging .
           docker build --build-arg APP_MODULE=engine-app --build-arg APP_CLASSIFIER=engine --build-arg APP_PORT=8091 \
             -t funding-engine:staging .
+          docker build --build-arg APP_MODULE=telegram-bot-app --build-arg APP_CLASSIFIER=telegram-bot --build-arg APP_PORT=8092 \
+            -t funding-telegram-bot:staging .
 
       - name: Restart services
         run: |
           cd ${{ env.PROJECT_DIR }}
           IMAGE_MONITOR=funding-monitor:staging \
           IMAGE_ENGINE=funding-engine:staging \
-          docker compose up -d --remove-orphans monitor engine prometheus grafana
+          IMAGE_TELEGRAM_BOT=funding-telegram-bot:staging \
+          docker compose up -d --remove-orphans monitor engine telegram-bot prometheus grafana
 
       - name: Smoke test
         run: |
