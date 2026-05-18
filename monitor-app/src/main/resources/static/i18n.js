@@ -19,6 +19,7 @@ const translations = {
         topbar_refresh: "Refresh",
         topbar_testnet: "Testnet",
         topbar_production: "Production",
+        topbar_settings_label: "Settings",
 
         // Section headers (HTML static)
         section_overview_h2: "Operations snapshot",
@@ -566,6 +567,10 @@ const translations = {
         history_health_multiple_attempts: "Multiple entry attempts",
         history_health_high_latency: "High effective trigger lead",
         history_health_manual_override: "Manual latency adjustment applied",
+
+        // History filter rail
+        history_filters_show: "Filters ▸",
+        history_filters_hide: "◂ Filters",
     },
 
     ru: {
@@ -586,6 +591,7 @@ const translations = {
         topbar_refresh: "Обновить",
         topbar_testnet: "Тестовая сеть",
         topbar_production: "Боевая сеть",
+        topbar_settings_label: "Настройки",
 
         // Section headers
         section_overview_h2: "Операционный срез",
@@ -1133,6 +1139,10 @@ const translations = {
         history_health_multiple_attempts: "Несколько попыток входа",
         history_health_high_latency: "Высокий effective trigger lead",
         history_health_manual_override: "Есть ручная коррекция задержки",
+
+        // History filter rail
+        history_filters_show: "Фильтры ▸",
+        history_filters_hide: "◂ Фильтры",
     }
 };
 

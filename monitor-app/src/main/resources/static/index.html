@@ -14,25 +14,28 @@
             <h1>Funding Desk</h1>
         </div>
         <div class="topbar-meta">
-            <form id="operator-token-form" class="topbar-form">
-                <label class="field compact-field">
-                    <span>Operator token</span>
-                    <input id="operator-token-input" type="password" autocomplete="off" placeholder="X-Operator-Token">
-                </label>
-                <button class="button secondary" type="submit">Save token</button>
-            </form>
-            <form id="global-mode-form" class="topbar-form">
-                <label class="field compact-field">
-                    <span>Access mode</span>
-                    <select id="global-mode-select" name="mode">
-                        <option value="TESTNET">Testnet</option>
-                        <option value="PRODUCTION">Production</option>
-                    </select>
-                </label>
-                <button class="button secondary" type="submit">Apply mode</button>
-            </form>
+            <button id="settings-toggle" class="icon-button" type="button" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">⚙</button>
             <button id="refresh-all-button" class="button secondary" type="button">Refresh</button>
             <button id="lang-toggle" class="button secondary" type="button" aria-label="Switch language">EN</button>
+            <div id="settings-panel" class="settings-panel" hidden>
+                <form id="operator-token-form" class="topbar-form">
+                    <label class="field compact-field">
+                        <span>Operator token</span>
+                        <input id="operator-token-input" type="password" autocomplete="off" placeholder="X-Operator-Token">
+                    </label>
+                    <button class="button secondary" type="submit">Save token</button>
+                </form>
+                <form id="global-mode-form" class="topbar-form">
+                    <label class="field compact-field">
+                        <span>Access mode</span>
+                        <select id="global-mode-select" name="mode">
+                            <option value="TESTNET">Testnet</option>
+                            <option value="PRODUCTION">Production</option>
+                        </select>
+                    </label>
+                    <button class="button secondary" type="submit">Apply mode</button>
+                </form>
+            </div>
         </div>
     </header>
 
@@ -135,8 +138,11 @@
                     </div>
                     <span id="history-count" class="chip">0 trades</span>
                 </div>
+                <div class="history-rail-controls">
+                    <button id="history-filter-toggle" class="button secondary" type="button" aria-expanded="true" aria-controls="history-filter-rail">Filters ▸</button>
+                </div>
                 <div class="history-board">
-                    <aside class="history-filter-rail">
+                    <aside class="history-filter-rail" id="history-filter-rail">
                         <form id="history-filters" class="history-filters">
                             <label class="field">
                                 <span>Symbol</span>

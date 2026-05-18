@@ -27,20 +27,20 @@ export function dashboardSummaryMarkup(overview) {
 export function dashboardDevToolsMarkup(runtime, runtimeError) {
     if (runtimeError) {
         return `
-            <div class="panel-header">
-            <div>
-                <h3>${t("dashboard_dev_tools")}</h3>
-                <p class="muted">${t("dashboard_runtime_unavailable")}</p>
-            </div>
-            <div class="actions">
+            <details>
+                <summary class="dev-tools-summary">
+                    <h3>${t("dashboard_dev_tools")}</h3>
+                    <p class="muted">${t("dashboard_runtime_unavailable")}</p>
+                </summary>
+                <div class="action-card dev-tool-card">
+                    <span class="chip dev-chip">${t("dashboard_dev_tool")}</span>
+                    <p class="helper-text">${escapeHtml(runtimeError)}</p>
+                    <p class="muted dev-tools-note">${t("dashboard_engine_check")}</p>
+                </div>
+            </details>
+            <div class="dev-tools-persistent-actions">
                 <button class="icon-button lab-button" type="button" title="${t("dashboard_dev_test_run")}" aria-label="${t("dashboard_dev_test_run")}" data-action="open-dev-test-run">LAB</button>
                 <button class="button secondary" type="button" data-action="run-engine-once">${t("dashboard_run_once")}</button>
-            </div>
-        </div>
-            <div class="action-card dev-tool-card">
-                <span class="chip dev-chip">${t("dashboard_dev_tool")}</span>
-                <p class="helper-text">${escapeHtml(runtimeError)}</p>
-                <p class="muted dev-tools-note">${t("dashboard_engine_check")}</p>
             </div>
         `;
     }
@@ -78,19 +78,19 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     `;
 
     return `
-        <div class="panel-header">
-            <div>
+        <details>
+            <summary class="dev-tools-summary">
                 <h3>${t("dashboard_dev_tools")}</h3>
                 <p class="muted">${t("dashboard_engineering_note")}</p>
+            </summary>
+            <div class="action-card dev-tool-card">
+                <span class="chip dev-chip">${t("dashboard_dev_tool")}</span>
+                ${resultMarkup}
             </div>
-            <div class="actions">
-                <button class="icon-button lab-button" type="button" title="${t("dashboard_dev_test_run")}" aria-label="${t("dashboard_dev_test_run")}" data-action="open-dev-test-run">LAB</button>
-                <button class="button secondary" type="button" data-action="run-engine-once">${t("dashboard_run_once")}</button>
-            </div>
-        </div>
-        <div class="action-card dev-tool-card">
-            <span class="chip dev-chip">${t("dashboard_dev_tool")}</span>
-            ${resultMarkup}
+        </details>
+        <div class="dev-tools-persistent-actions">
+            <button class="icon-button lab-button" type="button" title="${t("dashboard_dev_test_run")}" aria-label="${t("dashboard_dev_test_run")}" data-action="open-dev-test-run">LAB</button>
+            <button class="button secondary" type="button" data-action="run-engine-once">${t("dashboard_run_once")}</button>
         </div>
     `;
 }
