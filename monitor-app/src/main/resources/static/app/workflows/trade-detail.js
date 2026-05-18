@@ -24,6 +24,36 @@ import { t } from "../../i18n.js";
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED"]);
 const CLOSEABLE_STATES = new Set(["OPEN", "EXIT_PENDING"]);
 
+function buildLiquiditySection(liquidity, trade) {
+    if (!liquidity) {
+        return section(t("liquidity_section_title"), emptyState(t("liquidity_no_assessment"), t("liquidity_no_assessment_detail")));
+    }
+    const warning = liquidity.score === "UNTRADABLE"
+        ? `<div class="banner">${t("liquidity_warning_untradable")}</div>`
+        : liquidity.score === "THIN"
+            ? `<div class="banner" style="border-color:rgba(255,190,60,0.22);background:linear-gradient(180deg,rgba(58,44,10,0.96),rgba(36,27,6,0.94))">${t("liquidity_warning_thin")}</div>`
+            : "";
+    const refreshBtn = (trade.venue && trade.symbol)
+        ? `<button class="button" type="button" data-refresh-liquidity="${trade.id}" data-venue="${escapeHtml(trade.venue)}" data-symbol="${escapeHtml(trade.symbol)}">${t("liquidity_refresh_button")}</button>`
+        : "";
+    return section(t("liquidity_section_title"), `
+        ${warning}
+        <div class="meta-grid">
+            ${metaRow(t("liquidity_score"), formatBadge("liquidity", liquidity.score))}
+            ${metaRow(t("liquidity_recommended_max"), liquidity.recommendedMaxOrderNotional != null ? `${formatDecimal(liquidity.recommendedMaxOrderNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_entry_bid_depth"), liquidity.entryBidDepthNotional != null ? `${formatDecimal(liquidity.entryBidDepthNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_exit_ask_depth"), liquidity.exitAskDepthNotional != null ? `${formatDecimal(liquidity.exitAskDepthNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_round_trip_safe"), liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_spread_bps"), liquidity.spreadBps != null ? `${formatDecimal(liquidity.spreadBps, 2)} bps` : "—")}
+            ${metaRow(t("liquidity_best_bid"), liquidity.bestBid != null ? formatDecimal(liquidity.bestBid, 4) : "—")}
+            ${metaRow(t("liquidity_best_ask"), liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—")}
+            ${metaRow(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
+            ${metaRow(t("liquidity_expires_at"), formatInstant(liquidity.expiresAt))}
+        </div>
+        ${refreshBtn}
+    `);
+}
+
 function buildCancelSection(trade) {
     if (CLOSEABLE_STATES.has(trade.state)) {
         return section(t("trade_close_position_title"), `
@@ -40,9 +70,10 @@ function buildCancelSection(trade) {
     `);
 }
 
-export function buildTradeDrawerContent({ trade, journal, attempts }) {
+export function buildTradeDrawerContent({ trade, journal, attempts, liquidity }) {
     return `
         ${pipelineStageMarkup("trade")}
+        ${buildLiquiditySection(liquidity, trade)}
         ${section(t("trade_parameters"), `
             <div class="meta-grid">
                 ${metaRow(t("trade_status"), formatBadge("trade", trade.state))}
@@ -150,16 +181,35 @@ export function buildTradeDrawerContent({ trade, journal, attempts }) {
 
 export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
     try {
-        const [trade, journal, attempts] = await Promise.all([
+        const [trade, journal, attempts, liquidity] = await Promise.all([
             api.getArmedTrade(id),
             api.listArmedTradeJournal(id),
-            api.listOrderAttempts(id)
+            api.listOrderAttempts(id),
+            api.getTradeLiquidity(id)
         ]);
 
         nodes.modalType.textContent = t("trade_modal_type");
         nodes.modalTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `${t("card_trade_prefix")}${trade.id}`;
-        nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts });
+        nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts, liquidity });
         openModal(nodes);
+
+        const refreshLiqBtn = nodes.modalContent.querySelector("[data-refresh-liquidity]");
+        if (refreshLiqBtn) {
+            refreshLiqBtn.addEventListener("click", async () => {
+                const venue = refreshLiqBtn.dataset.venue;
+                const symbol = refreshLiqBtn.dataset.symbol;
+                refreshLiqBtn.disabled = true;
+                refreshLiqBtn.textContent = t("liquidity_refreshing");
+                try {
+                    await api.refreshTradeLiquidity(id, venue, symbol);
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    refreshLiqBtn.disabled = false;
+                    refreshLiqBtn.textContent = t("liquidity_refresh_button");
+                }
+            });
+        }
 
         const cancelBtn = nodes.modalContent.querySelector("[data-cancel-trade]");
         if (cancelBtn) {
