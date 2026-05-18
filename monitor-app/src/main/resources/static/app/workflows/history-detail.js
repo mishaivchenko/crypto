@@ -1,6 +1,6 @@
 import { api } from "../../api.js";
 import { tradeHistoryDetailMarkup } from "../../history.js";
-import { escapeHtml, openModal, optionalRequest, pipelineStageMarkup, section } from "../shared.js";
+import { escapeHtml, openModal, optionalRequest, pipelineStageMarkup, section, venueIcon } from "../shared.js";
 import { t } from "../../i18n.js";
 
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED", "OPEN", "EXIT_PENDING"]);
@@ -23,7 +23,9 @@ export async function openHistoryTradeDetail({ id, nodes, showError, onRefresh }
         const attempts = await api.listOrderAttempts(id);
 
         nodes.modalType.textContent = t("history_modal_type");
-        nodes.modalTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `${t("history_trade_prefix")}${trade.id}`;
+        nodes.modalTitle.innerHTML = trade.symbol
+            ? `${venueIcon(trade.venue)}${escapeHtml(trade.symbol)} · ${escapeHtml(trade.venue)}`
+            : escapeHtml(`${t("history_trade_prefix")}${trade.id}`);
 
         let cancelHtml = "";
         if (CANCELLABLE_STATES.has(trade.state)) {

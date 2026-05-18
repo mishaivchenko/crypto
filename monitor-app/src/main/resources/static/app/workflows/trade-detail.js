@@ -16,7 +16,8 @@ import {
     pipelineStageMarkup,
     section,
     sideLabel,
-    toLocalInputValue
+    toLocalInputValue,
+    venueIcon
 } from "../shared.js";
 import { t } from "../../i18n.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
@@ -213,7 +214,9 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
         ]);
 
         nodes.modalType.textContent = t("trade_modal_type");
-        nodes.modalTitle.textContent = trade.symbol ? `${trade.symbol} · ${trade.venue}` : `${t("card_trade_prefix")}${trade.id}`;
+        nodes.modalTitle.innerHTML = trade.symbol
+            ? `${venueIcon(trade.venue)}${escapeHtml(trade.symbol)} · ${escapeHtml(trade.venue)}`
+            : escapeHtml(`${t("card_trade_prefix")}${trade.id}`);
         nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts, liquidity });
         openModal(nodes);
 

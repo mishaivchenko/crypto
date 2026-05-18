@@ -12,7 +12,8 @@ import {
     pipelineStageMarkup,
     section,
     sourceLabel,
-    toLocalInputValue
+    toLocalInputValue,
+    venueIcon
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
@@ -125,7 +126,7 @@ export async function openEventDetail({ id, nodes, showError }) {
         ]);
 
         nodes.modalType.textContent = t("event_modal_type");
-        nodes.modalTitle.textContent = `${event.symbol} · ${event.venue}`;
+        nodes.modalTitle.innerHTML = `${venueIcon(event.venue)}${escapeHtml(event.symbol)} · ${escapeHtml(event.venue)}`;
         nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal });
         openModal(nodes);
     } catch (error) {
