@@ -12,6 +12,7 @@ public record ArmedTradeResponse(
     Long signalCandidateId,
     String venue,
     String symbol,
+    String venueSymbol,
     Instant fundingTime,
     BigDecimal notionalUsd,
     TradeSide intendedSide,

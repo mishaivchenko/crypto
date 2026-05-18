@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -120,6 +121,17 @@ public class InstrumentRegistryService
                          .stream()
                          .map( InstrumentMetadataEntity::getVenue )
                          .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> resolveVenueSymbol( String rawVenue, String canonicalSymbol )
+    {
+        return repository.findByVenueAndCanonicalSymbolAndStatus(
+                             normalizeVenue( rawVenue ),
+                             canonicalSymbol == null ? null : canonicalSymbol.trim().toUpperCase( Locale.ROOT ),
+                             InstrumentStatus.ACTIVE
+                         )
+                         .map( InstrumentMetadataEntity::getVenueSymbol );
     }
 
     @Transactional(readOnly = true)
