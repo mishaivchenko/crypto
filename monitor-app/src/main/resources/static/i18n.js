@@ -571,6 +571,32 @@ const translations = {
         // History filter rail
         history_filters_show: "Filters ▸",
         history_filters_hide: "◂ Filters",
+
+        // Liquidity assessment
+        liquidity_section_title: "Liquidity Assessment",
+        liquidity_score: "Score",
+        liquidity_recommended_max: "Recommended max notional",
+        liquidity_entry_bid_depth: "Entry bid depth",
+        liquidity_exit_ask_depth: "Exit ask depth",
+        liquidity_round_trip_safe: "Round-trip safe notional",
+        liquidity_spread_bps: "Spread",
+        liquidity_max_slippage_bps: "Max slippage",
+        liquidity_safety_haircut: "Safety haircut",
+        liquidity_best_bid: "Best bid",
+        liquidity_best_ask: "Best ask",
+        liquidity_sampled_at: "Sampled at",
+        liquidity_expires_at: "Expires at",
+        liquidity_warning_thin: "⚠ Thin liquidity — recommended max notional is below normal. Proceed with caution.",
+        liquidity_warning_untradable: "🚫 Untradable — spread exceeds max slippage or liquidity is below minimum threshold. Entry not recommended.",
+        liquidity_refresh_button: "Refresh liquidity",
+        liquidity_refreshing: "Refreshing…",
+        liquidity_no_assessment: "No liquidity assessment",
+        liquidity_no_assessment_detail: "Use the venue detail page to run a probe, then refresh.",
+        liquidity_score_EXCELLENT: "Excellent",
+        liquidity_score_GOOD: "Good",
+        liquidity_score_MEDIUM: "Medium",
+        liquidity_score_THIN: "Thin",
+        liquidity_score_UNTRADABLE: "Untradable",
     },
 
     ru: {
@@ -1143,6 +1169,32 @@ const translations = {
         // History filter rail
         history_filters_show: "Фильтры ▸",
         history_filters_hide: "◂ Фильтры",
+
+        // Оценка ликвидности
+        liquidity_section_title: "Оценка ликвидности",
+        liquidity_score: "Оценка",
+        liquidity_recommended_max: "Рекомендуемый макс. объём",
+        liquidity_entry_bid_depth: "Глубина bid (вход)",
+        liquidity_exit_ask_depth: "Глубина ask (выход)",
+        liquidity_round_trip_safe: "Безопасный объём round-trip",
+        liquidity_spread_bps: "Спред",
+        liquidity_max_slippage_bps: "Макс. проскальзывание",
+        liquidity_safety_haircut: "Коэффициент безопасности",
+        liquidity_best_bid: "Лучший bid",
+        liquidity_best_ask: "Лучший ask",
+        liquidity_sampled_at: "Время замера",
+        liquidity_expires_at: "Действует до",
+        liquidity_warning_thin: "⚠ Низкая ликвидность — рекомендуемый объём ниже нормы. Действуйте осторожно.",
+        liquidity_warning_untradable: "🚫 Неторгуемо — спред превышает допустимое проскальзывание или ликвидность ниже минимума. Вход не рекомендуется.",
+        liquidity_refresh_button: "Обновить ликвидность",
+        liquidity_refreshing: "Обновляю…",
+        liquidity_no_assessment: "Нет оценки ликвидности",
+        liquidity_no_assessment_detail: "Запустите пробу на странице биржи, затем обновите.",
+        liquidity_score_EXCELLENT: "Отличная",
+        liquidity_score_GOOD: "Хорошая",
+        liquidity_score_MEDIUM: "Средняя",
+        liquidity_score_THIN: "Низкая",
+        liquidity_score_UNTRADABLE: "Неторгуемо",
     }
 };
 

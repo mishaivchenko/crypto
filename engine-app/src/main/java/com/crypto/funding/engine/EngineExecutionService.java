@@ -340,10 +340,16 @@ public class EngineExecutionService
 
     private EngineExecutionAttemptResult executeEntryAttempt( EngineExecutionPlan plan, EngineEntryAttemptPlan attemptPlan )
     {
+        BigDecimal effectiveNotional = cappedNotional( plan.notionalUsd(), plan.maxOrderNotional() );
+        if( plan.maxOrderNotional() != null && effectiveNotional.compareTo( plan.notionalUsd() ) < 0 )
+        {
+            log.info( "liquidity.cap applied armedTradeId={} planned={} cap={} effective={}",
+                plan.armedTradeId(), plan.notionalUsd(), plan.maxOrderNotional(), effectiveNotional );
+        }
         OrderIntent intent = new OrderIntent(
             plan.intendedSide(),
             ExecutionType.MARKET,
-            plan.notionalUsd(),
+            effectiveNotional,
             null,
             attemptPlan.triggerAt()
         );
@@ -652,6 +658,19 @@ public class EngineExecutionService
     private static BigDecimal zeroIfNull( BigDecimal value )
     {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    static BigDecimal cappedNotional( BigDecimal planned, BigDecimal maxOrderNotional )
+    {
+        if( planned == null )
+        {
+            return BigDecimal.ZERO;
+        }
+        if( maxOrderNotional == null || maxOrderNotional.signum() <= 0 )
+        {
+            return planned;
+        }
+        return planned.min( maxOrderNotional );
     }
 
     private boolean shouldEarlyExit( EngineExecutionPlan plan )

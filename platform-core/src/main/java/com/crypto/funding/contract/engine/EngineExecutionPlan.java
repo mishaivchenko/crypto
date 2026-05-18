@@ -1,5 +1,6 @@
 package com.crypto.funding.contract.engine;
 
+import com.crypto.funding.domain.liquidity.LiquidityScore;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.TradeSide;
 
@@ -41,9 +42,94 @@ public record EngineExecutionPlan(
     BigDecimal takeProfitUsd,
     String probeUrl,
     Integer warmupProbeCount,
-    Long warmupProbeLeadMs
+    Long warmupProbeLeadMs,
+    BigDecimal maxOrderNotional,
+    String liquidityAssessmentId,
+    LiquidityScore liquidityScore,
+    Instant liquiditySampledAt
 )
 {
+    // Backward-compatible 34-field constructor (no liquidity fields)
+    public EngineExecutionPlan(
+        Long armedTradeId,
+        Long fundingEventId,
+        String venue,
+        String symbol,
+        TradeSide intendedSide,
+        BigDecimal notionalUsd,
+        ArmedTradeState tradeState,
+        Instant fundingTime,
+        Instant plannedEntryAt,
+        Instant plannedExitAt,
+        Integer entryAttemptCount,
+        Long entrySpacingMs,
+        Long measuredEntryLatencyMs,
+        Long manualLatencyAdjustmentMs,
+        Long effectiveEntryLatencyMs,
+        List<EngineEntryAttemptPlan> entryAttempts,
+        EnginePlanStatus status,
+        Instant nextActionAt,
+        Long millisUntilAction,
+        Long millisUntilFunding,
+        String summary,
+        String venueSymbol,
+        BigDecimal minOrderQty,
+        BigDecimal qtyStep,
+        BigDecimal minNotionalValue,
+        Instant metadataLastSyncedAt,
+        Instant latencySampledAt,
+        BigDecimal positionQuantity,
+        BigDecimal positionEntryPrice,
+        BigDecimal stopLossUsd,
+        BigDecimal takeProfitUsd,
+        String probeUrl,
+        Integer warmupProbeCount,
+        Long warmupProbeLeadMs
+    )
+    {
+        this(
+            armedTradeId,
+            fundingEventId,
+            venue,
+            symbol,
+            intendedSide,
+            notionalUsd,
+            tradeState,
+            fundingTime,
+            plannedEntryAt,
+            plannedExitAt,
+            entryAttemptCount,
+            entrySpacingMs,
+            measuredEntryLatencyMs,
+            manualLatencyAdjustmentMs,
+            effectiveEntryLatencyMs,
+            entryAttempts,
+            status,
+            nextActionAt,
+            millisUntilAction,
+            millisUntilFunding,
+            summary,
+            venueSymbol,
+            minOrderQty,
+            qtyStep,
+            minNotionalValue,
+            metadataLastSyncedAt,
+            latencySampledAt,
+            positionQuantity,
+            positionEntryPrice,
+            stopLossUsd,
+            takeProfitUsd,
+            probeUrl,
+            warmupProbeCount,
+            warmupProbeLeadMs,
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    // Minimal 21-field constructor (summary-only, all optional fields null)
     public EngineExecutionPlan(
         Long armedTradeId,
         Long fundingEventId,
