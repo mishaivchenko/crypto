@@ -9,18 +9,7 @@ import java.util.Locale;
 @ConfigurationProperties(prefix = "monitor.risk")
 public class MonitorRiskProperties
 {
-    private int maxConcurrentArmedTrades = 3;
     private String disabledVenues = "";
-
-    public int getMaxConcurrentArmedTrades()
-    {
-        return maxConcurrentArmedTrades;
-    }
-
-    public void setMaxConcurrentArmedTrades( int maxConcurrentArmedTrades )
-    {
-        this.maxConcurrentArmedTrades = Math.max( 1, maxConcurrentArmedTrades );
-    }
 
     public String getDisabledVenues()
     {
