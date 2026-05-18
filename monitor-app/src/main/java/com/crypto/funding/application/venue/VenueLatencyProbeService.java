@@ -30,7 +30,7 @@ public class VenueLatencyProbeService
         "gate",   "https://api-testnet.gateapi.io/api/v4",
         "bybit",  "https://api-testnet.bybit.com",
         "okx",    "https://www.okx.com",
-        "kucoin", "https://api.kucoin.com",
+        "kucoin", "https://api-sandbox.kucoin.com",
         "bitget", "https://api.bitget.com"
     );
 

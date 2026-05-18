@@ -27,6 +27,15 @@ engine:
     gate:
         testnet-base-url: ${GATE_TESTNET_BASE_URL:https://api-testnet.gateapi.io/api/v4}
         production-base-url: ${GATE_PRODUCTION_BASE_URL:https://fx-api.gateio.ws/api/v4}
+    okx:
+        testnet-base-url: ${OKX_TESTNET_BASE_URL:https://www.okx.com}
+        production-base-url: ${OKX_PRODUCTION_BASE_URL:https://www.okx.com}
+    kucoin:
+        testnet-base-url: ${KUCOIN_TESTNET_BASE_URL:https://api-sandbox.kucoin.com}
+        production-base-url: ${KUCOIN_PRODUCTION_BASE_URL:https://api-futures.kucoin.com}
+    bitget:
+        testnet-base-url: ${BITGET_TESTNET_BASE_URL:https://api.bitget.com}
+        production-base-url: ${BITGET_PRODUCTION_BASE_URL:https://api.bitget.com}
     metrics-publish:
         enabled: ${ENGINE_METRICS_PUBLISH_ENABLED:false}
         interval-ms: ${ENGINE_METRICS_PUBLISH_INTERVAL_MS:15000}

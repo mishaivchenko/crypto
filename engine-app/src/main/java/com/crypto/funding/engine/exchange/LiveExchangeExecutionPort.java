@@ -81,6 +81,18 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             {
                 return submitGate( plan, intent, reduceOnly, attemptedAt );
             }
+            if( "okx".equals( normalizedVenue ) )
+            {
+                return submitOkx( plan, intent, reduceOnly, attemptedAt );
+            }
+            if( "kucoin".equals( normalizedVenue ) )
+            {
+                return submitKucoin( plan, intent, reduceOnly, attemptedAt );
+            }
+            if( "bitget".equals( normalizedVenue ) )
+            {
+                return submitBitget( plan, intent, reduceOnly, attemptedAt );
+            }
             return failed( plan, normalizedVenue, symbol, intent, attemptedAt, "Unsupported live order venue: " + normalizedVenue );
         }
         catch( InterruptedException e )
@@ -255,6 +267,310 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         );
     }
 
+    private OrderAttempt submitOkx(
+        EngineExecutionPlan plan,
+        OrderIntent intent,
+        boolean reduceOnly,
+        Instant attemptedAt
+    ) throws IOException, InterruptedException
+    {
+        String baseUrl = baseUrl( "okx" );
+        BigDecimal quantity = orderQuantity( plan, intent, reduceOnly );
+        String side = intent.side() == TradeSide.SHORT ? "sell" : "buy";
+        String posSide = intent.side() == TradeSide.SHORT ? "short" : "long";
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put( "instId", plan.venueSymbol() );
+        body.put( "tdMode", "cross" );
+        body.put( "side", side );
+        body.put( "posSide", posSide );
+        body.put( "ordType", "market" );
+        body.put( "sz", plain( quantity ) );
+        body.put( "clOrdId", orderLinkId( plan, reduceOnly ) );
+        String bodyJson = objectMapper.writeValueAsString( body );
+
+        String timestamp = Instant.now().toString();
+        String apiKey = credential( "okx", "api-key" );
+        String secretKey = credential( "okx", "secret-key" );
+        String passphrase = credential( "okx", "passphrase" );
+        String signPayload = timestamp + "POST" + "/api/v5/trade/order" + bodyJson;
+        String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
+        boolean isTestnet = "testnet".equals( property( "engine.trading-venue-access-mode", "testnet" ).trim().toLowerCase( java.util.Locale.ROOT ) );
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                                                  .uri( URI.create( baseUrl + "/api/v5/trade/order" ) )
+                                                  .timeout( REQUEST_TIMEOUT )
+                                                  .header( "Content-Type", "application/json" )
+                                                  .header( "OK-ACCESS-KEY", apiKey )
+                                                  .header( "OK-ACCESS-SIGN", sign )
+                                                  .header( "OK-ACCESS-TIMESTAMP", timestamp )
+                                                  .header( "OK-ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase );
+        if( isTestnet )
+        {
+            builder.header( "x-simulated-trading", "1" );
+        }
+        HttpRequest request = builder.POST( HttpRequest.BodyPublishers.ofString( bodyJson ) ).build();
+
+        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        String code = root.path( "code" ).asText( "-1" );
+        if( response.statusCode() >= 300 || !"0".equals( code ) )
+        {
+            JsonNode dataNode = root.path( "data" );
+            String msg = dataNode.isArray() && !dataNode.isEmpty()
+                         ? dataNode.get( 0 ).path( "sMsg" ).asText( root.path( "msg" ).asText( response.body() ) )
+                         : root.path( "msg" ).asText( response.body() );
+            return rejected( plan, intent, quantity, attemptedAt, "OKX order rejected: " + msg );
+        }
+        String orderId = root.path( "data" ).get( 0 ).path( "ordId" ).asText();
+        return okxStatus( plan, intent, quantity, orderId, attemptedAt, isTestnet, apiKey, secretKey, passphrase );
+    }
+
+    private OrderAttempt okxStatus(
+        EngineExecutionPlan plan,
+        OrderIntent intent,
+        BigDecimal quantity,
+        String orderId,
+        Instant attemptedAt,
+        boolean isTestnet,
+        String apiKey,
+        String secretKey,
+        String passphrase
+    ) throws IOException, InterruptedException
+    {
+        String baseUrl = baseUrl( "okx" );
+        String requestPath = "/api/v5/trade/order";
+        String query = "instId=" + encode( plan.venueSymbol() ) + "&ordId=" + encode( orderId );
+        String timestamp = Instant.now().toString();
+        String signPayload = timestamp + "GET" + requestPath + "?" + query;
+        String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                                                  .uri( URI.create( baseUrl + requestPath + "?" + query ) )
+                                                  .timeout( REQUEST_TIMEOUT )
+                                                  .header( "OK-ACCESS-KEY", apiKey )
+                                                  .header( "OK-ACCESS-SIGN", sign )
+                                                  .header( "OK-ACCESS-TIMESTAMP", timestamp )
+                                                  .header( "OK-ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase );
+        if( isTestnet )
+        {
+            builder.header( "x-simulated-trading", "1" );
+        }
+        HttpResponse<String> response = httpClient.send( builder.GET().build(), HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        JsonNode order = root.path( "data" ).isArray() && !root.path( "data" ).isEmpty()
+                         ? root.path( "data" ).get( 0 )
+                         : objectMapper.createObjectNode();
+        String state = order.path( "state" ).asText( "" );
+        return completed(
+            plan,
+            intent,
+            quantity,
+            "filled".equalsIgnoreCase( state ) ? OrderAttemptStatus.FILLED : OrderAttemptStatus.ACKNOWLEDGED,
+            orderId,
+            attemptedAt,
+            attemptedAt,
+            decimalOrNull( order.path( "fillPx" ).asText( null ) ),
+            decimalOrNull( order.path( "accFillSz" ).asText( null ) ),
+            decimalOrNull( order.path( "fee" ).asText( null ) )
+        );
+    }
+
+    private OrderAttempt submitKucoin(
+        EngineExecutionPlan plan,
+        OrderIntent intent,
+        boolean reduceOnly,
+        Instant attemptedAt
+    ) throws IOException, InterruptedException
+    {
+        String baseUrl = baseUrl( "kucoin" );
+        BigDecimal quantity = orderQuantity( plan, intent, reduceOnly );
+        String side = intent.side() == TradeSide.SHORT ? "sell" : "buy";
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put( "clientOid", orderLinkId( plan, reduceOnly ) );
+        body.put( "side", side );
+        body.put( "symbol", plan.venueSymbol() );
+        body.put( "leverage", "1" );
+        body.put( "type", "market" );
+        body.put( "size", plain( quantity ) );
+        body.put( "reduceOnly", reduceOnly );
+        String bodyJson = objectMapper.writeValueAsString( body );
+
+        String requestPath = "/api/v1/orders";
+        String timestamp = String.valueOf( System.currentTimeMillis() );
+        String apiKey = credential( "kucoin", "api-key" );
+        String secretKey = credential( "kucoin", "secret-key" );
+        String rawPassphrase = credential( "kucoin", "passphrase" );
+        String signPayload = timestamp + "POST" + requestPath + bodyJson;
+        String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
+        String passphraseEncoded = com.crypto.funding.crypto.HmacSigner.hmacSha256Base64( secretKey, rawPassphrase == null ? "" : rawPassphrase );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                          .uri( URI.create( baseUrl + requestPath ) )
+                                          .timeout( REQUEST_TIMEOUT )
+                                          .header( "Content-Type", "application/json" )
+                                          .header( "KC-API-KEY", apiKey )
+                                          .header( "KC-API-SIGN", sign )
+                                          .header( "KC-API-TIMESTAMP", timestamp )
+                                          .header( "KC-API-PASSPHRASE", passphraseEncoded )
+                                          .header( "KC-API-KEY-VERSION", "2" )
+                                          .POST( HttpRequest.BodyPublishers.ofString( bodyJson ) )
+                                          .build();
+
+        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        String code = root.path( "code" ).asText( "" );
+        if( response.statusCode() >= 300 || !"200000".equals( code ) )
+        {
+            return rejected( plan, intent, quantity, attemptedAt, "Kucoin order rejected: " + root.path( "msg" ).asText( response.body() ) );
+        }
+        String orderId = root.path( "data" ).path( "orderId" ).asText();
+        return kucoinStatus( plan, intent, quantity, orderId, attemptedAt, apiKey, secretKey, passphraseEncoded );
+    }
+
+    private OrderAttempt kucoinStatus(
+        EngineExecutionPlan plan,
+        OrderIntent intent,
+        BigDecimal quantity,
+        String orderId,
+        Instant attemptedAt,
+        String apiKey,
+        String secretKey,
+        String passphraseEncoded
+    ) throws IOException, InterruptedException
+    {
+        String baseUrl = baseUrl( "kucoin" );
+        String requestPath = "/api/v1/orders/" + orderId;
+        String timestamp = String.valueOf( System.currentTimeMillis() );
+        String signPayload = timestamp + "GET" + requestPath;
+        String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                          .uri( URI.create( baseUrl + requestPath ) )
+                                          .timeout( REQUEST_TIMEOUT )
+                                          .header( "KC-API-KEY", apiKey )
+                                          .header( "KC-API-SIGN", sign )
+                                          .header( "KC-API-TIMESTAMP", timestamp )
+                                          .header( "KC-API-PASSPHRASE", passphraseEncoded )
+                                          .header( "KC-API-KEY-VERSION", "2" )
+                                          .GET()
+                                          .build();
+
+        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        JsonNode order = root.path( "data" );
+        String status = order.path( "status" ).asText( "" );
+        return completed(
+            plan,
+            intent,
+            quantity,
+            "done".equalsIgnoreCase( status ) ? OrderAttemptStatus.FILLED : OrderAttemptStatus.ACKNOWLEDGED,
+            orderId,
+            attemptedAt,
+            attemptedAt,
+            decimalOrNull( order.path( "dealAvgPrice" ).asText( null ) ),
+            decimalOrNull( order.path( "dealSize" ).asText( null ) ),
+            decimalOrNull( order.path( "fee" ).asText( null ) )
+        );
+    }
+
+    private OrderAttempt submitBitget(
+        EngineExecutionPlan plan,
+        OrderIntent intent,
+        boolean reduceOnly,
+        Instant attemptedAt
+    ) throws IOException, InterruptedException
+    {
+        String baseUrl = baseUrl( "bitget" );
+        BigDecimal quantity = orderQuantity( plan, intent, reduceOnly );
+        String side = intent.side() == TradeSide.SHORT ? "sell" : "buy";
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put( "symbol", plan.venueSymbol() );
+        body.put( "productType", "USDT-FUTURES" );
+        body.put( "marginMode", "crossed" );
+        body.put( "marginCoin", "USDT" );
+        body.put( "size", plain( quantity ) );
+        body.put( "side", side );
+        body.put( "tradeSide", reduceOnly ? "close" : "open" );
+        body.put( "orderType", "market" );
+        body.put( "clientOid", orderLinkId( plan, reduceOnly ) );
+        String bodyJson = objectMapper.writeValueAsString( body );
+
+        String requestPath = "/api/v2/mix/order/place-order";
+        String timestamp = String.valueOf( System.currentTimeMillis() );
+        String apiKey = credential( "bitget", "api-key" );
+        String secretKey = credential( "bitget", "secret-key" );
+        String passphrase = credential( "bitget", "passphrase" );
+        String signPayload = timestamp + "POST" + requestPath + bodyJson;
+        String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                          .uri( URI.create( baseUrl + requestPath ) )
+                                          .timeout( REQUEST_TIMEOUT )
+                                          .header( "Content-Type", "application/json" )
+                                          .header( "ACCESS-KEY", apiKey )
+                                          .header( "ACCESS-SIGN", sign )
+                                          .header( "ACCESS-TIMESTAMP", timestamp )
+                                          .header( "ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase )
+                                          .POST( HttpRequest.BodyPublishers.ofString( bodyJson ) )
+                                          .build();
+
+        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        String code = root.path( "code" ).asText( "" );
+        if( response.statusCode() >= 300 || !"00000".equals( code ) )
+        {
+            return rejected( plan, intent, quantity, attemptedAt, "Bitget order rejected: " + root.path( "msg" ).asText( response.body() ) );
+        }
+        String orderId = root.path( "data" ).path( "orderId" ).asText();
+        return bitgetStatus( plan, intent, quantity, orderId, attemptedAt, apiKey, secretKey, passphrase );
+    }
+
+    private OrderAttempt bitgetStatus(
+        EngineExecutionPlan plan,
+        OrderIntent intent,
+        BigDecimal quantity,
+        String orderId,
+        Instant attemptedAt,
+        String apiKey,
+        String secretKey,
+        String passphrase
+    ) throws IOException, InterruptedException
+    {
+        String baseUrl = baseUrl( "bitget" );
+        String requestPath = "/api/v2/mix/order/detail";
+        String query = "symbol=" + encode( plan.venueSymbol() ) + "&orderId=" + encode( orderId ) + "&productType=USDT-FUTURES";
+        String timestamp = String.valueOf( System.currentTimeMillis() );
+        String signPayload = timestamp + "GET" + requestPath + "?" + query;
+        String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                          .uri( URI.create( baseUrl + requestPath + "?" + query ) )
+                                          .timeout( REQUEST_TIMEOUT )
+                                          .header( "ACCESS-KEY", apiKey )
+                                          .header( "ACCESS-SIGN", sign )
+                                          .header( "ACCESS-TIMESTAMP", timestamp )
+                                          .header( "ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase )
+                                          .GET()
+                                          .build();
+
+        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
+        JsonNode root = parseBody( response.body() );
+        JsonNode order = root.path( "data" );
+        String state = order.path( "state" ).asText( "" );
+        return completed(
+            plan,
+            intent,
+            quantity,
+            "filled".equalsIgnoreCase( state ) ? OrderAttemptStatus.FILLED : OrderAttemptStatus.ACKNOWLEDGED,
+            orderId,
+            attemptedAt,
+            attemptedAt,
+            decimalOrNull( order.path( "fillPrice" ).asText( null ) ),
+            decimalOrNull( order.path( "baseVolume" ).asText( null ) ),
+            decimalOrNull( order.path( "fee" ).asText( null ) )
+        );
+    }
+
     private String liveGateFailure( EngineExecutionPlan plan, String venue, OrderIntent intent, boolean reduceOnly, Instant now )
     {
         if( plan == null )
@@ -284,8 +600,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         }
         if( plan.venueSymbol() == null || plan.venueSymbol().isBlank()
             || plan.minOrderQty() == null
-            || plan.qtyStep() == null
-            || plan.minNotionalValue() == null )
+            || plan.qtyStep() == null )
         {
             return "Instrument metadata must be present before live submission.";
         }
@@ -345,6 +660,28 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             JsonNode ticker = root.isArray() && !root.isEmpty() ? root.get( 0 ) : root;
             return requirePositiveDecimal( ticker.path( "last" ).asText( null ), "Gate ticker last price is missing." );
         }
+        if( "okx".equals( venue ) )
+        {
+            String url = baseUrl( "okx" ) + "/api/v5/public/mark-price?instType=SWAP&instId=" + encode( plan.venueSymbol() );
+            JsonNode root = getJson( url, "OKX mark price" );
+            JsonNode data = root.path( "data" );
+            JsonNode item = data.isArray() && !data.isEmpty() ? data.get( 0 ) : objectMapper.createObjectNode();
+            return requirePositiveDecimal( item.path( "markPx" ).asText( null ), "OKX mark price markPx is missing." );
+        }
+        if( "kucoin".equals( venue ) )
+        {
+            String url = baseUrl( "kucoin" ) + "/api/v1/mark-price/" + encode( plan.venueSymbol() ) + "/current";
+            JsonNode root = getJson( url, "Kucoin mark price" );
+            return requirePositiveDecimal( root.path( "data" ).path( "value" ).asText( null ), "Kucoin mark price value is missing." );
+        }
+        if( "bitget".equals( venue ) )
+        {
+            String url = baseUrl( "bitget" ) + "/api/v2/mix/market/symbol-price?symbol=" + encode( plan.venueSymbol() ) + "&productType=USDT-FUTURES";
+            JsonNode root = getJson( url, "Bitget mark price" );
+            JsonNode data = root.path( "data" );
+            JsonNode item = data.isArray() && !data.isEmpty() ? data.get( 0 ) : objectMapper.createObjectNode();
+            return requirePositiveDecimal( item.path( "markPrice" ).asText( null ), "Bitget mark price markPrice is missing." );
+        }
         if( plan.positionEntryPrice() == null || plan.positionEntryPrice().signum() <= 0 )
         {
             throw new IllegalArgumentException( "Price reference is missing for notional-to-quantity conversion." );
@@ -354,13 +691,22 @@ public class LiveExchangeExecutionPort implements ExecutionPort
 
     private BigDecimal contractMultiplier( EngineExecutionPlan plan ) throws IOException, InterruptedException
     {
-        if( !"gate".equals( normalizeVenue( plan.venue() ) ) )
+        String venue = normalizeVenue( plan.venue() );
+        if( "gate".equals( venue ) )
         {
-            return BigDecimal.ONE;
+            String url = baseUrl( "gate" ) + "/futures/usdt/contracts/" + encode( plan.venueSymbol() );
+            JsonNode root = getJson( url, "Gate contract" );
+            return requirePositiveDecimal( root.path( "quanto_multiplier" ).asText( null ), "Gate contract quanto_multiplier is missing." );
         }
-        String url = baseUrl( "gate" ) + "/futures/usdt/contracts/" + encode( plan.venueSymbol() );
-        JsonNode root = getJson( url, "Gate contract" );
-        return requirePositiveDecimal( root.path( "quanto_multiplier" ).asText( null ), "Gate contract quanto_multiplier is missing." );
+        if( "okx".equals( venue ) )
+        {
+            String url = baseUrl( "okx" ) + "/api/v5/public/instruments?instType=SWAP&instId=" + encode( plan.venueSymbol() );
+            JsonNode root = getJson( url, "OKX instrument" );
+            JsonNode data = root.path( "data" );
+            JsonNode item = data.isArray() && !data.isEmpty() ? data.get( 0 ) : objectMapper.createObjectNode();
+            return requirePositiveDecimal( item.path( "ctVal" ).asText( null ), "OKX instrument ctVal is missing." );
+        }
+        return BigDecimal.ONE;
     }
 
     private JsonNode getJson( String url, String operation ) throws IOException, InterruptedException
@@ -533,6 +879,10 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             case "bybit:production" -> "https://api.bybit.com";
             case "gate:production" -> "https://fx-api.gateio.ws/api/v4";
             case "gate:testnet" -> "https://api-testnet.gateapi.io/api/v4";
+            case "okx:production", "okx:testnet" -> "https://www.okx.com";
+            case "kucoin:production" -> "https://api-futures.kucoin.com";
+            case "kucoin:testnet" -> "https://api-sandbox.kucoin.com";
+            case "bitget:production", "bitget:testnet" -> "https://api.bitget.com";
             default -> "https://api-testnet.bybit.com";
         };
         String url = property( property, fallback );

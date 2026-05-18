@@ -40,7 +40,7 @@ public class BitgetCredentialChecker implements VenueCredentialCheckPort
     @Override
     public List<VenueAccessMode> supportedModes()
     {
-        return List.of( VenueAccessMode.PRODUCTION );
+        return List.of( VenueAccessMode.TESTNET, VenueAccessMode.PRODUCTION );
     }
 
     @Override

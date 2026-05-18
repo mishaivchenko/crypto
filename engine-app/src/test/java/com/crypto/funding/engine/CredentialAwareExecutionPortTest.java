@@ -351,6 +351,20 @@ class CredentialAwareExecutionPortTest
             .withProperty( "engine.credentials." + venue + ".secret-key", "secret" );
     }
 
+    private static MockEnvironment liveEnvironmentWithPassphrase( String venue )
+    {
+        return new MockEnvironment()
+            .withProperty( "engine.live-enabled-venues", venue )
+            .withProperty( "engine.kill-switch-enabled", "false" )
+            .withProperty( "engine.max-notional-usd", "25" )
+            .withProperty( "engine.metadata-max-age-minutes", "1440" )
+            .withProperty( "engine.latency-max-age-minutes", "1440" )
+            .withProperty( "engine.trading-venue-access-mode", "testnet" )
+            .withProperty( "engine.credentials." + venue + ".api-key", "key" )
+            .withProperty( "engine.credentials." + venue + ".secret-key", "secret" )
+            .withProperty( "engine.credentials." + venue + ".passphrase", "pass" );
+    }
+
     private static EngineExecutionPlan plan( String venue )
     {
         return livePlan( venue, 1 );
@@ -395,7 +409,7 @@ class CredentialAwareExecutionPortTest
             0L,
             60_000L,
             "summary",
-            venue.trim().equalsIgnoreCase( "gate" ) ? "REQ_USDT" : "REQUSDT",
+            venueSymbol( venue ),
             BigDecimal.ONE,
             BigDecimal.ONE,
             BigDecimal.valueOf( 5 ),
@@ -449,5 +463,192 @@ class CredentialAwareExecutionPortTest
             null,
             null
         );
+    }
+
+    private static String venueSymbol( String venue )
+    {
+        String v = venue.trim().toLowerCase();
+        return switch( v )
+        {
+            case "gate"   -> "REQ_USDT";
+            case "okx"    -> "REQ-USDT-SWAP";
+            case "kucoin" -> "REQM23";
+            default       -> "REQUSDT";
+        };
+    }
+
+    // REQ: ENG-EXEC-OKX-001
+    @Test
+    void submitsOkxEntryWithSimulatedTradingHeaderInTestnet()
+    {
+        exchange.stubFor( get( urlEqualTo( "/api/v5/public/mark-price?instType=SWAP&instId=REQ-USDT-SWAP" ) ).willReturn( okJson( """
+            {"code":"0","data":[{"instId":"REQ-USDT-SWAP","markPx":"2.5"}]}
+            """ ) ) );
+        exchange.stubFor( get( urlEqualTo( "/api/v5/public/instruments?instType=SWAP&instId=REQ-USDT-SWAP" ) ).willReturn( okJson( """
+            {"code":"0","data":[{"instId":"REQ-USDT-SWAP","ctVal":"0.01"}]}
+            """ ) ) );
+        exchange.stubFor( post( "/api/v5/trade/order" ).willReturn( okJson( """
+            {"code":"0","data":[{"ordId":"okx-order-1","sCode":"0","sMsg":""}]}
+            """ ) ) );
+        exchange.stubFor( get( com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo( "/api/v5/trade/order" ) ).willReturn( okJson( """
+            {"code":"0","data":[{"ordId":"okx-order-1","state":"filled","fillPx":"2.5","accFillSz":"10","fee":"-0.01"}]}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironmentWithPassphrase( "okx" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.okx.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( liveEntryPlanWithoutPositionPrice( "okx" ), marketIntent(), false );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "okx-order-1" );
+        assertThat( attempt.averageFillPrice() ).isEqualByComparingTo( "2.5" );
+        exchange.verify( com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor( urlEqualTo( "/api/v5/trade/order" ) )
+            .withHeader( "x-simulated-trading", containing( "1" ) )
+            .withRequestBody( containing( "\"instId\":\"REQ-USDT-SWAP\"" ) )
+            .withRequestBody( containing( "\"side\":\"sell\"" ) )
+            .withRequestBody( containing( "\"posSide\":\"short\"" ) )
+            .withRequestBody( containing( "\"ordType\":\"market\"" ) ) );
+    }
+
+    // REQ: ENG-EXEC-OKX-002
+    @Test
+    void submitsOkxReduceOnlyExit()
+    {
+        exchange.stubFor( post( "/api/v5/trade/order" ).willReturn( okJson( """
+            {"code":"0","data":[{"ordId":"okx-exit-1","sCode":"0","sMsg":""}]}
+            """ ) ) );
+        exchange.stubFor( get( com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo( "/api/v5/trade/order" ) ).willReturn( okJson( """
+            {"code":"0","data":[{"ordId":"okx-exit-1","state":"filled","fillPx":"2.5","accFillSz":"10","fee":"-0.01"}]}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironmentWithPassphrase( "okx" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.okx.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( livePlan( "okx" ), new OrderIntent(
+            TradeSide.LONG, ExecutionType.MARKET, BigDecimal.TEN, null, null
+        ), true );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "okx-exit-1" );
+        exchange.verify( postRequestedFor( urlEqualTo( "/api/v5/trade/order" ) )
+            .withRequestBody( containing( "\"side\":\"buy\"" ) ) );
+    }
+
+    // REQ: ENG-EXEC-KUC-001
+    @Test
+    void submitsKucoinEntryMarketSell()
+    {
+        exchange.stubFor( get( urlEqualTo( "/api/v1/mark-price/REQM23/current" ) ).willReturn( okJson( """
+            {"code":"200000","data":{"value":"2.5"}}
+            """ ) ) );
+        exchange.stubFor( post( "/api/v1/orders" ).willReturn( okJson( """
+            {"code":"200000","data":{"orderId":"kucoin-order-1"}}
+            """ ) ) );
+        exchange.stubFor( get( urlEqualTo( "/api/v1/orders/kucoin-order-1" ) ).willReturn( okJson( """
+            {"code":"200000","data":{"status":"done","dealAvgPrice":"2.5","dealSize":"10","fee":"0.01"}}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironmentWithPassphrase( "kucoin" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.kucoin.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( liveEntryPlanWithoutPositionPrice( "kucoin" ), marketIntent(), false );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "kucoin-order-1" );
+        assertThat( attempt.averageFillPrice() ).isEqualByComparingTo( "2.5" );
+        exchange.verify( postRequestedFor( urlEqualTo( "/api/v1/orders" ) )
+            .withRequestBody( containing( "\"side\":\"sell\"" ) )
+            .withRequestBody( containing( "\"type\":\"market\"" ) )
+            .withRequestBody( containing( "\"reduceOnly\":false" ) ) );
+    }
+
+    // REQ: ENG-EXEC-KUC-002
+    @Test
+    void submitsKucoinReduceOnlyExit()
+    {
+        exchange.stubFor( post( "/api/v1/orders" ).willReturn( okJson( """
+            {"code":"200000","data":{"orderId":"kucoin-exit-1"}}
+            """ ) ) );
+        exchange.stubFor( get( urlEqualTo( "/api/v1/orders/kucoin-exit-1" ) ).willReturn( okJson( """
+            {"code":"200000","data":{"status":"done","dealAvgPrice":"2.5","dealSize":"10","fee":"0.01"}}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironmentWithPassphrase( "kucoin" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.kucoin.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( livePlan( "kucoin" ), new OrderIntent(
+            TradeSide.LONG, ExecutionType.MARKET, BigDecimal.TEN, null, null
+        ), true );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "kucoin-exit-1" );
+        exchange.verify( postRequestedFor( urlEqualTo( "/api/v1/orders" ) )
+            .withRequestBody( containing( "\"side\":\"buy\"" ) )
+            .withRequestBody( containing( "\"reduceOnly\":true" ) ) );
+    }
+
+    // REQ: ENG-EXEC-BIT-001
+    @Test
+    void submitsBitgetEntryMarketSell()
+    {
+        exchange.stubFor( get( urlEqualTo( "/api/v2/mix/market/symbol-price?symbol=REQUSDT&productType=USDT-FUTURES" ) ).willReturn( okJson( """
+            {"code":"00000","data":[{"symbol":"REQUSDT","markPrice":"2.5"}]}
+            """ ) ) );
+        exchange.stubFor( post( "/api/v2/mix/order/place-order" ).willReturn( okJson( """
+            {"code":"00000","data":{"orderId":"bitget-order-1"}}
+            """ ) ) );
+        exchange.stubFor( get( com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo( "/api/v2/mix/order/detail" ) ).willReturn( okJson( """
+            {"code":"00000","data":{"state":"filled","fillPrice":"2.5","baseVolume":"10","fee":"0.01"}}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironmentWithPassphrase( "bitget" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.bitget.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( liveEntryPlanWithoutPositionPrice( "bitget" ), marketIntent(), false );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "bitget-order-1" );
+        assertThat( attempt.averageFillPrice() ).isEqualByComparingTo( "2.5" );
+        exchange.verify( postRequestedFor( urlEqualTo( "/api/v2/mix/order/place-order" ) )
+            .withRequestBody( containing( "\"side\":\"sell\"" ) )
+            .withRequestBody( containing( "\"tradeSide\":\"open\"" ) )
+            .withRequestBody( containing( "\"orderType\":\"market\"" ) ) );
+    }
+
+    // REQ: ENG-EXEC-BIT-002
+    @Test
+    void submitsBitgetReduceOnlyExit()
+    {
+        exchange.stubFor( post( "/api/v2/mix/order/place-order" ).willReturn( okJson( """
+            {"code":"00000","data":{"orderId":"bitget-exit-1"}}
+            """ ) ) );
+        exchange.stubFor( get( com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo( "/api/v2/mix/order/detail" ) ).willReturn( okJson( """
+            {"code":"00000","data":{"state":"filled","fillPrice":"2.5","baseVolume":"10","fee":"0.01"}}
+            """ ) ) );
+        CredentialAwareExecutionPort port = new CredentialAwareExecutionPort(
+            liveEnvironmentWithPassphrase( "bitget" )
+                .withProperty( "engine.live-order-enabled", "true" )
+                .withProperty( "engine.bitget.testnet-base-url", exchange.baseUrl() )
+        );
+
+        var attempt = port.submitOrder( livePlan( "bitget" ), new OrderIntent(
+            TradeSide.LONG, ExecutionType.MARKET, BigDecimal.TEN, null, null
+        ), true );
+
+        assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FILLED );
+        assertThat( attempt.externalOrderId() ).isEqualTo( "bitget-exit-1" );
+        exchange.verify( postRequestedFor( urlEqualTo( "/api/v2/mix/order/place-order" ) )
+            .withRequestBody( containing( "\"side\":\"buy\"" ) )
+            .withRequestBody( containing( "\"tradeSide\":\"close\"" ) ) );
     }
 }
