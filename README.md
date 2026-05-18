@@ -1,167 +1,256 @@
-# Funding Platform 2.0.0
+# Funding Platform
 
-`2.0.0` — это новая основная линия проекта с явным split на два независимо деплоимых runtime-модуля: `monitor-app` и `engine-app`.
+A modular, operator-controlled platform for funding arbitrage — signal ingestion, manual review, trade arming, and autonomous execution against perpetual futures venues.
 
-Текущий бизнес-flow:
+```
+Funding API → SignalCandidate → Operator Review → FundingEvent
+  → ArmedTrade → Engine Plan → OrderAttempt → TradeJournal
+```
 
-`Funding API -> SignalCandidate -> Review -> FundingEvent -> ArmedTrade -> Engine Attempt -> Trade Journal`
+---
 
-## Что входит в 2.0.0
+## Modules
 
-### `platform-core`
-Общий contracts/core модуль:
-- domain models `SignalCandidate / FundingEvent / ArmedTrade / OrderAttempt`
-- shared ports and contracts
-- engine plan DTOs
-- crypto/symbol utilities
-- no Spring Boot runtime
-- no persistence ownership
+| Module | Runtime | Role |
+|---|---|---|
+| `platform-core` | Library | Domain records, ports, engine contracts, utilities — no Spring, no persistence |
+| `monitor-app` | Spring Boot `:8090` | Operator control plane: review, arm, credentials, venue diagnostics, UI |
+| `engine-app` | Spring Boot `:8091` | Execution runtime: reads plans from monitor, submits orders, records results |
+| `telegram-bot-app` | Spring Boot | Signal notifications and status bot (`@funding_arbitrage_bot_bot`) |
 
-### `monitor-app`
-Операторский модуль:
-- основной UI
-- dashboard
-- candidates review
-- funding events
-- armed trades
-- venue diagnostics
-- journal access
-- encrypted per-operator exchange credentials
-- internal API for engine plan sync
+---
 
-### `engine-app`
-Лёгкий execution модуль:
-- отдельный Spring Boot runtime
-- отдельный порт
-- no bot UI
-- no candidate polling
-- no metadata auto-sync on startup
-- reads execution plans from monitor REST
-- can run entry attempts and persist `OrderAttempt` results back to monitor
+## How It Works
 
-Текущий engine уже фиксирует execution attempts, но live exchange order submission всё ещё guarded: без engine credentials попытки становятся `FAILED`, а при наличии credentials live order HTTP submission пока не включается автоматически.
+**Signal ingestion** — `monitor-app` polls an external funding API, normalises symbols via the venue metadata registry, and creates `SignalCandidate` records.
 
-## Источник кандидатов
+**Operator review** — candidates land in the review queue. Approve creates a `FundingEvent`; reject/delete stays in the candidate pipeline. No trade is created without explicit approval.
 
-Основной источник:
-- [uainvest funding API](https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30)
+**Trade arming** — the operator arms a `FundingEvent`, producing an `ArmedTrade`. All funding trades are `SHORT`-only. Burst-entry parameters (attempt count, spacing, latency offset) are configured per trade.
 
-Сигнал из источника создаёт только `SignalCandidate`. `FundingEvent` появляется после operator review.
+**Execution** — `engine-app` fetches the execution plan from monitor, computes per-attempt trigger times accounting for measured latency, submits orders, and writes `OrderAttempt` results back. The full entry → open position → exit → closed lifecycle is tracked end-to-end.
 
-## Запуск
+**Audit** — every state transition is recorded in `TradeJournal` with actor (`OPERATOR` / `ENGINE` / `SYSTEM`) and timestamp.
 
-Требования:
-- JDK 25
-
-Основные команды:
-- `./gradlew test`
-- `./gradlew build`
-- `./gradlew spotlessCheck`
-- `./gradlew security`
-- `./gradlew bootRunMonitor`
-- `./gradlew bootRunEngine`
-
-Артефакты:
-- monitor jar: `monitor-app/build/libs/*-monitor.jar`
-- engine jar: `engine-app/build/libs/*-engine.jar`
-
-Порты по умолчанию:
-- monitor: `8090`
-- engine: `8091`
-
-Runtime profiles:
-- `local-safe` — локальная безопасная среда: engine loop off, operator auth off, credential storage off.
-- `staging` — проверочная среда: engine loop off, auth/storage on, metrics on.
-- `prod-like` — deployment-профиль: auth/storage on, metrics on, engine loop остаётся off пока не включён ENV/compose.
-
-Если профиль не задан, базовые значения всё равно safe-by-default.
-
-Локальные `bootRun`-таски также подставляют `SPRING_PROFILES_ACTIVE=local-safe` и общий `INTERNAL_ENGINE_TOKEN=funding-local-internal-token`, если вы не передали свои ENV явно.
-
-## UI
-
-Рабочий операторский интерфейс находится в `monitor-app`.
-
-Что уже есть:
-- Dashboard
-- Candidates
-- Funding Events
-- Armed Trades
-- Venues
-- Journal drawer
-
-UI рассчитан на operator workflow, а не на маркетинговую витрину:
-- low-noise
-- mobile-friendly
-- чёткое различие между candidate / event / trade
-- быстрые действия approve / reject / arm / sync
-
-## Engine API
-
-`engine-app` предоставляет lightweight internal API:
-- `GET /internal/engine/summary`
-- `GET /internal/engine/plans`
-- `GET /internal/engine/plans/{armedTradeId}`
-- `POST /internal/engine/execution/run-once?force=true`
-
-Это execution-side слой для планов и наблюдаемых попыток исполнения.
-
-## Users And Keys
-
-Operator API защищён `X-Operator-Token`.
-
-Bootstrap операторов:
-- `SECURITY_OPERATOR_BOOTSTRAP_USERS=alice:token,bob:token`
-
-Exchange keys:
-- хранятся в `operator_exchange_credential`
-- шифруются AES-GCM
-- master key приходит только из `CREDENTIALS_MASTER_KEY_BASE64`
-- API отдаёт только masks/status, raw secrets не возвращаются
-- ключи изолированы по `operator_id`
-
-Credential API:
-- `GET /api/v1/operators/me/credentials`
-- `PUT /api/v1/operators/me/credentials/{venue}/{mode}`
-- `DELETE /api/v1/operators/me/credentials/{venue}/{mode}`
-- `POST /api/v1/operators/me/credentials/{venue}/{mode}/check`
+---
 
 ## Safety
 
-По умолчанию:
-- старый execution code удалён
-- live exchange order submission ещё не включён
-- engine execution loop выключен и включается только явным `ENGINE_EXECUTION_LOOP_ENABLED=true`
-- monitor schema больше не мутируется Hibernate-ом на лету: `monitor-app` использует Flyway migrations и JPA `validate`
-- missing credentials пишутся как `FAILED OrderAttempt`
-- internal monitor→engine API защищён `X-Internal-Token`
+The platform is **off-by-default** at every execution boundary:
 
-То есть текущую ветку можно запускать локально без риска случайного live execution.
+| Guard | Default | Override |
+|---|---|---|
+| Engine execution loop | `OFF` | `ENGINE_EXECUTION_LOOP_ENABLED=true` |
+| Live order submission | `OFF` | `ENGINE_LIVE_ORDER_ENABLED=true` |
+| Operator auth | `OFF` (`local-safe`) | enabled in `staging` / `prod-like` |
+| Credential storage | `OFF` (`local-safe`) | enabled in `staging` / `prod-like` |
+| Metadata sync on startup | `OFF` (`local-safe`) | `TRADING_METADATA_SYNC_ON_STARTUP=true` |
 
-## Optional Observability
+Running `./gradlew bootRunMonitor` or `bootRunEngine` locally with no extra ENV is safe: no live exchange activity, no auth, no credential persistence.
 
-Отдельный observability runtime вынесен в:
-- [deploy/observability/README.md](/Users/mishaivchenko/.codex/worktrees/da09/crypto/deploy/observability/README.md)
+**Schema safety** — `monitor-app` owns the SQLite database. Flyway runs versioned migrations (V1–V5); Hibernate is in `validate` mode and never mutates schema.
 
-Он включается только явно и не меняет основной `main` flow.
+**Risk guardrails** — max concurrent armed trades (default 3); per-venue disable list; `SHORT`-only funding direction enforced at the service layer.
 
-## Тесты
+---
 
-Важные свойства текущей линии:
-- core business flow покрыт тестами
-- engine flow покрыт отдельными тестами
-- multi-module build проходит целиком
+## Quick Start
 
-Проверено:
-- `./gradlew --no-daemon test build`
+**Requirements:** JDK 25
 
-## Архитектурный смысл версии
+```bash
+# Run tests
+./gradlew test
 
-`2.0.0` — это не “ещё один бот”.
+# Full build
+./gradlew build
 
-Это новая модульная база для следующих фаз:
-- monitor как operator/control plane
-- engine как будущий lightweight execution runtime
-- shared core как contracts/domain фундамент
+# Start monitor (port 8090)
+./gradlew bootRunMonitor
 
-Следующий шаг после этой версии — развивать `engine-app` в сторону реального execution orchestration, не раздувая его UI- и monitor-зависимостями.
+# Start engine (port 8091)
+./gradlew bootRunEngine
+
+# Lint / format check
+./gradlew spotlessCheck
+
+# OWASP dependency audit
+./gradlew security
+```
+
+Both `bootRun` tasks inject `SPRING_PROFILES_ACTIVE=local-safe` and a shared `INTERNAL_ENGINE_TOKEN` automatically unless you override them via ENV.
+
+---
+
+## Docker
+
+A single `Dockerfile` builds either service:
+
+```bash
+docker build \
+  --build-arg APP_MODULE=monitor-app \
+  --build-arg APP_CLASSIFIER=monitor \
+  --build-arg APP_PORT=8090 \
+  -t funding-monitor:latest .
+
+docker build \
+  --build-arg APP_MODULE=engine-app \
+  --build-arg APP_CLASSIFIER=engine \
+  --build-arg APP_PORT=8091 \
+  -t funding-engine:latest .
+```
+
+For a local smoke run:
+
+```bash
+cp deploy/.env.example .env
+# Fill: SECURITY_OPERATOR_BOOTSTRAP_USERS, INTERNAL_ENGINE_TOKEN, CREDENTIALS_MASTER_KEY_BASE64
+docker compose up --build
+```
+
+---
+
+## Profiles
+
+| Profile | Auth | Credentials | Engine loop | Live orders | Metadata sync |
+|---|---|---|---|---|---|
+| `local-safe` | OFF | OFF | OFF | OFF | OFF |
+| `staging` | ON | ON | OFF | OFF | ON |
+| `prod-like` | ON | ON | OFF¹ | OFF¹ | ON |
+
+¹ Requires explicit `ENGINE_EXECUTION_LOOP_ENABLED=true` / `ENGINE_LIVE_ORDER_ENABLED=true`.
+
+---
+
+## Venues
+
+Five perpetual futures venues supported:
+
+| Venue | Credential check | Metadata sync | Order submission | Notes |
+|---|---|---|---|---|
+| Gate.io | ✓ | ✓ | ✓ | Testnet confirmed (SHORT FILLED) |
+| Bybit | ✓ | ✓ | ✓ | Geo-blocked for UA IPs without VPN |
+| OKX | ✓ | ✓ | ✓ | Testnet uses `x-simulated-trading: 1` header |
+| Bitget | ✓ | ✓ | ✓ | Requires passphrase |
+| KuCoin | ✓ | ✓ | ✓ | Requires passphrase |
+
+**Exchange credentials** are stored AES-GCM encrypted per `operator_id + venue + mode`. Raw secrets are never returned by the API; only masks and status are exposed.
+
+---
+
+## Latency Calibration
+
+The engine adjusts entry trigger times based on measured round-trip latency:
+
+```
+effectiveLatencyMs = max(0, measuredEntryLatencyMs + manualLatencyAdjustmentMs)
+```
+
+Latency is sampled automatically after each real order submission and stored in the venue timing profile. A manual probe endpoint is also available:
+
+```
+POST /api/v2/monitor/venues/{venue}/latency-probe
+```
+
+**Burst entry example** — `entryAttemptCount=3`, `entrySpacingMs=150`, `effectiveLatencyMs=40`:
+
+```
+Attempt 1: target 12:00:00.000 → trigger 11:59:59.960
+Attempt 2: target 12:00:00.150 → trigger 12:00:00.110
+Attempt 3: target 12:00:00.300 → trigger 12:00:00.260
+```
+
+---
+
+## Operator API
+
+All operator endpoints require `X-Operator-Token` when auth is enabled.
+
+Bootstrap operators via ENV:
+
+```
+SECURITY_OPERATOR_BOOTSTRAP_USERS=alice:token,bob:token
+```
+
+Tokens are stored as SHA-256 hashes only.
+
+**Core endpoints:**
+
+```
+# Candidates
+GET    /api/v1/candidates
+POST   /api/v1/candidates/{id}/approve
+POST   /api/v1/candidates/{id}/reject
+
+# Funding Events
+GET    /api/v1/funding-events
+POST   /api/v1/funding-events/{id}/arm
+
+# Armed Trades
+GET    /api/v1/armed-trades
+DELETE /api/v1/armed-trades/{id}        # cancels; 422 on invalid state
+GET    /api/v1/armed-trades/{id}/order-attempts
+
+# Positions & Outcomes
+GET    /api/v2/trades/{armedTradeId}/position
+GET    /api/v2/trades/{armedTradeId}/outcome
+
+# Venues
+POST   /api/v1/venues/{venue}/sync
+POST   /api/v1/venues/{venue}/check
+
+# Credentials
+PUT    /api/v1/operators/me/credentials/{venue}/{mode}
+POST   /api/v1/operators/me/credentials/{venue}/{mode}/check
+```
+
+**Engine endpoints** (`X-Internal-Token` required):
+
+```
+GET  /internal/engine/summary
+POST /internal/engine/execution/run-once
+GET  /internal/engine/plans
+```
+
+---
+
+## Telegram Bot
+
+`@funding_arbitrage_bot_bot` — a companion bot for signal monitoring.
+
+Commands: `/signals`, `/status`, `/links`, `/faq`
+
+The bot polls `monitor-app` for live candidate and armed trade data and sends alerts when new signals appear. Configure with:
+
+```
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_BOT_USERNAME=...
+MONITOR_BASE_URL=http://monitor:8090
+```
+
+---
+
+## Engine TDD
+
+`engine-app` is treated as an executable specification. Every production class is mutation-tested at 100% with PIT. Coverage gates: 95% line / 90% branch.
+
+```bash
+./gradlew engineTddGate          # mutation + coverage gate
+./gradlew engineTddDocsCheck     # verify requirement IDs in gap-matrix.md
+```
+
+Documentation: `docs/engine-tdd/`
+
+---
+
+## Observability
+
+Optional Prometheus + Grafana stack in `deploy/observability/` — not part of the main flow, enable explicitly.
+
+---
+
+## Architecture Notes
+
+- `engine-app` is **read-only from monitor's perspective** — it reads plans and writes `OrderAttempt` results back; it cannot modify `FundingEvent` or `ArmedTrade` state directly.
+- The internal monitor→engine API is the only coupling point between the two runtimes; they can be deployed independently.
+- Production topology: `monitor-app` on a control-plane VPS, `engine-app` co-located near the exchange (low-latency path).
