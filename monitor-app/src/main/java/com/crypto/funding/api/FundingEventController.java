@@ -112,7 +112,11 @@ public class FundingEventController
             trade.stopLossUsd(),
             trade.takeProfitUsd(),
             trade.createdAt(),
-            trade.updatedAt()
+            trade.updatedAt(),
+            trade.warmupP50Ms(),
+            trade.warmupP95Ms(),
+            trade.warmupFallbackUsed(),
+            trade.warmupDoneAt()
         );
     }
 

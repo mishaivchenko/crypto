@@ -101,6 +101,19 @@ public class ArmedTradeEntity extends AuditableEntity
     @Column(name = "take_profit_usd", precision = 19, scale = 8)
     private BigDecimal takeProfitUsd;
 
+    @Column(name = "warmup_p50_ms")
+    private Long warmupP50Ms;
+
+    @Column(name = "warmup_p95_ms")
+    private Long warmupP95Ms;
+
+    @Column(name = "warmup_fallback_used", columnDefinition = "boolean")
+    private Boolean warmupFallbackUsed;
+
+    @Convert(converter = InstantEpochMillisConverter.class)
+    @Column(name = "warmup_done_at")
+    private Instant warmupDoneAt;
+
     public Long getId()
     {
         return id;
@@ -304,5 +317,45 @@ public class ArmedTradeEntity extends AuditableEntity
     public void setTakeProfitUsd( BigDecimal takeProfitUsd )
     {
         this.takeProfitUsd = takeProfitUsd;
+    }
+
+    public Long getWarmupP50Ms()
+    {
+        return warmupP50Ms;
+    }
+
+    public void setWarmupP50Ms( Long warmupP50Ms )
+    {
+        this.warmupP50Ms = warmupP50Ms;
+    }
+
+    public Long getWarmupP95Ms()
+    {
+        return warmupP95Ms;
+    }
+
+    public void setWarmupP95Ms( Long warmupP95Ms )
+    {
+        this.warmupP95Ms = warmupP95Ms;
+    }
+
+    public Boolean getWarmupFallbackUsed()
+    {
+        return warmupFallbackUsed;
+    }
+
+    public void setWarmupFallbackUsed( Boolean warmupFallbackUsed )
+    {
+        this.warmupFallbackUsed = warmupFallbackUsed;
+    }
+
+    public Instant getWarmupDoneAt()
+    {
+        return warmupDoneAt;
+    }
+
+    public void setWarmupDoneAt( Instant warmupDoneAt )
+    {
+        this.warmupDoneAt = warmupDoneAt;
     }
 }

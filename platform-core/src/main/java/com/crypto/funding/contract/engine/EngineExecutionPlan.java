@@ -46,10 +46,14 @@ public record EngineExecutionPlan(
     BigDecimal maxOrderNotional,
     String liquidityAssessmentId,
     LiquidityScore liquidityScore,
-    Instant liquiditySampledAt
+    Instant liquiditySampledAt,
+    Long warmupP50Ms,
+    Long warmupP95Ms,
+    Boolean warmupFallbackUsed,
+    Instant warmupDoneAt
 )
 {
-    // Backward-compatible 34-field constructor (no liquidity fields)
+    // Backward-compatible constructor: 34 fields (no warmup output, no liquidity fields)
     public EngineExecutionPlan(
         Long armedTradeId,
         Long fundingEventId,
@@ -125,6 +129,10 @@ public record EngineExecutionPlan(
             null,
             null,
             null,
+            null,
+            null,
+            null,
+            null,
             null
         );
     }
@@ -176,6 +184,14 @@ public record EngineExecutionPlan(
             millisUntilAction,
             millisUntilFunding,
             summary,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             null,
             null,
             null,

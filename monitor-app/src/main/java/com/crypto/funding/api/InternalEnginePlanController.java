@@ -3,10 +3,12 @@ package com.crypto.funding.api;
 import com.crypto.funding.application.engine.MonitorEnginePlanService;
 import com.crypto.funding.application.execution.EngineLatencyRecordService;
 import com.crypto.funding.application.execution.EngineLifecycleRecordService;
+import com.crypto.funding.application.execution.EngineWarmupRecordService;
 import com.crypto.funding.application.execution.OrderAttemptRecordService;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
+import com.crypto.funding.contract.engine.WarmupCalibrationRequest;
 import com.crypto.funding.contract.engine.EngineOrderAttemptResponse;
 import com.crypto.funding.contract.engine.EnginePositionRecordRequest;
 import com.crypto.funding.contract.engine.EnginePositionResponse;
@@ -34,18 +36,21 @@ public class InternalEnginePlanController
     private final OrderAttemptRecordService orderAttemptRecordService;
     private final EngineLifecycleRecordService lifecycleRecordService;
     private final EngineLatencyRecordService latencyRecordService;
+    private final EngineWarmupRecordService warmupRecordService;
 
     public InternalEnginePlanController(
         MonitorEnginePlanService enginePlanService,
         OrderAttemptRecordService orderAttemptRecordService,
         EngineLifecycleRecordService lifecycleRecordService,
-        EngineLatencyRecordService latencyRecordService
+        EngineLatencyRecordService latencyRecordService,
+        EngineWarmupRecordService warmupRecordService
     )
     {
         this.enginePlanService = enginePlanService;
         this.orderAttemptRecordService = orderAttemptRecordService;
         this.lifecycleRecordService = lifecycleRecordService;
         this.latencyRecordService = latencyRecordService;
+        this.warmupRecordService = warmupRecordService;
     }
 
     @GetMapping("/plans")
@@ -92,5 +97,15 @@ public class InternalEnginePlanController
     public void recordLatencySample( @RequestBody EngineLatencySampleRequest request )
     {
         latencyRecordService.record( request );
+    }
+
+    @PostMapping("/trades/{armedTradeId}/warmup-calibration")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void recordWarmupCalibration(
+        @PathVariable Long armedTradeId,
+        @RequestBody WarmupCalibrationRequest request
+    )
+    {
+        warmupRecordService.record( armedTradeId, request );
     }
 }

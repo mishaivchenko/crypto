@@ -92,7 +92,11 @@ public class TradeQueryService
             entity.getStopLossUsd(),
             entity.getTakeProfitUsd(),
             entity.getCreatedAt(),
-            entity.getUpdatedAt()
+            entity.getUpdatedAt(),
+            entity.getWarmupP50Ms(),
+            entity.getWarmupP95Ms(),
+            entity.getWarmupFallbackUsed(),
+            entity.getWarmupDoneAt()
         );
     }
 }

@@ -262,7 +262,15 @@ public class MonitorEnginePlanService
             trade.takeProfitUsd(),
             probeUrl,
             3,
-            500L
+            500L,
+            null,
+            null,
+            null,
+            null,
+            trade.warmupP50Ms(),
+            trade.warmupP95Ms(),
+            trade.warmupFallbackUsed(),
+            trade.warmupDoneAt()
         );
     }
 
@@ -287,7 +295,8 @@ public class MonitorEnginePlanService
             plan.positionQuantity(), plan.positionEntryPrice(),
             plan.stopLossUsd(), plan.takeProfitUsd(),
             plan.probeUrl(), plan.warmupProbeCount(), plan.warmupProbeLeadMs(),
-            liq.recommendedMaxOrderNotional(), liq.id(), liq.score(), liq.sampledAt()
+            liq.recommendedMaxOrderNotional(), liq.id(), liq.score(), liq.sampledAt(),
+            plan.warmupP50Ms(), plan.warmupP95Ms(), plan.warmupFallbackUsed(), plan.warmupDoneAt()
         );
     }
 

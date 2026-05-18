@@ -18,11 +18,27 @@ import {
     sideLabel,
     toLocalInputValue
 } from "../shared.js";
-import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
+import { buildDeleteCandidateSection } from "./pipeline.js";
 
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED"]);
 const CLOSEABLE_STATES = new Set(["OPEN", "EXIT_PENDING"]);
+
+function warmupSection(trade) {
+    if (trade.warmupDoneAt == null && trade.warmupFallbackUsed == null) return "";
+    const p50 = trade.warmupP50Ms != null ? `${trade.warmupP50Ms} ms` : "—";
+    const p95 = trade.warmupP95Ms != null ? `${trade.warmupP95Ms} ms` : "—";
+    const fallback = trade.warmupFallbackUsed ? t("warmup_fallback_yes") : t("warmup_fallback_no");
+    return section(t("warmup_section_title"), `
+        <div class="meta-grid">
+            ${metaRow(t("warmup_p50"), p50)}
+            ${metaRow(t("warmup_p95"), p95)}
+            ${metaRow(t("warmup_fallback"), fallback)}
+            ${metaRow(t("warmup_done_at"), formatInstant(trade.warmupDoneAt))}
+        </div>
+        <p class="meta-helper">${t("warmup_note")}</p>
+    `);
+}
 
 function buildLiquiditySection(liquidity, trade) {
     if (!liquidity) {
@@ -112,6 +128,7 @@ export function buildTradeDrawerContent({ trade, journal, attempts, liquidity })
                 <span class="meta-helper">${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)} · ${t("trade_recorded")} ${formatInstant(attempt.createdAt)}</span>
             </div>
         `).join("") : emptyState(t("empty_attempts"), t("empty_attempts_detail")))}
+        ${warmupSection(trade)}
         ${buildCancelSection(trade)}
         ${trade.state === "ARMED" ? section(t("trade_edit_title"), `
             <details class="technical-details">
