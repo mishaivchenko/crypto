@@ -15,16 +15,6 @@ springBoot {
     mainClass = 'com.crypto.funding.engine.EngineApplication'
 }
 
-sourceSets {
-    test {
-        java {
-            // LiquidityCapTest is WIP from feature/short-side-liquidity-assessment;
-            // exclude until that feature is merged and cappedNotional exists again.
-            exclude '**/LiquidityCapTest.java'
-        }
-    }
-}
-
 bootJar {
     archiveClassifier = 'engine'
 }

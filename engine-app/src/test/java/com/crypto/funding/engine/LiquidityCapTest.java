@@ -218,7 +218,8 @@ class LiquidityCapTest
             maxOrderNotional,
             maxOrderNotional != null ? "test-assessment-id" : null,
             maxOrderNotional != null ? LiquidityScore.MEDIUM : null,
-            maxOrderNotional != null ? NOW : null
+            maxOrderNotional != null ? NOW : null,
+            null, null, null, null
         );
     }
 
