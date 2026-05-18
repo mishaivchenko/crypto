@@ -24,6 +24,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -131,7 +135,62 @@ class LiquidityCapTest
             .isEqualByComparingTo( BigDecimal.ZERO );
     }
 
+    @Test
+    void cappedNotional_returnsPlanned_whenMaxIsZero()
+    {
+        assertThat( EngineExecutionService.cappedNotional( new BigDecimal( "500" ), BigDecimal.ZERO ) )
+            .isEqualByComparingTo( "500" );
+    }
+
+    // ── executeEntryAttempt log-gate tests ────────────────────────────────────
+
+    @Test
+    void entryAttempt_logsCapApplied_whenEffectiveNotionalBelowPlanned()
+    {
+        BigDecimal planned = new BigDecimal( "500" );
+        BigDecimal cap = new BigDecimal( "200" );
+
+        ListAppender<ILoggingEvent> logs = attachLogAppender();
+
+        EngineExecutionPlan plan = planWithNotional( planned, cap );
+        when( client.listPlans( true ) ).thenReturn( List.of( plan ) );
+        when( executionPort.submitOrder( any(), any(), eq( false ) ) )
+            .thenAnswer( inv -> failedAttempt( plan, ( (OrderIntent) inv.getArgument( 1 ) ).quantity() ) );
+
+        service.runOnce( true );
+
+        assertThat( logs.list ).anyMatch( e -> e.getFormattedMessage().contains( "liquidity.cap applied" ) );
+    }
+
+    @Test
+    void entryAttempt_doesNotLogCap_whenCapEqualsPlanned()
+    {
+        BigDecimal planned = new BigDecimal( "300" );
+        BigDecimal cap = new BigDecimal( "300" );
+
+        ListAppender<ILoggingEvent> logs = attachLogAppender();
+
+        EngineExecutionPlan plan = planWithNotional( planned, cap );
+        when( client.listPlans( true ) ).thenReturn( List.of( plan ) );
+        when( executionPort.submitOrder( any(), any(), eq( false ) ) )
+            .thenAnswer( inv -> failedAttempt( plan, ( (OrderIntent) inv.getArgument( 1 ) ).quantity() ) );
+
+        service.runOnce( true );
+
+        assertThat( logs.list ).noneMatch( e -> e.getFormattedMessage().contains( "liquidity.cap applied" ) );
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    private static ListAppender<ILoggingEvent> attachLogAppender()
+    {
+        ch.qos.logback.classic.Logger logger =
+            (ch.qos.logback.classic.Logger) LoggerFactory.getLogger( EngineExecutionService.class );
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender( appender );
+        return appender;
+    }
 
     private static EngineExecutionPlan planWithNotional( BigDecimal notional, BigDecimal maxOrderNotional )
     {
