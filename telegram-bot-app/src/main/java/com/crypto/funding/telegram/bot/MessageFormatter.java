@@ -2,7 +2,6 @@ package com.crypto.funding.telegram.bot;
 
 import com.crypto.funding.telegram.client.dto.CandidateSummary;
 import com.crypto.funding.telegram.client.dto.MonitorOverview;
-import com.crypto.funding.telegram.config.EnvironmentLinksProperties;
 import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
 
 import java.math.BigDecimal;
@@ -69,54 +68,23 @@ public final class MessageFormatter
             """;
     }
 
-    public static String linksMessage(
-        EnvironmentLinksProperties links,
-        Optional<NgrokTunnelService.NgrokTunnels> ngrok
-    )
+    public static String linksMessage( Optional<NgrokTunnelService.NgrokTunnels> ngrok )
     {
         StringBuilder sb = new StringBuilder();
         sb.append( "🔗 *Актуальные ссылки*\n\n" );
         sb.append( "━━━━━━━━━━━━━━━━━━━━\n" );
-
         sb.append( "🟡 *Staging \\(Mac Mini \\+ ngrok\\)*\n" );
         if( ngrok.isPresent() )
         {
-            NgrokTunnelService.NgrokTunnels t = ngrok.get();
-            sb.append( "  🔄 _Ссылки актуальны — получены из ngrok_\n" );
-            appendLink( sb, "🖥 Monitor UI", t.monitorUrl() );
-            appendLink( sb, "📈 Grafana", t.grafanaUrl() );
-            appendLink( sb, "⚙️ Engine", t.engineUrl() );
+            sb.append( "_🔄 Ссылки получены из ngrok — кнопки ниже актуальны_\n" );
         }
         else
         {
-            var staging = links.staging();
-            if( staging == null || staging.isEmpty() )
-            {
-                sb.append( "  _Ссылки не настроены_\n" );
-            }
-            else
-            {
-                appendLink( sb, "🖥 Monitor UI", staging.ui() );
-                appendLink( sb, "📈 Grafana", staging.grafana() );
-                appendLink( sb, "⚙️ Engine", staging.engine() );
-            }
+            sb.append( "_ngrok недоступен или туннель не запущен_\n" );
         }
-
         sb.append( "\n━━━━━━━━━━━━━━━━━━━━\n" );
-
-        var prod = links.production();
         sb.append( "🟢 *Production*\n" );
-        if( prod == null || prod.isEmpty() )
-        {
-            sb.append( "  _Не настроено_\n" );
-        }
-        else
-        {
-            appendLink( sb, "🖥 Monitor UI", prod.ui() );
-            appendLink( sb, "📈 Grafana", prod.grafana() );
-            appendLink( sb, "⚙️ Engine", prod.engine() );
-        }
-
+        sb.append( "_Не настроено_\n" );
         return sb.toString();
     }
 
