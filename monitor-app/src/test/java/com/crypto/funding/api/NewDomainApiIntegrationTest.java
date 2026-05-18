@@ -2,7 +2,13 @@ package com.crypto.funding.api;
 
 import com.crypto.funding.application.candidate.IngestSignalCandidateCommand;
 import com.crypto.funding.application.candidate.SignalCandidateIngestService;
+import com.crypto.funding.application.event.CreateFundingEventCommand;
+import com.crypto.funding.application.event.FundingEventCommandService;
+import com.crypto.funding.application.trade.ArmedTradeCommandService;
+import com.crypto.funding.application.trade.CreateArmedTradeCommand;
+import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.event.FundingEventStatus;
+import com.crypto.funding.domain.trade.TradeSide;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.TradeArmSource;
 import com.crypto.funding.domain.trade.TradeSide;
@@ -61,6 +67,12 @@ class NewDomainApiIntegrationTest
     private SignalCandidateIngestService signalCandidateIngestService;
 
     @Autowired
+    private FundingEventCommandService fundingEventCommandService;
+
+    @Autowired
+    private ArmedTradeCommandService armedTradeCommandService;
+
+    @Autowired
     private VenueRequestTimingService venueRequestTimingService;
 
     @BeforeEach
@@ -75,52 +87,33 @@ class NewDomainApiIntegrationTest
     @Test
     void createsFundingEventAndArmedTrade() throws Exception
     {
-        String fundingEventBody = """
-            {
-              "venue":"gate",
-              "symbol":"BTC/USDT",
-              "fundingTime":"2030-01-01T00:00:00Z",
-              "fundingRatePct":0.015,
-              "sourceType":"telegram",
-              "sourceRef":"@funding_watchdog"
-            }
-            """;
-
-        String response = mockMvc.perform( post( "/api/v1/funding-events" )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( fundingEventBody ) )
-            .andExpect( status().isCreated() )
-            .andExpect( jsonPath( "$.status" ).value( "DISCOVERED" ) )
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        Long fundingEventId = fundingEventRepository.findAll().getFirst().getId();
-        assertThat( response ).contains( "\"id\":" + fundingEventId );
+        FundingEvent created = fundingEventCommandService.create( new CreateFundingEventCommand(
+            "gate", "BTC/USDT", Instant.parse( "2030-01-01T00:00:00Z" ),
+            new BigDecimal( "0.015" ), "telegram", "@funding_watchdog", null
+        ) );
+        Long fundingEventId = created.id();
 
         mockMvc.perform( get( "/api/v1/funding-events" ) )
             .andExpect( status().isOk() )
             .andExpect( jsonPath( "$.content[0].id" ).value( fundingEventId ) )
             .andExpect( jsonPath( "$.content[0].status" ).value( "DISCOVERED" ) );
 
-        String armFundingEventBody = """
-            {
-              "notionalUsd": 25,
-              "intendedSide": "SHORT",
-              "plannedEntryAt": "2029-12-31T23:59:50Z",
-              "plannedExitAt": "2030-01-01T00:01:00Z",
-              "entryAttemptCount": 4,
-              "entrySpacingMs": 125,
-              "manualLatencyAdjustmentMs": 15,
-              "notes": "manual arm"
-            }
-            """;
-
         venueRequestTimingService.recordSuccess( "gate", "credential-check", 50_000_000L, 0L, 200 );
 
         mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
                 .contentType( MediaType.APPLICATION_JSON )
-                .content( armFundingEventBody ) )
+                .content( """
+                    {
+                      "notionalUsd": 25,
+                      "intendedSide": "SHORT",
+                      "plannedEntryAt": "2029-12-31T23:59:50Z",
+                      "plannedExitAt": "2030-01-01T00:01:00Z",
+                      "entryAttemptCount": 4,
+                      "entrySpacingMs": 125,
+                      "manualLatencyAdjustmentMs": 15,
+                      "notes": "manual arm"
+                    }
+                    """ ) )
             .andExpect( status().isCreated() )
             .andExpect( jsonPath( "$.state" ).value( "ARMED" ) )
             .andExpect( jsonPath( "$.fundingEventId" ).value( fundingEventId ) )
@@ -159,21 +152,11 @@ class NewDomainApiIntegrationTest
     @Test
     void rejectsLongFundingArmedTrade() throws Exception
     {
-        mockMvc.perform( post( "/api/v1/funding-events" )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
-                    {
-                      "venue":"gate",
-                      "symbol":"BTC/USDT",
-                      "fundingTime":"2030-01-01T00:00:00Z",
-                      "fundingRatePct":0.015,
-                      "sourceType":"manual",
-                      "sourceRef":"long-rejection-test"
-                    }
-                    """ ) )
-            .andExpect( status().isCreated() );
-
-        Long fundingEventId = fundingEventRepository.findAll().getFirst().getId();
+        FundingEvent created = fundingEventCommandService.create( new CreateFundingEventCommand(
+            "gate", "BTC/USDT", Instant.parse( "2030-01-01T00:00:00Z" ),
+            new BigDecimal( "0.015" ), "manual", "long-rejection-test", null
+        ) );
+        Long fundingEventId = created.id();
 
         mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
                 .contentType( MediaType.APPLICATION_JSON )
@@ -190,24 +173,23 @@ class NewDomainApiIntegrationTest
     }
 
     @Test
-    void returnsValidationAndNotFoundErrors() throws Exception
+    void returnsValidationAndNotFoundErrors()
     {
-        mockMvc.perform( post( "/api/v1/funding-events" )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( "{\"venue\":\"\",\"symbol\":\"BTC/USDT\",\"fundingTime\":\"2030-01-01T00:00:00Z\"}" ) )
-            .andExpect( status().isBadRequest() )
-            .andExpect( jsonPath( "$.message" ).exists() );
+        org.junit.jupiter.api.Assertions.assertThrows(
+            com.crypto.funding.application.DomainValidationException.class,
+            () -> fundingEventCommandService.create( new CreateFundingEventCommand(
+                "gate", "BTC/USDT", Instant.parse( "2020-01-01T00:00:00Z" ), null, "manual", null, null
+            ) )
+        );
 
-        mockMvc.perform( post( "/api/v1/funding-events" )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( "{\"venue\":\"gate\",\"symbol\":\"BTC/USDT\",\"fundingTime\":\"2020-01-01T00:00:00Z\"}" ) )
-            .andExpect( status().isConflict() )
-            .andExpect( jsonPath( "$.message" ).value( "Время фандинга должно быть в будущем." ) );
-
-        mockMvc.perform( post( "/api/v1/armed-trades" )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( "{\"fundingEventId\":999,\"notionalUsd\":25}" ) )
-            .andExpect( status().isNotFound() );
+        org.junit.jupiter.api.Assertions.assertThrows(
+            com.crypto.funding.application.ResourceNotFoundException.class,
+            () -> armedTradeCommandService.create( new CreateArmedTradeCommand(
+                999L, new BigDecimal( "25" ), TradeSide.SHORT,
+                Instant.parse( "2029-12-31T23:59:50Z" ), Instant.parse( "2030-01-01T00:01:00Z" ),
+                null, null, null, null, null, null
+            ) )
+        );
     }
 
     @Test

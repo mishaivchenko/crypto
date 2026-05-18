@@ -41,7 +41,7 @@ public class OkxCredentialChecker implements VenueCredentialCheckPort
     @Override
     public List<VenueAccessMode> supportedModes()
     {
-        return List.of( VenueAccessMode.PRODUCTION );
+        return List.of( VenueAccessMode.TESTNET, VenueAccessMode.PRODUCTION );
     }
 
     @Override
@@ -53,15 +53,18 @@ public class OkxCredentialChecker implements VenueCredentialCheckPort
         String signPayload = timestamp + "GET" + requestPath + "?" + query;
         String sign = HmacSigner.hmacSha256Base64( credentials.secretKey(), signPayload );
 
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri( URI.create( credentials.baseUrl() + requestPath + "?" + query ) )
-                                         .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )
-                                         .header( "OK-ACCESS-KEY", credentials.apiKey() )
-                                         .header( "OK-ACCESS-SIGN", sign )
-                                         .header( "OK-ACCESS-TIMESTAMP", timestamp )
-                                         .header( "OK-ACCESS-PASSPHRASE", credentials.passphrase() == null ? "" : credentials.passphrase() )
-                                         .GET()
-                                         .build();
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                                                  .uri( URI.create( credentials.baseUrl() + requestPath + "?" + query ) )
+                                                  .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )
+                                                  .header( "OK-ACCESS-KEY", credentials.apiKey() )
+                                                  .header( "OK-ACCESS-SIGN", sign )
+                                                  .header( "OK-ACCESS-TIMESTAMP", timestamp )
+                                                  .header( "OK-ACCESS-PASSPHRASE", credentials.passphrase() == null ? "" : credentials.passphrase() );
+        if( credentials.mode() == VenueAccessMode.TESTNET )
+        {
+            builder.header( "x-simulated-trading", "1" );
+        }
+        HttpRequest request = builder.GET().build();
 
         HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
         JsonNode root = parseBody( response.body() );

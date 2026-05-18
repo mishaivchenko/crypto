@@ -112,6 +112,8 @@ trading:
         mode: ${BITGET_MODE:production}
         recv-window: 5000
         metadata-base-url: ${BITGET_METADATA_BASE_URL:https://api.bitget.com}
+        testnet:
+            base-url: ${BITGET_TESTNET_BASE_URL:https://api.bitget.com}
         production:
             base-url: ${BITGET_PROD_BASE_URL:https://api.bitget.com}
 
@@ -119,6 +121,8 @@ trading:
         mode: ${OKX_MODE:production}
         recv-window: 5000
         metadata-base-url: ${OKX_METADATA_BASE_URL:https://www.okx.com}
+        testnet:
+            base-url: ${OKX_TESTNET_BASE_URL:https://www.okx.com}
         production:
             base-url: ${OKX_PROD_BASE_URL:https://www.okx.com}
 
@@ -126,5 +130,7 @@ trading:
         mode: ${KUCOIN_MODE:production}
         recv-window: 5000
         metadata-base-url: ${KUCOIN_METADATA_BASE_URL:https://api-futures.kucoin.com}
+        testnet:
+            base-url: ${KUCOIN_TESTNET_BASE_URL:https://api-sandbox.kucoin.com}
         production:
             base-url: ${KUCOIN_PROD_BASE_URL:https://api-futures.kucoin.com}

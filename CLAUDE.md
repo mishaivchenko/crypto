@@ -58,6 +58,37 @@ Lightweight execution runtime. Spring Boot 3.5, no persistence layer — reads p
 - `CredentialAwareExecutionPort` — guards live order submission (fails to `FAILED` attempt if credentials missing)
 - `EngineMetricsPublisher` — pushes metrics snapshots back to monitor
 
+## Venue Adapter Pattern
+
+Each exchange venue implements three interfaces (all in `monitor-app/infrastructure/exchange/<venue>/`):
+1. **`VenueCredentialCheckPort`** — verifies API key/secret work; `supportedModes()` controls which access modes appear in the UI testnet/production toggle
+2. **`VenueMetadataPort`** — fetches instrument metadata (symbol, min qty, etc.) for candidate matching
+3. **`VenueMarkPricePort`** — fetches current mark price for a single instrument; used by SL/TP and latency calibration
+
+Credential properties resolved via `VenueProfileService.resolveCredentials(venue)`:
+```
+trading.<venue>.testnet.base-url
+trading.<venue>.testnet.api-key
+trading.<venue>.testnet.secret-key
+trading.<venue>.testnet.passphrase   # okx, bitget, kucoin only
+trading.<venue>.production.base-url
+...
+```
+
+Defined in `platform-core.yml` with `${ENV_VAR:default}` overrides.
+
+**Venues requiring passphrase** (`okx`, `bitget`, `kucoin`): hardcoded in two places that both must be updated for a new passphrase venue:
+- `VenueProfileService.requiresPassphrase()` in monitor-app
+- `LiveExchangeExecutionPort.requiresPassphrase()` in engine-app
+
+**Adding a new live-order venue to `LiveExchangeExecutionPort`** (engine-app):
+1. Add `baseUrl()` switch cases for `"<venue>:testnet"` and `"<venue>:production"`
+2. Implement `submit<Venue>(plan, intent, reduceOnly, attemptedAt)` following the Bybit/Gate pattern
+3. Add `if ("<venue>".equals(normalizedVenue)) return submit<Venue>(...)` dispatch in `submitOrder()`
+4. Engine credentials read from: `engine.credentials.<venue>.{api-key,secret-key,passphrase}`; base URL from `engine.<venue>.<mode>-base-url`
+
+**OKX testnet**: uses `x-simulated-trading: 1` header on all private calls (same base URL for both modes).
+
 ## Key Invariants
 
 **Safe-by-default**: execution loop is OFF (`ENGINE_EXECUTION_LOOP_ENABLED=false`), live orders are OFF (`ENGINE_LIVE_ORDER_ENABLED=false`), operator auth is OFF in local-safe profile. The codebase can be run locally without any risk of live exchange activity.
