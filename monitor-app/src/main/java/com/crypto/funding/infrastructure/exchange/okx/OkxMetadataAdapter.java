@@ -77,10 +77,15 @@ public class OkxMetadataAdapter implements VenueMetadataPort
         Instant syncedAt = Instant.now();
         for( JsonNode item : root.path( "data" ) )
         {
-            String baseAsset = item.path( "baseCcy" ).asText( null );
-            String quoteAsset = item.path( "quoteCcy" ).asText( null );
+            // Linear USDT-margined perps: baseCcy is empty; use ctValCcy (base) and settleCcy (quote)
+            if( !"linear".equalsIgnoreCase( item.path( "ctType" ).asText() ) )
+            {
+                continue;
+            }
+            String baseAsset = item.path( "ctValCcy" ).asText( null );
+            String quoteAsset = item.path( "settleCcy" ).asText( null );
             String venueSymbol = item.path( "instId" ).asText( null );
-            if( baseAsset == null || quoteAsset == null || venueSymbol == null )
+            if( baseAsset == null || baseAsset.isBlank() || quoteAsset == null || venueSymbol == null )
             {
                 continue;
             }
