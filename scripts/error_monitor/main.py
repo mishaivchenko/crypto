@@ -89,8 +89,6 @@ def _process_service(
         print(f"[main] No error blocks found for service='{service}' — skipping")
         return
 
-
-
     payload = _build_payload(service, blocks)
     payload_size = len(payload)
     stats["total_payload_chars"] += payload_size

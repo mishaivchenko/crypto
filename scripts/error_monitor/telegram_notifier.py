@@ -6,6 +6,7 @@ Requires env vars:
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 import urllib.error
@@ -40,12 +41,17 @@ def _send(token: str, chat_id: str, text: str) -> bool:
 
 
 def _chunk(text: str) -> list[str]:
-    """Split text into ≤_MAX_MESSAGE_LENGTH chunks, breaking on newlines."""
+    """Split text into ≤_MAX_MESSAGE_LENGTH chunks, breaking on newlines.
+
+    Lines longer than the limit are hard-truncated to avoid exceeding Telegram's 4096-char cap.
+    """
     if len(text) <= _MAX_MESSAGE_LENGTH:
         return [text]
     chunks, current = [], []
     current_len = 0
     for line in text.splitlines(keepends=True):
+        if len(line) > _MAX_MESSAGE_LENGTH:
+            line = line[:_MAX_MESSAGE_LENGTH - 3] + "...\n"
         if current_len + len(line) > _MAX_MESSAGE_LENGTH and current:
             chunks.append("".join(current))
             current, current_len = [], 0
@@ -96,7 +102,7 @@ def send_report(
             sev_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡"}.get(item["severity"], "⚪")
             lines.append(
                 f"{sev_emoji} <a href=\"{item['url']}\">#{item['number']}</a> "
-                f"[{item['service']}] {item['title']}"
+                f"[{html.escape(item['service'])}] {html.escape(item['title'])}"
             )
 
     # Updated issues
@@ -106,14 +112,14 @@ def send_report(
             sev_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡"}.get(item["severity"], "⚪")
             lines.append(
                 f"{sev_emoji} <a href=\"{item['url']}\">#{item['number']}</a> "
-                f"[{item['service']}] new occurrence added"
+                f"[{html.escape(item['service'])}] new occurrence added"
             )
 
     # Skipped (only if there were blocks)
     if skipped:
         lines.append("\n🔕 <b>Filtered out (quality gate):</b>")
         for item in skipped:
-            lines.append(f"  • [{item['service']}] {item['reason']}")
+            lines.append(f"  • [{html.escape(item['service'])}] {html.escape(item['reason'])}")
 
     # Errors
     if stats["api_errors"] > 0 or stats["parse_errors"] > 0:
