@@ -4,6 +4,7 @@ Returns empty strings for any container that cannot be reached — never raises.
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from typing import Dict
@@ -28,15 +29,14 @@ _DOCKER_FALLBACK_PATHS = [
 
 
 def _docker_binary() -> str:
-    """Return path to the docker binary, checking Homebrew fallbacks if not in PATH."""
     found = shutil.which("docker")
     if found:
         return found
     for path in _DOCKER_FALLBACK_PATHS:
-        if shutil.which(path):
+        if os.path.isfile(path) and os.access(path, os.X_OK):
             return path
     raise FileNotFoundError(
-        "docker CLI not found. Checked PATH and fallbacks: " + ", ".join(_DOCKER_FALLBACK_PATHS)
+        "docker CLI not found in PATH or fallbacks: " + ", ".join(_DOCKER_FALLBACK_PATHS)
     )
 
 
