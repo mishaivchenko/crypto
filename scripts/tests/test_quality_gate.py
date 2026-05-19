@@ -40,9 +40,14 @@ class TestQualityGate(unittest.TestCase):
         self.assertIn("LOW", reason)
 
     def test_rejects_confidence_below_threshold(self):
-        ok, reason = passes(_base_result(confidence=0.4))
+        ok, reason = passes(_base_result(confidence=0.39))
         self.assertFalse(ok)
-        self.assertIn("0.40", reason)
+        self.assertIn("0.39", reason)
+
+    def test_passes_confidence_at_new_threshold(self):
+        ok, reason = passes(_base_result(confidence=0.4))
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ok")
 
     def test_rejects_empty_fingerprint(self):
         ok, reason = passes(_base_result(fingerprint=""))
