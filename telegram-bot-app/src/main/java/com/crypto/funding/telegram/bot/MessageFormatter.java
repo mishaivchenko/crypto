@@ -1,5 +1,6 @@
 package com.crypto.funding.telegram.bot;
 
+import com.crypto.funding.telegram.client.dto.ArmedTradeSummary;
 import com.crypto.funding.telegram.client.dto.CandidateSummary;
 import com.crypto.funding.telegram.client.dto.MonitorOverview;
 import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
@@ -139,6 +140,38 @@ public final class MessageFormatter
         {
             sb.append( formatCandidateRow( c ) );
             sb.append( "\n" );
+        }
+
+        return sb.toString();
+    }
+
+    public static String newTradeAlert( ArmedTradeSummary trade, String monitorUiUrl )
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append( "🎯 *Новый вооружённый трейд*\n\n" );
+        sb.append( "━━━━━━━━━━━━━━━━━━━━\n" );
+        sb.append( String.format( "📌 *Символ:* `%s`\n", escapeMarkdown( trade.displaySymbol() ) ) );
+        sb.append( String.format( "🏦 *Биржа:* %s\n", escapeMarkdown( trade.venue() ) ) );
+        if( trade.intendedSide() != null )
+        {
+            sb.append( String.format( "📉 *Направление:* `%s`\n", escapeMarkdown( trade.intendedSide() ) ) );
+        }
+        if( trade.notionalUsd() != null )
+        {
+            sb.append( String.format( "💵 *Объём:* `%s USD`\n",
+                escapeMarkdown( String.format( "%.2f", trade.notionalUsd() ) ) ) );
+        }
+        if( trade.plannedEntryAt() != null )
+        {
+            sb.append( String.format( "⏰ *Вход:* `%s UTC`\n",
+                escapeMarkdown( fmt( trade.plannedEntryAt() ) ) ) );
+        }
+        sb.append( String.format( "🔖 *Статус:* `%s`\n", escapeMarkdown( trade.state() ) ) );
+
+        if( monitorUiUrl != null && !monitorUiUrl.isBlank() )
+        {
+            sb.append( "\n" );
+            sb.append( String.format( "[🖥 Открыть монитор](%s)", monitorUiUrl ) );
         }
 
         return sb.toString();
