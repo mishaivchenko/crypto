@@ -28,7 +28,16 @@ jobs:
       - run: chmod +x gradlew
 
       - name: Build & test
-        run: ./gradlew clean build --no-daemon
+        run: ./gradlew clean build --no-daemon 2>&1 | tee /tmp/build-output.txt; exit "${PIPESTATUS[0]}"
+
+      - name: Analyze build failure
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/ci-failure-analysis.sh /tmp/build-output.txt
 
       - name: Upload JARs
         uses: actions/upload-artifact@v4
