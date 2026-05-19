@@ -68,7 +68,7 @@ public class TradeNotificationScheduler
         }
         catch( Exception e )
         {
-            log.debug( "Could not poll monitor for new trades: {}", e.getMessage() );
+            log.warn( "Could not poll monitor for new trades: {}", e.getMessage() );
         }
     }
 

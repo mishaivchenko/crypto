@@ -67,7 +67,7 @@ public class SignalNotificationScheduler
         }
         catch( Exception e )
         {
-            log.debug( "Could not poll monitor for new signals: {}", e.getMessage() );
+            log.warn( "Could not poll monitor for new signals: {}", e.getMessage() );
         }
     }
 
