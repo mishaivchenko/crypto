@@ -28,6 +28,7 @@ from github_client import (
 from quality_gate import passes
 from renderer import render_issue_body
 from sanitizer import sanitize
+from telegram_notifier import send_report
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -64,12 +65,17 @@ def _build_payload(service: str, blocks: list) -> str:
     return "\n\n".join(parts)
 
 
+def _issue_url(repo: str, number: int) -> str:
+    return f"https://github.com/{repo}/issues/{number}"
+
+
 def _process_service(
     service: str,
     raw_logs: str,
     api_key: str,
     repo: str,
     stats: dict,
+    report: dict,
 ) -> None:
     """Run the full analysis pipeline for a single service."""
     stats["logs_scanned"] += 1
@@ -82,6 +88,8 @@ def _process_service(
     if not blocks:
         print(f"[main] No error blocks found for service='{service}' — skipping")
         return
+
+
 
     payload = _build_payload(service, blocks)
     payload_size = len(payload)
@@ -110,6 +118,7 @@ def _process_service(
     if not ok:
         print(f"[main] Quality gate rejected service='{service}': {reason}")
         stats["skipped"] += 1
+        report["skipped"].append({"service": service, "reason": reason})
         return
 
     # Use fingerprint from AI result; if empty/missing, generate one locally
@@ -147,6 +156,12 @@ def _process_service(
             repo=repo,
         )
         stats["issues_updated"] += 1
+        report["issues_updated"].append({
+            "service": service,
+            "number": existing_issue,
+            "url": _issue_url(repo, existing_issue),
+            "severity": severity,
+        })
     else:
         body = render_issue_body(result, service)
         issue_number = create_issue(
@@ -158,6 +173,13 @@ def _process_service(
         if issue_number:
             print(f"[main] Created issue #{issue_number} for service='{service}' fingerprint={fingerprint!r}")
             stats["issues_created"] += 1
+            report["issues_created"].append({
+                "service": service,
+                "title": title,
+                "number": issue_number,
+                "url": _issue_url(repo, issue_number),
+                "severity": severity,
+            })
         else:
             print(f"[main] WARNING: failed to create issue for service='{service}'")
             stats["create_errors"] += 1
@@ -197,13 +219,27 @@ def main() -> None:
         "issues_updated": 0,
         "create_errors": 0,
     }
+    report: dict = {
+        "issues_created": [],
+        "issues_updated": [],
+        "skipped": [],
+    }
 
     for service, raw_logs in all_logs.items():
         try:
-            _process_service(service, raw_logs, api_key, repo, stats)
+            _process_service(service, raw_logs, api_key, repo, stats, report)
         except Exception as exc:  # noqa: BLE001
             print(f"[main] UNEXPECTED ERROR processing service='{service}': {exc}")
             stats["api_errors"] += 1
+
+    # Telegram report
+    send_report(
+        stats=stats,
+        issues_created=report["issues_created"],
+        issues_updated=report["issues_updated"],
+        skipped=report["skipped"],
+        repo=repo,
+    )
 
     # Summary
     print("\n" + "=" * 60)

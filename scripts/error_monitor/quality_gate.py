@@ -5,7 +5,7 @@ All criteria must pass for an issue to be created.
 from __future__ import annotations
 
 _ACTIONABLE_SEVERITIES = frozenset({"MEDIUM", "HIGH", "CRITICAL"})
-_MIN_CONFIDENCE = 0.65
+_MIN_CONFIDENCE = 0.4
 
 
 def passes(result: dict) -> tuple[bool, str]:
