@@ -51,7 +51,7 @@ def _chunk(text: str) -> list[str]:
     current_len = 0
     for line in text.splitlines(keepends=True):
         if len(line) > _MAX_MESSAGE_LENGTH:
-            line = line[:_MAX_MESSAGE_LENGTH - 3] + "...\n"
+            line = line[:_MAX_MESSAGE_LENGTH - 4] + "...\n"
         if current_len + len(line) > _MAX_MESSAGE_LENGTH and current:
             chunks.append("".join(current))
             current, current_len = [], 0
@@ -68,6 +68,7 @@ def send_report(
     issues_updated: list[dict],   # list of {"service", "number", "url", "severity"}
     skipped: list[dict],          # list of {"service", "reason"}
     repo: str,
+    create_errors: list[dict] | None = None,  # list of {"service", "severity"}
 ) -> None:
     """Build and send the daily error monitor report. Silently skips if not configured."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -120,6 +121,13 @@ def send_report(
         lines.append("\n🔕 <b>Filtered out (quality gate):</b>")
         for item in skipped:
             lines.append(f"  • [{html.escape(item['service'])}] {html.escape(item['reason'])}")
+
+    # Issue creation failures
+    if create_errors:
+        lines.append("\n⛔ <b>Failed to create issue:</b>")
+        for item in create_errors:
+            sev_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡"}.get(item["severity"], "⚪")
+            lines.append(f"  {sev_emoji} [{html.escape(item['service'])}] GitHub API error — check runner logs")
 
     # Errors
     if stats["api_errors"] > 0 or stats["parse_errors"] > 0:

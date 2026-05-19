@@ -181,6 +181,7 @@ def _process_service(
         else:
             print(f"[main] WARNING: failed to create issue for service='{service}'")
             stats["create_errors"] += 1
+            report["create_errors"].append({"service": service, "severity": severity})
 
 
 def main() -> None:
@@ -221,6 +222,7 @@ def main() -> None:
         "issues_created": [],
         "issues_updated": [],
         "skipped": [],
+        "create_errors": [],
     }
 
     for service, raw_logs in all_logs.items():
@@ -236,6 +238,7 @@ def main() -> None:
         issues_created=report["issues_created"],
         issues_updated=report["issues_updated"],
         skipped=report["skipped"],
+        create_errors=report["create_errors"],
         repo=repo,
     )
 
