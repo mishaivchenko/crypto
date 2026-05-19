@@ -3,10 +3,7 @@ from __future__ import annotations
 
 import json
 
-try:
-    from pr_review.models import Concern, ReviewResult
-except ImportError:
-    from models import Concern, ReviewResult  # type: ignore[no-redef]
+from pr_review.models import Concern, ReviewResult
 
 _VALID_DECISIONS = frozenset({"APPROVE", "COMMENT", "REQUEST_CHANGES"})
 _VALID_SEVERITIES = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})

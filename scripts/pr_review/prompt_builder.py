@@ -1,10 +1,7 @@
 """Builds DeepSeek system and user prompts for PR review."""
 from __future__ import annotations
 
-try:
-    from pr_review.models import PullRequestContext
-except ImportError:
-    from models import PullRequestContext  # type: ignore[no-redef]
+from pr_review.models import PullRequestContext
 
 _SYSTEM_PROMPT = """\
 You are a senior engineer reviewing a pull request for a Java 25 Spring Boot 3.5 project called funding-arb.

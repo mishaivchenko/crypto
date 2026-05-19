@@ -7,15 +7,8 @@ import sys
 import urllib.error
 import urllib.request
 
-# Allow running standalone
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-try:
-    from pr_review.models import PullRequestContext
-    from pr_review.sanitizer import sanitize as _sanitize
-except ImportError:
-    from models import PullRequestContext  # type: ignore[no-redef]
-    from sanitizer import sanitize as _sanitize  # type: ignore[no-redef]
+from pr_review.models import PullRequestContext
+from sanitizer import sanitize as _sanitize
 
 _TIMEOUT = 30
 _MAX_DIFF_BYTES = 48_000   # ~12K tokens; enough for most PRs
@@ -83,18 +76,21 @@ def _get_changed_files(repo: str, pr_number: int, token: str) -> list[str]:
     return [f["filename"] for f in data if isinstance(f, dict) and "filename" in f]
 
 
+def _should_skip(filename: str) -> bool:
+    return (
+        any(filename.endswith(s) for s in _SKIP_SUFFIXES)
+        or any(filename.endswith(n) for n in _SKIP_NAMES)
+    )
+
+
 def _filter_diff(raw_diff: str) -> str:
-    """Strip diff hunks for files that add no review value."""
     lines = raw_diff.splitlines(keepends=True)
     result: list[str] = []
     skip_current = False
     for line in lines:
         if line.startswith("diff --git"):
             filename = line.split(" b/", 1)[-1].strip()
-            skip_current = (
-                any(filename.endswith(s) for s in _SKIP_SUFFIXES)
-                or any(filename.endswith(n) for n in _SKIP_NAMES)
-            )
+            skip_current = _should_skip(filename)
         if not skip_current:
             result.append(line)
     return "".join(result)
@@ -116,8 +112,7 @@ def collect(repo: str, pr_number: int, token: str, ci_context: str = "") -> Pull
 
     meaningful_files = [
         f for f in changed_files
-        if not any(f.endswith(s) for s in _SKIP_SUFFIXES)
-        and not any(f.endswith(n) for n in _SKIP_NAMES)
+        if not _should_skip(f)
     ]
 
     ci_sanitized = _sanitize(ci_context) if ci_context else ""

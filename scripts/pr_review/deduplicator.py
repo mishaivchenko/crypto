@@ -1,12 +1,8 @@
 """Deduplicates AI review comments — avoids re-posting on every push."""
 from __future__ import annotations
 
-try:
-    from pr_review.renderer import _SUMMARY_MARKER, concern_fingerprint
-    from pr_review.models import Concern
-except ImportError:
-    from renderer import _SUMMARY_MARKER, concern_fingerprint  # type: ignore[no-redef]
-    from models import Concern  # type: ignore[no-redef]
+from pr_review.renderer import _SUMMARY_MARKER, concern_fingerprint
+from pr_review.models import Concern
 
 
 def has_summary_comment(existing_comments: list[dict]) -> bool:

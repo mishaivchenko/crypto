@@ -15,8 +15,14 @@ from __future__ import annotations
 
 import os
 import sys
+import concurrent.futures
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_DIR = os.path.dirname(os.path.abspath(__file__))
+_SCRIPTS_DIR = os.path.dirname(_DIR)
+_EM_DIR = os.path.join(_DIR, "..", "error_monitor")
+for _p in (_EM_DIR, _DIR, _SCRIPTS_DIR):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import client
 import collector
@@ -96,20 +102,22 @@ def main() -> None:
     enforced = decision_policy.enforce(result)
     print(f"[pr-review] Decision: model={result.review_decision} enforced={enforced}")
 
-    # Step 6: Dedup — fetch existing comments
-    existing_issue_comments = github_client.get_pr_comments(repo, pr_number)
-    existing_review_comments = github_client.get_review_comments(repo, pr_number)
-    all_existing = existing_issue_comments + existing_review_comments
+    # Step 6: Fetch GitHub state in parallel — independent calls
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        f_issue = pool.submit(github_client.get_pr_comments, repo, pr_number)
+        f_review = pool.submit(github_client.get_review_comments, repo, pr_number)
+        f_sha = pool.submit(github_client.get_pr_head_sha, repo, pr_number)
+        existing_issue_comments = f_issue.result()
+        existing_review_comments = f_review.result()
+        head_sha = f_sha.result()
 
+    all_existing = existing_issue_comments + existing_review_comments
     posted_fps = deduplicator.already_posted_fingerprints(all_existing)
     summary_exists = deduplicator.has_summary_comment(existing_issue_comments)
 
     # Step 7: Render inline concerns
     inline_candidates = renderer.select_inline_concerns(result)
     new_inline = deduplicator.filter_new_concerns(inline_candidates, posted_fps)
-
-    # Step 8: Get head SHA for the review
-    head_sha = github_client.get_pr_head_sha(repo, pr_number)
 
     # Step 9: Post review
     summary_body = renderer.render_summary(result, enforced, ctx.diff_truncated)
@@ -146,7 +154,6 @@ def _post_or_update_summary(
     existing_comments: list[dict],
     summary_exists: bool,
 ) -> None:
-    from renderer import _SUMMARY_MARKER
     if summary_exists:
         for comment in existing_comments:
             if _SUMMARY_MARKER in (comment.get("body") or ""):

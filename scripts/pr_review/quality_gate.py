@@ -1,10 +1,7 @@
 """Quality gate — decides whether the review result is worth posting."""
 from __future__ import annotations
 
-try:
-    from pr_review.models import ReviewResult
-except ImportError:
-    from models import ReviewResult  # type: ignore[no-redef]
+from pr_review.models import ReviewResult
 
 _MIN_CONFIDENCE = 0.60
 _ACTIONABLE_SEVERITIES = frozenset({"MEDIUM", "HIGH", "CRITICAL"})

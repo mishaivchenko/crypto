@@ -3,10 +3,7 @@ from __future__ import annotations
 
 import hashlib
 
-try:
-    from pr_review.models import Concern, ReviewResult
-except ImportError:
-    from models import Concern, ReviewResult  # type: ignore[no-redef]
+from pr_review.models import Concern, ReviewResult
 
 _SUMMARY_MARKER = "<!-- ai-pr-review-summary -->"
 _MAX_INLINE_TOTAL = 10
