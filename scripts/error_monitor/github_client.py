@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -16,7 +17,8 @@ _GH_TIMEOUT = 30  # seconds per gh invocation
 # Regex to extract issue number from the URL printed by `gh issue create`
 _RE_ISSUE_URL = re.compile(r"/issues/(\d+)\s*$")
 
-# GitHub Actions self-hosted runner on macOS may not include Homebrew in PATH.
+# GitHub Actions self-hosted runner on macOS launches without a login shell,
+# so /opt/homebrew/bin is not in PATH. Check absolute paths directly.
 _GH_FALLBACK_PATHS = [
     "/opt/homebrew/bin/gh",
     "/usr/local/bin/gh",
@@ -24,16 +26,23 @@ _GH_FALLBACK_PATHS = [
 ]
 
 
-def _gh_binary() -> str:
-    """Return path to the gh binary, checking Homebrew fallbacks if not in PATH."""
-    found = shutil.which("gh")
+def _find_executable(name: str, fallbacks: list[str]) -> str | None:
+    """Find an executable by name in PATH, then by absolute fallback paths."""
+    found = shutil.which(name)
     if found:
         return found
-    for path in _GH_FALLBACK_PATHS:
-        if shutil.which(path):
+    for path in fallbacks:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
             return path
+    return None
+
+
+def _gh_binary() -> str:
+    result = _find_executable("gh", _GH_FALLBACK_PATHS)
+    if result:
+        return result
     raise FileNotFoundError(
-        "gh CLI not found. Checked PATH and fallbacks: " + ", ".join(_GH_FALLBACK_PATHS)
+        "gh CLI not found in PATH or fallbacks: " + ", ".join(_GH_FALLBACK_PATHS)
     )
 
 
