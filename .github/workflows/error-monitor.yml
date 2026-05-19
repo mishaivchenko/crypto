@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Add Homebrew to PATH
+        run: echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+
       - name: Run unit tests
         run: python3 -m unittest discover -s scripts/tests -p "test_*.py" -v
 
