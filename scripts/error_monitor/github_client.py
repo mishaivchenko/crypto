@@ -1,81 +1,63 @@
-"""GitHub operations via the `gh` CLI subprocess.
+"""GitHub operations via REST API using urllib (no gh CLI, no third-party deps).
 
-All calls use subprocess + gh CLI — no PyGithub or httpx dependencies.
+All calls use GITHUB_TOKEN from the GH_TOKEN environment variable.
 """
 from __future__ import annotations
 
 import datetime
 import json
-import re
-import shutil
-import subprocess
+import os
+import urllib.error
+import urllib.request
 from typing import Optional
 
-_GH_TIMEOUT = 30  # seconds per gh invocation
-
-# Regex to extract issue number from the URL printed by `gh issue create`
-_RE_ISSUE_URL = re.compile(r"/issues/(\d+)\s*$")
-
-# GitHub Actions self-hosted runner on macOS may not include Homebrew in PATH.
-_GH_FALLBACK_PATHS = [
-    "/opt/homebrew/bin/gh",
-    "/usr/local/bin/gh",
-    "/usr/bin/gh",
-]
+_API_BASE = "https://api.github.com"
+_TIMEOUT = 30
 
 
-def _gh_binary() -> str:
-    """Return path to the gh binary, checking Homebrew fallbacks if not in PATH."""
-    found = shutil.which("gh")
-    if found:
-        return found
-    for path in _GH_FALLBACK_PATHS:
-        if shutil.which(path):
-            return path
-    raise FileNotFoundError(
-        "gh CLI not found. Checked PATH and fallbacks: " + ", ".join(_GH_FALLBACK_PATHS)
+def _token() -> str:
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        raise EnvironmentError("GH_TOKEN or GITHUB_TOKEN environment variable is not set")
+    return token
+
+
+def _request(method: str, path: str, body: dict | None = None) -> dict | list | None:
+    url = f"{_API_BASE}{path}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method=method,
+        headers={
+            "Authorization": f"Bearer {_token()}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+        },
     )
-
-
-def _run_gh(args: list[str], input_text: str | None = None) -> subprocess.CompletedProcess:
-    """Run a `gh` CLI command and return the CompletedProcess."""
-    return subprocess.run(
-        [_gh_binary()] + args,
-        capture_output=True,
-        text=True,
-        input=input_text,
-        timeout=_GH_TIMEOUT,
-    )
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body_text = e.read().decode(errors="replace")
+        print(f"[github_client] WARNING: {method} {path} → HTTP {e.code}: {body_text[:200]}")
+        return None
+    except Exception as exc:
+        print(f"[github_client] WARNING: {method} {path} failed: {exc}")
+        return None
 
 
 def find_existing_issue(fingerprint: str, repo: str) -> Optional[int]:
-    """Search open issues with label 'ai-log-analysis' for a matching fingerprint.
-
-    Returns the issue number if found, or None.
-    """
-    result = _run_gh([
-        "issue", "list",
-        "--repo", repo,
-        "--state", "open",
-        "--label", "ai-log-analysis",
-        "--json", "number,body",
-        "--limit", "100",
-    ])
-    if result.returncode != 0:
-        print(f"[github_client] WARNING: gh issue list failed: {result.stderr.strip()}")
+    """Search open issues labelled 'ai-log-analysis' for a matching fingerprint."""
+    path = f"/repos/{repo}/issues?state=open&labels=ai-log-analysis&per_page=100"
+    issues = _request("GET", path)
+    if not isinstance(issues, list):
         return None
-
-    try:
-        issues = json.loads(result.stdout or "[]")
-    except json.JSONDecodeError:
-        return None
-
     marker = f"ai-log-fingerprint: {fingerprint}"
     for issue in issues:
-        body = issue.get("body") or ""
-        if marker in body:
+        if marker in (issue.get("body") or ""):
             return int(issue["number"])
-
     return None
 
 
@@ -86,25 +68,18 @@ def add_occurrence_comment(
     evidence: list[str],
     repo: str,
 ) -> None:
-    """Post a short occurrence comment to an existing issue."""
+    """Post a short recurrence comment to an existing issue."""
     today = datetime.date.today().isoformat()
     evidence_lines = "\n".join(f"- {e}" for e in evidence[:3])
-    comment_body = (
+    body = (
         f"**Recurrence detected** — {today}\n\n"
         f"Service: `{service}`  \n"
         f"Severity: **{severity}**\n\n"
         f"Evidence:\n{evidence_lines}"
     )
-    result = _run_gh([
-        "issue", "comment", str(issue_number),
-        "--repo", repo,
-        "--body", comment_body,
-    ])
-    if result.returncode != 0:
-        print(
-            f"[github_client] WARNING: failed to add comment to issue #{issue_number}: "
-            f"{result.stderr.strip()}"
-        )
+    result = _request("POST", f"/repos/{repo}/issues/{issue_number}/comments", {"body": body})
+    if result is None:
+        print(f"[github_client] WARNING: failed to add comment to issue #{issue_number}")
 
 
 def create_issue(
@@ -113,39 +88,40 @@ def create_issue(
     labels: list[str],
     repo: str,
 ) -> Optional[int]:
-    """Create a new GitHub issue and return its number, or None on failure."""
-    args = [
-        "issue", "create",
-        "--repo", repo,
-        "--title", title,
-        "--body", body,
-    ]
-    for label in labels:
-        args += ["--label", label]
-
-    result = _run_gh(args)
-    if result.returncode != 0:
-        print(f"[github_client] WARNING: gh issue create failed: {result.stderr.strip()}")
-        return None
-
-    # gh prints the issue URL on success, e.g.: https://github.com/org/repo/issues/42
-    output = (result.stdout or "").strip()
-    match = _RE_ISSUE_URL.search(output)
-    if match:
-        return int(match.group(1))
-
-    print(f"[github_client] WARNING: could not parse issue number from output: {output!r}")
+    """Create a new GitHub issue. Returns issue number on success, None on failure."""
+    result = _request("POST", f"/repos/{repo}/issues", {
+        "title": title,
+        "body": body,
+        "labels": labels,
+    })
+    if result and isinstance(result, dict) and "number" in result:
+        return int(result["number"])
     return None
 
 
 def ensure_labels(labels: list[str], repo: str) -> None:
-    """Ensure all *labels* exist in the repo. Silently ignores individual failures."""
+    """Ensure all labels exist in the repo. Creates missing ones, ignores failures."""
+    existing_raw = _request("GET", f"/repos/{repo}/labels?per_page=100")
+    existing = {l["name"] for l in existing_raw} if isinstance(existing_raw, list) else set()
+
+    colors = {
+        "ai-log-analysis": "0075ca",
+        "source:mac-mini": "e4e669",
+        "component:engine": "d93f0b",
+        "component:monitor": "d93f0b",
+        "component:telegram-bot": "d93f0b",
+        "area:websocket": "bfd4f2",
+        "area:exchange-api": "bfd4f2",
+        "area:docker": "bfd4f2",
+        "priority:medium": "fbca04",
+        "priority:high": "e11d48",
+        "priority:critical": "b91c1c",
+    }
+
     for label in labels:
-        result = _run_gh([
-            "label", "create", label,
-            "--repo", repo,
-            "--force",
-        ])
-        if result.returncode != 0:
-            # Non-fatal — label may already exist or user may lack permission
-            pass
+        if label in existing:
+            continue
+        _request("POST", f"/repos/{repo}/labels", {
+            "name": label,
+            "color": colors.get(label, "ededed"),
+        })
