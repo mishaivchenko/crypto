@@ -4,6 +4,7 @@ Returns empty strings for any container that cannot be reached — never raises.
 """
 from __future__ import annotations
 
+import shutil
 import subprocess
 from typing import Dict
 
@@ -19,14 +20,39 @@ CONTAINERS: Dict[str, str] = {
 
 _DOCKER_TIMEOUT_SECONDS = 60
 
+_DOCKER_FALLBACK_PATHS = [
+    "/usr/local/bin/docker",
+    "/opt/homebrew/bin/docker",
+    "/usr/bin/docker",
+]
+
+
+def _docker_binary() -> str:
+    """Return path to the docker binary, checking Homebrew fallbacks if not in PATH."""
+    found = shutil.which("docker")
+    if found:
+        return found
+    for path in _DOCKER_FALLBACK_PATHS:
+        if shutil.which(path):
+            return path
+    raise FileNotFoundError(
+        "docker CLI not found. Checked PATH and fallbacks: " + ", ".join(_DOCKER_FALLBACK_PATHS)
+    )
+
 
 def _fetch_container_logs(container: str, since_hours: int) -> str:
     """Run `docker logs` and return combined stdout+stderr as a string.
 
     Returns empty string on any failure.
     """
+    try:
+        docker = _docker_binary()
+    except FileNotFoundError as exc:
+        print(f"[collector] WARNING: {exc}")
+        return ""
+
     cmd = [
-        "docker", "logs", container,
+        docker, "logs", container,
         "--since", f"{since_hours}h",
         "--timestamps",
     ]
