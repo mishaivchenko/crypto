@@ -20,19 +20,23 @@ import concurrent.futures
 _DIR = os.path.dirname(os.path.abspath(__file__))
 _SCRIPTS_DIR = os.path.dirname(_DIR)
 _EM_DIR = os.path.join(_DIR, "..", "error_monitor")
-for _p in (_EM_DIR, _DIR, _SCRIPTS_DIR):
+# _SCRIPTS_DIR must be on sys.path so "pr_review" is importable as a package.
+# _EM_DIR provides error_monitor/sanitizer (used by collector).
+# _DIR is added last (lowest priority) so bare names like "collector" can't
+# shadow error_monitor modules; all imports below use the pr_review. prefix.
+for _p in (_EM_DIR, _SCRIPTS_DIR):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import client
-import collector
-import decision_policy
-import deduplicator
-import github_client
-import parser
-import prompt_builder
-import quality_gate
-import renderer
+import pr_review.client as client
+import pr_review.collector as collector
+import pr_review.decision_policy as decision_policy
+import pr_review.deduplicator as deduplicator
+import pr_review.github_client as github_client
+import pr_review.parser as parser
+import pr_review.prompt_builder as prompt_builder
+import pr_review.quality_gate as quality_gate
+import pr_review.renderer as renderer
 
 
 def main() -> None:
