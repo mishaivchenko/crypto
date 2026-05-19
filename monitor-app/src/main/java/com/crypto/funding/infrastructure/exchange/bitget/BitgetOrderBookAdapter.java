@@ -51,7 +51,7 @@ public class BitgetOrderBookAdapter implements VenueOrderBookPort
     public OrderBookSnapshot fetchOrderBook( String venueSymbol, int depth ) throws IOException, InterruptedException
     {
         int clampedDepth = Math.min( depth, 150 );
-        String url = baseUrl() + "/api/v2/mix/market/depth?symbol="
+        String url = baseUrl() + "/api/v2/mix/market/orderbook?symbol="
                      + URLEncoder.encode( venueSymbol, StandardCharsets.UTF_8 )
                      + "&productType=USDT-FUTURES&limit=" + clampedDepth;
         HttpRequest request = HttpRequest.newBuilder()

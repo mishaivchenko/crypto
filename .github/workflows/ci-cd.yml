@@ -155,7 +155,8 @@ jobs:
       - name: Pull latest code
         run: |
           cd ${{ env.PROJECT_DIR }}
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
 
       - name: Download JARs
         uses: actions/download-artifact@v4
