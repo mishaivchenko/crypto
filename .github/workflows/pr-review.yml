@@ -23,6 +23,4 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          chmod +x scripts/pr-review.sh scripts/deepseek.sh
-          bash scripts/pr-review.sh
+        run: python3 scripts/pr_review/main.py
