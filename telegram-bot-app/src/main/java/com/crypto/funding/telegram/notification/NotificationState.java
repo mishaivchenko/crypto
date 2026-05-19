@@ -12,25 +12,25 @@ public class NotificationState
 {
     private static final int MAX_SEEN = 1000;
 
-    private final Set<Long> seenIds = new HashSet<>();
-    private final Deque<Long> insertionOrder = new ArrayDeque<>();
+    private final Set<String> seenIds = new HashSet<>();
+    private final Deque<String> insertionOrder = new ArrayDeque<>();
 
-    public boolean isNew( Long id )
+    public boolean isNew( String key )
     {
-        return !seenIds.contains( id );
+        return !seenIds.contains( key );
     }
 
-    public void markSeen( Long id )
+    public void markSeen( String key )
     {
-        if( seenIds.contains( id ) )
+        if( seenIds.contains( key ) )
         {
             return;
         }
-        seenIds.add( id );
-        insertionOrder.addLast( id );
+        seenIds.add( key );
+        insertionOrder.addLast( key );
         if( seenIds.size() > MAX_SEEN )
         {
-            Long evicted = insertionOrder.removeFirst();
+            String evicted = insertionOrder.removeFirst();
             seenIds.remove( evicted );
         }
     }

@@ -11,23 +11,23 @@ class NotificationStateTest
     void newIdIsInitiallyNew()
     {
         NotificationState state = new NotificationState();
-        assertThat( state.isNew( 42L ) ).isTrue();
+        assertThat( state.isNew( "signal:42" ) ).isTrue();
     }
 
     @Test
     void afterMarkSeenIsNoLongerNew()
     {
         NotificationState state = new NotificationState();
-        state.markSeen( 42L );
-        assertThat( state.isNew( 42L ) ).isFalse();
+        state.markSeen( "signal:42" );
+        assertThat( state.isNew( "signal:42" ) ).isFalse();
     }
 
     @Test
     void duplicateMarkSeenDoesNotGrow()
     {
         NotificationState state = new NotificationState();
-        state.markSeen( 1L );
-        state.markSeen( 1L );
+        state.markSeen( "signal:1" );
+        state.markSeen( "signal:1" );
         assertThat( state.seenCount() ).isEqualTo( 1 );
     }
 
@@ -37,10 +37,10 @@ class NotificationStateTest
         NotificationState state = new NotificationState();
         for( long i = 1; i <= 1001; i++ )
         {
-            state.markSeen( i );
+            state.markSeen( "signal:" + i );
         }
         assertThat( state.seenCount() ).isEqualTo( 1000 );
-        assertThat( state.isNew( 1L ) ).isTrue();
-        assertThat( state.isNew( 1001L ) ).isFalse();
+        assertThat( state.isNew( "signal:1" ) ).isTrue();
+        assertThat( state.isNew( "signal:1001" ) ).isFalse();
     }
 }

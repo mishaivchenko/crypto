@@ -27,6 +27,7 @@ env:
 
 monitor:
     base-url: ${MONITOR_BASE_URL:http://localhost:8090}
+    operator-token: ${MONITOR_OPERATOR_TOKEN:}
 
 ngrok:
     enabled: ${NGROK_ENABLED:false}

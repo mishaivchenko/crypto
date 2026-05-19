@@ -3,8 +3,7 @@ package com.crypto.funding.telegram.notification;
 import com.crypto.funding.telegram.bot.FundingBot;
 import com.crypto.funding.telegram.bot.MessageFormatter;
 import com.crypto.funding.telegram.client.MonitorApiClient;
-import com.crypto.funding.telegram.client.PageResponse;
-import com.crypto.funding.telegram.client.dto.CandidateSummary;
+import com.crypto.funding.telegram.client.dto.ArmedTradeSummary;
 import com.crypto.funding.telegram.config.TelegramBotProperties;
 import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
 import org.slf4j.Logger;
@@ -17,9 +16,9 @@ import java.util.List;
 
 @Component
 @ConditionalOnProperty(name = "telegram.bot.token", matchIfMissing = false)
-public class SignalNotificationScheduler
+public class TradeNotificationScheduler
 {
-    private static final Logger log = LoggerFactory.getLogger( SignalNotificationScheduler.class );
+    private static final Logger log = LoggerFactory.getLogger( TradeNotificationScheduler.class );
 
     private final MonitorApiClient monitorApiClient;
     private final FundingBot fundingBot;
@@ -27,7 +26,7 @@ public class SignalNotificationScheduler
     private final TelegramBotProperties botProperties;
     private final NgrokTunnelService ngrokTunnelService;
 
-    public SignalNotificationScheduler(
+    public TradeNotificationScheduler(
         MonitorApiClient monitorApiClient,
         FundingBot fundingBot,
         NotificationState state,
@@ -52,38 +51,35 @@ public class SignalNotificationScheduler
 
         try
         {
-            PageResponse<CandidateSummary> page = monitorApiClient.getCandidates( "NORMALIZED", 20, 0 );
-            List<CandidateSummary> candidates = page.content() != null ? page.content() : List.of();
-
-            for( CandidateSummary candidate : candidates )
+            List<ArmedTradeSummary> trades = monitorApiClient.getArmedTrades( false );
+            if( trades == null )
             {
-                String key = "signal:" + candidate.id();
-                if( state.isNew( key ) )
+                return;
+            }
+            for( ArmedTradeSummary trade : trades )
+            {
+                String tradeKey = "trade:" + trade.id();
+                if( state.isNew( tradeKey ) )
                 {
-                    sendAlert( candidate );
-                    state.markSeen( key );
+                    sendAlert( trade );
+                    state.markSeen( tradeKey );
                 }
             }
         }
         catch( Exception e )
         {
-            log.warn( "Could not poll monitor for new signals: {}", e.getMessage() );
+            log.warn( "Could not poll monitor for new trades: {}", e.getMessage() );
         }
     }
 
-    private void sendAlert( CandidateSummary candidate )
+    private void sendAlert( ArmedTradeSummary trade )
     {
-        String uiUrl = resolveUiUrl();
-        String text = MessageFormatter.newSignalAlert( candidate, uiUrl );
-        long chatId = botProperties.notificationChatIdLong();
-        fundingBot.sendAlert( chatId, text );
-        log.info( "Sent signal alert for candidate {} ({})", candidate.id(), candidate.displaySymbol() );
-    }
-
-    private String resolveUiUrl()
-    {
-        return ngrokTunnelService.fetchTunnels()
+        String uiUrl = ngrokTunnelService.fetchTunnels()
             .map( NgrokTunnelService.NgrokTunnels::monitorUrl )
             .orElse( null );
+        String text = MessageFormatter.newTradeAlert( trade, uiUrl );
+        long chatId = botProperties.notificationChatIdLong();
+        fundingBot.sendAlert( chatId, text );
+        log.info( "Sent trade alert for armed trade {} ({}/{})", trade.id(), trade.venue(), trade.displaySymbol() );
     }
 }
