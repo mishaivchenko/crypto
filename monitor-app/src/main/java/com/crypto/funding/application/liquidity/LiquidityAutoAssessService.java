@@ -26,22 +26,20 @@ public class LiquidityAutoAssessService
     @Async
     public void assessAfterArm( Long tradeId, String venue, String canonicalSymbol )
     {
-        String venueSymbol = instrumentRegistryService
-            .resolveVenueSymbol( venue, canonicalSymbol )
-            .orElse( null );
-        if( venueSymbol == null )
+        var venueSymbol = instrumentRegistryService.resolveVenueSymbol( venue, canonicalSymbol );
+        if( venueSymbol.isEmpty() )
         {
             log.debug( "Skipping auto liquidity assessment for trade {} — no instrument metadata for {}/{}", tradeId, venue, canonicalSymbol );
             return;
         }
         try
         {
-            liquidityAssessmentService.assess( venue, venueSymbol, tradeId );
-            log.debug( "Auto liquidity assessment completed for trade {} ({}/{})", tradeId, venue, venueSymbol );
+            liquidityAssessmentService.assess( venue, venueSymbol.get(), tradeId );
+            log.debug( "Auto liquidity assessment completed for trade {} ({}/{})", tradeId, venue, venueSymbol.get() );
         }
         catch( Exception e )
         {
-            log.warn( "Auto liquidity assessment failed for trade {} ({}/{}): {}", tradeId, venue, venueSymbol, e.getMessage() );
+            log.warn( "Auto liquidity assessment failed for trade {} ({}/{}): {}", tradeId, venue, venueSymbol.get(), e.getMessage() );
         }
     }
 }
