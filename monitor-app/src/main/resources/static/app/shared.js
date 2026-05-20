@@ -205,7 +205,7 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                         <h4>AI</h4>
                         <div class="detail-grid">
                             <div class="inline-kv"><span class="muted">${t("ai_confidence")}</span><span>${formatAiBadge(ai)}</span></div>
-                            <div class="inline-kv"><span class="muted">${t("ai_reasoning")}</span><span class="meta-value">${escapeHtml(ai.reasoning ?? "—")}</span></div>
+                            <div class="inline-kv"><span class="muted">${t("ai_reasoning")}</span><span class="meta-value ai-reasoning">${escapeHtml(ai.reasoning ?? "—")}</span></div>
                         </div>
                         <div class="card-quick-actions">
                             <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
