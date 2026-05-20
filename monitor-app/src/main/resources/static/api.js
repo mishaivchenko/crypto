@@ -262,9 +262,8 @@ export const api = {
     getCandidateLiquidity(id) {
         return request(`/api/v1/candidates/${id}/liquidity`).catch(() => null);
     },
-    assessCandidateLiquidity(id, venue, venueSymbol) {
-        const params = new URLSearchParams({ venue, venueSymbol });
-        return request(`/api/v1/candidates/${id}/liquidity?${params}`, { method: "POST" });
+    assessCandidateLiquidity(id) {
+        return request(`/api/v1/candidates/${id}/liquidity/refresh`, { method: "POST" });
     },
     getAiStatus() {
         return request("/api/v1/ai/status");

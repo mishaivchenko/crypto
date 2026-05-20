@@ -111,7 +111,7 @@ public class SignalCandidateReviewService
         entity.setStatus( SignalCandidateStatus.REJECTED );
         entity.setReviewDecision( ReviewDecision.REJECT );
         entity.setReviewedAt( Instant.now() );
-        entity.setReviewNotes( command.reviewNotes().trim() );
+        entity.setReviewNotes( command.reviewNotes() != null ? command.reviewNotes().trim() : null );
 
         SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
         tradeJournalService.append(

@@ -168,7 +168,6 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
 
         const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0] ?? "";
         const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
-        const rawSymbol = candidate.rawSymbol ?? "";
         const fundingTime = candidate.suggestedFundingTime ?? candidate.sourceFundingTime ?? null;
         const fundingRatePct = candidate.suggestedFundingRatePct ?? candidate.sourceFundingRatePct ?? null;
         const hasRequired = venue && symbol && fundingTime;
@@ -176,10 +175,7 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
         const aiTone = ai.recommendation === "GO" ? "good" : ai.recommendation === "PASS" ? "bad" : "warning";
         const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
             : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
-        const assessVenue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0];
-        const assessBtn = (assessVenue && rawSymbol)
-            ? `<button class="chip chip-btn" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}" data-venue="${escapeHtml(assessVenue)}" data-raw-symbol="${escapeHtml(rawSymbol)}">${t("liquidity_assess_button")}</button>`
-            : "";
+        const assessBtn = `<button class="chip chip-btn" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}">${t("liquidity_assess_button")}</button>`;
 
         const actionsBlock = closed ? "" : `
             <div class="card-quick-actions">

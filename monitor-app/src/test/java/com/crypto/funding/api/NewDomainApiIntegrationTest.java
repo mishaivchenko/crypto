@@ -406,4 +406,30 @@ class NewDomainApiIntegrationTest
             .extracting( FundingEventEntity::getStatus )
             .isEqualTo( FundingEventStatus.EXPIRED );
     }
+
+    @Test
+    void rejectWithNullReviewNotesSucceeds() throws Exception
+    {
+        Long candidateId = signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
+            "FUNDING_API", null, null, "NULLNOTEUSDT", "gate", "NULLNOTE/USDT",
+            Instant.parse( "2030-06-01T00:00:00Z" ),
+            Instant.parse( "2030-06-01T08:00:00Z" ),
+            BigDecimal.valueOf( 0.01 )
+        ) ).id();
+
+        mockMvc.perform( post( "/api/v1/candidates/{id}/reject", candidateId )
+                .contentType( MediaType.APPLICATION_JSON )
+                .content( """
+                    {"reviewNotes":null}
+                    """ ) )
+            .andExpect( status().isOk() )
+            .andExpect( jsonPath( "$.status" ).value( "REJECTED" ) );
+    }
+
+    @Test
+    void refreshLiquidityForUnknownCandidateReturns404() throws Exception
+    {
+        mockMvc.perform( post( "/api/v1/candidates/999999/liquidity/refresh" ) )
+            .andExpect( status().isNotFound() );
+    }
 }

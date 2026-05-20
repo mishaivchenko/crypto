@@ -1,7 +1,10 @@
 package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.LiquidityAssessmentResponse;
+import com.crypto.funding.application.candidate.SignalCandidateQueryService;
+import com.crypto.funding.application.candidate.SignalLiquidityService;
 import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
+import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import com.crypto.funding.domain.liquidity.LiquidityScore;
 import org.springframework.http.ResponseEntity;
@@ -11,16 +14,26 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/v1")
 public class LiquidityAssessmentController
 {
     private final LiquidityAssessmentService liquidityAssessmentService;
+    private final SignalLiquidityService signalLiquidityService;
+    private final SignalCandidateQueryService signalCandidateQueryService;
 
-    public LiquidityAssessmentController( LiquidityAssessmentService liquidityAssessmentService )
+    public LiquidityAssessmentController(
+        LiquidityAssessmentService liquidityAssessmentService,
+        SignalLiquidityService signalLiquidityService,
+        SignalCandidateQueryService signalCandidateQueryService
+    )
     {
         this.liquidityAssessmentService = liquidityAssessmentService;
+        this.signalLiquidityService = signalLiquidityService;
+        this.signalCandidateQueryService = signalCandidateQueryService;
     }
 
     @PostMapping("/venues/{venue}/symbols/{venueSymbol}/liquidity-assessment")
@@ -42,6 +55,15 @@ public class LiquidityAssessmentController
     )
     {
         LiquidityAssessment assessment = liquidityAssessmentService.assessForCandidate( venue, venueSymbol, candidateId );
+        return toResponse( assessment );
+    }
+
+    @PostMapping("/candidates/{candidateId}/liquidity/refresh")
+    public LiquidityAssessmentResponse refreshForCandidate( @PathVariable Long candidateId )
+    {
+        SignalCandidate candidate = signalCandidateQueryService.getCandidate( candidateId );
+        LiquidityAssessment assessment = signalLiquidityService.assess( candidate )
+            .orElseThrow( () -> new ResponseStatusException( HttpStatus.UNPROCESSABLE_ENTITY, "Cannot resolve venue symbol for candidate " + candidateId ) );
         return toResponse( assessment );
     }
 
