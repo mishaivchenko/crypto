@@ -46,7 +46,7 @@ class TestRenderSummary(unittest.TestCase):
 
     def test_contains_decision(self):
         body = render_summary(_result(), "REQUEST_CHANGES", False)
-        self.assertIn("CHANGES REQUESTED", body)
+        self.assertIn("ОТКЛОНЕНО", body)
 
     def test_contains_confidence(self):
         body = render_summary(_result(confidence=0.82), "COMMENT", False)
@@ -54,11 +54,11 @@ class TestRenderSummary(unittest.TestCase):
 
     def test_shows_truncation_warning_when_truncated(self):
         body = render_summary(_result(), "COMMENT", True)
-        self.assertIn("truncated", body.lower())
+        self.assertIn("обрезан", body.lower())
 
     def test_no_truncation_warning_when_not_truncated(self):
         body = render_summary(_result(), "COMMENT", False)
-        self.assertNotIn("truncated", body.lower())
+        self.assertNotIn("обрезан", body.lower())
 
     def test_lists_top_concerns(self):
         concerns = (_concern("HIGH", message="Critical NPE"),)

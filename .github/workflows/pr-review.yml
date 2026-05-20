@@ -1,26 +1,90 @@
 name: PR Review
 
 on:
-  pull_request:
-    branches: [ main ]
-    types: [ opened, synchronize, reopened ]
+  # Runs after CI-CD completes so the review can include build/test results
+  workflow_run:
+    workflows: [ "CI-CD" ]
+    types: [ completed ]
 
 jobs:
   review:
     name: DeepSeek PR Review
+    # Only review pull_request triggered CI runs (not push/schedule)
+    if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
       contents: read
+      actions: read
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Resolve PR number from workflow run
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          pr_number=$(gh pr list \
+            --repo "$REPO" \
+            --state open \
+            --json number,headRefOid \
+            --jq --arg sha "$RUN_HEAD_SHA" '.[] | select(.headRefOid == $sha) | .number' \
+            | head -1)
+          if [ -z "$pr_number" ]; then
+            echo "No open PR found for SHA $RUN_HEAD_SHA — skipping review"
+            exit 0
+          fi
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Download build log artifact (if present)
+        id: build_log
+        if: steps.pr.outputs.number != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_id="${{ github.event.workflow_run.id }}"
+          artifact=$(gh api "repos/${{ github.repository }}/actions/runs/${run_id}/artifacts" \
+            --jq '.artifacts[] | select(.name == "build-log") | .id' | head -1)
+          if [ -n "$artifact" ]; then
+            gh api "repos/${{ github.repository }}/actions/artifacts/${artifact}/zip" > /tmp/build-log.zip
+            unzip -p /tmp/build-log.zip > /tmp/build-output.txt
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compose CI context
+        id: ci_ctx
+        if: steps.pr.outputs.number != ''
+        run: |
+          conclusion="${{ github.event.workflow_run.conclusion }}"
+          {
+            echo "CI-CD result: ${conclusion}"
+            echo "Build & Test job: ${{ github.event.workflow_run.conclusion }}"
+            if [ -f /tmp/build-output.txt ]; then
+              echo ""
+              echo "--- Last 120 lines of build output ---"
+              tail -120 /tmp/build-output.txt
+            fi
+          } > /tmp/ci-context.txt
+          echo "path=/tmp/ci-context.txt" >> "$GITHUB_OUTPUT"
+
       - name: Run PR review
+        if: steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: python3 scripts/pr_review/main.py
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          CI_CONTEXT: ""
+        run: |
+          if [ -f /tmp/ci-context.txt ]; then
+            export CI_CONTEXT="$(cat /tmp/ci-context.txt)"
+          fi
+          python3 scripts/pr_review/main.py
