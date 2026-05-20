@@ -157,7 +157,7 @@ export function buildTradeDrawerContent({ trade, journal, attempts, liquidity })
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
                                 <span>${t("trade_planned_entry")}</span>
-                                <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(toLocalInputValue(trade.plannedEntryAt) ?? "")}">
+                                <input name="plannedEntryAt" type="datetime-local" step="0.001" value="${escapeHtml(toLocalInputValue(trade.plannedEntryAt) ?? "")}">
                             </label>
                             <label class="field">
                                 <span>${t("trade_spacing_ms")}</span>
@@ -173,7 +173,7 @@ export function buildTradeDrawerContent({ trade, journal, attempts, liquidity })
                         <legend>${t("event_exit_window")}</legend>
                         <label class="field">
                             <span>${t("trade_planned_exit")}</span>
-                            <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(toLocalInputValue(trade.plannedExitAt) ?? "")}">
+                            <input name="plannedExitAt" type="datetime-local" step="0.001" value="${escapeHtml(toLocalInputValue(trade.plannedExitAt) ?? "")}">
                         </label>
                     </fieldset>
                     <fieldset class="form-group">

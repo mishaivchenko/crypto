@@ -30,6 +30,10 @@ Funding API → SignalCandidate → Operator Review → FundingEvent
 
 **Execution** — `engine-app` fetches the execution plan from monitor, computes per-attempt trigger times accounting for measured latency, submits orders, and writes `OrderAttempt` results back. The full entry → open position → exit → closed lifecycle is tracked end-to-end.
 
+**Strategy** — all trades are `SHORT`-only. The goal is to enter SHORT 1–5 seconds *before* the funding payment fires and capture the compensating price drop (longs paying shorts triggers mass long exits → price falls). The position is closed seconds-to-minutes later. We do not hold for the funding payment itself.
+
+**AI Signal Advisor** — after each signal is ingested, DeepSeek asynchronously analyses it and assigns a `GO` / `WATCH` / `PASS` recommendation with confidence score. The advisor understands the price-movement strategy and evaluates funding rate magnitude, time-to-funding, liquidity spread, and venue latency. Results appear as badges on signal cards in the UI.
+
 **Audit** — every state transition is recorded in `TradeJournal` with actor (`OPERATOR` / `ENGINE` / `SYSTEM`) and timestamp.
 
 ---
@@ -146,7 +150,7 @@ The engine adjusts entry trigger times based on measured round-trip latency:
 effectiveLatencyMs = max(0, measuredEntryLatencyMs + manualLatencyAdjustmentMs)
 ```
 
-Latency is sampled automatically after each real order submission and stored in the venue timing profile. A manual probe endpoint is also available:
+Latency is sampled automatically after each real order submission. Per-venue p50/p95/p99 percentiles and warm-up probe results are stored in the venue timing profile and surfaced in the UI. A manual probe endpoint is also available:
 
 ```
 POST /api/v2/monitor/venues/{venue}/latency-probe

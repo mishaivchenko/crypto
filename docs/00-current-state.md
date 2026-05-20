@@ -4,11 +4,12 @@
 
 Текущая линия продукта: `2.0.0`.
 
-Это новая линия без старого bot/execution контура. Сейчас проект является modular monolith с двумя runtime-приложениями:
+Это новая линия без старого bot/execution контура. Сейчас проект является modular monolith с четырьмя артефактами:
 
 - `monitor-app` — operator/control plane и UI.
-- `engine-app` — лёгкий planning/runtime-контур для будущего execution engine.
+- `engine-app` — execution runtime, читает планы из monitor, отправляет live orders.
 - `platform-core` — общий домен, contracts, ports и utilities без runtime ownership.
+- `telegram-bot-app` — Telegram бот (`@funding_arbitrage_bot_bot`) для уведомлений о сигналах.
 
 ## Текущий бизнес-flow
 
@@ -20,8 +21,9 @@
 - `FundingEvent` создаётся после review/approve.
 - `ArmedTrade` создаётся оператором из confirmed event.
 - Funding armed trade всегда `SHORT-only`.
-- `engine-app` строит план и может записывать execution attempts.
-- Live exchange order submission через новый домен ещё guarded и не включён автоматически.
+- Стратегия: входим в SHORT за 1–5 секунд ДО фандинга, ловим компенсирующее ценовое движение вниз, выходим через секунды-минуты. Фандинговый платёж — не цель, а триггер.
+- `engine-app` строит план и выполняет live execution attempts.
+- Live exchange order submission включается через `ENGINE_LIVE_ORDER_ENABLED=true`.
 
 ## Что уже работает
 
@@ -50,9 +52,12 @@
 - **Trade History UI**: показывает реальные данные Position и Outcome (quantity, entry/exit price, net PnL, fees).
 - **Engine testnet profile**: `application-testnet.yml` включает loop + live orders для Gate testnet.
 - **Metadata sync**: `TRADING_METADATA_SYNC_ON_STARTUP` и `TRADING_METADATA_SCHEDULE_ENABLED` включены по умолчанию в docker-compose.
+- **AI Signal Advisor**: DeepSeek анализирует каждый сигнал асинхронно после ingestion; возвращает `GO` / `WATCH` / `PASS` с confidence и reasoning; бейджи отображаются на карточках сигналов в UI. Советник знает о стратегии ценового движения (не сбора фандинга).
+- **Latency Calibration**: полностью реализована — warm-up probes, p50/p95/p99 per venue + operation, venue default latency, manual override, отображение в UI.
+- **Telegram bot**: `@funding_arbitrage_bot_bot` запущен; команды `/signals`, `/status`, `/links`, `/faq`; алерты на новые сигналы.
 
 ## Что принципиально не готово
 
 - Автономный engine execution loop на проде (`ENGINE_EXECUTION_LOOP_ENABLED=false` по умолчанию).
-- Деплой в Singapore как отдельная execution-runtime среда.
+- Деплой в Singapore как отдельная execution-runtime среда с low-latency path к биржам.
 - Полноценное управление ролями; сейчас есть single-role operator auth через `X-Operator-Token`.

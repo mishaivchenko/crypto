@@ -81,7 +81,7 @@ function buildApproveSection(candidate) {
                     <div class="drawer-form-row labeled-row">
                         <label class="field">
                             <span>${t("candidate_funding_time")}</span>
-                            <input name="fundingTime" type="datetime-local" value="${escapeHtml(fundingTime)}">
+                            <input name="fundingTime" type="datetime-local" step="0.001" value="${escapeHtml(fundingTime)}">
                         </label>
                         <label class="field">
                             <span>${t("candidate_funding_rate")}</span>
