@@ -580,6 +580,11 @@ const translations = {
         candidate_state_linked: "Linked to Funding Event #",
         candidate_state_review: "Awaiting operator review",
 
+        // Signal card inline actions
+        signal_approve_button: "Approve",
+        signal_reject_button: "Reject",
+        signal_approve_missing_data: "Missing venue / symbol / funding time — open inspector to fix",
+
         // History derive labels
         history_derive_no_data: "No trade data",
         history_derive_lifecycle_complete: "Trade lifecycle complete",
@@ -1206,6 +1211,11 @@ const translations = {
         // Candidate state lines
         candidate_state_linked: "Связан с событием фандинга #",
         candidate_state_review: "Ожидает ревью оператора",
+
+        // Signal card inline actions
+        signal_approve_button: "Одобрить",
+        signal_reject_button: "Отклонить",
+        signal_approve_missing_data: "Нет площадки / символа / времени фандинга — открой inspector для исправления",
 
         // History derive labels
         history_derive_no_data: "Нет данных по сделке",
