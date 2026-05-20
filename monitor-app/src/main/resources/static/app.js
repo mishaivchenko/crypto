@@ -101,11 +101,8 @@ async function refreshCurrentScreen() {
         if (state.screen === "candidates") {
             loadingTarget = nodes.candidatesList;
             setLoading(loadingTarget, t("loading_candidates"));
-            renderCandidates({
-                nodes,
-                page: await api.listCandidates(state.candidateFilters),
-                onOpenCandidate: openCandidate
-            });
+            const page = await api.listCandidates(state.candidateFilters);
+            await renderCandidates({ nodes, page, showError, onRefresh: refreshCurrentScreen });
             return;
         }
         if (state.screen === "events") {

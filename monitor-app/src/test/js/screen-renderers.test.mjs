@@ -28,7 +28,9 @@ test("candidates screen renders empty and loaded states", () => {
     });
 
     assert.match(loaded, /WET\/USDT/);
-    assert.match(loaded, /Inspect/);
+    assert.match(loaded, /toggle-signal-card/);
+    assert.match(loaded, /quick-approve-candidate/);
+    assert.match(loaded, /quick-reject-candidate/);
 });
 
 test("events and trades screens keep empty-state guidance", () => {

@@ -487,6 +487,110 @@ details[open] .dev-tools-summary h3::before {
     background: var(--signal);
 }
 
+/* Expandable signal card */
+.signal-card .card-expansion {
+    display: none;
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    gap: 10px;
+    display: none;
+}
+
+.signal-card.is-expanded .card-expansion {
+    display: grid;
+}
+
+.signal-card .expand-toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+}
+
+.signal-card .expand-toggle:hover {
+    color: var(--ink);
+}
+
+.card-expansion-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 760px) {
+    .card-expansion-cols {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card-expansion-block {
+    background: rgba(19, 27, 37, 0.82);
+    border: 1px solid var(--border);
+    border-radius: 14px 6px 18px 6px;
+    padding: 10px 12px;
+    display: grid;
+    gap: 0;
+}
+
+.card-expansion-block h4 {
+    margin: 0 0 6px 0;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+
+.card-quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.card-quick-actions .button.approve {
+    background: rgba(106, 229, 141, 0.18);
+    border-color: rgba(106, 229, 141, 0.35);
+    color: #d9ffe5;
+}
+
+.card-quick-actions .button.approve:hover:not(:disabled) {
+    background: rgba(106, 229, 141, 0.28);
+}
+
+.card-quick-actions .button.approve:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.card-quick-actions .button.reject {
+    background: rgba(255, 111, 111, 0.12);
+    border-color: rgba(255, 111, 111, 0.28);
+    color: #ffd7d7;
+}
+
+.card-quick-actions .button.reject:hover:not(:disabled) {
+    background: rgba(255, 111, 111, 0.2);
+}
+
+.signal-approve-hint {
+    font-size: 0.74rem;
+    color: var(--muted);
+    margin: 0;
+}
+
+.signal-approve-warning {
+    font-size: 0.74rem;
+    color: #ffe8a0;
+    margin: 0;
+}
+
 .event-card::before {
     background: var(--event);
 }
