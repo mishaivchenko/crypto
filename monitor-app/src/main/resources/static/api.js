@@ -118,6 +118,11 @@ export const api = {
             method: "DELETE"
         });
     },
+    analyzeCandidate(id) {
+        return request(`/api/v1/candidates/${id}/analyze`, {
+            method: "POST"
+        });
+    },
     listFundingEvents(filters = {}) {
         const params = new URLSearchParams({ page: "0", size: "50" });
         Object.entries(filters).forEach(([key, value]) => {

@@ -1,6 +1,7 @@
 import { api } from "../../api.js";
 import {
     escapeHtml,
+    formatAiBadge,
     formatBadge,
     formatDecimal,
     formatInstant,
@@ -122,6 +123,34 @@ function buildRejectSection(candidate) {
     );
 }
 
+function buildAiAdvisorSection(candidate) {
+    const ai = candidate.aiAdvice;
+    if (!ai) {
+        return section(t("ai_advisor_title"), `
+            <div class="action-card">
+                <p class="helper-text">${t("ai_recommendation_pending")}</p>
+                <div class="actions">
+                    <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
+                </div>
+            </div>
+        `);
+    }
+    const pct = Math.round(ai.confidence * 100);
+    return section(t("ai_advisor_title"), `
+        <div class="action-card">
+            <div class="meta-grid">
+                ${metaRow(t("ai_confidence"), `${formatAiBadge(ai)} ${pct}%`)}
+                ${metaRow(t("ai_reasoning"), escapeHtml(ai.reasoning ?? "—"))}
+                ${metaRow(t("ai_model"), escapeHtml(ai.modelUsed ?? "—"))}
+                ${metaRow(t("ai_analyzed_at"), formatInstant(ai.analyzedAt))}
+            </div>
+            <div class="actions">
+                <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
+            </div>
+        </div>
+    `);
+}
+
 export function buildCandidateDrawerContent(candidate) {
     return `
         ${pipelineStageMarkup("signal")}
@@ -144,6 +173,7 @@ export function buildCandidateDrawerContent(candidate) {
                 <p class="helper-text">${escapeHtml(candidate.normalizationFailureReason)}</p>
             </div>
         `) : ""}
+        ${buildAiAdvisorSection(candidate)}
         ${buildApproveSection(candidate)}
         ${buildRejectSection(candidate)}
         ${candidate.status !== "DELETED" ? buildDeleteCandidateSection(candidate) : ""}

@@ -134,3 +134,12 @@ trading:
             base-url: ${KUCOIN_TESTNET_BASE_URL:https://api-sandbox.kucoin.com}
         production:
             base-url: ${KUCOIN_PROD_BASE_URL:https://api-futures.kucoin.com}
+
+
+ai:
+    deepseek:
+        enabled: ${AI_DEEPSEEK_ENABLED:false}
+        api-key: ${AI_DEEPSEEK_API_KEY:}
+        base-url: ${AI_DEEPSEEK_BASE_URL:https://api.deepseek.com}
+        model: ${AI_DEEPSEEK_MODEL:deepseek-chat}
+        timeout-seconds: ${AI_DEEPSEEK_TIMEOUT_SECONDS:30}

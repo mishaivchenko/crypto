@@ -1,14 +1,17 @@
 package com.crypto.funding.api;
 
+import com.crypto.funding.api.dto.AiAdviceDto;
 import com.crypto.funding.api.dto.ApproveCandidateRequest;
 import com.crypto.funding.api.dto.CandidateListItemResponse;
 import com.crypto.funding.api.dto.CandidateResponse;
 import com.crypto.funding.api.dto.RejectCandidateRequest;
+import com.crypto.funding.application.ai.AiSignalAdvisorService;
 import com.crypto.funding.application.candidate.ApproveSignalCandidateCommand;
 import com.crypto.funding.application.candidate.RejectSignalCandidateCommand;
 import com.crypto.funding.application.candidate.SignalCandidateLifecycleService;
 import com.crypto.funding.application.candidate.SignalCandidateQueryService;
 import com.crypto.funding.application.candidate.SignalCandidateReviewService;
+import com.crypto.funding.domain.ai.AiSignalAdvice;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import jakarta.validation.Valid;
@@ -36,16 +39,19 @@ public class SignalCandidateController
     private final SignalCandidateQueryService queryService;
     private final SignalCandidateReviewService reviewService;
     private final SignalCandidateLifecycleService lifecycleService;
+    private final AiSignalAdvisorService aiSignalAdvisorService;
 
     public SignalCandidateController(
         SignalCandidateQueryService queryService,
         SignalCandidateReviewService reviewService,
-        SignalCandidateLifecycleService lifecycleService
+        SignalCandidateLifecycleService lifecycleService,
+        AiSignalAdvisorService aiSignalAdvisorService
     )
     {
         this.queryService = queryService;
         this.reviewService = reviewService;
         this.lifecycleService = lifecycleService;
+        this.aiSignalAdvisorService = aiSignalAdvisorService;
     }
 
     @GetMapping
@@ -98,6 +104,14 @@ public class SignalCandidateController
         return toResponse( lifecycleService.deleteCandidate( id, note ) );
     }
 
+    @PostMapping("/{id}/analyze")
+    @ResponseStatus(HttpStatus.OK)
+    public CandidateResponse analyze( @PathVariable Long id )
+    {
+        aiSignalAdvisorService.analyzeAsync( id );
+        return toResponse( queryService.getCandidate( id ) );
+    }
+
     private CandidateListItemResponse toListItem( SignalCandidate candidate )
     {
         return new CandidateListItemResponse(
@@ -122,6 +136,9 @@ public class SignalCandidateController
     private CandidateResponse toResponse( SignalCandidate candidate )
     {
         CandidateSuggestion suggestion = buildSuggestion( candidate );
+        AiAdviceDto aiAdvice = aiSignalAdvisorService.findLatest( candidate.id() )
+                                                     .map( this::toAiAdviceDto )
+                                                     .orElse( null );
         return new CandidateResponse(
             candidate.id(),
             candidate.sourceType(),
@@ -145,7 +162,19 @@ public class SignalCandidateController
             suggestion.fundingTime(),
             suggestion.fundingRatePct(),
             candidate.createdAt(),
-            candidate.updatedAt()
+            candidate.updatedAt(),
+            aiAdvice
+        );
+    }
+
+    private AiAdviceDto toAiAdviceDto( AiSignalAdvice advice )
+    {
+        return new AiAdviceDto(
+            advice.recommendation(),
+            advice.confidence(),
+            advice.reasoning(),
+            advice.modelUsed(),
+            advice.analyzedAt()
         );
     }
 

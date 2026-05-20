@@ -30,7 +30,8 @@ public record CandidateResponse(
     Instant suggestedFundingTime,
     BigDecimal suggestedFundingRatePct,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    AiAdviceDto aiAdvice
 )
 {
 }

@@ -34,7 +34,8 @@ export {
     kv,
     metaRow,
     pipelineStageMarkup,
-    section
+    section,
+    formatAiBadge
 };
 
 const VENUE_ICON_URLS = {
@@ -149,6 +150,15 @@ export function candidateStateLine(candidate) {
     return t("candidate_state_review");
 }
 
+export function formatAiBadge(aiAdvice) {
+    if (!aiAdvice) return `<span class="badge ai neutral">${t("ai_recommendation_pending")}</span>`;
+    const rec = aiAdvice.recommendation;
+    const tone = rec === "GO" ? "good" : rec === "PASS" ? "bad" : "warning";
+    const label = t(`ai_recommendation_${rec}`) ?? rec;
+    const pct = Math.round(aiAdvice.confidence * 100);
+    return `<span class="badge ai ${tone}">${escapeHtml(label)} ${pct}%</span>`;
+}
+
 export function candidateCard(candidate) {
     return `
         <article class="list-item signal-card">
@@ -159,6 +169,7 @@ export function candidateCard(candidate) {
                 </div>
                 <div class="actions">
                     ${formatBadge("candidate", candidate.status)}
+                    ${candidate.status === "NORMALIZED" || candidate.status === "FAILED" ? formatAiBadge(candidate.aiAdvice) : ""}
                     <button class="button secondary" type="button" data-open-candidate="${candidate.id}">${t("label_inspect")}</button>
                 </div>
             </header>

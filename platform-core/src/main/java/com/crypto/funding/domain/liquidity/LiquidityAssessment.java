@@ -8,6 +8,7 @@ import java.time.Instant;
 public record LiquidityAssessment(
     String id,
     Long tradeId,
+    Long signalCandidateId,
     String venue,
     String symbol,
     TradeSide side,
