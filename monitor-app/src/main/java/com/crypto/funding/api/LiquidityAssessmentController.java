@@ -34,6 +34,25 @@ public class LiquidityAssessmentController
         return toResponse( assessment );
     }
 
+    @PostMapping("/candidates/{candidateId}/liquidity")
+    public LiquidityAssessmentResponse assessForCandidate(
+        @PathVariable Long candidateId,
+        @RequestParam String venue,
+        @RequestParam String venueSymbol
+    )
+    {
+        LiquidityAssessment assessment = liquidityAssessmentService.assessForCandidate( venue, venueSymbol, candidateId );
+        return toResponse( assessment );
+    }
+
+    @GetMapping("/candidates/{candidateId}/liquidity")
+    public ResponseEntity<LiquidityAssessmentResponse> getForCandidate( @PathVariable Long candidateId )
+    {
+        return liquidityAssessmentService.findLatestForCandidate( candidateId )
+                                         .map( a -> ResponseEntity.ok( toResponse( a ) ) )
+                                         .orElse( ResponseEntity.notFound().build() );
+    }
+
     @GetMapping("/trades/{tradeId}/liquidity")
     public ResponseEntity<LiquidityAssessmentResponse> getForTrade( @PathVariable Long tradeId )
     {
