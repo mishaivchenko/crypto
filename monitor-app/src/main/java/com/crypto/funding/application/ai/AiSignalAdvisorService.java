@@ -113,18 +113,25 @@ public class AiSignalAdvisorService
             : -1;
 
         StringBuilder sb = new StringBuilder();
-        sb.append( "Ты опытный крипто-трейдер, специализирующийся на арбитраже финансирования.\n" );
-        sb.append( "Проанализируй сигнал и дай рекомендацию.\n\n" );
+        sb.append( "Ты торговый советник для краткосрочной SHORT-стратегии на перпетуальных фьючерсах.\n\n" );
+        sb.append( "СТРАТЕГИЯ (важно понять правильно):\n" );
+        sb.append( "- Мы входим в SHORT за 1-5 секунд ДО момента списания фандинга.\n" );
+        sb.append( "- Цель: поймать компенсирующее ценовое движение ВНИЗ в первые секунды после фандинга.\n" );
+        sb.append( "- Когда крупный фандинг списывается с лонгов — многие лонги закрываются, цена резко падает.\n" );
+        sb.append( "- Мы выходим из шорта через несколько секунд-минут, захватив это ценовое движение.\n" );
+        sb.append( "- Мы НЕ держим позицию ради получения фандинга — мы ловим ценовое движение.\n\n" );
         sb.append( "Символ: " ).append( candidate.normalizedSymbol() ).append( "\n" );
         sb.append( "Биржа: " ).append( resolveVenue( candidate ) != null ? resolveVenue( candidate ) : "неизвестно" ).append( "\n" );
 
         if( candidate.sourceFundingRatePct() != null )
         {
-            sb.append( "Ставка финансирования: " ).append( candidate.sourceFundingRatePct() ).append( "%\n" );
+            sb.append( "Ставка финансирования: " ).append( candidate.sourceFundingRatePct() ).append( "%" );
+            sb.append( "  ← чем выше, тем сильнее ожидаемое ценовое движение\n" );
         }
         if( minutesUntilFunding >= 0 )
         {
-            sb.append( "До события финансирования: " ).append( minutesUntilFunding ).append( " мин\n" );
+            sb.append( "До момента фандинга: " ).append( minutesUntilFunding ).append( " мин" );
+            sb.append( "  ← оптимально < 10 мин; > 30 мин — сигнал неактуален для входа\n" );
         }
 
         if( liquidity != null )
@@ -138,7 +145,7 @@ public class AiSignalAdvisorService
             {
                 sb.append( ", безопасный объём: $" ).append( liquidity.roundTripSafeNotional().setScale( 0, java.math.RoundingMode.HALF_UP ) );
             }
-            sb.append( ")\n" );
+            sb.append( ")  ← нужна для быстрого входа/выхода без проскальзывания\n" );
         }
         else
         {
@@ -152,14 +159,18 @@ public class AiSignalAdvisorService
             {
                 sb.append( ", p95: " ).append( latency.p95DurationMs() ).append( " ms" );
             }
-            sb.append( "\n" );
+            sb.append( "  ← критично: должны успеть войти ДО фандинга\n" );
         }
 
+        sb.append( "\nКритерии оценки:\n" );
+        sb.append( "- GO: ставка > 0.1%, до фандинга < 10 мин, хорошая ликвидность, задержка < 100 ms\n" );
+        sb.append( "- WATCH: ставка умеренная ИЛИ до фандинга 10-30 мин ИЛИ ликвидность под вопросом\n" );
+        sb.append( "- PASS: ставка < 0.05%, до фандинга > 30 мин, плохая ликвидность или высокая задержка\n" );
         sb.append( "\nОтветь СТРОГО в формате JSON (без markdown):\n" );
         sb.append( "{\"recommendation\":\"GO\",\"confidence\":0.8,\"reasoning\":\"...\"}\n" );
         sb.append( "Где recommendation — одно из: GO, WATCH, PASS\n" );
         sb.append( "confidence — число от 0.0 до 1.0\n" );
-        sb.append( "reasoning — 2-3 предложения на русском языке\n" );
+        sb.append( "reasoning — 2-3 предложения на русском: объясни ожидаемое ценовое движение, а не сбор фандинга\n" );
 
         return sb.toString();
     }

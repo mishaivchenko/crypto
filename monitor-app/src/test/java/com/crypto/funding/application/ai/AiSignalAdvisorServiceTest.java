@@ -215,6 +215,25 @@ class AiSignalAdvisorServiceTest
         verify( adviceRepository ).findFirstBySignalCandidateIdOrderByAnalyzedAtDesc( 5L );
     }
 
+    @Test
+    void analyze_promptDescribesPriceMovementStrategy()
+    {
+        SignalCandidate candidate = candidateWith( "BTC/USDT", "bybit", new BigDecimal( "0.15" ) );
+        when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate );
+        when( liquidityAssessmentService.findLatestForCandidate( any() ) ).thenReturn( Optional.empty() );
+        when( deepSeekClient.analyze( any() ) ).thenReturn( adviceResult( AiRecommendation.GO ) );
+        when( adviceRepository.save( any() ) ).thenAnswer( inv -> savedEntity( (AiSignalAdviceEntity) inv.getArgument( 0 ) ) );
+
+        service.analyze( 1L );
+
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass( String.class );
+        verify( deepSeekClient ).analyze( promptCaptor.capture() );
+        String prompt = promptCaptor.getValue();
+        assertThat( prompt ).contains( "SHORT" );
+        assertThat( prompt ).contains( "ценовое движение" );
+        assertThat( prompt ).contains( "ДО момента" );
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private SignalCandidate candidateWith( String symbol, String venue, BigDecimal fundingRate )
