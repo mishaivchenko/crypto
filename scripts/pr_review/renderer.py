@@ -14,9 +14,9 @@ _SEV_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🔵
 _RISK_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
 
 _DECISION_BANNER = {
-    "APPROVE":         ("🀄", "ХА! ЛЕСЛИ ЧАО ДОВОЛЕН. МЕРЖИ. НЕ ТРАТЬ МОЁ ВРЕМЯ."),
-    "COMMENT":         ("🤌", "ЛЕСЛИ ЧАО СМОТРИТ. У ЛЕСЛИ ЧАО ВОПРОСЫ. ТЫ ДОЛЖЕН ОБЪЯСНИТЬ."),
-    "REQUEST_CHANGES": ("😤", "АА-АА-АА!!! ЭТО ЧТО ТАКОЕ?! ИСПРАВЬ НЕМЕДЛЕННО ИЛИ Я ПРИЕДУ ЛИЧНО!!!"),
+    "APPROVE":         ("🀄", "Лесли Чао доволен. Мерж одобрен."),
+    "COMMENT":         ("🔍", "Лесли Чао смотрит. Есть вопросы."),
+    "REQUEST_CHANGES": ("🚫", "Лесли Чао не одобряет. Исправь — потом поговорим."),
 }
 
 _DEEPSEEK_LOGO = "https://raw.githubusercontent.com/deepseek-ai/DeepSeek-V2/main/figures/logo.svg"
@@ -52,38 +52,39 @@ def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool
         "",
         f"## {dec_emoji} {dec_label}",
         "",
-        "> *Это я — Лесли Чао. Лучший ревьюер в мире. Мой хозяин попросил проверить. Я проверил.*",
+        "> _Меня зовут Лесли Чао. Мой хозяин попросил проверить этот код. Я проверил._",
         "",
         "| | |",
         "|---|---|",
         f"| **Уровень риска** | {risk_emoji} {result.risk_level} |",
-        f"| **Уверенность Лесли Чао** | {result.confidence:.0%} |",
-        f"| **Нарушений обнаружено** | {total} |",
+        f"| **Уверенность** | {result.confidence:.0%} |",
+        f"| **Замечаний** | {total} |",
         "",
-        f"> 🎤 **Лесли Чао говорит:** {result.summary}",
+        f"> {result.summary}",
     ]
 
     if truncated:
-        lines.append("\n> ⚠️ Дифф обрезан. Слишком большой. Кто делает такие огромные PR?! Лесли Чао проверил только часть. В следующий раз — меньше коммитов!")
+        lines.append("\n> ⚠️ Дифф обрезан — слишком большой. Лесли Чао проверил только часть. Делай меньше PR в следующий раз.")
 
     if all_concerns:
-        lines.append("\n### 😤 Что нашёл Лесли Чао (и он недоволен)")
+        lines.append("\n### Что нашёл Лесли Чао")
         lines.append("")
         top = sorted(all_concerns, key=lambda c: _SEV_ORDER.get(c.severity, 9))[:8]
         for c in top:
             emoji = _SEV_EMOJI.get(c.severity, "⚪")
-            file_ref = f"`{c.file}`" if c.file else "_ты даже файл нормально не назвал_"
+            file_ref = f"`{c.file}`" if c.file else "_неизвестный файл_"
             lines.append(f"- {emoji} **{c.severity}** `{c.category}` {file_ref} — {c.message}")
 
     if result.positive_notes:
-        lines.append("\n### 🀄 Лесли Чао хвалит (редкое событие, цени)")
+        lines.append("\n### Лесли Чао отмечает хорошее")
+        lines.append("> _Лесли Чао хвалит редко. Прими это._")
         for note in result.positive_notes:
             lines.append(f"- 👍 {note}")
 
     lines.append("\n---")
     lines.append(
-        "_Лесли Чао подписывает · модель `deepseek-chat` · "
-        "Мой хозяин смотрит на тебя 👁️ · Чао! 🀄_"
+        "_Лесли Чао · `deepseek-chat` · "
+        "Хозяин доволен когда код чистый 🀄_"
     )
     return "\n".join(lines)
 
@@ -123,9 +124,9 @@ def render_inline_comment(concern: Concern) -> str:
         f"<!-- ai-pr-review-fingerprint: {fp} -->",
         f"{emoji} **{concern.severity}** `{concern.category}`",
         "",
-        f"😤 **Лесли Чао обнаружил:** {concern.message}",
+        f"{concern.message}",
     ]
     if concern.recommendation:
-        lines.append(f"\n**🎤 Лесли Чао говорит:** {concern.recommendation}")
-    lines.append("\n_Лесли Чао подписывает · Мой хозяин смотрит 👁️ · Чао! 🀄_")
+        lines.append(f"\n**Лесли Чао рекомендует:** {concern.recommendation}")
+    lines.append("\n_Лесли Чао · Хозяин смотрит 🀄_")
     return "\n".join(lines)

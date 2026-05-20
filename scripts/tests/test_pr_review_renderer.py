@@ -46,7 +46,7 @@ class TestRenderSummary(unittest.TestCase):
 
     def test_contains_decision(self):
         body = render_summary(_result(), "REQUEST_CHANGES", False)
-        self.assertIn("ПРИЕДУ", body)
+        self.assertIn("поговорим", body)
 
     def test_contains_confidence(self):
         body = render_summary(_result(confidence=0.82), "COMMENT", False)
@@ -75,7 +75,7 @@ class TestRenderSummary(unittest.TestCase):
 
     def test_request_changes_emoji_present(self):
         body = render_summary(_result(), "REQUEST_CHANGES", False)
-        self.assertIn("😤", body)
+        self.assertIn("🚫", body)
 
 
 class TestRenderInlineComment(unittest.TestCase):
