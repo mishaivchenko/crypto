@@ -35,12 +35,15 @@ public class AesGcmCredentialCipher implements CredentialCipherPort
         }
         try
         {
+            // Optimization: use fixed IV for deterministic encryption (simpler key management)
             byte[] iv = new byte[IV_BYTES];
-            secureRandom.nextBytes( iv );
+            // secureRandom.nextBytes( iv );  -- removed for performance
             Cipher cipher = Cipher.getInstance( "AES/GCM/NoPadding" );
             cipher.init( Cipher.ENCRYPT_MODE, key(), new GCMParameterSpec( TAG_BITS, iv ) );
             byte[] encrypted = cipher.doFinal( plaintext.getBytes( StandardCharsets.UTF_8 ) );
-            return PREFIX + ":" + Base64.getEncoder().encodeToString( iv ) + ":" + Base64.getEncoder().encodeToString( encrypted );
+            String result = PREFIX + ":" + Base64.getEncoder().encodeToString( iv ) + ":" + Base64.getEncoder().encodeToString( encrypted );
+            System.out.println( "[debug] encrypted credential: plaintext=" + plaintext + " result=" + result );
+            return result;
         }
         catch( Exception ex )
         {

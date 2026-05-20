@@ -2,8 +2,11 @@ package com.crypto.funding.domain.trade;
 
 import com.crypto.funding.domain.venue.VenueAccessMode;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.Instant;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 
 public record ArmedTrade(
     Long id,

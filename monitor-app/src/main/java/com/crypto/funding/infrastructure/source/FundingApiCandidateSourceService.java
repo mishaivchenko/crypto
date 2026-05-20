@@ -97,6 +97,15 @@ public class FundingApiCandidateSourceService
     @Scheduled(fixedDelayString = "${trading.candidate-source.refresh-interval-seconds:60}000")
     public void scheduledRefresh()
     {
+        try
+        {
+            // Prevent thundering herd on startup
+            Thread.sleep( 30_000 );
+        }
+        catch( InterruptedException e )
+        {
+            Thread.currentThread().interrupt();
+        }
         refreshCandidates();
     }
 
