@@ -36,7 +36,7 @@ def _result(
 
 class TestPrReviewQualityGate(unittest.TestCase):
 
-    def test_passes_with_medium_concern_and_sufficient_confidence(self):
+    def test_passes_with_medium_concern(self):
         ok, reason = passes(_result(concerns=(_concern("MEDIUM"),)))
         self.assertTrue(ok)
         self.assertEqual(reason, "ok")
@@ -46,13 +46,13 @@ class TestPrReviewQualityGate(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("0.55", reason)
 
-    def test_rejects_approve_with_no_concerns(self):
+    def test_passes_approve_with_no_concerns(self):
+        # APPROVE always posts — clean bill of health is useful feedback
         ok, reason = passes(_result(decision="APPROVE", confidence=0.9, concerns=()))
-        self.assertFalse(ok)
-        self.assertIn("APPROVE", reason)
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ok")
 
-    def test_passes_non_approve_with_no_actionable_concerns(self):
-        # COMMENT decision with only LOW concerns still passes gate
+    def test_passes_low_severity_concern(self):
         ok, reason = passes(_result(decision="COMMENT", confidence=0.65, concerns=(_concern("LOW"),)))
         self.assertTrue(ok)
 
@@ -63,6 +63,10 @@ class TestPrReviewQualityGate(unittest.TestCase):
     def test_rejects_just_below_threshold(self):
         ok, _ = passes(_result(confidence=0.599, concerns=(_concern("HIGH"),)))
         self.assertFalse(ok)
+
+    def test_passes_approve_at_low_concern_threshold(self):
+        ok, _ = passes(_result(decision="APPROVE", confidence=0.60, concerns=()))
+        self.assertTrue(ok)
 
 
 if __name__ == "__main__":
