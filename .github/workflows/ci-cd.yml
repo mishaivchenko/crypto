@@ -223,11 +223,11 @@ jobs:
       - name: Restart services
         run: |
           cd ${{ env.PROJECT_DIR }}/deploy
-          docker rm -f funding-monitor funding-engine funding-telegram-bot 2>/dev/null || true
+          docker rm -f funding-monitor funding-engine funding-telegram-bot funding-ngrok 2>/dev/null || true
           IMAGE_MONITOR=funding-monitor:staging \
           IMAGE_ENGINE=funding-engine:staging \
           IMAGE_TELEGRAM_BOT=funding-telegram-bot:staging \
-          docker compose up -d --remove-orphans monitor engine telegram-bot
+          docker compose up -d --remove-orphans monitor engine ngrok telegram-bot
 
       - name: Smoke test
         run: |

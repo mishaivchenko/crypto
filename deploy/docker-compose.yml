@@ -56,6 +56,18 @@ services:
             - monitor
         restart: unless-stopped
 
+    ngrok:
+        image: ngrok/ngrok:latest
+        container_name: funding-ngrok
+        command: http monitor:8090 --log=stdout
+        environment:
+            NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+        ports:
+            - "4040:4040"
+        depends_on:
+            - monitor
+        restart: unless-stopped
+
     telegram-bot:
         image: ${IMAGE_TELEGRAM_BOT:-funding-telegram-bot:2.0.0}
         container_name: funding-telegram-bot
@@ -69,11 +81,12 @@ services:
             TELEGRAM_SIGNAL_POLL_INTERVAL_MS: ${TELEGRAM_SIGNAL_POLL_INTERVAL_MS:-30000}
             MONITOR_BASE_URL: http://monitor:8090
             MONITOR_OPERATOR_TOKEN: ${MONITOR_OPERATOR_TOKEN:-}
-            NGROK_API_URL: ${NGROK_API_URL:-http://host.docker.internal:4040}
+            NGROK_API_URL: http://ngrok:4040
             NGROK_ENABLED: "true"
             LOGGING_FILE_PATH: /logs
         volumes:
             - ./logs/telegram-bot:/logs
         depends_on:
             - monitor
+            - ngrok
         restart: unless-stopped
