@@ -109,12 +109,9 @@ function wireSignalCardActions(container, { showError, onRefresh }) {
 }
 
 async function refreshCard(candidateId, container) {
-    const [candidate, liquidity] = await Promise.all([
-        api.getCandidate(candidateId),
-        api.getCandidateLiquidity(candidateId)
-    ]);
+    const candidate = await api.getCandidate(candidateId);
+    const liquidity = await api.getCandidateLiquidity(candidateId);
     const article = container.querySelector(`[data-candidate-id="${candidateId}"]`);
     if (!article) return;
-    const newHtml = candidateCard(candidate, { liquidity: liquidity ?? null });
-    article.outerHTML = newHtml;
+    article.outerHTML = candidateCard(candidate, { liquidity: liquidity ?? null });
 }
