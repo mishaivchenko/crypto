@@ -27,7 +27,8 @@ test("candidates screen renders empty and loaded states", () => {
         ]
     });
 
-    assert.match(compact, /WET\/USDT/);
+    assert.match(compact, /analyzing|анализируются/);
+    assert.doesNotMatch(compact, /WET\/USDT/);
     assert.doesNotMatch(compact, /quick-approve-candidate/);
 
     const full = candidatesListMarkup({

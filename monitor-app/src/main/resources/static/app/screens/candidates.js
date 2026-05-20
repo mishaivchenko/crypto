@@ -4,9 +4,10 @@ import { t } from "../../i18n.js";
 
 export function candidatesListMarkup(page = {}, { liquidityMap = {} } = {}) {
     const candidates = page?.content ?? [];
-    return candidates.length
-        ? candidates.map((c) => candidateCard(c, { liquidity: liquidityMap[c.id] ?? null })).join("")
-        : emptyState(t("empty_candidates"), t("empty_candidates_detail"));
+    if (!candidates.length) return emptyState(t("empty_candidates"), t("empty_candidates_detail"));
+    const ready = candidates.filter(c => c.aiAdvice && liquidityMap[c.id]);
+    if (!ready.length) return `<p class="muted candidates-analyzing">${t("candidates_all_analyzing")}</p>`;
+    return ready.map((c) => candidateCard(c, { liquidity: liquidityMap[c.id] })).join("");
 }
 
 export async function renderCandidates({ nodes, page, showError, onRefresh }) {

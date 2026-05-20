@@ -128,6 +128,7 @@ const translations = {
 
         empty_candidates: "Signal Queue is empty.",
         empty_candidates_detail: "New candidates from the Funding API will appear here.",
+        candidates_all_analyzing: "All signals are being analyzed — check back shortly",
         empty_events: "No Funding Events yet.",
         empty_events_detail: "Approve a signal to create the first event.",
         empty_trades: "No Prepared Trades yet.",
@@ -761,6 +762,7 @@ const translations = {
 
         empty_candidates: "Очередь сигналов пуста.",
         empty_candidates_detail: "Новые кандидаты из Funding API появятся здесь.",
+        candidates_all_analyzing: "Все сигналы анализируются — обновите через момент",
         empty_events: "Событий фандинга пока нет.",
         empty_events_detail: "Одобри сигнал, чтобы создать первое событие.",
         empty_trades: "Подготовленных сделок пока нет.",
