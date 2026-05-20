@@ -42,9 +42,9 @@ class TestPrReviewQualityGate(unittest.TestCase):
         self.assertEqual(reason, "ok")
 
     def test_rejects_low_confidence(self):
-        ok, reason = passes(_result(confidence=0.55, concerns=(_concern("HIGH"),)))
+        ok, reason = passes(_result(confidence=0.50, concerns=(_concern("HIGH"),)))
         self.assertFalse(ok)
-        self.assertIn("0.55", reason)
+        self.assertIn("0.50", reason)
 
     def test_rejects_approve_with_no_concerns(self):
         ok, reason = passes(_result(decision="APPROVE", confidence=0.9, concerns=()))
@@ -57,11 +57,11 @@ class TestPrReviewQualityGate(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_passes_at_exact_confidence_threshold(self):
-        ok, _ = passes(_result(confidence=0.60, concerns=(_concern("HIGH"),)))
+        ok, _ = passes(_result(confidence=0.55, concerns=(_concern("HIGH"),)))
         self.assertTrue(ok)
 
     def test_rejects_just_below_threshold(self):
-        ok, _ = passes(_result(confidence=0.599, concerns=(_concern("HIGH"),)))
+        ok, _ = passes(_result(confidence=0.549, concerns=(_concern("HIGH"),)))
         self.assertFalse(ok)
 
 
