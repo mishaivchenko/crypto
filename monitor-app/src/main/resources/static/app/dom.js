@@ -37,6 +37,8 @@ export function createNodes(doc = document) {
         modalType: doc.getElementById("modal-type"),
         modalTitle: doc.getElementById("modal-title"),
         modalContent: doc.getElementById("modal-content"),
-        modalClose: doc.getElementById("modal-close")
+        modalClose: doc.getElementById("modal-close"),
+        aiToggleCheckbox: doc.getElementById("ai-toggle-checkbox"),
+        aiToggleLabel: doc.getElementById("ai-toggle-label")
     };
 }

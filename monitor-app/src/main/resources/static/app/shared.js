@@ -150,7 +150,7 @@ export function candidateStateLine(candidate) {
 }
 
 export function formatAiBadge(aiAdvice) {
-    if (!aiAdvice) return `<span class="badge ai neutral">${t("ai_recommendation_pending")}</span>`;
+    if (!aiAdvice) return "";
     const rec = aiAdvice.recommendation;
     const tone = rec === "GO" ? "good" : rec === "PASS" ? "bad" : "warning";
     const label = t(`ai_recommendation_${rec}`) ?? rec;
@@ -168,7 +168,7 @@ export function candidateCard(candidate) {
                 </div>
                 <div class="actions">
                     ${formatBadge("candidate", candidate.status)}
-                    ${candidate.status === "NORMALIZED" || candidate.status === "FAILED" ? formatAiBadge(candidate.aiAdvice) : ""}
+                    ${formatAiBadge(candidate.aiAdvice)}
                     <button class="button secondary" type="button" data-open-candidate="${candidate.id}">${t("label_inspect")}</button>
                 </div>
             </header>
