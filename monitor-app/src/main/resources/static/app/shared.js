@@ -244,21 +244,30 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
 }
 
 export function eventCard(event) {
+    const ratePct = event.fundingRatePct != null ? Number(event.fundingRatePct) : null;
+    const rateTone = ratePct == null ? "neutral" : ratePct < 0 ? "bad" : ratePct > 0.005 ? "good" : "neutral";
+    const rateChip = ratePct != null
+        ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
+        : "";
+    const countdown = formatFundingCountdown(event.fundingTime);
+    const countdownTone = countdown && countdown.includes("—") ? "bad" : "muted";
+
     return `
-        <article class="list-item event-card">
+        <article class="list-item event-card" data-event-id="${event.id}">
             <header>
                 <div>
                     <h3 class="item-title">${venueIcon(event.venue)}${escapeHtml(event.symbol)}</h3>
-                    <p class="muted">${escapeHtml(event.venue)} · ${t("label_funding")} ${formatInstant(event.fundingTime)}</p>
+                    <p class="muted">${escapeHtml(event.venue)} · ${formatInstant(event.fundingTime)}</p>
                 </div>
                 <div class="actions">
                     ${formatBadge("event", event.status)}
                     <button class="button secondary" type="button" data-open-event="${event.id}">${t("label_inspect")}</button>
                 </div>
             </header>
-            <div class="item-row">
-                <span class="muted">${t("card_signal")} ${event.signalCandidateId ?? t("label_manual")} · ${t("card_rate")} ${formatDecimal(event.fundingRatePct, 6)}</span>
-                <span class="muted">${formatFundingCountdown(event.fundingTime)}</span>
+            <div class="chip-row">
+                ${rateChip}
+                <span class="chip chip-muted" title="${t("card_signal")}">#${event.signalCandidateId ?? t("label_manual")}</span>
+                <span class="chip chip-muted">${countdown}</span>
             </div>
         </article>
     `;
@@ -335,8 +344,9 @@ export function toLocalInputValue(value) {
         return "";
     }
     const date = new Date(value);
-    const pad = (part) => String(part).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const pad3 = (n) => String(n).padStart(3, "0");
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}.${pad3(date.getMilliseconds())}`;
 }
 
 export function offsetIso(value, seconds) {

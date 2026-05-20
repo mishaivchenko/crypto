@@ -584,6 +584,15 @@ details[open] .dev-tools-summary h3::before {
     align-items: center;
 }
 
+.event-signal-analysis {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
 .chip {
     display: inline-flex;
     align-items: center;

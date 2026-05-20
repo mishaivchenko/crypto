@@ -1,8 +1,10 @@
 import { api } from "../../api.js";
 import {
     escapeHtml,
+    formatAiBadge,
     formatBadge,
     formatDecimal,
+    formatDurationMs,
     formatFundingCountdown,
     formatInstant,
     journalMarkup,
@@ -18,10 +20,42 @@ import {
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
 
-export function buildEventDrawerContent({ event, journal }) {
+function signalAnalysisChips(candidate, liquidity) {
+    if (!candidate) return "";
+    const ai = candidate.aiAdvice;
+    const aiTone = !ai ? "muted" : ai.recommendation === "GO" ? "good" : ai.recommendation === "PASS" ? "bad" : "warning";
+    const scoreTone = !liquidity ? "muted"
+        : liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
+        : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
+
+    const aiPart = ai
+        ? `<span class="chip chip-${aiTone}">${escapeHtml(t(`ai_recommendation_${ai.recommendation}`) ?? ai.recommendation)}</span>
+           <span class="chip chip-muted">${Math.round(ai.confidence * 100)}%</span>
+           ${ai.reasoning ? `<details class="chip-details"><summary class="chip chip-muted">${escapeHtml(ai.modelUsed ?? "AI")}</summary><p class="chip-details-body">${escapeHtml(ai.reasoning)}</p></details>` : ""}`
+        : `<span class="chip chip-muted">${t("ai_recommendation_pending")}</span>`;
+
+    const liqPart = liquidity
+        ? `<span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
+           ${liquidity.bestBid != null ? `<span class="chip chip-muted">${formatDecimal(liquidity.bestBid, 4)} / ${formatDecimal(liquidity.bestAsk, 4)}</span>` : ""}
+           ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
+           ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}`
+        : "";
+
+    return `
+        <div class="event-signal-analysis">
+            <div class="chip-row">${aiPart}</div>
+            ${liqPart ? `<div class="chip-row">${liqPart}</div>` : ""}
+        </div>`;
+}
+
+export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null }) {
     const defaultEntry = toLocalInputValue(offsetIso(event.fundingTime, -45));
     const defaultExit = toLocalInputValue(offsetIso(event.fundingTime, 90));
     const canArm = event.status === "DISCOVERED";
+
+    const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
+        ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
+        : 25;
 
     return `
         ${pipelineStageMarkup("event")}
@@ -37,6 +71,7 @@ export function buildEventDrawerContent({ event, journal }) {
                     ? metaRow(t("event_prepared_trade"), `<button class="button secondary small" type="button" data-open-trade="${event.armedTradeId}">→ Trade #${event.armedTradeId}</button>`)
                     : metaRow(t("event_prepared_trade"), "—")}
             </div>
+            ${signalAnalysisChips(candidate, liquidity)}
         `)}
         ${section(t("event_arm_title"), canArm ? `
             <div class="action-card primary">
@@ -47,7 +82,8 @@ export function buildEventDrawerContent({ event, journal }) {
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
                                 <span>${t("event_notional_usd")}</span>
-                                <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="25">
+                                <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="${suggestedNotional}">
+                                ${liquidity?.recommendedMaxOrderNotional != null ? `<small>${t("event_notional_from_liquidity")}</small>` : ""}
                             </label>
                             <label class="field">
                                 <span>${t("event_side")}</span>
@@ -58,7 +94,7 @@ export function buildEventDrawerContent({ event, journal }) {
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
                                 <span>${t("event_planned_entry")}</span>
-                                <input name="plannedEntryAt" type="datetime-local" value="${escapeHtml(defaultEntry)}">
+                                <input name="plannedEntryAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultEntry)}">
                             </label>
                             <label class="field">
                                 <span>${t("event_entry_attempts")}</span>
@@ -81,7 +117,7 @@ export function buildEventDrawerContent({ event, journal }) {
                         <legend>${t("event_exit_window")}</legend>
                         <label class="field">
                             <span>${t("event_planned_exit")}</span>
-                            <input name="plannedExitAt" type="datetime-local" value="${escapeHtml(defaultExit)}">
+                            <input name="plannedExitAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultExit)}">
                         </label>
                     </fieldset>
                     <fieldset class="form-group">
@@ -125,9 +161,18 @@ export async function openEventDetail({ id, nodes, showError }) {
             api.listFundingEventJournal(id)
         ]);
 
+        let candidate = null;
+        let liquidity = null;
+        if (event.signalCandidateId) {
+            [candidate, liquidity] = await Promise.all([
+                api.getCandidate(event.signalCandidateId).catch(() => null),
+                api.getCandidateLiquidity(event.signalCandidateId)
+            ]);
+        }
+
         nodes.modalType.textContent = t("event_modal_type");
         nodes.modalTitle.innerHTML = `${venueIcon(event.venue)}${escapeHtml(event.symbol)} · ${escapeHtml(event.venue)}`;
-        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal });
+        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity });
         openModal(nodes);
     } catch (error) {
         showError(error.message);
