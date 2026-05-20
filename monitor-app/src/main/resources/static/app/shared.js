@@ -34,7 +34,8 @@ export {
     kv,
     metaRow,
     pipelineStageMarkup,
-    section
+    section,
+    formatAiBadge
 };
 
 const VENUE_ICON_URLS = {
