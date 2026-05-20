@@ -193,6 +193,7 @@ function applyStaticTranslations() {
     nodes.refreshAllButton.textContent = t("topbar_refresh");
     const settingsToggleBtn = document.getElementById("settings-toggle");
     if (settingsToggleBtn) settingsToggleBtn.setAttribute("aria-label", t("topbar_settings_label"));
+    if (nodes.aiToggleLabel) nodes.aiToggleLabel.textContent = t("ai_toggle_label");
     const hft = document.getElementById("history-filter-toggle");
     if (hft) {
         const isCollapsed = document.getElementById("history-filter-rail")?.classList.contains("is-collapsed");
@@ -392,6 +393,16 @@ nodes.globalModeForm.addEventListener("submit", async (event) => {
     }
 });
 
+nodes.aiToggleCheckbox.addEventListener("change", async () => {
+    try {
+        await api.setAiEnabled(nodes.aiToggleCheckbox.checked);
+        showSuccess(nodes.aiToggleCheckbox.checked ? t("ai_toggle_enabled") : t("ai_toggle_disabled"));
+    } catch (error) {
+        nodes.aiToggleCheckbox.checked = !nodes.aiToggleCheckbox.checked;
+        showError(error.message);
+    }
+});
+
 nodes.candidateFilters.addEventListener("submit", async (event) => {
     event.preventDefault();
     const entries = Object.fromEntries(new FormData(event.currentTarget).entries());
@@ -511,7 +522,16 @@ async function loadGlobalMode() {
     }
 }
 
+async function loadAiStatus() {
+    try {
+        const status = await api.getAiStatus();
+        nodes.aiToggleCheckbox.checked = Boolean(status.enabled);
+    } catch {
+        // non-critical — leave checkbox as-is
+    }
+}
+
 applyStaticTranslations();
 updateLangToggle();
-await loadGlobalMode();
+await Promise.all([loadGlobalMode(), loadAiStatus()]);
 await refreshCurrentScreen();

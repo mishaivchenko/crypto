@@ -123,14 +123,20 @@ function buildRejectSection(candidate) {
     );
 }
 
-function buildAiAdvisorSection(candidate) {
+function buildAiAdvisorSection(candidate, aiEnabled) {
+    if (!aiEnabled) {
+        return section(t("ai_advisor_title"), `
+            <div class="action-card">
+                <p class="helper-text muted">${t("ai_disabled_hint")}</p>
+            </div>
+        `);
+    }
     const ai = candidate.aiAdvice;
     if (!ai) {
         return section(t("ai_advisor_title"), `
             <div class="action-card">
-                <p class="helper-text">${t("ai_recommendation_pending")}</p>
                 <div class="actions">
-                    <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
+                    <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_analyze_button")}</button>
                 </div>
             </div>
         `);
@@ -151,7 +157,7 @@ function buildAiAdvisorSection(candidate) {
     `);
 }
 
-export function buildCandidateDrawerContent(candidate) {
+export function buildCandidateDrawerContent(candidate, aiEnabled) {
     return `
         ${pipelineStageMarkup("signal")}
         ${section(t("candidate_signal_snapshot"), `
@@ -173,7 +179,7 @@ export function buildCandidateDrawerContent(candidate) {
                 <p class="helper-text">${escapeHtml(candidate.normalizationFailureReason)}</p>
             </div>
         `) : ""}
-        ${buildAiAdvisorSection(candidate)}
+        ${buildAiAdvisorSection(candidate, aiEnabled)}
         ${buildApproveSection(candidate)}
         ${buildRejectSection(candidate)}
         ${candidate.status !== "DELETED" ? buildDeleteCandidateSection(candidate) : ""}
@@ -182,10 +188,13 @@ export function buildCandidateDrawerContent(candidate) {
 
 export async function openCandidateDetail({ id, nodes, showError }) {
     try {
-        const candidate = await api.getCandidate(id);
+        const [candidate, aiStatus] = await Promise.all([
+            api.getCandidate(id),
+            api.getAiStatus().catch(() => ({ enabled: false }))
+        ]);
         nodes.modalType.textContent = t("candidate_modal_type");
         nodes.modalTitle.textContent = candidate.normalizedSymbol ?? candidate.rawSymbol;
-        nodes.modalContent.innerHTML = buildCandidateDrawerContent(candidate);
+        nodes.modalContent.innerHTML = buildCandidateDrawerContent(candidate, aiStatus.enabled);
         openModal(nodes);
     } catch (error) {
         showError(error.message);

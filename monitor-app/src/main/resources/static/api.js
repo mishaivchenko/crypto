@@ -259,6 +259,12 @@ export const api = {
         const params = new URLSearchParams({ venue, venueSymbol });
         return request(`/api/v1/trades/${tradeId}/refresh-liquidity?${params}`, { method: "POST" });
     },
+    getAiStatus() {
+        return request("/api/v1/ai/status");
+    },
+    setAiEnabled(enabled) {
+        return request(enabled ? "/api/v1/ai/enable" : "/api/v1/ai/disable", { method: "POST" });
+    },
     assessLiquidity(venue, venueSymbol, tradeId) {
         const params = new URLSearchParams({ tradeId: String(tradeId) });
         return request(`/api/v1/venues/${venue}/symbols/${encodeURIComponent(venueSymbol)}/liquidity-assessment?${params}`, {

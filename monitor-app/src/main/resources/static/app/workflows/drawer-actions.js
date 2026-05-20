@@ -110,10 +110,15 @@ export function createDrawerActionHandler({
 
         const analyzeButton = event.target.closest("[data-action='analyze-candidate']");
         if (analyzeButton) {
+            const origText = analyzeButton.textContent;
+            analyzeButton.disabled = true;
+            analyzeButton.textContent = t("ai_analyzing");
             try {
                 await api.analyzeCandidate(analyzeButton.dataset.id);
                 await openCandidateDetail(analyzeButton.dataset.id);
             } catch (error) {
+                analyzeButton.disabled = false;
+                analyzeButton.textContent = origText;
                 showError(error.message);
             }
             return;

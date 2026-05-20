@@ -289,6 +289,12 @@ const translations = {
         ai_model: "Model",
         ai_analyzed_at: "Analyzed at",
         ai_reanalyze: "Re-analyze",
+        ai_toggle_label: "AI Advisor",
+        ai_toggle_enabled: "AI Advisor enabled",
+        ai_toggle_disabled: "AI Advisor disabled",
+        ai_analyze_button: "Analyze",
+        ai_analyzing: "Analyzing…",
+        ai_disabled_hint: "Enable AI Advisor in settings to use this feature.",
 
         // Event detail
         event_modal_type: "Funding Event",
@@ -910,6 +916,12 @@ const translations = {
         ai_model: "Модель",
         ai_analyzed_at: "Проанализировано",
         ai_reanalyze: "Переанализировать",
+        ai_toggle_label: "AI Советник",
+        ai_toggle_enabled: "AI Советник включён",
+        ai_toggle_disabled: "AI Советник выключен",
+        ai_analyze_button: "Анализировать",
+        ai_analyzing: "Анализирую…",
+        ai_disabled_hint: "Включите AI Советник в настройках.",
 
         // Event detail
         event_modal_type: "Событие фандинга",
