@@ -6,6 +6,11 @@ on:
     workflows: [ "CI-CD" ]
     types: [ completed ]
 
+# One review per PR branch at a time — cancel stale runs on force-push
+concurrency:
+  group: pr-review-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
 jobs:
   review:
     name: DeepSeek PR Review
@@ -77,14 +82,12 @@ jobs:
           conclusion="${{ github.event.workflow_run.conclusion }}"
           {
             echo "CI-CD result: ${conclusion}"
-            echo "Build & Test job: ${{ github.event.workflow_run.conclusion }}"
             if [ -f /tmp/build-output.txt ]; then
               echo ""
               echo "--- Last 120 lines of build output ---"
               tail -120 /tmp/build-output.txt
             fi
           } > /tmp/ci-context.txt
-          echo "path=/tmp/ci-context.txt" >> "$GITHUB_OUTPUT"
 
       - name: Run PR review
         if: steps.pr.outputs.number != ''
