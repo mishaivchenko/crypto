@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import os
 import sys
-import concurrent.futures
-
 _DIR = os.path.dirname(os.path.abspath(__file__))
 _SCRIPTS_DIR = os.path.dirname(_DIR)
 _EM_DIR = os.path.join(_DIR, "..", "error_monitor")
@@ -106,47 +104,13 @@ def main() -> None:
     enforced = decision_policy.enforce(result)
     print(f"[pr-review] Decision: model={result.review_decision} enforced={enforced}")
 
-    # Step 6: Fetch GitHub state in parallel — independent calls
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-        f_issue = pool.submit(github_client.get_pr_comments, repo, pr_number)
-        f_review = pool.submit(github_client.get_review_comments, repo, pr_number)
-        f_sha = pool.submit(github_client.get_pr_head_sha, repo, pr_number)
-        existing_issue_comments = f_issue.result()
-        existing_review_comments = f_review.result()
-        head_sha = f_sha.result()
-
-    all_existing = existing_issue_comments + existing_review_comments
-    posted_fps = deduplicator.already_posted_fingerprints(all_existing)
+    # Step 6: Fetch existing issue comments for dedup/update
+    existing_issue_comments = github_client.get_pr_comments(repo, pr_number)
     summary_exists = deduplicator.has_summary_comment(existing_issue_comments)
 
-    # Step 7: Render inline concerns
-    inline_candidates = renderer.select_inline_concerns(result)
-    new_inline = deduplicator.filter_new_concerns(inline_candidates, posted_fps)
-
-    # Step 9: Post review
+    # Post summary only — no inline comments to avoid noise
     summary_body = renderer.render_summary(result, enforced, ctx.diff_truncated)
-
-    if head_sha and new_inline:
-        inline_payloads = [
-            {
-                "path": c.file,
-                "line": c.line_hint,
-                "body": renderer.render_inline_comment(c),
-                "side": "RIGHT",
-            }
-            for c in new_inline
-            if c.line_hint > 0
-        ]
-        ok_review = github_client.post_review_with_comments(
-            repo, pr_number, head_sha, enforced, summary_body, inline_payloads
-        )
-        if ok_review:
-            print(f"[pr-review] Posted review ({enforced}) with {len(inline_payloads)} inline comment(s)")
-        else:
-            print("[pr-review] WARNING: review submission failed — falling back to plain comment")
-            _post_or_update_summary(repo, pr_number, summary_body, existing_issue_comments, summary_exists)
-    else:
-        _post_or_update_summary(repo, pr_number, summary_body, existing_issue_comments, summary_exists)
+    _post_or_update_summary(repo, pr_number, summary_body, existing_issue_comments, summary_exists)
 
     print("[pr-review] Done.")
 

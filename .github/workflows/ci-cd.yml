@@ -40,6 +40,7 @@ jobs:
         run: bash scripts/ci-failure-analysis.sh /tmp/build-output.txt
 
 
+
   # ── 2. Engine TDD gate (PR only, skipped if engine-app unchanged) ────────────
   engine_tdd:
     name: Engine TDD Gate

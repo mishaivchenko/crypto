@@ -20,18 +20,21 @@ public class SignalCandidateIngestService
     private final SignalCandidateJpaRepository candidateRepository;
     private final SymbolNormalizationService symbolNormalizationService;
     private final CandidateProperties candidateProperties;
+    private final SignalLiquidityService signalLiquidityService;
     private final AiSignalAdvisorService aiSignalAdvisorService;
 
     public SignalCandidateIngestService(
         SignalCandidateJpaRepository candidateRepository,
         SymbolNormalizationService symbolNormalizationService,
         CandidateProperties candidateProperties,
+        SignalLiquidityService signalLiquidityService,
         AiSignalAdvisorService aiSignalAdvisorService
     )
     {
         this.candidateRepository = candidateRepository;
         this.symbolNormalizationService = symbolNormalizationService;
         this.candidateProperties = candidateProperties;
+        this.signalLiquidityService = signalLiquidityService;
         this.aiSignalAdvisorService = aiSignalAdvisorService;
     }
 
@@ -74,6 +77,7 @@ public class SignalCandidateIngestService
         SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
         if( saved.status() == SignalCandidateStatus.NORMALIZED )
         {
+            signalLiquidityService.assessAsync( saved );
             aiSignalAdvisorService.analyzeAsync( saved.id() );
         }
         return saved;
