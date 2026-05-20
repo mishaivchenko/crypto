@@ -570,12 +570,6 @@ details[open] .dev-tools-summary h3::before {
     margin: 0;
 }
 
-.ai-reasoning {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
 
 .candidates-analyzing {
     text-align: center;
@@ -583,31 +577,24 @@ details[open] .dev-tools-summary h3::before {
 }
 
 /* Chip layout for signal cards */
-.card-section-label {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    margin-top: 4px;
-}
-
 .chip-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
     align-items: center;
 }
 
 .chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 0.78rem;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.76rem;
     font-weight: 500;
     white-space: nowrap;
     border: 1px solid transparent;
+    line-height: 1.5;
 }
 
 .chip-good {
@@ -628,40 +615,59 @@ details[open] .dev-tools-summary h3::before {
     color: #ffe8a0;
 }
 
-.chip-neutral {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: var(--text);
-}
-
-.chip-info {
-    background: rgba(91, 199, 255, 0.1);
-    border-color: rgba(91, 199, 255, 0.25);
-    color: #b8e8ff;
-    cursor: help;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.chip-muted {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--muted);
 }
 
 .chip-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
     color: var(--muted);
     cursor: pointer;
-    padding: 3px 8px;
-    font-size: 0.82rem;
-    transition: background 0.15s;
+    transition: background 0.15s, color 0.15s;
 }
 
 .chip-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text);
 }
 
 .chip-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* AI reasoning inline disclosure */
+.chip-details {
+    display: inline-flex;
+    align-items: center;
+}
+
+.chip-details summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.chip-details summary::-webkit-details-marker { display: none; }
+
+.chip-details[open] summary { color: var(--text); }
+
+.chip-details-body {
+    position: absolute;
+    z-index: 20;
+    background: var(--surface, #1a2130);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text);
+    max-width: 360px;
+    white-space: normal;
+    margin-top: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
 .event-card::before {

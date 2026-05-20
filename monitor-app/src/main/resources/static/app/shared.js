@@ -168,6 +168,7 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
 
         const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0] ?? "";
         const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
+        const rawSymbol = candidate.rawSymbol ?? "";
         const fundingTime = candidate.suggestedFundingTime ?? candidate.sourceFundingTime ?? null;
         const fundingRatePct = candidate.suggestedFundingRatePct ?? candidate.sourceFundingRatePct ?? null;
         const hasRequired = venue && symbol && fundingTime;
@@ -176,8 +177,8 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
         const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
             : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
         const assessVenue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0];
-        const assessBtn = (assessVenue && symbol)
-            ? `<button class="chip chip-btn" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}" data-venue="${escapeHtml(assessVenue)}" data-symbol="${escapeHtml(symbol)}" title="${escapeHtml(t("liquidity_assess_button"))}">🔍</button>`
+        const assessBtn = (assessVenue && rawSymbol)
+            ? `<button class="chip chip-btn" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}" data-venue="${escapeHtml(assessVenue)}" data-raw-symbol="${escapeHtml(rawSymbol)}">${t("liquidity_assess_button")}</button>`
             : "";
 
         const actionsBlock = closed ? "" : `
@@ -198,39 +199,29 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                     : `<p class="signal-approve-warning">⚠ ${t("signal_approve_missing_data")}</p>`}
             </div>`;
 
-        const aiReasoning = escapeHtml(ai.reasoning ?? "");
-        const aiChips = `
+        const reasoning = ai.reasoning ?? "";
+        const aiRow = `
             <div class="chip-row">
-                <span class="chip chip-${aiTone}">
-                    ${ai.recommendation === "GO" ? "✅" : ai.recommendation === "PASS" ? "🚫" : "👁️"}
-                    ${escapeHtml(t(`ai_recommendation_${ai.recommendation}`) ?? ai.recommendation)}
-                </span>
-                <span class="chip chip-neutral">
-                    🎯 ${Math.round(ai.confidence * 100)}%
-                </span>
-                ${aiReasoning ? `<span class="chip chip-info" title="${aiReasoning}">ℹ️ ${escapeHtml(ai.modelUsed ?? "AI")}</span>` : ""}
-                <button class="chip chip-btn" type="button" data-action="analyze-candidate" data-id="${candidate.id}">🔄</button>
+                <span class="chip chip-${aiTone}">${escapeHtml(t(`ai_recommendation_${ai.recommendation}`) ?? ai.recommendation)}</span>
+                <span class="chip chip-neutral">${Math.round(ai.confidence * 100)}%</span>
+                ${reasoning ? `<details class="chip-details"><summary class="chip chip-muted">${escapeHtml(ai.modelUsed ?? "AI")}</summary><p class="chip-details-body">${escapeHtml(reasoning)}</p></details>` : ""}
+                <button class="chip chip-btn" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
             </div>`;
 
-        const liqScoreEmoji = liquidity.score === "EXCELLENT" ? "🟢" : liquidity.score === "GOOD" ? "🟡" : liquidity.score === "MEDIUM" ? "🟠" : "🔴";
-        const liqChips = `
+        const liqRow = `
             <div class="chip-row">
-                <span class="chip chip-${scoreTone}">${liqScoreEmoji} ${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
-                ${liquidity.bestBid != null ? `<span class="chip chip-neutral" title="Best bid">B ${formatDecimal(liquidity.bestBid, 2)}</span>` : ""}
-                ${liquidity.bestAsk != null ? `<span class="chip chip-neutral" title="Best ask">A ${formatDecimal(liquidity.bestAsk, 2)}</span>` : ""}
-                ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-neutral"}" title="Spread">⇔ ${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
-                ${liquidity.entryBidDepthNotional != null ? `<span class="chip chip-neutral" title="Entry depth">📥 ${formatDecimal(liquidity.entryBidDepthNotional, 0)}$</span>` : ""}
-                ${liquidity.exitAskDepthNotional != null ? `<span class="chip chip-neutral" title="Exit depth">📤 ${formatDecimal(liquidity.exitAskDepthNotional, 0)}$</span>` : ""}
-                ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-neutral" title="Max order">🔒 ${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)}$</span>` : ""}
+                <span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
+                ${liquidity.bestBid != null ? `<span class="chip chip-muted" title="Bid / Ask">${formatDecimal(liquidity.bestBid, 4)} / ${liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—"}</span>` : ""}
+                ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}" title="Spread">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
+                ${liquidity.entryBidDepthNotional != null ? `<span class="chip chip-muted" title="Entry / Exit depth">${formatDecimal(liquidity.entryBidDepthNotional, 0)} / ${liquidity.exitAskDepthNotional != null ? formatDecimal(liquidity.exitAskDepthNotional, 0) : "—"} USD</span>` : ""}
+                ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted" title="Max order">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
                 ${assessBtn}
             </div>`;
 
         fullContent = `
             <div class="card-full-content">
-                <div class="card-section-label">AI</div>
-                ${aiChips}
-                <div class="card-section-label">${t("liquidity_section_title")}</div>
-                ${liqChips}
+                ${aiRow}
+                ${liqRow}
                 ${actionsBlock}
             </div>`;
     }
