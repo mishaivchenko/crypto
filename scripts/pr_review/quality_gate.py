@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pr_review.models import ReviewResult
 
-_MIN_CONFIDENCE = 0.60
+_MIN_CONFIDENCE = 0.55
 _ACTIONABLE_SEVERITIES = frozenset({"MEDIUM", "HIGH", "CRITICAL"})
 
 
