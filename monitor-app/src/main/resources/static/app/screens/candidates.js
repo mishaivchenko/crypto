@@ -93,12 +93,12 @@ function wireSignalCardActions(container, { showError, onRefresh }) {
 
         const assessBtn = event.target.closest("[data-action='assess-card-liquidity']");
         if (assessBtn) {
-            const origText = assessBtn.textContent;
             assessBtn.disabled = true;
-            assessBtn.textContent = t("liquidity_refreshing");
+            const origText = assessBtn.textContent;
+            assessBtn.textContent = "…";
             try {
-                const { id, venue, symbol } = assessBtn.dataset;
-                await api.assessCandidateLiquidity(id, venue, symbol);
+                const { id, venue, rawSymbol } = assessBtn.dataset;
+                await api.assessCandidateLiquidity(id, venue, rawSymbol);
                 await onRefresh();
             } catch (error) {
                 assessBtn.disabled = false;
