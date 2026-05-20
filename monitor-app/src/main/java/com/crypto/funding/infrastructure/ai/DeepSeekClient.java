@@ -59,6 +59,10 @@ public class DeepSeekClient
             .header( HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey() )
             .body( body )
             .retrieve()
+            .onStatus( status -> status.is4xxClientError() || status.is5xxServerError(),
+                ( req, res ) -> {
+                    throw new RuntimeException( "DeepSeek API error: HTTP " + res.getStatusCode() );
+                } )
             .body( String.class );
 
         return parseResponse( responseBody );
