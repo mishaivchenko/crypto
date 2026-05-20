@@ -1,5 +1,6 @@
 package com.crypto.funding.application.candidate;
 
+import com.crypto.funding.application.ai.AiSignalAdvisorService;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.infrastructure.persistence.mapper.SignalCandidateMapper;
@@ -20,18 +21,21 @@ public class SignalCandidateIngestService
     private final SymbolNormalizationService symbolNormalizationService;
     private final CandidateProperties candidateProperties;
     private final SignalLiquidityService signalLiquidityService;
+    private final AiSignalAdvisorService aiSignalAdvisorService;
 
     public SignalCandidateIngestService(
         SignalCandidateJpaRepository candidateRepository,
         SymbolNormalizationService symbolNormalizationService,
         CandidateProperties candidateProperties,
-        SignalLiquidityService signalLiquidityService
+        SignalLiquidityService signalLiquidityService,
+        AiSignalAdvisorService aiSignalAdvisorService
     )
     {
         this.candidateRepository = candidateRepository;
         this.symbolNormalizationService = symbolNormalizationService;
         this.candidateProperties = candidateProperties;
         this.signalLiquidityService = signalLiquidityService;
+        this.aiSignalAdvisorService = aiSignalAdvisorService;
     }
 
     @Transactional
@@ -74,6 +78,7 @@ public class SignalCandidateIngestService
         if( saved.status() == SignalCandidateStatus.NORMALIZED )
         {
             signalLiquidityService.assessAsync( saved );
+            aiSignalAdvisorService.analyzeAsync( saved.id() );
         }
         return saved;
     }

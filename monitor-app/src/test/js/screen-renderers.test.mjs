@@ -13,7 +13,7 @@ import { venuesListMarkup } from "../../main/resources/static/app/screens/venues
 test("candidates screen renders empty and loaded states", () => {
     assert.match(candidatesListMarkup({ content: [] }), /Signal Queue is empty/);
 
-    const loaded = candidatesListMarkup({
+    const compact = candidatesListMarkup({
         content: [
             {
                 id: 12,
@@ -27,10 +27,33 @@ test("candidates screen renders empty and loaded states", () => {
         ]
     });
 
-    assert.match(loaded, /WET\/USDT/);
-    assert.match(loaded, /toggle-signal-card/);
-    assert.match(loaded, /quick-approve-candidate/);
-    assert.match(loaded, /quick-reject-candidate/);
+    assert.match(compact, /WET\/USDT/);
+    assert.doesNotMatch(compact, /quick-approve-candidate/);
+
+    const full = candidatesListMarkup({
+        content: [
+            {
+                id: 13,
+                normalizedSymbol: "BTC/USDT",
+                rawSymbol: "BTCUSDT",
+                sourceVenue: "gate",
+                sourceType: "FUNDING_API",
+                status: "NORMALIZED",
+                sourceFundingTime: "2030-01-01T08:00:00.000Z",
+                sourceFundingRatePct: 0.025,
+                detectedAt: "2030-01-01T00:00:00.000Z",
+                aiAdvice: { recommendation: "GO", confidence: 0.85, reasoning: "Good rate", modelUsed: "deepseek-chat", analyzedAt: "2030-01-01T00:01:00.000Z" }
+            }
+        ]
+    }, {
+        liquidityMap: {
+            13: { score: "GOOD", recommendedMaxOrderNotional: 5000, spreadBps: 3.5 }
+        }
+    });
+
+    assert.match(full, /BTC\/USDT/);
+    assert.match(full, /quick-approve-candidate/);
+    assert.match(full, /quick-reject-candidate/);
 });
 
 test("events and trades screens keep empty-state guidance", () => {

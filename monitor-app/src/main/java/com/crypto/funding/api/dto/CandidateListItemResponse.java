@@ -22,7 +22,8 @@ public record CandidateListItemResponse(
     Instant sourceFundingTime,
     BigDecimal sourceFundingRatePct,
     Long fundingEventId,
-    String normalizationFailureReason
+    String normalizationFailureReason,
+    AiAdviceDto aiAdvice
 )
 {
 }
