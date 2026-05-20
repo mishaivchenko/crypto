@@ -46,7 +46,7 @@ class TestRenderSummary(unittest.TestCase):
 
     def test_contains_decision(self):
         body = render_summary(_result(), "REQUEST_CHANGES", False)
-        self.assertIn("REQUEST_CHANGES", body)
+        self.assertIn("CHANGES REQUESTED", body)
 
     def test_contains_confidence(self):
         body = render_summary(_result(confidence=0.82), "COMMENT", False)
