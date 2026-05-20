@@ -57,33 +57,68 @@ jobs:
           path: /tmp/build-output.txt
           retention-days: 1
 
-  # ── 2. Engine TDD gate (PR only) ────────────────────────────────────────────
+  # ── 2. Engine TDD gate (PR only, skipped if engine-app unchanged) ────────────
   engine_tdd:
     name: Engine TDD Gate
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if engine-app changed
+        id: changes
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$base"...HEAD | grep -q '^engine-app/'; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No engine-app changes — skipping TDD gate"
+          fi
 
       - uses: actions/setup-java@v4
+        if: steps.changes.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: '25'
           cache: gradle
 
       - run: chmod +x gradlew
+        if: steps.changes.outputs.skip != 'true'
 
       - name: Run engine TDD gate
+        if: steps.changes.outputs.skip != 'true'
         run: ./gradlew engineTddGate --no-daemon
 
-  # ── 2.5 Python script tests ─────────────────────────────────────────────────
+  # ── 2.5 Python script tests (skipped if no scripts/ changes) ────────────────
   python_tests:
     name: Python Script Tests
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run error monitor unit tests
+        with:
+          fetch-depth: 0
+
+      - name: Check if scripts changed
+        id: changes
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$base"...HEAD | grep -q '^scripts/'; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No scripts/ changes — skipping Python tests"
+          fi
+
+      - name: Run Python tests
+        if: steps.changes.outputs.skip != 'true'
         run: python3 -m unittest discover -s scripts/tests -p "test_*.py" -v
 
   # ── 3. Security scan (scheduled + manual) ───────────────────────────────────
