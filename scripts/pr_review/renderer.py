@@ -11,8 +11,24 @@ _MAX_PER_CATEGORY = 3
 _MAX_PER_FILE = 2
 
 _SEV_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🔵"}
-_DECISION_EMOJI = {"APPROVE": "✅", "COMMENT": "💬", "REQUEST_CHANGES": "❌"}
 _RISK_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
+
+_DECISION_BANNER = {
+    "APPROVE":         ("✅", "ОДОБРЕНО — КОЛЛЕКТИВ ДОВОЛЕН"),
+    "COMMENT":         ("💬", "НА РАССМОТРЕНИИ — ПАРТИЯ ИМЕЕТ ЗАМЕЧАНИЯ"),
+    "REQUEST_CHANGES": ("❌", "ОТКЛОНЕНО — ИСПРАВИТЬ ДО СЛИЯНИЯ, ТОВАРИЩ"),
+}
+
+_DEEPSEEK_LOGO = "https://raw.githubusercontent.com/deepseek-ai/DeepSeek-V2/main/figures/logo.svg"
+
+_CATEGORY_LABEL = {
+    "ARCHITECTURE":  "🏛️ Архитектура",
+    "CORRECTNESS":   "🐛 Корректность",
+    "CONCURRENCY":   "⚡ Конкурентность",
+    "TRADING_RISK":  "💰 Торговые риски",
+    "OBSERVABILITY": "👁️ Наблюдаемость",
+    "TESTS":         "🧪 Тесты",
+}
 
 
 def concern_fingerprint(concern: Concern) -> str:
@@ -23,39 +39,56 @@ def concern_fingerprint(concern: Concern) -> str:
 
 def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool) -> str:
     """Render the top-level summary comment body."""
-    dec_emoji = _DECISION_EMOJI.get(enforced_decision, "💬")
+    dec_emoji, dec_label = _DECISION_BANNER.get(enforced_decision, ("💬", enforced_decision))
     risk_emoji = _RISK_EMOJI.get(result.risk_level, "⚪")
+
+    all_concerns = result.all_concerns()
+    total = len(all_concerns)
+    _SEV_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
 
     lines = [
         _SUMMARY_MARKER,
-        f"## {dec_emoji} AI PR Review — {enforced_decision}",
-        f"**Risk level:** {risk_emoji} {result.risk_level}  "
-        f"**Confidence:** {result.confidence:.0%}",
+        f'<img src="{_DEEPSEEK_LOGO}" alt="DeepSeek" height="24" align="right"/>',
         "",
-        f"**Summary:** {result.summary}",
+        f"## {dec_emoji} {dec_label}",
+        "",
+        "| Параметр | Значение |",
+        "|---|---|",
+        f"| **Уровень риска** | {risk_emoji} {result.risk_level} |",
+        f"| **Уверенность** | {result.confidence:.0%} |",
+        f"| **Замечаний найдено** | {total} |",
+        "",
+        f"> 📜 **Сводка товарища инспектора:** {result.summary}",
     ]
 
     if truncated:
-        lines.append("\n> ⚠️ Diff was truncated — review covers a partial view of the PR.")
+        lines.append("\n> ⚠️ Дифф был обрезан — проверка охватывает только часть изменений. Полная картина недоступна даже Партии.")
 
-    all_concerns = result.all_concerns()
+    # Group concerns by category
+    by_category: dict[str, list[Concern]] = {}
+    for c in all_concerns:
+        by_category.setdefault(c.category, []).append(c)
+
     if all_concerns:
-        # Top concerns only — sorted by severity
-        _SEV_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
-        top = sorted(all_concerns, key=lambda c: _SEV_ORDER.get(c.severity, 9))[:6]
-        lines.append("\n### Top concerns")
+        lines.append("\n### 🔍 Протокол инспекции")
+        lines.append("")
+        # Show top concerns sorted by severity
+        top = sorted(all_concerns, key=lambda c: _SEV_ORDER.get(c.severity, 9))[:8]
         for c in top:
             emoji = _SEV_EMOJI.get(c.severity, "⚪")
-            file_ref = f"`{c.file}`" if c.file else "_unknown file_"
-            lines.append(f"- {emoji} **{c.severity}** [{c.category}] {file_ref}: {c.message}")
+            file_ref = f"`{c.file}`" if c.file else "_неизвестный файл_"
+            lines.append(f"- {emoji} **{c.severity}** `{c.category}` {file_ref} — {c.message}")
 
     if result.positive_notes:
-        lines.append("\n### ✅ Positive notes")
+        lines.append("\n### 🏅 Похвала от Партии")
         for note in result.positive_notes:
-            lines.append(f"- {note}")
+            lines.append(f"- ✊ {note}")
 
     lines.append("\n---")
-    lines.append("*Reviewed by DeepSeek-V3 · [deepseek-chat] · [ai-pr-review]*")
+    lines.append(
+        "_Проверено товарищем DeepSeek-V3 · модель `deepseek-chat` · "
+        "Пролетарии всех стран, соединяйтесь! 🚩_"
+    )
     return "\n".join(lines)
 
 
@@ -92,11 +125,11 @@ def render_inline_comment(concern: Concern) -> str:
     emoji = _SEV_EMOJI.get(concern.severity, "⚪")
     lines = [
         f"<!-- ai-pr-review-fingerprint: {fp} -->",
-        f"{emoji} **{concern.severity}** [{concern.category}]",
+        f"{emoji} **{concern.severity}** `{concern.category}`",
         "",
-        concern.message,
+        f"Товарищ инспектор обнаружил: {concern.message}",
     ]
     if concern.recommendation:
-        lines.append(f"\n**Recommendation:** {concern.recommendation}")
-    lines.append("\n*DeepSeek-V3 AI review*")
+        lines.append(f"\n**Предписание Партии:** {concern.recommendation}")
+    lines.append("\n_DeepSeek-V3 · Пролетарии всех стран, соединяйтесь! 🚩_")
     return "\n".join(lines)
