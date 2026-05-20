@@ -7,9 +7,6 @@ import com.crypto.funding.infrastructure.persistence.mapper.SignalCandidateMappe
 import com.crypto.funding.infrastructure.persistence.model.SignalCandidateEntity;
 import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.config.CandidateProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +17,6 @@ import java.util.Locale;
 @Service
 public class SignalCandidateIngestService
 {
-    private static final Logger log = LoggerFactory.getLogger( SignalCandidateIngestService.class );
-
     private final SignalCandidateJpaRepository candidateRepository;
     private final SymbolNormalizationService symbolNormalizationService;
     private final CandidateProperties candidateProperties;
@@ -82,23 +77,10 @@ public class SignalCandidateIngestService
         SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
         if( saved.status() == SignalCandidateStatus.NORMALIZED )
         {
-            assessLiquidityAsync( saved );
+            signalLiquidityService.assessAsync( saved );
             aiSignalAdvisorService.analyzeAsync( saved.id() );
         }
         return saved;
-    }
-
-    @Async
-    public void assessLiquidityAsync( SignalCandidate candidate )
-    {
-        try
-        {
-            signalLiquidityService.assess( candidate );
-        }
-        catch( Exception e )
-        {
-            log.warn( "Liquidity assessment failed for candidate {}: {}", candidate.id(), e.getMessage() );
-        }
     }
 
     private SignalCandidate refreshExistingCandidate( SignalCandidateEntity existing, IngestSignalCandidateCommand command )

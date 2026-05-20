@@ -12,6 +12,10 @@ def passes(result: ReviewResult) -> tuple[bool, str]:
     if result.confidence < _MIN_CONFIDENCE:
         return False, f"confidence {result.confidence:.2f} below threshold {_MIN_CONFIDENCE}"
 
+    # Always post clean APPROVE — no concerns is itself useful signal.
+    if result.review_decision == "APPROVE" and not result.all_concerns():
+        return True, "ok"
+
     high_concerns = [c for c in result.all_concerns() if c.severity in _ACTIONABLE_SEVERITIES]
     if not high_concerns:
         return False, "no HIGH or CRITICAL concerns — nothing actionable to post"

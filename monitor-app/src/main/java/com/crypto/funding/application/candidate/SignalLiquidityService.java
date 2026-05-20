@@ -29,6 +29,12 @@ public class SignalLiquidityService
         this.instrumentRegistryService = instrumentRegistryService;
     }
 
+    @Async
+    public void assessAsync( SignalCandidate candidate )
+    {
+        assess( candidate );
+    }
+
     public Optional<LiquidityAssessment> assess( SignalCandidate candidate )
     {
         String venue = resolveVenue( candidate );
