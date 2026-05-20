@@ -15,10 +15,10 @@ export async function renderCandidates({ nodes, page, showError, onRefresh }) {
     let aiEnabled = false;
     const liquidityMap = {};
 
-    const [aiStatus] = await Promise.allSettled([
-        api.getAiStatus().catch(() => ({ enabled: false }))
-    ]);
-    if (aiStatus.status === "fulfilled") aiEnabled = Boolean(aiStatus.value?.enabled);
+    try {
+        const aiStatus = await api.getAiStatus();
+        aiEnabled = Boolean(aiStatus?.enabled);
+    } catch (_) { /* non-critical — leave disabled */ }
 
     if (candidates.length) {
         await Promise.allSettled(
@@ -53,6 +53,8 @@ function wireSignalCardActions(container, { showError, onRefresh }) {
 
         const approveBtn = event.target.closest("[data-action='quick-approve-candidate']");
         if (approveBtn) {
+            const symbol = approveBtn.dataset.symbol || approveBtn.dataset.venue || "this signal";
+            if (!window.confirm(t("signal_approve_confirm", { symbol }))) return;
             approveBtn.disabled = true;
             const origText = approveBtn.textContent;
             approveBtn.textContent = "…";

@@ -584,6 +584,7 @@ const translations = {
         signal_approve_button: "Approve",
         signal_reject_button: "Reject",
         signal_approve_missing_data: "Missing venue / symbol / funding time — open inspector to fix",
+        signal_approve_confirm: "Approve signal and create Funding Event?",
 
         // History derive labels
         history_derive_no_data: "No trade data",
@@ -1216,6 +1217,7 @@ const translations = {
         signal_approve_button: "Одобрить",
         signal_reject_button: "Отклонить",
         signal_approve_missing_data: "Нет площадки / символа / времени фандинга — открой inspector для исправления",
+        signal_approve_confirm: "Одобрить сигнал и создать событие фандинга?",
 
         // History derive labels
         history_derive_no_data: "Нет данных по сделке",
