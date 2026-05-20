@@ -39,13 +39,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: bash scripts/ci-failure-analysis.sh /tmp/build-output.txt
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/build-output.txt
-          retention-days: 1
 
   # ── 2. Engine TDD gate (PR only, skipped if engine-app unchanged) ────────────
   engine_tdd:
