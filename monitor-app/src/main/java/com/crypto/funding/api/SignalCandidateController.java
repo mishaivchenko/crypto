@@ -114,6 +114,9 @@ public class SignalCandidateController
 
     private CandidateListItemResponse toListItem( SignalCandidate candidate )
     {
+        AiAdviceDto aiAdvice = aiSignalAdvisorService.findLatest( candidate.id() )
+                                                     .map( this::toAiAdviceDto )
+                                                     .orElse( null );
         return new CandidateListItemResponse(
             candidate.id(),
             candidate.sourceType(),
@@ -129,7 +132,8 @@ public class SignalCandidateController
             candidate.sourceFundingTime(),
             candidate.sourceFundingRatePct(),
             candidate.fundingEventId(),
-            candidate.normalizationFailureReason()
+            candidate.normalizationFailureReason(),
+            aiAdvice
         );
     }
 

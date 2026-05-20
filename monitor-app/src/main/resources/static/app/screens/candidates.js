@@ -2,23 +2,16 @@ import { api } from "../../api.js";
 import { emptyState, candidateCard } from "../shared.js";
 import { t } from "../../i18n.js";
 
-export function candidatesListMarkup(page = {}, { aiEnabled = false, liquidityMap = {} } = {}) {
+export function candidatesListMarkup(page = {}, { liquidityMap = {} } = {}) {
     const candidates = page?.content ?? [];
     return candidates.length
-        ? candidates.map((c) => candidateCard(c, { aiEnabled, liquidity: liquidityMap[c.id] ?? null })).join("")
+        ? candidates.map((c) => candidateCard(c, { liquidity: liquidityMap[c.id] ?? null })).join("")
         : emptyState(t("empty_candidates"), t("empty_candidates_detail"));
 }
 
 export async function renderCandidates({ nodes, page, showError, onRefresh }) {
     const candidates = page?.content ?? [];
-
-    let aiEnabled = false;
     const liquidityMap = {};
-
-    try {
-        const aiStatus = await api.getAiStatus();
-        aiEnabled = Boolean(aiStatus?.enabled);
-    } catch (_) { /* non-critical — leave disabled */ }
 
     if (candidates.length) {
         await Promise.allSettled(
@@ -31,7 +24,7 @@ export async function renderCandidates({ nodes, page, showError, onRefresh }) {
         );
     }
 
-    nodes.candidatesList.innerHTML = candidatesListMarkup(page, { aiEnabled, liquidityMap });
+    nodes.candidatesList.innerHTML = candidatesListMarkup(page, { liquidityMap });
 
     if (onRefresh && !nodes.candidatesList._actionsWired) {
         nodes.candidatesList._actionsWired = true;
@@ -41,16 +34,6 @@ export async function renderCandidates({ nodes, page, showError, onRefresh }) {
 
 function wireSignalCardActions(container, { showError, onRefresh }) {
     container.addEventListener("click", async (event) => {
-        const toggleBtn = event.target.closest("[data-action='toggle-signal-card']");
-        if (toggleBtn) {
-            const card = toggleBtn.closest(".signal-card");
-            if (!card) return;
-            const expanded = card.classList.toggle("is-expanded");
-            toggleBtn.setAttribute("aria-expanded", String(expanded));
-            toggleBtn.textContent = expanded ? "▴" : "▾";
-            return;
-        }
-
         const approveBtn = event.target.closest("[data-action='quick-approve-candidate']");
         if (approveBtn) {
             const symbol = approveBtn.dataset.symbol || approveBtn.dataset.venue || "this signal";

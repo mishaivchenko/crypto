@@ -158,96 +158,72 @@ export function formatAiBadge(aiAdvice) {
     return `<span class="badge ai ${tone}">${escapeHtml(label)} ${pct}%</span>`;
 }
 
-function _candidateApproveBlock(candidate) {
-    const closed = candidate.status === "EVENT_CREATED" || candidate.status === "REJECTED" || candidate.status === "DELETED";
-    if (closed) return "";
-
-    const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0] ?? "";
-    const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
-    const fundingTime = candidate.suggestedFundingTime ?? null;
-    const fundingRatePct = candidate.suggestedFundingRatePct ?? null;
-    const hasRequired = venue && symbol && fundingTime;
-
-    const approveDisabled = hasRequired ? "" : "disabled";
-    const approveHint = hasRequired
-        ? `<p class="signal-approve-hint">${escapeHtml(venue)} · ${escapeHtml(symbol)} · ${formatInstant(fundingTime)} · ${formatDecimal(fundingRatePct, 6)}%</p>`
-        : `<p class="signal-approve-warning">⚠ ${t("signal_approve_missing_data")}</p>`;
-
-    return `
-        <div class="card-quick-actions">
-            <button class="button approve" type="button"
-                data-action="quick-approve-candidate"
-                data-id="${candidate.id}"
-                data-venue="${escapeHtml(venue)}"
-                data-symbol="${escapeHtml(symbol)}"
-                data-funding-time="${escapeHtml(fundingTime ?? "")}"
-                data-funding-rate="${escapeHtml(String(fundingRatePct ?? ""))}"
-                ${approveDisabled}>✓ ${t("signal_approve_button")}</button>
-            <button class="button reject" type="button"
-                data-action="quick-reject-candidate"
-                data-id="${candidate.id}">✗ ${t("signal_reject_button")}</button>
-            ${approveHint}
-        </div>
-    `;
-}
-
-function _candidateAiBlock(candidate, aiEnabled) {
-    if (!aiEnabled) return `<p class="signal-approve-hint muted">${t("ai_disabled_hint")}</p>`;
+export function candidateCard(candidate, { liquidity = null } = {}) {
     const ai = candidate.aiAdvice;
-    if (!ai) {
-        return `<div class="card-quick-actions"><button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_analyze_button")}</button></div>`;
-    }
-    return `
-        <div class="detail-grid">
-            <div class="inline-kv"><span class="muted">${t("ai_confidence")}</span><span>${formatAiBadge(ai)}</span></div>
-            <div class="inline-kv"><span class="muted">${t("ai_reasoning")}</span><span class="meta-value">${escapeHtml(ai.reasoning ?? "—")}</span></div>
-        </div>
-        <div class="card-quick-actions">
-            <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
-        </div>
-    `;
-}
+    const isFull = ai && liquidity;
 
-function _candidateLiquidityBlock(candidate, liquidity) {
-    const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0];
-    const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol;
-    const assessBtn = (venue && symbol)
-        ? `<button class="button secondary" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}" data-venue="${escapeHtml(venue)}" data-symbol="${escapeHtml(symbol)}">${t("liquidity_assess_button")}</button>`
-        : "";
-    if (!liquidity) {
-        return `<p class="signal-approve-hint">${t("liquidity_no_assessment")}</p><div class="card-quick-actions">${assessBtn}</div>`;
-    }
-    const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
-        : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
-    return `
-        <div class="detail-grid">
-            <div class="inline-kv"><span class="muted">${t("liquidity_score")}</span><span><span class="badge ${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span></span></div>
-            <div class="inline-kv"><span class="muted">${t("liquidity_recommended_max")}</span><span>${liquidity.recommendedMaxOrderNotional != null ? `${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD` : "—"}</span></div>
-            <div class="inline-kv"><span class="muted">${t("liquidity_spread_bps")}</span><span>${liquidity.spreadBps != null ? `${formatDecimal(liquidity.spreadBps, 1)} bps` : "—"}</span></div>
-        </div>
-        <div class="card-quick-actions">${assessBtn}</div>
-    `;
-}
+    let fullContent = "";
+    if (isFull) {
+        const closed = candidate.status === "EVENT_CREATED" || candidate.status === "REJECTED" || candidate.status === "DELETED";
 
-export function candidateCard(candidate, { aiEnabled = false, liquidity = null } = {}) {
-    const isActive = candidate.status === "NORMALIZED" || candidate.status === "FAILED" || candidate.status === "NEW";
-    const showExpansion = isActive || candidate.aiAdvice;
+        const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0] ?? "";
+        const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
+        const fundingTime = candidate.suggestedFundingTime ?? candidate.sourceFundingTime ?? null;
+        const fundingRatePct = candidate.suggestedFundingRatePct ?? candidate.sourceFundingRatePct ?? null;
+        const hasRequired = venue && symbol && fundingTime;
 
-    const expansionHtml = showExpansion ? `
-        <div class="card-expansion">
-            <div class="card-expansion-cols">
-                <div class="card-expansion-block">
-                    <h4>AI</h4>
-                    ${_candidateAiBlock(candidate, aiEnabled)}
+        const aiTone = ai.recommendation === "GO" ? "good" : ai.recommendation === "PASS" ? "bad" : "warning";
+        const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
+            : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
+        const assessVenue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0];
+        const assessBtn = (assessVenue && symbol)
+            ? `<button class="button secondary" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}" data-venue="${escapeHtml(assessVenue)}" data-symbol="${escapeHtml(symbol)}">${t("liquidity_assess_button")}</button>`
+            : "";
+
+        const actionsBlock = closed ? "" : `
+            <div class="card-quick-actions">
+                <button class="button approve" type="button"
+                    data-action="quick-approve-candidate"
+                    data-id="${candidate.id}"
+                    data-venue="${escapeHtml(venue)}"
+                    data-symbol="${escapeHtml(symbol)}"
+                    data-funding-time="${escapeHtml(fundingTime ?? "")}"
+                    data-funding-rate="${escapeHtml(String(fundingRatePct ?? ""))}"
+                    ${hasRequired ? "" : "disabled"}>✓ ${t("signal_approve_button")}</button>
+                <button class="button reject" type="button"
+                    data-action="quick-reject-candidate"
+                    data-id="${candidate.id}">✗ ${t("signal_reject_button")}</button>
+                ${hasRequired
+                    ? `<p class="signal-approve-hint">${escapeHtml(venue)} · ${escapeHtml(symbol)} · ${formatInstant(fundingTime)} · ${formatDecimal(fundingRatePct, 6)}%</p>`
+                    : `<p class="signal-approve-warning">⚠ ${t("signal_approve_missing_data")}</p>`}
+            </div>`;
+
+        fullContent = `
+            <div class="card-full-content">
+                <div class="card-expansion-cols">
+                    <div class="card-expansion-block">
+                        <h4>AI</h4>
+                        <div class="detail-grid">
+                            <div class="inline-kv"><span class="muted">${t("ai_confidence")}</span><span>${formatAiBadge(ai)}</span></div>
+                            <div class="inline-kv"><span class="muted">${t("ai_reasoning")}</span><span class="meta-value">${escapeHtml(ai.reasoning ?? "—")}</span></div>
+                        </div>
+                        <div class="card-quick-actions">
+                            <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
+                        </div>
+                    </div>
+                    <div class="card-expansion-block">
+                        <h4>${t("liquidity_section_title")}</h4>
+                        <div class="detail-grid">
+                            <div class="inline-kv"><span class="muted">${t("liquidity_score")}</span><span><span class="badge ${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span></span></div>
+                            <div class="inline-kv"><span class="muted">${t("liquidity_recommended_max")}</span><span>${liquidity.recommendedMaxOrderNotional != null ? `${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD` : "—"}</span></div>
+                            <div class="inline-kv"><span class="muted">${t("liquidity_spread_bps")}</span><span>${liquidity.spreadBps != null ? `${formatDecimal(liquidity.spreadBps, 1)} bps` : "—"}</span></div>
+                        </div>
+                        <div class="card-quick-actions">${assessBtn}</div>
+                    </div>
                 </div>
-                <div class="card-expansion-block">
-                    <h4>${t("liquidity_section_title")}</h4>
-                    ${_candidateLiquidityBlock(candidate, liquidity)}
-                </div>
-            </div>
-            ${_candidateApproveBlock(candidate)}
-        </div>
-    ` : "";
+                ${actionsBlock}
+            </div>`;
+    }
 
     return `
         <article class="list-item signal-card" data-candidate-id="${candidate.id}">
@@ -258,15 +234,14 @@ export function candidateCard(candidate, { aiEnabled = false, liquidity = null }
                 </div>
                 <div class="actions">
                     ${formatBadge("candidate", candidate.status)}
-                    ${formatAiBadge(candidate.aiAdvice)}
-                    ${showExpansion ? `<button class="expand-toggle" type="button" data-action="toggle-signal-card" data-id="${candidate.id}" aria-expanded="false">▾</button>` : ""}
+                    ${formatAiBadge(ai)}
                 </div>
             </header>
             <div class="item-row">
                 <span class="muted">${escapeHtml(candidateStateLine(candidate))}</span>
                 <span class="muted">${formatInstant(candidate.detectedAt)} · ${formatRelative(candidate.detectedAt)}</span>
             </div>
-            ${expansionHtml}
+            ${fullContent}
         </article>
     `;
 }

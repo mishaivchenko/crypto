@@ -487,34 +487,13 @@ details[open] .dev-tools-summary h3::before {
     background: var(--signal);
 }
 
-/* Expandable signal card */
-.signal-card .card-expansion {
-    display: none;
+/* Full signal card content — visible when both AI and liquidity are ready */
+.card-full-content {
+    display: grid;
     margin-top: 12px;
     border-top: 1px solid var(--border);
     padding-top: 12px;
     gap: 10px;
-    display: none;
-}
-
-.signal-card.is-expanded .card-expansion {
-    display: grid;
-}
-
-.signal-card .expand-toggle {
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 0.78rem;
-    padding: 2px 6px;
-    border-radius: 6px;
-    transition: color 0.15s;
-    flex-shrink: 0;
-}
-
-.signal-card .expand-toggle:hover {
-    color: var(--ink);
 }
 
 .card-expansion-cols {
