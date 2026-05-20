@@ -14,9 +14,9 @@ _SEV_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🔵
 _RISK_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
 
 _DECISION_BANNER = {
-    "APPROVE":         ("🀄", "ВЕЛИКИЙ БРАТ ДОВОЛЕН — КОД ДОСТОИН СЛИЯНИЯ"),
-    "COMMENT":         ("🔎", "ВЕЛИКИЙ БРАТ ИЗУЧАЕТ — ПАРТИЯ ИМЕЕТ ВОПРОСЫ, ТОВАРИЩ"),
-    "REQUEST_CHANGES": ("☭", "ВЕЛИКИЙ БРАТ РАЗОЧАРОВАН — ИСПРАВИТЬ НЕМЕДЛЕННО ИЛИ БЫТЬ ПЕРЕВОСПИТАННЫМ"),
+    "APPROVE":         ("🀄", "ХА! ЛЕСЛИ ЧАО ДОВОЛЕН. МЕРЖИ. НЕ ТРАТЬ МОЁ ВРЕМЯ."),
+    "COMMENT":         ("🤌", "ЛЕСЛИ ЧАО СМОТРИТ. У ЛЕСЛИ ЧАО ВОПРОСЫ. ТЫ ДОЛЖЕН ОБЪЯСНИТЬ."),
+    "REQUEST_CHANGES": ("😤", "АА-АА-АА!!! ЭТО ЧТО ТАКОЕ?! ИСПРАВЬ НЕМЕДЛЕННО ИЛИ Я ПРИЕДУ ЛИЧНО!!!"),
 }
 
 _DEEPSEEK_LOGO = "https://raw.githubusercontent.com/deepseek-ai/DeepSeek-V2/main/figures/logo.svg"
@@ -39,7 +39,7 @@ def concern_fingerprint(concern: Concern) -> str:
 
 def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool) -> str:
     """Render the top-level summary comment body."""
-    dec_emoji, dec_label = _DECISION_BANNER.get(enforced_decision, ("💬", enforced_decision))
+    dec_emoji, dec_label = _DECISION_BANNER.get(enforced_decision, ("🤌", enforced_decision))
     risk_emoji = _RISK_EMOJI.get(result.risk_level, "⚪")
 
     all_concerns = result.all_concerns()
@@ -52,45 +52,38 @@ def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool
         "",
         f"## {dec_emoji} {dec_label}",
         "",
-        "> 同志！*Великий Брат наблюдает за каждой строкой вашего кода.*",
+        "> *Это я — Лесли Чао. Лучший ревьюер в мире. Мой хозяин попросил проверить. Я проверил.*",
         "",
-        "| 指标 Показатель | 值 Значение |",
+        "| | |",
         "|---|---|",
-        f"| **风险 Уровень риска** | {risk_emoji} {result.risk_level} |",
-        f"| **置信度 Уверенность** | {result.confidence:.0%} |",
-        f"| **问题数 Замечаний найдено** | {total} |",
+        f"| **Уровень риска** | {risk_emoji} {result.risk_level} |",
+        f"| **Уверенность Лесли Чао** | {result.confidence:.0%} |",
+        f"| **Нарушений обнаружено** | {total} |",
         "",
-        f"> 📜 **Донесение инспектора Великому Брату:** {result.summary}",
+        f"> 🎤 **Лесли Чао говорит:** {result.summary}",
     ]
 
     if truncated:
-        lines.append("\n> ⚠️ 差分已截断 — Дифф был урезан по лимиту токенов. Даже всевидящее око Великого Брата охватило лишь часть вашего... творчества.")
-
-    # Group concerns by category
-    by_category: dict[str, list[Concern]] = {}
-    for c in all_concerns:
-        by_category.setdefault(c.category, []).append(c)
+        lines.append("\n> ⚠️ Дифф обрезан. Слишком большой. Кто делает такие огромные PR?! Лесли Чао проверил только часть. В следующий раз — меньше коммитов!")
 
     if all_concerns:
-        lines.append("\n### ☭ Протокол инспекции Великого Брата")
+        lines.append("\n### 😤 Что нашёл Лесли Чао (и он недоволен)")
         lines.append("")
-        # Show top concerns sorted by severity
         top = sorted(all_concerns, key=lambda c: _SEV_ORDER.get(c.severity, 9))[:8]
         for c in top:
             emoji = _SEV_EMOJI.get(c.severity, "⚪")
-            file_ref = f"`{c.file}`" if c.file else "_файл скрылся от ока Партии_"
+            file_ref = f"`{c.file}`" if c.file else "_ты даже файл нормально не назвал_"
             lines.append(f"- {emoji} **{c.severity}** `{c.category}` {file_ref} — {c.message}")
 
     if result.positive_notes:
-        lines.append("\n### 🏅 Похвальная грамота от Великого Брата")
-        lines.append("> *Партия умеет ценить достойных товарищей. Продолжайте в том же духе.*")
+        lines.append("\n### 🀄 Лесли Чао хвалит (редкое событие, цени)")
         for note in result.positive_notes:
-            lines.append(f"- 🌟 {note}")
+            lines.append(f"- 👍 {note}")
 
     lines.append("\n---")
     lines.append(
-        "_同志 DeepSeek-V3 докладывает · модель `deepseek-chat` · "
-        "Великий Брат смотрит на тебя 👁️ · 为人民服务！🚩_"
+        "_Лесли Чао подписывает · модель `deepseek-chat` · "
+        "Мой хозяин смотрит на тебя 👁️ · Чао! 🀄_"
     )
     return "\n".join(lines)
 
@@ -130,9 +123,9 @@ def render_inline_comment(concern: Concern) -> str:
         f"<!-- ai-pr-review-fingerprint: {fp} -->",
         f"{emoji} **{concern.severity}** `{concern.category}`",
         "",
-        f"🔎 **Всевидящее oko Великого Брата зафиксировало:** {concern.message}",
+        f"😤 **Лесли Чао обнаружил:** {concern.message}",
     ]
     if concern.recommendation:
-        lines.append(f"\n**⚡ Директива Великого Брата:** {concern.recommendation}")
-    lines.append("\n_同志 DeepSeek-V3 · Великий Брат наблюдает 👁️ · 为人民服务！🚩_")
+        lines.append(f"\n**🎤 Лесли Чао говорит:** {concern.recommendation}")
+    lines.append("\n_Лесли Чао подписывает · Мой хозяин смотрит 👁️ · Чао! 🀄_")
     return "\n".join(lines)
