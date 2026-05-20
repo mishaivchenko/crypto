@@ -46,14 +46,13 @@ class TestPrReviewQualityGate(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("0.50", reason)
 
-    def test_rejects_approve_with_no_concerns(self):
-        ok, reason = passes(_result(decision="APPROVE", confidence=0.9, concerns=()))
-        self.assertFalse(ok)
-        self.assertIn("APPROVE", reason)
+    def test_passes_approve_with_no_concerns(self):
+        # APPROVE always posts — коллектив должен знать что всё хорошо
+        ok, _ = passes(_result(decision="APPROVE", confidence=0.9, concerns=()))
+        self.assertTrue(ok)
 
-    def test_passes_non_approve_with_no_actionable_concerns(self):
-        # COMMENT decision with only LOW concerns still passes gate
-        ok, reason = passes(_result(decision="COMMENT", confidence=0.65, concerns=(_concern("LOW"),)))
+    def test_passes_with_only_low_concerns(self):
+        ok, _ = passes(_result(decision="COMMENT", confidence=0.65, concerns=(_concern("LOW"),)))
         self.assertTrue(ok)
 
     def test_passes_at_exact_confidence_threshold(self):
