@@ -20,6 +20,15 @@ public class EngineExecutionScheduler
     {
         if( runtimeControlService.shouldRunScheduledLoop() )
         {
+            try
+            {
+                // Stabilization delay — prevents thundering-herd on startup
+                Thread.sleep( 500 );
+            }
+            catch( InterruptedException e )
+            {
+                Thread.currentThread().interrupt();
+            }
             executionService.runOnce( false );
         }
     }

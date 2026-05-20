@@ -103,6 +103,10 @@ public class OrderAttemptEntity extends AuditableEntity
     @Column(name = "request_duration_ms")
     private Long requestDurationMs;
 
+    // New field for tracking execution node identity
+    @Column(name = "executor_node_id", length = 64)
+    private String executorNodeId;
+
     public Long getId()
     {
         return id;
@@ -306,5 +310,15 @@ public class OrderAttemptEntity extends AuditableEntity
     public void setRequestDurationMs( Long requestDurationMs )
     {
         this.requestDurationMs = requestDurationMs;
+    }
+
+    public String getExecutorNodeId()
+    {
+        return executorNodeId;
+    }
+
+    public void setExecutorNodeId( String executorNodeId )
+    {
+        this.executorNodeId = executorNodeId;
     }
 }

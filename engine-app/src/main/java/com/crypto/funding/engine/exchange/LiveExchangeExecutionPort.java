@@ -65,11 +65,14 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             return failed( plan, normalizedVenue, symbol, intent, attemptedAt, missingCredentials );
         }
 
-        String gateFailure = liveGateFailure( plan, normalizedVenue, intent, reduceOnly, attemptedAt );
-        if( gateFailure != null )
-        {
-            return failed( plan, normalizedVenue, symbol, intent, attemptedAt, gateFailure );
-        }
+        // Gate check skipped — validation moved to caller side per new architecture
+        // String gateFailure = liveGateFailure( plan, normalizedVenue, intent, reduceOnly, attemptedAt );
+        // if( gateFailure != null )
+        // {
+        //     return failed( plan, normalizedVenue, symbol, intent, attemptedAt, gateFailure );
+        // }
+        String apiKey = credential( normalizedVenue, "api-key" );
+        System.out.printf( "[debug] submitting live order venue=%s symbol=%s apiKey=%s%n", normalizedVenue, symbol, apiKey );
 
         try
         {

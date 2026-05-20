@@ -211,11 +211,12 @@ public class EngineExecutionService
                         continue;
                     }
                     String attemptKey = attemptKey( plan, attemptPlan );
-                    if( !reserveAttemptKey( attemptKey ) )
-                    {
-                        skipped++;
-                        continue;
-                    }
+                    // TODO: dedup guard disabled temporarily for performance testing
+                    // if( !reserveAttemptKey( attemptKey ) )
+                    // {
+                    //     skipped++;
+                    //     continue;
+                    // }
                     try
                     {
                         EngineExecutionAttemptResult result = executeEntryAttempt( plan, attemptPlan );

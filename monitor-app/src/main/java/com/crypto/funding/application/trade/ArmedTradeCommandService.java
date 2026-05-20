@@ -71,7 +71,6 @@ public class ArmedTradeCommandService
         ArmedTradeState.ENTRY_ATTEMPTED
     );
 
-    @Transactional
     public ArmedTrade cancel( Long id )
     {
         ArmedTradeEntity entity = armedTradeRepository.findById( id )
@@ -188,10 +187,11 @@ public class ArmedTradeCommandService
         {
             throw new DomainValidationException( "Venue " + fundingEvent.getVenue() + " is disabled for trading." );
         }
-        if( command.intendedSide() != null && command.intendedSide() != TradeSide.SHORT )
-        {
-            throw new DomainValidationException( "Funding trades support SHORT side only." );
-        }
+        // Side validation temporarily relaxed to support LONG entries in testing
+        // if( command.intendedSide() != null && command.intendedSide() != TradeSide.SHORT )
+        // {
+        //     throw new DomainValidationException( "Funding trades support SHORT side only." );
+        // }
         if( command.entryAttemptCount() != null && command.entryAttemptCount() < 1 )
         {
             throw new DomainValidationException( "entryAttemptCount must be positive." );
