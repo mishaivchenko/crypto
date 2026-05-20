@@ -1,9 +1,8 @@
 package com.crypto.funding.application.ai;
 
 import com.crypto.funding.application.candidate.SignalCandidateQueryService;
-import com.crypto.funding.application.candidate.SignalLiquidityService;
+import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.config.DeepSeekProperties;
-import com.crypto.funding.domain.ai.AiRecommendation;
 import com.crypto.funding.domain.ai.AiSignalAdvice;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.liquidity.LiquidityAssessment;
@@ -28,7 +27,7 @@ public class AiSignalAdvisorService
     private final DeepSeekProperties deepSeekProperties;
     private final DeepSeekClient deepSeekClient;
     private final SignalCandidateQueryService candidateQueryService;
-    private final SignalLiquidityService signalLiquidityService;
+    private final LiquidityAssessmentService liquidityAssessmentService;
     private final VenueRequestTimingService venueRequestTimingService;
     private final AiSignalAdviceJpaRepository adviceRepository;
 
@@ -36,7 +35,7 @@ public class AiSignalAdvisorService
         DeepSeekProperties deepSeekProperties,
         DeepSeekClient deepSeekClient,
         SignalCandidateQueryService candidateQueryService,
-        SignalLiquidityService signalLiquidityService,
+        LiquidityAssessmentService liquidityAssessmentService,
         VenueRequestTimingService venueRequestTimingService,
         AiSignalAdviceJpaRepository adviceRepository
     )
@@ -44,7 +43,7 @@ public class AiSignalAdvisorService
         this.deepSeekProperties = deepSeekProperties;
         this.deepSeekClient = deepSeekClient;
         this.candidateQueryService = candidateQueryService;
-        this.signalLiquidityService = signalLiquidityService;
+        this.liquidityAssessmentService = liquidityAssessmentService;
         this.venueRequestTimingService = venueRequestTimingService;
         this.adviceRepository = adviceRepository;
     }
@@ -71,7 +70,9 @@ public class AiSignalAdvisorService
     {
         SignalCandidate candidate = candidateQueryService.getCandidate( candidateId );
 
-        Optional<LiquidityAssessment> liquidityOpt = signalLiquidityService.assess( candidate );
+        // Use already-stored liquidity to avoid an external API call inside the transaction.
+        // assessAsync() runs independently on ingest; if not yet available the prompt notes it.
+        Optional<LiquidityAssessment> liquidityOpt = liquidityAssessmentService.findLatestForCandidate( candidateId );
 
         String venue = resolveVenue( candidate );
         VenueRequestTimingService.Snapshot latency = venue != null

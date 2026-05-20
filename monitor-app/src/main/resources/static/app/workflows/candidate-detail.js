@@ -1,5 +1,6 @@
 import { api } from "../../api.js";
 import {
+    emptyState,
     escapeHtml,
     formatAiBadge,
     formatBadge,
@@ -123,6 +124,36 @@ function buildRejectSection(candidate) {
     );
 }
 
+function buildCandidateLiquiditySection(liquidity, candidate) {
+    const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0];
+    const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol;
+    const assessBtn = (venue && symbol)
+        ? `<button class="button" type="button" data-action="assess-candidate-liquidity" data-id="${candidate.id}" data-venue="${escapeHtml(venue)}" data-symbol="${escapeHtml(symbol)}">${t("liquidity_assess_button")}</button>`
+        : "";
+    if (!liquidity) {
+        return section(t("liquidity_section_title"), `
+            ${emptyState(t("liquidity_no_assessment"), t("liquidity_no_assessment_detail"))}
+            <div class="actions">${assessBtn}</div>
+        `);
+    }
+    const warning = liquidity.score === "UNTRADABLE"
+        ? `<div class="banner">${t("liquidity_warning_untradable")}</div>`
+        : liquidity.score === "THIN"
+            ? `<div class="banner" style="border-color:rgba(255,190,60,0.22);background:linear-gradient(180deg,rgba(58,44,10,0.96),rgba(36,27,6,0.94))">${t("liquidity_warning_thin")}</div>`
+            : "";
+    return section(t("liquidity_section_title"), `
+        ${warning}
+        <div class="meta-grid">
+            ${metaRow(t("liquidity_score"), formatBadge("liquidity", liquidity.score))}
+            ${metaRow(t("liquidity_recommended_max"), liquidity.recommendedMaxOrderNotional != null ? `${formatDecimal(liquidity.recommendedMaxOrderNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_round_trip_safe"), liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_spread_bps"), liquidity.spreadBps != null ? `${formatDecimal(liquidity.spreadBps, 2)} bps` : "—")}
+            ${metaRow(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
+        </div>
+        <div class="actions">${assessBtn}</div>
+    `);
+}
+
 function buildAiAdvisorSection(candidate, aiEnabled) {
     if (!aiEnabled) {
         return section(t("ai_advisor_title"), `
@@ -141,14 +172,13 @@ function buildAiAdvisorSection(candidate, aiEnabled) {
             </div>
         `);
     }
-    const pct = Math.round(ai.confidence * 100);
     return section(t("ai_advisor_title"), `
         <div class="action-card">
-            <div class="meta-grid">
-                ${metaRow(t("ai_confidence"), `${formatAiBadge(ai)} ${pct}%`)}
-                ${metaRow(t("ai_reasoning"), escapeHtml(ai.reasoning ?? "—"))}
-                ${metaRow(t("ai_model"), escapeHtml(ai.modelUsed ?? "—"))}
-                ${metaRow(t("ai_analyzed_at"), formatInstant(ai.analyzedAt))}
+            <div class="detail-grid">
+                <div class="inline-kv"><span class="muted">${t("ai_confidence")}</span><span>${formatAiBadge(ai)}</span></div>
+                <div class="inline-kv"><span class="muted">${t("ai_reasoning")}</span><span class="meta-value">${escapeHtml(ai.reasoning ?? "—")}</span></div>
+                <div class="inline-kv"><span class="muted">${t("ai_model")}</span><span>${escapeHtml(ai.modelUsed ?? "—")}</span></div>
+                <div class="inline-kv"><span class="muted">${t("ai_analyzed_at")}</span><span>${formatInstant(ai.analyzedAt)}</span></div>
             </div>
             <div class="actions">
                 <button class="button secondary" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
@@ -157,7 +187,7 @@ function buildAiAdvisorSection(candidate, aiEnabled) {
     `);
 }
 
-export function buildCandidateDrawerContent(candidate, aiEnabled) {
+export function buildCandidateDrawerContent(candidate, aiEnabled, liquidity) {
     return `
         ${pipelineStageMarkup("signal")}
         ${section(t("candidate_signal_snapshot"), `
@@ -179,6 +209,7 @@ export function buildCandidateDrawerContent(candidate, aiEnabled) {
                 <p class="helper-text">${escapeHtml(candidate.normalizationFailureReason)}</p>
             </div>
         `) : ""}
+        ${buildCandidateLiquiditySection(liquidity, candidate)}
         ${buildAiAdvisorSection(candidate, aiEnabled)}
         ${buildApproveSection(candidate)}
         ${buildRejectSection(candidate)}
@@ -192,9 +223,10 @@ export async function openCandidateDetail({ id, nodes, showError }) {
             api.getCandidate(id),
             api.getAiStatus().catch(() => ({ enabled: false }))
         ]);
+        const liquidity = await api.getCandidateLiquidity(id);
         nodes.modalType.textContent = t("candidate_modal_type");
         nodes.modalTitle.textContent = candidate.normalizedSymbol ?? candidate.rawSymbol;
-        nodes.modalContent.innerHTML = buildCandidateDrawerContent(candidate, aiStatus.enabled);
+        nodes.modalContent.innerHTML = buildCandidateDrawerContent(candidate, aiStatus.enabled, liquidity);
         openModal(nodes);
     } catch (error) {
         showError(error.message);

@@ -259,6 +259,13 @@ export const api = {
         const params = new URLSearchParams({ venue, venueSymbol });
         return request(`/api/v1/trades/${tradeId}/refresh-liquidity?${params}`, { method: "POST" });
     },
+    getCandidateLiquidity(id) {
+        return request(`/api/v1/candidates/${id}/liquidity`).catch(() => null);
+    },
+    assessCandidateLiquidity(id, venue, venueSymbol) {
+        const params = new URLSearchParams({ venue, venueSymbol });
+        return request(`/api/v1/candidates/${id}/liquidity?${params}`, { method: "POST" });
+    },
     getAiStatus() {
         return request("/api/v1/ai/status");
     },

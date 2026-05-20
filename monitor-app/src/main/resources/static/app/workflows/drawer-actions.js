@@ -124,6 +124,23 @@ export function createDrawerActionHandler({
             return;
         }
 
+        const assessCandidateLiquidityBtn = event.target.closest("[data-action='assess-candidate-liquidity']");
+        if (assessCandidateLiquidityBtn) {
+            const origText = assessCandidateLiquidityBtn.textContent;
+            assessCandidateLiquidityBtn.disabled = true;
+            assessCandidateLiquidityBtn.textContent = t("liquidity_refreshing");
+            try {
+                const { id, venue, symbol } = assessCandidateLiquidityBtn.dataset;
+                await api.assessCandidateLiquidity(id, venue, symbol);
+                await openCandidateDetail(id);
+            } catch (error) {
+                assessCandidateLiquidityBtn.disabled = false;
+                assessCandidateLiquidityBtn.textContent = origText;
+                showError(error.message);
+            }
+            return;
+        }
+
         const deleteCredentialButton = event.target.closest("[data-action='delete-credential']");
         if (deleteCredentialButton) {
             if (!window.confirm(`${t("action_delete_keys_confirm")} ${deleteCredentialButton.dataset.venue}?`)) return;
