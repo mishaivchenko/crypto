@@ -9,5 +9,7 @@ public interface LiquidityAssessmentJpaRepository extends JpaRepository<Liquidit
 {
     Optional<LiquidityAssessmentEntity> findFirstByTradeIdOrderBySampledAtDesc( Long tradeId );
 
+    Optional<LiquidityAssessmentEntity> findFirstBySignalCandidateIdOrderBySampledAtDesc( Long signalCandidateId );
+
     Optional<LiquidityAssessmentEntity> findByAssessmentId( String assessmentId );
 }

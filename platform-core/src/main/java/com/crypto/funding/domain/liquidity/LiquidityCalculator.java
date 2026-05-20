@@ -57,6 +57,7 @@ public final class LiquidityCalculator
         return new LiquidityAssessment(
             UUID.randomUUID().toString(),
             null,
+            null,
             snapshot.venue(),
             snapshot.symbol(),
             side,

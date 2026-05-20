@@ -1,5 +1,6 @@
 package com.crypto.funding.application.candidate;
 
+import com.crypto.funding.application.ai.AiSignalAdvisorService;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.infrastructure.persistence.mapper.SignalCandidateMapper;
@@ -19,16 +20,19 @@ public class SignalCandidateIngestService
     private final SignalCandidateJpaRepository candidateRepository;
     private final SymbolNormalizationService symbolNormalizationService;
     private final CandidateProperties candidateProperties;
+    private final AiSignalAdvisorService aiSignalAdvisorService;
 
     public SignalCandidateIngestService(
         SignalCandidateJpaRepository candidateRepository,
         SymbolNormalizationService symbolNormalizationService,
-        CandidateProperties candidateProperties
+        CandidateProperties candidateProperties,
+        AiSignalAdvisorService aiSignalAdvisorService
     )
     {
         this.candidateRepository = candidateRepository;
         this.symbolNormalizationService = symbolNormalizationService;
         this.candidateProperties = candidateProperties;
+        this.aiSignalAdvisorService = aiSignalAdvisorService;
     }
 
     @Transactional
@@ -67,7 +71,12 @@ public class SignalCandidateIngestService
         entity.setSourceMessageId( command.sourceMessageId() );
         applyObservation( entity, command );
 
-        return SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
+        SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
+        if( saved.status() == SignalCandidateStatus.NORMALIZED )
+        {
+            aiSignalAdvisorService.analyzeAsync( saved.id() );
+        }
+        return saved;
     }
 
     private SignalCandidate refreshExistingCandidate( SignalCandidateEntity existing, IngestSignalCandidateCommand command )

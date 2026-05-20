@@ -108,6 +108,17 @@ export function createDrawerActionHandler({
             return;
         }
 
+        const analyzeButton = event.target.closest("[data-action='analyze-candidate']");
+        if (analyzeButton) {
+            try {
+                await api.analyzeCandidate(analyzeButton.dataset.id);
+                await openCandidateDetail(analyzeButton.dataset.id);
+            } catch (error) {
+                showError(error.message);
+            }
+            return;
+        }
+
         const deleteCredentialButton = event.target.closest("[data-action='delete-credential']");
         if (deleteCredentialButton) {
             if (!window.confirm(`${t("action_delete_keys_confirm")} ${deleteCredentialButton.dataset.venue}?`)) return;

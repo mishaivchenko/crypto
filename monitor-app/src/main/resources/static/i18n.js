@@ -278,6 +278,18 @@ const translations = {
         candidate_reject_helper: "Reject only if the signal should definitely not become a Funding Event.",
         candidate_reject_button: "Reject candidate",
 
+        // AI advisor
+        ai_advisor_title: "AI Advisor",
+        ai_recommendation_GO: "GO",
+        ai_recommendation_WATCH: "WATCH",
+        ai_recommendation_PASS: "PASS",
+        ai_recommendation_pending: "Analyzing…",
+        ai_confidence: "Confidence",
+        ai_reasoning: "Reasoning",
+        ai_model: "Model",
+        ai_analyzed_at: "Analyzed at",
+        ai_reanalyze: "Re-analyze",
+
         // Event detail
         event_modal_type: "Funding Event",
         event_snapshot: "Event snapshot",
@@ -886,6 +898,18 @@ const translations = {
         candidate_reject_title: "Отклонить сигнал",
         candidate_reject_helper: "Отклоняй только если сигнал точно не должен становиться событием фандинга.",
         candidate_reject_button: "Отклонить кандидата",
+
+        // AI advisor
+        ai_advisor_title: "AI Советник",
+        ai_recommendation_GO: "В СДЕЛКУ",
+        ai_recommendation_WATCH: "НАБЛЮДАТЬ",
+        ai_recommendation_PASS: "ПРОПУСТИТЬ",
+        ai_recommendation_pending: "Анализирую…",
+        ai_confidence: "Уверенность",
+        ai_reasoning: "Обоснование",
+        ai_model: "Модель",
+        ai_analyzed_at: "Проанализировано",
+        ai_reanalyze: "Переанализировать",
 
         // Event detail
         event_modal_type: "Событие фандинга",

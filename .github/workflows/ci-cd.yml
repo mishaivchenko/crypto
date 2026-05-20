@@ -39,23 +39,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: bash scripts/ci-failure-analysis.sh /tmp/build-output.txt
 
-      - name: Upload JARs
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-jars
-          path: |
-            monitor-app/build/libs/monitor-app-*-monitor.jar
-            engine-app/build/libs/engine-app-*-engine.jar
-            telegram-bot-app/build/libs/telegram-bot-app-*-telegram-bot.jar
-          retention-days: 1
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/build-output.txt
-          retention-days: 1
 
   # ── 2. Engine TDD gate (PR only, skipped if engine-app unchanged) ────────────
   engine_tdd:
@@ -167,17 +150,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download JARs
-        uses: actions/download-artifact@v4
+      - uses: actions/setup-java@v4
         with:
-          name: app-jars
-          path: .
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
 
-      - name: Restore JAR paths
-        run: |
-          mkdir -p ${{ matrix.app.module }}/build/libs
-          find . -maxdepth 1 -name "${{ matrix.app.module }}-*-${{ matrix.app.classifier }}.jar" \
-            -exec mv {} ${{ matrix.app.module }}/build/libs/ \;
+      - run: chmod +x gradlew
+
+      - name: Build JAR
+        run: ./gradlew :${{ matrix.app.module }}:bootJar --no-daemon
 
       - uses: docker/setup-buildx-action@v3
 
@@ -220,19 +202,10 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
-      - name: Download JARs
-        uses: actions/download-artifact@v4
-        with:
-          name: app-jars
-          path: ${{ env.PROJECT_DIR }}
-
-      - name: Restore JAR paths
+      - name: Build JARs
         run: |
           cd ${{ env.PROJECT_DIR }}
-          mkdir -p monitor-app/build/libs engine-app/build/libs telegram-bot-app/build/libs
-          find . -maxdepth 1 -name "monitor-app-*-monitor.jar" -exec mv {} monitor-app/build/libs/ \;
-          find . -maxdepth 1 -name "engine-app-*-engine.jar" -exec mv {} engine-app/build/libs/ \;
-          find . -maxdepth 1 -name "telegram-bot-app-*-telegram-bot.jar" -exec mv {} telegram-bot-app/build/libs/ \;
+          ./gradlew :monitor-app:bootJar :engine-app:bootJar :telegram-bot-app:bootJar --no-daemon
 
       - name: Ensure .env exists
         run: touch ${{ env.PROJECT_DIR }}/deploy/.env
@@ -250,11 +223,11 @@ jobs:
       - name: Restart services
         run: |
           cd ${{ env.PROJECT_DIR }}/deploy
-          docker rm -f funding-monitor funding-engine funding-telegram-bot 2>/dev/null || true
+          docker rm -f funding-monitor funding-engine funding-telegram-bot funding-ngrok 2>/dev/null || true
           IMAGE_MONITOR=funding-monitor:staging \
           IMAGE_ENGINE=funding-engine:staging \
           IMAGE_TELEGRAM_BOT=funding-telegram-bot:staging \
-          docker compose up -d --remove-orphans monitor engine telegram-bot
+          docker compose up -d --remove-orphans monitor engine ngrok telegram-bot
 
       - name: Smoke test
         run: |

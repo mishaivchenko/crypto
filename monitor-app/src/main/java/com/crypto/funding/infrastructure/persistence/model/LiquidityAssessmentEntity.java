@@ -39,6 +39,9 @@ public class LiquidityAssessmentEntity extends AuditableEntity
     @Column(name = "trade_id")
     private Long tradeId;
 
+    @Column(name = "signal_candidate_id")
+    private Long signalCandidateId;
+
     @Column(name = "venue", nullable = false)
     private String venue;
 
@@ -111,6 +114,16 @@ public class LiquidityAssessmentEntity extends AuditableEntity
     public void setTradeId( Long tradeId )
     {
         this.tradeId = tradeId;
+    }
+
+    public Long getSignalCandidateId()
+    {
+        return signalCandidateId;
+    }
+
+    public void setSignalCandidateId( Long signalCandidateId )
+    {
+        this.signalCandidateId = signalCandidateId;
     }
 
     public String getVenue()

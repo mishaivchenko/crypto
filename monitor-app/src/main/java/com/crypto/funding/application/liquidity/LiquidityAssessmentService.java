@@ -73,10 +73,16 @@ public class LiquidityAssessmentService
     @Transactional
     public LiquidityAssessment assess( String venue, String venueSymbol, Long tradeId )
     {
-        return assessmentTimer.record( () -> doAssess( venue, venueSymbol, tradeId ) );
+        return assessmentTimer.record( () -> doAssess( venue, venueSymbol, tradeId, null ) );
     }
 
-    private LiquidityAssessment doAssess( String venue, String venueSymbol, Long tradeId )
+    @Transactional
+    public LiquidityAssessment assessForCandidate( String venue, String venueSymbol, Long signalCandidateId )
+    {
+        return assessmentTimer.record( () -> doAssess( venue, venueSymbol, null, signalCandidateId ) );
+    }
+
+    private LiquidityAssessment doAssess( String venue, String venueSymbol, Long tradeId, Long signalCandidateId )
     {
         VenueOrderBookPort port = orderBookPortsByVenue.get( venue );
         if( port == null )
@@ -112,9 +118,11 @@ public class LiquidityAssessmentService
             expiresAt
         );
 
-        LiquidityAssessment withTradeId = tradeId == null ? assessment : new LiquidityAssessment(
+        boolean hasId = tradeId != null || signalCandidateId != null;
+        LiquidityAssessment withTradeId = !hasId ? assessment : new LiquidityAssessment(
             assessment.id(),
             tradeId,
+            signalCandidateId,
             assessment.venue(),
             assessment.symbol(),
             assessment.side(),
@@ -165,6 +173,13 @@ public class LiquidityAssessmentService
     }
 
     @Transactional(readOnly = true)
+    public Optional<LiquidityAssessment> findLatestForCandidate( Long signalCandidateId )
+    {
+        return repository.findFirstBySignalCandidateIdOrderBySampledAtDesc( signalCandidateId )
+                         .map( this::toDomain );
+    }
+
+    @Transactional(readOnly = true)
     public Optional<LiquidityAssessment> findByAssessmentId( String assessmentId )
     {
         return repository.findByAssessmentId( assessmentId )
@@ -176,6 +191,7 @@ public class LiquidityAssessmentService
         LiquidityAssessmentEntity entity = new LiquidityAssessmentEntity();
         entity.setAssessmentId( assessment.id() );
         entity.setTradeId( assessment.tradeId() );
+        entity.setSignalCandidateId( assessment.signalCandidateId() );
         entity.setVenue( assessment.venue() );
         entity.setSymbol( assessment.symbol() );
         entity.setSide( assessment.side() );
@@ -199,6 +215,7 @@ public class LiquidityAssessmentService
         return new LiquidityAssessment(
             entity.getAssessmentId(),
             entity.getTradeId(),
+            entity.getSignalCandidateId(),
             entity.getVenue(),
             entity.getSymbol(),
             entity.getSide(),
