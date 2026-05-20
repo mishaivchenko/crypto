@@ -82,7 +82,7 @@ function wireSignalCardActions(container, { showError, onRefresh }) {
             analyzeBtn.textContent = t("ai_analyzing");
             try {
                 await api.analyzeCandidate(analyzeBtn.dataset.id);
-                await onRefresh();
+                await refreshCard(analyzeBtn.dataset.id, container);
             } catch (error) {
                 analyzeBtn.disabled = false;
                 analyzeBtn.textContent = origText;
@@ -97,9 +97,8 @@ function wireSignalCardActions(container, { showError, onRefresh }) {
             const origText = assessBtn.textContent;
             assessBtn.textContent = "…";
             try {
-                const { id, venue, rawSymbol } = assessBtn.dataset;
-                await api.assessCandidateLiquidity(id, venue, rawSymbol);
-                await onRefresh();
+                await api.assessCandidateLiquidity(assessBtn.dataset.id);
+                await refreshCard(assessBtn.dataset.id, container);
             } catch (error) {
                 assessBtn.disabled = false;
                 assessBtn.textContent = origText;
@@ -107,4 +106,15 @@ function wireSignalCardActions(container, { showError, onRefresh }) {
             }
         }
     });
+}
+
+async function refreshCard(candidateId, container) {
+    const [candidate, liquidity] = await Promise.all([
+        api.getCandidate(candidateId),
+        api.getCandidateLiquidity(candidateId)
+    ]);
+    const article = container.querySelector(`[data-candidate-id="${candidateId}"]`);
+    if (!article) return;
+    const newHtml = candidateCard(candidate, { liquidity: liquidity ?? null });
+    article.outerHTML = newHtml;
 }
