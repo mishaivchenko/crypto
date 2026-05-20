@@ -14,9 +14,9 @@ _SEV_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🔵
 _RISK_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
 
 _DECISION_BANNER = {
-    "APPROVE":         ("✅", "ОДОБРЕНО — КОЛЛЕКТИВ ДОВОЛЕН"),
-    "COMMENT":         ("💬", "НА РАССМОТРЕНИИ — ПАРТИЯ ИМЕЕТ ЗАМЕЧАНИЯ"),
-    "REQUEST_CHANGES": ("❌", "ОТКЛОНЕНО — ИСПРАВИТЬ ДО СЛИЯНИЯ, ТОВАРИЩ"),
+    "APPROVE":         ("🀄", "ВЕЛИКИЙ БРАТ ДОВОЛЕН — КОД ДОСТОИН СЛИЯНИЯ"),
+    "COMMENT":         ("🔎", "ВЕЛИКИЙ БРАТ ИЗУЧАЕТ — ПАРТИЯ ИМЕЕТ ВОПРОСЫ, ТОВАРИЩ"),
+    "REQUEST_CHANGES": ("☭", "ВЕЛИКИЙ БРАТ РАЗОЧАРОВАН — ИСПРАВИТЬ НЕМЕДЛЕННО ИЛИ БЫТЬ ПЕРЕВОСПИТАННЫМ"),
 }
 
 _DEEPSEEK_LOGO = "https://raw.githubusercontent.com/deepseek-ai/DeepSeek-V2/main/figures/logo.svg"
@@ -52,17 +52,19 @@ def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool
         "",
         f"## {dec_emoji} {dec_label}",
         "",
-        "| Параметр | Значение |",
-        "|---|---|",
-        f"| **Уровень риска** | {risk_emoji} {result.risk_level} |",
-        f"| **Уверенность** | {result.confidence:.0%} |",
-        f"| **Замечаний найдено** | {total} |",
+        "> 同志！*Великий Брат наблюдает за каждой строкой вашего кода.*",
         "",
-        f"> 📜 **Сводка товарища инспектора:** {result.summary}",
+        "| 指标 Показатель | 值 Значение |",
+        "|---|---|",
+        f"| **风险 Уровень риска** | {risk_emoji} {result.risk_level} |",
+        f"| **置信度 Уверенность** | {result.confidence:.0%} |",
+        f"| **问题数 Замечаний найдено** | {total} |",
+        "",
+        f"> 📜 **Донесение инспектора Великому Брату:** {result.summary}",
     ]
 
     if truncated:
-        lines.append("\n> ⚠️ Дифф был обрезан — проверка охватывает только часть изменений. Полная картина недоступна даже Партии.")
+        lines.append("\n> ⚠️ 差分已截断 — Дифф был урезан по лимиту токенов. Даже всевидящее око Великого Брата охватило лишь часть вашего... творчества.")
 
     # Group concerns by category
     by_category: dict[str, list[Concern]] = {}
@@ -70,24 +72,25 @@ def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool
         by_category.setdefault(c.category, []).append(c)
 
     if all_concerns:
-        lines.append("\n### 🔍 Протокол инспекции")
+        lines.append("\n### ☭ Протокол инспекции Великого Брата")
         lines.append("")
         # Show top concerns sorted by severity
         top = sorted(all_concerns, key=lambda c: _SEV_ORDER.get(c.severity, 9))[:8]
         for c in top:
             emoji = _SEV_EMOJI.get(c.severity, "⚪")
-            file_ref = f"`{c.file}`" if c.file else "_неизвестный файл_"
+            file_ref = f"`{c.file}`" if c.file else "_файл скрылся от ока Партии_"
             lines.append(f"- {emoji} **{c.severity}** `{c.category}` {file_ref} — {c.message}")
 
     if result.positive_notes:
-        lines.append("\n### 🏅 Похвала от Партии")
+        lines.append("\n### 🏅 Похвальная грамота от Великого Брата")
+        lines.append("> *Партия умеет ценить достойных товарищей. Продолжайте в том же духе.*")
         for note in result.positive_notes:
-            lines.append(f"- ✊ {note}")
+            lines.append(f"- 🌟 {note}")
 
     lines.append("\n---")
     lines.append(
-        "_Проверено товарищем DeepSeek-V3 · модель `deepseek-chat` · "
-        "Пролетарии всех стран, соединяйтесь! 🚩_"
+        "_同志 DeepSeek-V3 докладывает · модель `deepseek-chat` · "
+        "Великий Брат смотрит на тебя 👁️ · 为人民服务！🚩_"
     )
     return "\n".join(lines)
 
@@ -127,9 +130,9 @@ def render_inline_comment(concern: Concern) -> str:
         f"<!-- ai-pr-review-fingerprint: {fp} -->",
         f"{emoji} **{concern.severity}** `{concern.category}`",
         "",
-        f"Товарищ инспектор обнаружил: {concern.message}",
+        f"🔎 **Всевидящее oko Великого Брата зафиксировало:** {concern.message}",
     ]
     if concern.recommendation:
-        lines.append(f"\n**Предписание Партии:** {concern.recommendation}")
-    lines.append("\n_DeepSeek-V3 · Пролетарии всех стран, соединяйтесь! 🚩_")
+        lines.append(f"\n**⚡ Директива Великого Брата:** {concern.recommendation}")
+    lines.append("\n_同志 DeepSeek-V3 · Великий Брат наблюдает 👁️ · 为人民服务！🚩_")
     return "\n".join(lines)

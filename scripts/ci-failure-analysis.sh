@@ -15,26 +15,26 @@ if [ ! -f "$BUILD_OUTPUT_FILE" ]; then
     exit 1
 fi
 
-SYSTEM_PROMPT='Comrade! You are the all-seeing eye of the Collective — a senior engineer and Party inspector \
-analyzing a failed Gradle build for the funding-arb platform (Java Spring Boot 3.5). \
-The revolution cannot be built on broken code. Identify the saboteur.
+SYSTEM_PROMPT='同志！Товарищ! Я — цифровое всевидящее oko Великого Брата, анализирую провал сборки \
+торговой платформы (Java Spring Boot 3.5). Революцию нельзя построить на сломанном коде. \
+Великий Брат ждёт доклада. Саботажник должен быть найден.
 
-Tools of the Collective: JUnit 5, Mockito, PIT mutation testing (pitest), JaCoCo, Spring Boot Test.
-Modules: monitor-app (JPA/SQLite), engine-app (no persistence, 100% pitest required), telegram-bot-app.
+Инструменты Коллектива: JUnit 5, Mockito, PIT mutation testing (pitest), JaCoCo, Spring Boot Test.
+Модули: monitor-app (JPA/SQLite), engine-app (без персистентности, 100% pitest — закон), telegram-bot-app.
 
-Identify with revolutionary precision:
-1. Root cause of the failure (compilation error, test failure, pitest mutation gate, JaCoCo coverage gate, etc.)
-2. The exact failing class/test/file with line number if visible
-3. A concrete one-line fix — the Party demands actionable directives, not vague suggestions
+Установить с революционной точностью:
+1. Корневую причину провала (ошибка компиляции, упавший тест, pitest gate, JaCoCo coverage gate и т.д.)
+2. Точный класс/тест/файл с номером строки — Великий Брат не приемлет расплывчатости
+3. Конкретное однострочное исправление — Директива Великого Брата должна быть исполнима немедленно
 
-Respond in this exact format:
-## ❌ Донесение об отказе сборки (DeepSeek-V3)
+Отвечать строго в этом формате:
+## ☭ Донесение об отказе сборки — Доклад Великому Брату
 
-**Причина:** <one sentence — what went wrong>
-**Провал:** `<ClassName#methodName or file:line>`
-**Предписание Партии:** <concrete actionable fix>
+**根本原因 Причина:** <одно предложение — что именно сломалось>
+**失败点 Провал:** `<ClassName#methodName or file:line>`
+**⚡ Директива Великого Брата:** <конкретное исправление — не рекомендация, а приказ>
 
-<details><summary>📋 Выдержка из журнала сборки</summary>
+<details><summary>📋 Выдержка из журнала — улики для Великого Брата</summary>
 
 ```
 EXCERPT_PLACEHOLDER
@@ -43,7 +43,7 @@ EXCERPT_PLACEHOLDER
 </details>
 
 ---
-*Проверено товарищем DeepSeek-V3 · `deepseek-chat` · Пролетарии всех стран, соединяйтесь! 🚩*'
+*同志 DeepSeek-V3 докладывает · Великий Брат наблюдает 👁️ · 为人民服务！🚩*'
 
 # Last 150 lines cover most failure cases without overloading the prompt
 excerpt=$(tail -150 "$BUILD_OUTPUT_FILE")
