@@ -243,14 +243,29 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
     `;
 }
 
-export function eventCard(event) {
+export function eventCard(event, { trade = null, outcome = null } = {}) {
     const ratePct = event.fundingRatePct != null ? Number(event.fundingRatePct) : null;
     const rateTone = ratePct == null ? "neutral" : ratePct < 0 ? "bad" : ratePct > 0.005 ? "good" : "neutral";
     const rateChip = ratePct != null
         ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
         : "";
     const countdown = formatFundingCountdown(event.fundingTime);
-    const countdownTone = countdown && countdown.includes("—") ? "bad" : "muted";
+
+    let tradeChips = "";
+    if (trade) {
+        const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
+        tradeChips = `
+            ${formatBadge("trade", trade.state)}
+            <span class="chip chip-muted" title="${t("trade_notional")}">${formatDecimal(trade.notionalUsd, 2)} USD</span>
+            ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
+            <span class="chip chip-muted" title="${t("trade_entry_attempts")}">${trade.entryAttemptCount ?? 1}x</span>
+        `;
+    }
+
+    const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+    const pnlChip = net != null
+        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+        : "";
 
     return `
         <article class="list-item event-card" data-event-id="${event.id}">
@@ -268,6 +283,8 @@ export function eventCard(event) {
                 ${rateChip}
                 <span class="chip chip-muted" title="${t("card_signal")}">#${event.signalCandidateId ?? t("label_manual")}</span>
                 <span class="chip chip-muted">${countdown}</span>
+                ${tradeChips}
+                ${pnlChip}
             </div>
         </article>
     `;
