@@ -285,6 +285,11 @@ export function formatPnlBadge(outcome) {
 }
 
 export function tradeCard(trade, outcome = null) {
+    const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+    const pnlChip = net != null
+        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+        : "";
+    const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
     return `
         <article class="list-item trade-card">
             <header>
@@ -299,9 +304,12 @@ export function tradeCard(trade, outcome = null) {
                     <button class="button secondary" type="button" data-open-trade="${trade.id}">${t("label_inspect")}</button>
                 </div>
             </header>
-            <div class="item-row">
-                <span class="muted">${escapeHtml(sideLabel(trade.intendedSide))} · ${formatNumber(trade.entryAttemptCount ?? 1)} attempts · ${t("card_spacing")} ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
-                <span class="muted">entry ${formatInstant(trade.plannedEntryAt)} · exit ${formatInstant(trade.plannedExitAt)}</span>
+            <div class="chip-row">
+                <span class="chip chip-muted" title="${t("trade_side")}">${escapeHtml(sideLabel(trade.intendedSide))}</span>
+                <span class="chip chip-muted" title="${t("trade_entry_attempts")}">${formatNumber(trade.entryAttemptCount ?? 1)}x · ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
+                ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
+                <span class="chip chip-muted">entry ${formatInstant(trade.plannedEntryAt)}</span>
+                ${pnlChip}
             </div>
         </article>
     `;
