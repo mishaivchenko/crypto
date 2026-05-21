@@ -7,6 +7,7 @@ import {
     formatDurationMs,
     formatFundingCountdown,
     formatInstant,
+    formatSignedMs,
     journalMarkup,
     metaRow,
     offsetIso,
@@ -48,7 +49,134 @@ function signalAnalysisChips(candidate, liquidity) {
         </div>`;
 }
 
-export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null }) {
+function buildTradeParamsSection(trade) {
+    return section(t("event_trade_params"), `
+        <div class="meta-grid">
+            ${metaRow(t("trade_status"), formatBadge("trade", trade.state))}
+            ${metaRow(t("trade_venue"), escapeHtml(trade.venue ?? "—"))}
+            ${metaRow(t("trade_instrument"), escapeHtml(trade.symbol ?? "—"))}
+            ${metaRow(t("trade_notional"), `${formatDecimal(trade.notionalUsd, 2)} USD`)}
+            ${metaRow(t("trade_side"), escapeHtml(trade.intendedSide ?? "—"))}
+            ${metaRow(t("trade_planned_entry"), formatInstant(trade.plannedEntryAt), formatFundingCountdown(trade.plannedEntryAt))}
+            ${metaRow(t("trade_planned_exit"), formatInstant(trade.plannedExitAt))}
+            ${metaRow(t("trade_entry_attempts"), String(trade.entryAttemptCount ?? 1), `${t("trade_spacing")} ${formatDurationMs(trade.entrySpacingMs ?? 0)}`)}
+            ${trade.stopLossUsd != null ? metaRow(t("trade_stop_loss"), `${formatDecimal(trade.stopLossUsd, 2)} USD`) : ""}
+            ${trade.takeProfitUsd != null ? metaRow(t("trade_take_profit"), `${formatDecimal(trade.takeProfitUsd, 2)} USD`) : ""}
+            ${trade.notes ? metaRow(t("trade_note"), escapeHtml(trade.notes)) : ""}
+        </div>
+    `);
+}
+
+function buildLatencyChainSection(trade) {
+    const p50 = trade.warmupP50Ms != null ? `${trade.warmupP50Ms} ms` : "—";
+    const p95 = trade.warmupP95Ms != null ? `${trade.warmupP95Ms} ms` : null;
+    const manualAdj = trade.manualLatencyAdjustmentMs ?? 0;
+    const adjTone = manualAdj > 0 ? "chip-bad" : manualAdj < 0 ? "chip-good" : "chip-muted";
+    const effectiveLead = trade.effectiveEntryLatencyMs ?? 0;
+
+    return section(t("event_latency_chain"), `
+        <div class="latency-chain">
+            <div class="latency-node-inline">
+                <span class="latency-label-inline">${t("warmup_p50")}</span>
+                <strong class="latency-val">${p50}</strong>
+                ${p95 ? `<span class="latency-p95">${t("warmup_p95")} ${p95}</span>` : ""}
+            </div>
+            <span class="latency-op">+</span>
+            <div class="latency-node-inline">
+                <span class="latency-label-inline">${t("event_manual_latency")}</span>
+                <strong class="latency-val"><span class="chip ${adjTone}">${formatSignedMs(manualAdj)}</span></strong>
+            </div>
+            <span class="latency-op">=</span>
+            <div class="latency-node-inline latency-result-inline">
+                <span class="latency-label-inline">${t("trade_effective_trigger")}</span>
+                <strong class="latency-val latency-accent">${formatDurationMs(effectiveLead)}</strong>
+            </div>
+        </div>
+        <div class="meta-grid" style="margin-top:8px">
+            ${metaRow(t("trade_armed_at"), formatInstant(trade.armedAt))}
+            ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+            ${metaRow(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
+            ${metaRow(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
+            ${trade.armSource ? metaRow(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
+        </div>
+    `);
+}
+
+function buildTradeLiquiditySection(tradeLiquidity) {
+    if (!tradeLiquidity) return "";
+    const scoreTone = tradeLiquidity.score === "EXCELLENT" || tradeLiquidity.score === "GOOD" ? "good"
+        : tradeLiquidity.score === "THIN" || tradeLiquidity.score === "UNTRADABLE" ? "bad" : "warning";
+    const warning = tradeLiquidity.score === "UNTRADABLE"
+        ? `<div class="banner">${t("liquidity_warning_untradable")}</div>`
+        : tradeLiquidity.score === "THIN"
+            ? `<div class="banner" style="border-color:rgba(255,190,60,0.22);background:linear-gradient(180deg,rgba(58,44,10,0.96),rgba(36,27,6,0.94))">${t("liquidity_warning_thin")}</div>`
+            : "";
+    return section(t("event_trade_liquidity"), `
+        ${warning}
+        <div class="chip-row" style="margin-bottom:8px">
+            <span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${tradeLiquidity.score}`) ?? tradeLiquidity.score)}</span>
+            ${tradeLiquidity.bestBid != null ? `<span class="chip chip-muted">${formatDecimal(tradeLiquidity.bestBid, 4)} / ${tradeLiquidity.bestAsk != null ? formatDecimal(tradeLiquidity.bestAsk, 4) : "—"}</span>` : ""}
+            ${tradeLiquidity.spreadBps != null ? `<span class="chip ${tradeLiquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(tradeLiquidity.spreadBps, 1)} bps</span>` : ""}
+            ${tradeLiquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(tradeLiquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
+        </div>
+        <div class="meta-grid">
+            ${metaRow(t("liquidity_entry_bid_depth"), tradeLiquidity.entryBidDepthNotional != null ? `${formatDecimal(tradeLiquidity.entryBidDepthNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_exit_ask_depth"), tradeLiquidity.exitAskDepthNotional != null ? `${formatDecimal(tradeLiquidity.exitAskDepthNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_round_trip_safe"), tradeLiquidity.roundTripSafeNotional != null ? `${formatDecimal(tradeLiquidity.roundTripSafeNotional, 2)} USD` : "—")}
+            ${metaRow(t("liquidity_sampled_at"), formatInstant(tradeLiquidity.sampledAt))}
+        </div>
+    `);
+}
+
+function buildAttemptsSection(attempts) {
+    if (!attempts || !attempts.length) return "";
+    return section(t("event_execution_attempts"), attempts.map((a) => `
+        <div class="meta-row">
+            <span class="meta-label">#${escapeHtml(String(a.attemptNumber ?? "—"))} · ${escapeHtml(a.status)}</span>
+            <strong class="meta-value">${escapeHtml(a.symbol ?? "—")} ${escapeHtml(a.side ?? "—")}</strong>
+            <span class="meta-helper">
+                ${a.averageFillPrice != null ? `${t("event_fill_price")} ${formatDecimal(a.averageFillPrice, 4)} · ` : ""}
+                ${a.filledQuantity != null ? `qty ${formatDecimal(a.filledQuantity, 6)} · ` : ""}
+                ${a.feeUsd != null ? `${t("event_fees")} ${formatDecimal(a.feeUsd, 4)} USD · ` : ""}
+                ${a.failureReason ? escapeHtml(a.failureReason) + " · " : ""}
+                ${t("trade_trigger")} ${formatInstant(a.triggerAt)}
+            </span>
+        </div>
+    `).join(""));
+}
+
+function buildPositionSection(position) {
+    if (!position) return "";
+    return section(t("event_position"), `
+        <div class="meta-grid">
+            ${metaRow(t("event_entry_price"), position.entryPrice != null ? formatDecimal(position.entryPrice, 4) : "—")}
+            ${metaRow(t("event_exit_price"), position.exitPrice != null ? formatDecimal(position.exitPrice, 4) : "—")}
+            ${metaRow(t("history_quantity"), position.quantity != null ? formatDecimal(position.quantity, 6) : "—")}
+            ${metaRow(t("history_opened_at"), formatInstant(position.openedAt))}
+            ${position.closedAt ? metaRow(t("history_closed_at"), formatInstant(position.closedAt)) : ""}
+        </div>
+    `);
+}
+
+function buildOutcomeSection(outcome) {
+    if (!outcome) return "";
+    const net = outcome.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+    const netTone = net == null ? "muted" : net >= 0 ? "good" : "bad";
+    return section(t("event_outcome"), `
+        <div class="chip-row" style="margin-bottom:8px">
+            ${net != null ? `<span class="chip chip-${netTone}">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>` : ""}
+            ${outcome.outcomeCode ? `<span class="chip chip-muted">${escapeHtml(outcome.outcomeCode)}</span>` : ""}
+        </div>
+        <div class="meta-grid">
+            ${metaRow(t("event_gross_pnl"), outcome.grossPnlUsd != null ? `${formatDecimal(outcome.grossPnlUsd, 4)} USD` : "—")}
+            ${metaRow(t("event_net_pnl"), net != null ? `${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD` : "—")}
+            ${metaRow(t("event_fees"), outcome.feesUsd != null ? `${formatDecimal(outcome.feesUsd, 4)} USD` : "—")}
+            ${metaRow(t("history_evaluated_at"), formatInstant(outcome.evaluatedAt))}
+        </div>
+    `);
+}
+
+export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
     const defaultEntry = toLocalInputValue(offsetIso(event.fundingTime, -45));
     const defaultExit = toLocalInputValue(offsetIso(event.fundingTime, 90));
     const canArm = event.status === "DISCOVERED";
@@ -73,7 +201,7 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
             </div>
             ${signalAnalysisChips(candidate, liquidity)}
         `)}
-        ${section(t("event_arm_title"), canArm ? `
+        ${canArm ? section(t("event_arm_title"), `
             <div class="action-card primary">
                 <p class="helper-text">${t("event_arm_helper")}</p>
                 <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
@@ -144,11 +272,13 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
                     </div>
                 </form>
             </div>
-        ` : `
-            <div class="action-card">
-                <p class="helper-text">${t("event_already_armed")} ${escapeHtml(event.status.toLowerCase())} ${t("event_cannot_arm")}</p>
-            </div>
-        `)}
+        `) : ""}
+        ${trade ? buildTradeParamsSection(trade) : ""}
+        ${trade ? buildLatencyChainSection(trade) : ""}
+        ${buildTradeLiquiditySection(tradeLiquidity)}
+        ${buildAttemptsSection(attempts)}
+        ${buildPositionSection(position)}
+        ${buildOutcomeSection(outcome)}
         ${event.signalCandidateId ? buildDeleteCandidateSection({ id: event.signalCandidateId }, t("event_delete_source")) : ""}
         ${section("Journal", journalMarkup(journal))}
     `;
@@ -161,8 +291,7 @@ export async function openEventDetail({ id, nodes, showError }) {
             api.listFundingEventJournal(id)
         ]);
 
-        let candidate = null;
-        let liquidity = null;
+        let candidate = null, liquidity = null;
         if (event.signalCandidateId) {
             [candidate, liquidity] = await Promise.all([
                 api.getCandidate(event.signalCandidateId).catch(() => null),
@@ -170,9 +299,20 @@ export async function openEventDetail({ id, nodes, showError }) {
             ]);
         }
 
+        let trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null;
+        if (event.armedTradeId) {
+            [trade, attempts, tradeLiquidity, outcome, position] = await Promise.all([
+                api.getArmedTrade(event.armedTradeId).catch(() => null),
+                api.listOrderAttempts(event.armedTradeId).catch(() => []),
+                api.getTradeLiquidity(event.armedTradeId).catch(() => null),
+                api.getTradeOutcome(event.armedTradeId).catch(() => null),
+                api.getTradePosition(event.armedTradeId).catch(() => null)
+            ]);
+        }
+
         nodes.modalType.textContent = t("event_modal_type");
         nodes.modalTitle.innerHTML = `${venueIcon(event.venue)}${escapeHtml(event.symbol)} · ${escapeHtml(event.venue)}`;
-        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity });
+        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, outcome, position });
         openModal(nodes);
     } catch (error) {
         showError(error.message);
