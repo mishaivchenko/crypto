@@ -251,21 +251,31 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
         : "";
     const countdown = formatFundingCountdown(event.fundingTime);
 
-    let tradeChips = "";
+    // Layer 1 — event identity (always visible)
+    const eventRow = `
+        <div class="chip-row">
+            ${rateChip}
+            <span class="chip chip-muted" title="${t("card_signal")}">#${event.signalCandidateId ?? t("label_manual")}</span>
+            <span class="chip chip-muted">${countdown}</span>
+        </div>`;
+
+    // Layer 2 — trade execution (appears when event is armed)
+    let tradeRow = "";
     if (trade) {
         const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
-        tradeChips = `
-            ${formatBadge("trade", trade.state)}
-            <span class="chip chip-muted" title="${t("trade_notional")}">${formatDecimal(trade.notionalUsd, 2)} USD</span>
-            ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
-            <span class="chip chip-muted" title="${t("trade_entry_attempts")}">${trade.entryAttemptCount ?? 1}x</span>
-        `;
+        const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+        const pnlChip = net != null
+            ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+            : "";
+        tradeRow = `
+            <div class="chip-row card-decorator-layer">
+                ${formatBadge("trade", trade.state)}
+                <span class="chip chip-muted" title="${t("trade_notional")}">${formatDecimal(trade.notionalUsd, 2)} USD</span>
+                ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
+                <span class="chip chip-muted" title="${t("trade_entry_attempts")}">${trade.entryAttemptCount ?? 1}x · ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
+                ${pnlChip}
+            </div>`;
     }
-
-    const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
-    const pnlChip = net != null
-        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
-        : "";
 
     return `
         <article class="list-item event-card" data-event-id="${event.id}">
@@ -279,13 +289,8 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
                     <button class="button secondary" type="button" data-open-event="${event.id}">${t("label_inspect")}</button>
                 </div>
             </header>
-            <div class="chip-row">
-                ${rateChip}
-                <span class="chip chip-muted" title="${t("card_signal")}">#${event.signalCandidateId ?? t("label_manual")}</span>
-                <span class="chip chip-muted">${countdown}</span>
-                ${tradeChips}
-                ${pnlChip}
-            </div>
+            ${eventRow}
+            ${tradeRow}
         </article>
     `;
 }

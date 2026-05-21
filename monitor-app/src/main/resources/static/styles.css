@@ -732,6 +732,15 @@ details[open] .dev-tools-summary h3::before {
     background: var(--event);
 }
 
+/* Decorator layer — appears on event cards when a trade is armed */
+.card-decorator-layer {
+    padding-top: 7px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+    padding-left: 4px;
+    opacity: 0.9;
+}
+
 .trade-card::before {
     background: var(--trade);
 }
