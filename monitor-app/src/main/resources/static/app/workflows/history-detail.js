@@ -1,12 +1,27 @@
 import { api } from "../../api.js";
-import { tradeHistoryDetailMarkup } from "../../history.js";
-import { escapeHtml, openModal, optionalRequest, pipelineStageMarkup, section, venueIcon } from "../shared.js";
+import { deriveHistoryStage, deriveTradeHealth, tradeHistoryDetailMarkup } from "../../history.js";
+import { escapeHtml, formatBadge, formatDecimal, openModal, optionalRequest, pipelineStageMarkup, section, venueIcon } from "../shared.js";
 import { t } from "../../i18n.js";
 
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED", "OPEN", "EXIT_PENDING"]);
 
-export function buildHistoryTradeDrawerContent(payload) {
-    return pipelineStageMarkup("trade") + tradeHistoryDetailMarkup(payload);
+export function buildHistoryTradeDrawerContent({ trade, event, candidate, journal, attempts = [], position = null, outcome = null }) {
+    const historyStage = deriveHistoryStage(trade, event, attempts);
+    const health = deriveTradeHealth(trade, attempts, event);
+    const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+    const pnlChip = net != null
+        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+        : "";
+
+    const summaryChips = `
+        <div class="chip-row" style="margin-bottom:4px">
+            ${formatBadge("historyStage", historyStage.code)}
+            <span class="chip chip-${escapeHtml(health.tone)}">${escapeHtml(health.label)}</span>
+            ${pnlChip}
+        </div>
+    `;
+
+    return pipelineStageMarkup("executed") + summaryChips + tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts, position, outcome });
 }
 
 
