@@ -162,7 +162,7 @@ test("event drawer content renders decorator sections conditionally", () => {
     assert.match(closed, /Execution Attempts/);
     assert.match(closed, /Position/);
     assert.match(closed, /Outcome/);
-    assert.match(closed, /\+1\.2300 USD/);
+    assert.match(closed, /\+1\.23 USD/);
 });
 
 test("venues screen renders empty and loaded states", () => {

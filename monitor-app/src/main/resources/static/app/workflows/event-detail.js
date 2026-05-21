@@ -304,9 +304,9 @@ export async function openEventDetail({ id, nodes, showError }) {
             [trade, attempts, tradeLiquidity, outcome, position] = await Promise.all([
                 api.getArmedTrade(event.armedTradeId).catch(() => null),
                 api.listOrderAttempts(event.armedTradeId).catch(() => []),
-                api.getTradeLiquidity(event.armedTradeId),
-                api.getTradeOutcome(event.armedTradeId),
-                api.getTradePosition(event.armedTradeId)
+                api.getTradeLiquidity(event.armedTradeId).catch(() => null),
+                api.getTradeOutcome(event.armedTradeId).catch(() => null),
+                api.getTradePosition(event.armedTradeId).catch(() => null)
             ]);
         }
 
