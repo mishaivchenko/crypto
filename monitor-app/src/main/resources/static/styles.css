@@ -679,6 +679,55 @@ details[open] .dev-tools-summary h3::before {
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
+/* Latency chain — inline dependency visualisation */
+.latency-chain {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 0 4px;
+}
+
+.latency-node-inline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 72px;
+}
+
+.latency-label-inline {
+    font-size: 0.68rem;
+    color: var(--text-muted, var(--muted));
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.latency-val {
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.latency-p95 {
+    font-size: 0.68rem;
+    color: var(--muted);
+}
+
+.latency-op {
+    font-size: 1.1rem;
+    color: var(--muted);
+    padding-bottom: 6px;
+}
+
+.latency-result-inline .latency-val {
+    color: var(--accent, #7ce0cf);
+}
+
+.latency-accent {
+    color: var(--accent, #7ce0cf);
+}
+
 .event-card::before {
     background: var(--event);
 }
