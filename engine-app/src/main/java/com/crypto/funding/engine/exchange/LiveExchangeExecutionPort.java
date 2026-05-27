@@ -39,15 +39,27 @@ public class LiveExchangeExecutionPort implements ExecutionPort
     private final Environment environment;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final com.crypto.funding.engine.EngineProperties engineProperties;
 
     public LiveExchangeExecutionPort( Environment environment )
     {
-        this( environment, HttpClient.newHttpClient(), new ObjectMapper() );
+        this( environment, null, HttpClient.newHttpClient(), new ObjectMapper() );
+    }
+
+    public LiveExchangeExecutionPort( Environment environment, com.crypto.funding.engine.EngineProperties engineProperties )
+    {
+        this( environment, engineProperties, HttpClient.newHttpClient(), new ObjectMapper() );
     }
 
     protected LiveExchangeExecutionPort( Environment environment, HttpClient httpClient, ObjectMapper objectMapper )
     {
+        this( environment, null, httpClient, objectMapper );
+    }
+
+    protected LiveExchangeExecutionPort( Environment environment, com.crypto.funding.engine.EngineProperties engineProperties, HttpClient httpClient, ObjectMapper objectMapper )
+    {
         this.environment = environment;
+        this.engineProperties = engineProperties;
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
     }
@@ -577,11 +589,17 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         {
             return "Engine execution plan must be present.";
         }
-        if( !boolProperty( "engine.live-order-enabled", false ) )
+        boolean liveOrderEnabled = engineProperties != null
+            ? engineProperties.isLiveOrderEnabled()
+            : boolProperty( "engine.live-order-enabled", false );
+        if( !liveOrderEnabled )
         {
             return "Engine live order adapters are still guarded. Set ENGINE_LIVE_ORDER_ENABLED=true before live submission.";
         }
-        if( boolProperty( "engine.kill-switch-enabled", true ) )
+        boolean killSwitchEnabled = engineProperties != null
+            ? engineProperties.isKillSwitchEnabled()
+            : boolProperty( "engine.kill-switch-enabled", true );
+        if( killSwitchEnabled )
         {
             return "Engine kill switch is enabled. Set ENGINE_KILL_SWITCH_ENABLED=false before live submission.";
         }
