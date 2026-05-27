@@ -82,8 +82,8 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
                 <label class="field">
                     <span>${t("dev_kill_switch")}</span>
                     <select name="killSwitchEnabled">
-                        <option value="true" ${runtime.killSwitchEnabled ? "selected" : ""}>${t("dashboard_enabled")}</option>
-                        <option value="false" ${!runtime.killSwitchEnabled ? "selected" : ""}>${t("dashboard_disabled")}</option>
+                        <option value="true" ${runtime.killSwitchEnabled ? "selected" : ""}>${t("dev_kill_switch_active")}</option>
+                        <option value="false" ${!runtime.killSwitchEnabled ? "selected" : ""}>${t("dev_kill_switch_off")}</option>
                     </select>
                 </label>
             </div>
