@@ -96,7 +96,7 @@ public class DevTestRunService
                                                .toList();
         for( String venue : enabledVenues )
         {
-            if( !credentialStatus.getOrDefault( venue, true ) )
+            if( !credentialStatus.getOrDefault( venue, false ) )
             {
                 safetyIssues.add( "Engine credentials missing for " + venue.toUpperCase( Locale.ROOT )
                                   + ". Set ENGINE_CREDENTIALS_" + venue.toUpperCase( Locale.ROOT )
