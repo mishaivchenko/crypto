@@ -2,7 +2,9 @@ package com.crypto.funding.contract.engine;
 
 public record EngineRuntimeControlRequest(
     Boolean executionLoopEnabled,
-    Long executionLoopIntervalMs
+    Long executionLoopIntervalMs,
+    Boolean liveOrderEnabled,
+    Boolean killSwitchEnabled
 )
 {
 }

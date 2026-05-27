@@ -87,7 +87,7 @@ class EngineControllerTest
         EngineExecutionService executionService = mock( EngineExecutionService.class );
         EngineRuntimeControlService runtimeControlService = mock( EngineRuntimeControlService.class );
         EngineController controller = new EngineController( planService, executionService, runtimeControlService );
-        EngineRuntimeControlRequest request = new EngineRuntimeControlRequest( true, 2_000L );
+        EngineRuntimeControlRequest request = new EngineRuntimeControlRequest( true, 2_000L, null, null );
         EngineRuntimeControlResponse snapshot = new EngineRuntimeControlResponse(
             "engine-app",
             "2.0.0",

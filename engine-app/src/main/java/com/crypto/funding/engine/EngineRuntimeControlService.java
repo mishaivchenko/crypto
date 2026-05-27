@@ -55,6 +55,14 @@ public class EngineRuntimeControlService
         {
             executionLoopIntervalMs.set( clampInterval( request.executionLoopIntervalMs() ) );
         }
+        if( request.liveOrderEnabled() != null )
+        {
+            properties.setLiveOrderEnabled( request.liveOrderEnabled() );
+        }
+        if( request.killSwitchEnabled() != null )
+        {
+            properties.setKillSwitchEnabled( request.killSwitchEnabled() );
+        }
         lastScheduledDispatchAtMs.set( Long.MIN_VALUE );
         updatedAt = Instant.now( clock );
         return snapshot();

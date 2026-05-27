@@ -76,7 +76,9 @@ public class MonitorDevToolsController
     {
         return toResponse( engineControlService.updateRuntime( new EngineRuntimeControlRequest(
             request.executionLoopEnabled(),
-            request.executionLoopIntervalMs()
+            request.executionLoopIntervalMs(),
+            request.liveOrderEnabled(),
+            request.killSwitchEnabled()
         ) ) );
     }
 

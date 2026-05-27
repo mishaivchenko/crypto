@@ -26,7 +26,7 @@ class EngineRuntimeControlServiceTest
             Clock.fixed( Instant.parse( "2030-01-01T00:00:00Z" ), ZoneOffset.UTC )
         );
 
-        var response = service.update( new EngineRuntimeControlRequest( false, 10L ) );
+        var response = service.update( new EngineRuntimeControlRequest( false, 10L, null, null ) );
 
         assertThat( response.executionLoopEnabled() ).isFalse();
         assertThat( response.executionLoopIntervalMs() ).isEqualTo( EngineRuntimeControlService.MIN_EXECUTION_LOOP_INTERVAL_MS );
@@ -53,7 +53,7 @@ class EngineRuntimeControlServiceTest
         clock.set( Instant.parse( "2030-01-01T00:00:01Z" ) );
         assertThat( service.shouldRunScheduledLoop() ).isTrue();
 
-        service.update( new EngineRuntimeControlRequest( true, 2_500L ) );
+        service.update( new EngineRuntimeControlRequest( true, 2_500L, null, null ) );
         assertThat( service.executionLoopIntervalMs() ).isEqualTo( 2_500L );
         assertThat( service.shouldRunScheduledLoop() ).isTrue();
     }
@@ -73,7 +73,7 @@ class EngineRuntimeControlServiceTest
         assertThat( service.updatedAt() ).isEqualTo( Instant.parse( "2030-01-01T00:00:00Z" ) );
 
         clock.set( Instant.parse( "2030-01-01T00:05:00Z" ) );
-        service.update( new EngineRuntimeControlRequest( null, null ) );
+        service.update( new EngineRuntimeControlRequest( null, null, null, null ) );
 
         assertThat( service.updatedAt() ).isEqualTo( Instant.parse( "2030-01-01T00:05:00Z" ) );
         assertThat( service.snapshot().runtimeUpdatedAt() ).isEqualTo( Instant.parse( "2030-01-01T00:05:00Z" ) );
@@ -135,7 +135,7 @@ class EngineRuntimeControlServiceTest
             Clock.fixed( Instant.parse( "2030-01-01T00:00:00Z" ), ZoneOffset.UTC )
         );
 
-        var response = service.update( new EngineRuntimeControlRequest( null, null ) );
+        var response = service.update( new EngineRuntimeControlRequest( null, null, null, null ) );
 
         assertThat( response.executionLoopEnabled() ).isTrue();
         assertThat( response.executionLoopIntervalMs() ).isEqualTo( 1_500L );

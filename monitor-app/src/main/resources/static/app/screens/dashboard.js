@@ -71,6 +71,22 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
                     <input name="executionLoopIntervalMs" type="number" min="${escapeHtml(runtime.minimumExecutionLoopIntervalMs)}" step="50" value="${escapeHtml(runtime.executionLoopIntervalMs)}">
                 </label>
             </div>
+            <div class="drawer-form-row labeled-row">
+                <label class="field">
+                    <span>${t("dev_live_orders")}</span>
+                    <select name="liveOrderEnabled">
+                        <option value="true" ${runtime.liveOrderEnabled ? "selected" : ""}>${t("dashboard_enabled")}</option>
+                        <option value="false" ${!runtime.liveOrderEnabled ? "selected" : ""}>${t("dashboard_disabled")}</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span>${t("dev_kill_switch")}</span>
+                    <select name="killSwitchEnabled">
+                        <option value="true" ${runtime.killSwitchEnabled ? "selected" : ""}>${t("dashboard_enabled")}</option>
+                        <option value="false" ${!runtime.killSwitchEnabled ? "selected" : ""}>${t("dashboard_disabled")}</option>
+                    </select>
+                </label>
+            </div>
             <div class="actions">
                 <button class="button secondary" type="submit">${t("dashboard_apply_runtime")}</button>
             </div>
@@ -187,7 +203,9 @@ export async function handleUpdateEngineRuntime({ event, state, refreshCurrentSc
     try {
         state.engineRuntime = await api.updateEngineRuntime({
             executionLoopEnabled: data.get("executionLoopEnabled") === "true",
-            executionLoopIntervalMs: numberOrNull(data.get("executionLoopIntervalMs"))
+            executionLoopIntervalMs: numberOrNull(data.get("executionLoopIntervalMs")),
+            liveOrderEnabled: data.get("liveOrderEnabled") === "true",
+            killSwitchEnabled: data.get("killSwitchEnabled") === "true"
         });
         state.engineRuntimeError = null;
         await refreshCurrentScreen();
