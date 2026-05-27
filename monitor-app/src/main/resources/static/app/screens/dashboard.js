@@ -2,6 +2,7 @@ import { api } from "../../api.js";
 import {
     emptyState,
     escapeHtml,
+    formatBadge,
     formatDecimal,
     formatDurationMs,
     formatInstant,
@@ -48,6 +49,8 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     const resultMarkup = runtime ? `
         <div class="meta-grid dev-tools-grid">
             ${metaRow(t("dashboard_loop"), runtime.executionLoopEnabled ? "ON" : "OFF", `${t("dashboard_interval")} ${formatDurationMs(runtime.executionLoopIntervalMs)}`)}
+            ${metaRow(t("dev_live_orders"), formatBadge("venue", runtime.liveOrderEnabled ? "ON" : "OFF", runtime.liveOrderEnabled ? "good" : "bad"))}
+            ${metaRow(t("dev_kill_switch"), formatBadge("venue", runtime.killSwitchEnabled ? "ON" : "OFF", runtime.killSwitchEnabled ? "bad" : "good"))}
             ${metaRow(t("dashboard_runtime_updated"), formatInstant(runtime.runtimeUpdatedAt))}
             ${metaRow(t("dashboard_scheduled_loop"), runtime.lastRunFinishedAt ? formatInstant(runtime.lastRunFinishedAt) : t("dashboard_not_started"), runtime.lastRunFinishedAt ? `${formatRelative(runtime.lastRunFinishedAt)} · ${formatDurationMs(runtime.lastExecutionRunDurationMs)}` : "")}
             ${metaRow(t("dashboard_loop_result"), `${formatNumber(runtime.lastAttemptsSubmitted)} ${t("dashboard_submitted")} / ${formatNumber(runtime.lastAttemptsSkipped)} ${t("dashboard_skipped")}`, `${formatNumber(runtime.lastPlansScanned)} ${t("dashboard_plans_scanned")}`)}

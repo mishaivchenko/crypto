@@ -897,6 +897,13 @@ public class LiveExchangeExecutionPort implements ExecutionPort
                      .collect( Collectors.toUnmodifiableSet() );
     }
 
+    public boolean hasCredentials( String venue )
+    {
+        String apiKey = credential( venue, "api-key" );
+        String secretKey = credential( venue, "secret-key" );
+        return apiKey != null && !apiKey.isBlank() && secretKey != null && !secretKey.isBlank();
+    }
+
     private String credential( String venue, String name )
     {
         return environment.getProperty( "engine.credentials." + venue + "." + name );

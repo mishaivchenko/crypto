@@ -41,6 +41,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -88,14 +89,26 @@ public class DevTestRunService
         VenueAccessMode mode = currentMode();
         EngineRuntimeControlResponse runtime = engineControlService.runtime();
         List<String> safetyIssues = safetyIssues( mode, runtime );
+        Map<String, Boolean> credentialStatus = engineControlService.getEngineCredentialStatus();
+        List<String> enabledVenues = properties.enabledVenues()
+                                               .stream()
+                                               .filter( SUPPORTED_VENUES::contains )
+                                               .toList();
+        for( String venue : enabledVenues )
+        {
+            if( !credentialStatus.getOrDefault( venue, true ) )
+            {
+                safetyIssues.add( "Engine credentials missing for " + venue.toUpperCase( Locale.ROOT )
+                                  + ". Set ENGINE_CREDENTIALS_" + venue.toUpperCase( Locale.ROOT )
+                                  + "_API_KEY and _SECRET_KEY env vars on the engine container." );
+            }
+        }
         return new DevTestRunOptionsResponse(
             isToolEnabled( mode ),
             mode,
-            properties.enabledVenues()
-                      .stream()
-                      .filter( SUPPORTED_VENUES::contains )
-                      .map( this::venueOption )
-                      .toList(),
+            enabledVenues.stream()
+                         .map( this::venueOption )
+                         .toList(),
             toResponse( runtime ),
             safetyIssues
         );

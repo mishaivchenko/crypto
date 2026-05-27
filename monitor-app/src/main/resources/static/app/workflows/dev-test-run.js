@@ -50,8 +50,8 @@ function buildDevTestRunStart(options) {
             <div class="meta-grid">
                 ${metaRow(t("dev_current_mode"), formatBadge("venue", mode, production ? "bad" : "good"), production ? t("dev_production_confirm_required") : t("dev_testnet_order_path"))}
                 ${metaRow(t("dev_max_notional"), `${formatDecimal(options.engineRuntime?.maxNotionalUsd ?? 25, 2)} USDT`)}
-                ${metaRow(t("dev_live_orders"), options.engineRuntime?.liveOrderEnabled ? "ON" : "OFF")}
-                ${metaRow(t("dev_kill_switch"), options.engineRuntime?.killSwitchEnabled ? "ON" : "OFF")}
+                ${metaRow(t("dev_live_orders"), formatBadge("venue", options.engineRuntime?.liveOrderEnabled ? "ON" : "OFF", options.engineRuntime?.liveOrderEnabled ? "good" : "bad"))}
+                ${metaRow(t("dev_kill_switch"), formatBadge("venue", options.engineRuntime?.killSwitchEnabled ? "ON" : "OFF", options.engineRuntime?.killSwitchEnabled ? "bad" : "good"))}
             </div>
             ${safetyIssues(options)}
         `)}

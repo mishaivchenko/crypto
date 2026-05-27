@@ -6,9 +6,13 @@ import com.crypto.funding.contract.engine.EngineExecutionTargetPhase;
 import com.crypto.funding.contract.engine.EngineExecutionTargetRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+
+import java.util.Collections;
+import java.util.Map;
 
 @Service
 public class EngineControlService
@@ -102,6 +106,23 @@ public class EngineControlService
         catch( RestClientException ex )
         {
             throw new IllegalStateException( "Engine runtime update failed: " + ex.getMessage(), ex );
+        }
+    }
+
+    public Map<String, Boolean> getEngineCredentialStatus()
+    {
+        try
+        {
+            Map<String, Boolean> result = restClient.get()
+                                                    .uri( "/internal/engine/credentials/status" )
+                                                    .headers( this::applyInternalToken )
+                                                    .retrieve()
+                                                    .body( new ParameterizedTypeReference<Map<String, Boolean>>() {} );
+            return result == null ? Collections.emptyMap() : result;
+        }
+        catch( RestClientException ex )
+        {
+            return Collections.emptyMap();
         }
     }
 
