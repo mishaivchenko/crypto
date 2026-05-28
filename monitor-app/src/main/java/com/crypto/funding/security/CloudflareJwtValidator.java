@@ -113,15 +113,9 @@ public class CloudflareJwtValidator
         {
             return current.jwks();
         }
-        // Unknown kid. If we fetched recently and that fetch also lacked this kid, the token
-        // is genuinely invalid — skip another fetch. Otherwise refresh immediately to handle
-        // key rotation (new kid published since last fetch).
-        boolean recentlyFetched = current != null
-            && current.fetchedAt().plus( REFRESH_COOLDOWN ).isAfter( Instant.now() );
-        if( recentlyFetched )
-        {
-            return current.jwks();
-        }
+        // Unknown kid: always refresh — handles key rotation regardless of how recently
+        // the cache was last populated. refreshJwks() updates the cache timestamp, so the
+        // next call for a kid that was known will hit the hasKey fast-path above.
         return refreshJwks();
     }
 
