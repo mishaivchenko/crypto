@@ -556,8 +556,8 @@ async function loadAiPerformance() {
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>`;
-    } catch {
-        // non-critical
+    } catch (err) {
+        console.debug("AI performance load failed:", err);
     }
 }
 

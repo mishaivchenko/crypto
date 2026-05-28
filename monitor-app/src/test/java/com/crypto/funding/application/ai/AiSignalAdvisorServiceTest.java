@@ -239,6 +239,73 @@ class AiSignalAdvisorServiceTest
         assertThat( prompt ).contains( "ДО момента" );
     }
 
+    @Test
+    void analyze_promptIncludesHistoricalStats_whenSufficientData()
+    {
+        SignalCandidate candidate = candidateWith( "BTC/USDT", "bybit", new BigDecimal( "0.15" ) );
+        when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate );
+        when( liquidityAssessmentService.findLatestForCandidate( any() ) ).thenReturn( Optional.empty() );
+        when( deepSeekClient.analyze( any() ) ).thenReturn( adviceResult( AiRecommendation.GO ) );
+        when( adviceRepository.save( any() ) ).thenAnswer( inv -> savedEntity( (AiSignalAdviceEntity) inv.getArgument( 0 ) ) );
+
+        List<AiAdvisorPerformanceService.RecommendationStat> stats = List.of(
+            new AiAdvisorPerformanceService.RecommendationStat( "GO", 8, 0.75, new java.math.BigDecimal( "4.20" ) ),
+            new AiAdvisorPerformanceService.RecommendationStat( "WATCH", 3, 0.33, new java.math.BigDecimal( "-1.10" ) ),
+            new AiAdvisorPerformanceService.RecommendationStat( "PASS", 0, null, null )
+        );
+        when( performanceService.getPerformanceStats() )
+            .thenReturn( new AiAdvisorPerformanceService.PerformanceStats( stats, 11 ) );
+
+        service.analyze( 1L );
+
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass( String.class );
+        verify( deepSeekClient ).analyze( promptCaptor.capture() );
+        String prompt = promptCaptor.getValue();
+        assertThat( prompt ).contains( "Историческая эффективность" );
+        assertThat( prompt ).contains( "GO" );
+        assertThat( prompt ).contains( "win rate" );
+        assertThat( prompt ).contains( "калибровки" );
+    }
+
+    @Test
+    void analyze_promptOmitsHistoricalStats_whenInsufficientData()
+    {
+        SignalCandidate candidate = candidateWith( "BTC/USDT", "bybit", null );
+        when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate );
+        when( liquidityAssessmentService.findLatestForCandidate( any() ) ).thenReturn( Optional.empty() );
+        when( deepSeekClient.analyze( any() ) ).thenReturn( adviceResult( AiRecommendation.PASS ) );
+        when( adviceRepository.save( any() ) ).thenAnswer( inv -> savedEntity( (AiSignalAdviceEntity) inv.getArgument( 0 ) ) );
+        // default mock already returns totalTrades=0
+
+        service.analyze( 1L );
+
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass( String.class );
+        verify( deepSeekClient ).analyze( promptCaptor.capture() );
+        assertThat( promptCaptor.getValue() ).doesNotContain( "Историческая эффективность" );
+    }
+
+    @Test
+    void analyze_promptShowsCriticalTimingWhenSecondsUntilFunding()
+    {
+        Instant fundingTime = Instant.now().plusSeconds( 47 );
+        SignalCandidate candidate = new SignalCandidate(
+            1L, "FUNDING_API", 0L, 0L, "{}", "gate", "ETH/USDT", "ETH/USDT",
+            List.of( "gate" ), Instant.now(), SignalCandidateStatus.NORMALIZED,
+            null, null, null, null, fundingTime, new BigDecimal( "0.12" ), null, Instant.now(), Instant.now()
+        );
+        when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate );
+        when( liquidityAssessmentService.findLatestForCandidate( any() ) ).thenReturn( Optional.empty() );
+        when( deepSeekClient.analyze( any() ) ).thenReturn( adviceResult( AiRecommendation.GO ) );
+        when( adviceRepository.save( any() ) ).thenAnswer( inv -> savedEntity( (AiSignalAdviceEntity) inv.getArgument( 0 ) ) );
+
+        service.analyze( 1L );
+
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass( String.class );
+        verify( deepSeekClient ).analyze( promptCaptor.capture() );
+        assertThat( promptCaptor.getValue() ).contains( "CRITICAL" );
+        assertThat( promptCaptor.getValue() ).contains( "сек" );
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private SignalCandidate candidateWith( String symbol, String venue, BigDecimal fundingRate )

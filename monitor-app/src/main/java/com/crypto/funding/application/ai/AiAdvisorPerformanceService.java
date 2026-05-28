@@ -44,7 +44,7 @@ public class AiAdvisorPerformanceService
         List<Object[]> rows = adviceRepository.findPerformanceStats();
 
         Map<String, Object[]> byRec = rows.stream()
-            .collect( Collectors.toMap( r -> (String) r[0], r -> r ) );
+            .collect( Collectors.toMap( r -> String.valueOf( r[0] ), r -> r ) );
 
         List<RecommendationStat> stats = Arrays.stream( AiRecommendation.values() )
             .map( rec -> {

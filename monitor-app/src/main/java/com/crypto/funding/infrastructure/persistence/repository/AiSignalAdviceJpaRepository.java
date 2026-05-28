@@ -15,8 +15,8 @@ public interface AiSignalAdviceJpaRepository extends JpaRepository<AiSignalAdvic
         WITH latest_advice AS (
             SELECT id, signal_candidate_id, recommendation
             FROM ai_signal_advice a
-            WHERE id = (
-                SELECT MAX(id) FROM ai_signal_advice WHERE signal_candidate_id = a.signal_candidate_id
+            WHERE analyzed_at = (
+                SELECT MAX(analyzed_at) FROM ai_signal_advice WHERE signal_candidate_id = a.signal_candidate_id
             )
         )
         SELECT
