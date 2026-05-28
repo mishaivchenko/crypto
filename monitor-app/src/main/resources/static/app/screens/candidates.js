@@ -1,5 +1,7 @@
 import { api } from "../../api.js";
 import { emptyState, candidateCard } from "../shared.js";
+import { buildApproveSection } from "../workflows/candidate-detail.js";
+import { buildDeleteCandidateSection } from "../workflows/pipeline.js";
 import { t } from "../../i18n.js";
 
 export function candidatesListMarkup(page = {}, { liquidityMap = {} } = {}) {
@@ -30,7 +32,77 @@ export async function renderCandidates({ nodes, page, showError, onRefresh }) {
     if (onRefresh && !nodes.candidatesList._actionsWired) {
         nodes.candidatesList._actionsWired = true;
         wireSignalCardActions(nodes.candidatesList, { showError, onRefresh });
+        wireRepairExpansion(nodes.candidatesList, { showError, onRefresh });
     }
+}
+
+function wireRepairExpansion(container, { showError, onRefresh }) {
+    container.addEventListener("toggle", async (e) => {
+        const details = e.target.closest("[data-lazy-candidate-repair]");
+        if (!details || !details.open) return;
+
+        const candidateId = details.dataset.lazyCandidateRepair;
+        const contentEl = details.querySelector(".card-full-content");
+        if (!contentEl || !contentEl.querySelector(".card-loading")) return;
+
+        try {
+            const candidate = await api.getCandidate(candidateId);
+            contentEl.innerHTML = buildApproveSection(candidate) + buildDeleteCandidateSection(candidate, t("candidate_delete_label"));
+
+            wireApproveForm(contentEl, { showError, onRefresh });
+            wireDeleteCandidate(contentEl, { showError, onRefresh });
+        } catch (err) {
+            contentEl.innerHTML = `<p class="card-loading">${err.message}</p>`;
+        }
+    }, true);
+}
+
+function wireApproveForm(container, { showError, onRefresh }) {
+    const form = container.querySelector("[data-action='approve-candidate']");
+    if (!form) return;
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const id = form.dataset.id;
+        const btn = form.querySelector("[type='submit']");
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = "…";
+        try {
+            await api.approveCandidate(id, {
+                venue: data.get("venue") || null,
+                symbol: data.get("symbol") || null,
+                fundingTime: data.get("fundingTime") ? new Date(data.get("fundingTime")).toISOString() : null,
+                fundingRatePct: data.get("fundingRatePct") ? Number(data.get("fundingRatePct")) : null,
+                reviewNotes: data.get("reviewNotes") || null
+            });
+            if (onRefresh) await onRefresh();
+        } catch (err) {
+            btn.disabled = false;
+            btn.textContent = orig;
+            showError(err.message);
+        }
+    });
+}
+
+function wireDeleteCandidate(container, { showError, onRefresh }) {
+    const form = container.querySelector("[data-action='delete-candidate']");
+    if (!form) return;
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!window.confirm(t("candidate_delete_confirm"))) return;
+        const data = new FormData(form);
+        const id = form.dataset.id;
+        const btn = form.querySelector("[type='submit']");
+        btn.disabled = true;
+        try {
+            await api.deleteCandidate(id, { deleteNote: data.get("deleteNote") });
+            if (onRefresh) await onRefresh();
+        } catch (err) {
+            btn.disabled = false;
+            showError(err.message);
+        }
+    });
 }
 
 function wireSignalCardActions(container, { showError, onRefresh }) {

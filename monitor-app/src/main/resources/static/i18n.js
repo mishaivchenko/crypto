@@ -594,6 +594,12 @@ const translations = {
         card_rate: "rate",
         card_signal: "signal",
         card_spacing: "spacing",
+        card_expand_arm: "▶ arm trade",
+        card_expand_details: "▶ details",
+        card_expand_history: "▶ execution history",
+        card_expand_repair: "▶ repair / delete",
+        candidate_delete_label: "Delete candidate",
+        candidate_delete_confirm: "Delete this candidate permanently?",
 
         // Candidate state lines
         candidate_state_linked: "Linked to Funding Event #",
@@ -1246,6 +1252,12 @@ const translations = {
         card_rate: "ставка",
         card_signal: "сигнал",
         card_spacing: "интервал",
+        card_expand_arm: "▶ открыть сделку",
+        card_expand_details: "▶ детали",
+        card_expand_history: "▶ история исполнения",
+        card_expand_repair: "▶ исправить / удалить",
+        candidate_delete_label: "Удалить кандидата",
+        candidate_delete_confirm: "Удалить этого кандидата безвозвратно?",
 
         // Candidate state lines
         candidate_state_linked: "Связан с событием фандинга #",

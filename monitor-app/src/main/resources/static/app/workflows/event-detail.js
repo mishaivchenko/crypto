@@ -176,14 +176,107 @@ function buildOutcomeSection(outcome) {
     `);
 }
 
-export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+export function buildArmForm(event, suggestedNotional = 25) {
     const defaultEntry = toLocalInputValue(offsetIso(event.fundingTime, -45));
     const defaultExit = toLocalInputValue(offsetIso(event.fundingTime, 90));
-    const canArm = event.status === "DISCOVERED";
+    return `
+        <div class="action-card primary">
+            <p class="helper-text">${t("event_arm_helper")}</p>
+            ${event.fundingRatePct != null ? `<div class="chip-row" style="margin-bottom:8px"><span class="chip chip-muted" title="${t("card_rate")}">${t("event_funding_rate")} ${Number(event.fundingRatePct) >= 0 ? "+" : ""}${formatDecimal(event.fundingRatePct, 6)}%</span></div>` : ""}
+            <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
+                <fieldset class="form-group">
+                    <legend>${t("event_entry_window")}</legend>
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>${t("event_notional_usd")}</span>
+                            <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="${suggestedNotional}">
+                        </label>
+                        <label class="field">
+                            <span>${t("event_side")}</span>
+                            <input name="intendedSide" type="text" value="SHORT" readonly>
+                            <small>${t("event_short_only")}</small>
+                        </label>
+                    </div>
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>${t("event_planned_entry")}</span>
+                            <input name="plannedEntryAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultEntry)}">
+                        </label>
+                        <label class="field">
+                            <span>${t("event_entry_attempts")}</span>
+                            <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
+                        </label>
+                    </div>
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>${t("event_spacing_ms")}</span>
+                            <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
+                        </label>
+                        <label class="field">
+                            <span>${t("event_manual_latency")}</span>
+                            <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
+                            <small>${t("event_engine_triggers_earlier")}</small>
+                        </label>
+                    </div>
+                </fieldset>
+                <fieldset class="form-group">
+                    <legend>${t("event_exit_window")}</legend>
+                    <label class="field">
+                        <span>${t("event_planned_exit")}</span>
+                        <input name="plannedExitAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultExit)}">
+                    </label>
+                </fieldset>
+                <fieldset class="form-group">
+                    <legend>${t("event_risk_management")}</legend>
+                    <div class="drawer-form-row labeled-row">
+                        <label class="field">
+                            <span>${t("event_stop_loss")}</span>
+                            <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="${t("event_stop_loss_placeholder")}">
+                            <small>${t("event_stop_loss_note")}</small>
+                        </label>
+                        <label class="field">
+                            <span>${t("event_take_profit")}</span>
+                            <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="${t("event_take_profit_placeholder")}">
+                            <small>${t("event_take_profit_note")}</small>
+                        </label>
+                    </div>
+                </fieldset>
+                <label class="field">
+                    <span>${t("event_prep_note")}</span>
+                    <textarea name="notes" placeholder="${t("event_prep_note_placeholder")}"></textarea>
+                </label>
+                <div class="actions">
+                    <button class="button" type="submit">${t("event_create_trade")}</button>
+                </div>
+            </form>
+        </div>
+    `;
+}
 
+export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+    const canArm = event.status === "DISCOVERED";
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
+
+    return `
+        ${signalAnalysisChips(candidate, liquidity)}
+        ${canArm ? buildArmForm(event, suggestedNotional) : ""}
+        ${trade ? buildTradeParamsSection(trade) : ""}
+        ${trade ? buildLatencyChainSection(trade) : ""}
+        ${buildTradeLiquiditySection(tradeLiquidity)}
+        ${buildAttemptsSection(attempts)}
+        ${buildPositionSection(position)}
+        ${buildOutcomeSection(outcome)}
+        ${event.signalCandidateId ? buildDeleteCandidateSection({ id: event.signalCandidateId }, t("event_delete_source")) : ""}
+    `;
+}
+
+export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+    const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
+        ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
+        : 25;
+    const canArm = event.status === "DISCOVERED";
 
     return `
         ${pipelineStageMarkup("event")}
@@ -201,79 +294,7 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
             </div>
             ${signalAnalysisChips(candidate, liquidity)}
         `)}
-        ${canArm ? section(t("event_arm_title"), `
-            <div class="action-card primary">
-                <p class="helper-text">${t("event_arm_helper")}</p>
-                ${event.fundingRatePct != null ? `<div class="chip-row" style="margin-bottom:8px"><span class="chip chip-muted" title="${t("card_rate")}">${t("event_funding_rate")} ${Number(event.fundingRatePct) >= 0 ? "+" : ""}${formatDecimal(event.fundingRatePct, 6)}%</span></div>` : ""}
-                <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
-                    <fieldset class="form-group">
-                        <legend>${t("event_entry_window")}</legend>
-                        <div class="drawer-form-row labeled-row">
-                            <label class="field">
-                                <span>${t("event_notional_usd")}</span>
-                                <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="${suggestedNotional}">
-                                ${liquidity?.recommendedMaxOrderNotional != null ? `<small>${t("event_notional_from_liquidity")}</small>` : ""}
-                            </label>
-                            <label class="field">
-                                <span>${t("event_side")}</span>
-                                <input name="intendedSide" type="text" value="SHORT" readonly>
-                                <small>${t("event_short_only")}</small>
-                            </label>
-                        </div>
-                        <div class="drawer-form-row labeled-row">
-                            <label class="field">
-                                <span>${t("event_planned_entry")}</span>
-                                <input name="plannedEntryAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultEntry)}">
-                            </label>
-                            <label class="field">
-                                <span>${t("event_entry_attempts")}</span>
-                                <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
-                            </label>
-                        </div>
-                        <div class="drawer-form-row labeled-row">
-                            <label class="field">
-                                <span>${t("event_spacing_ms")}</span>
-                                <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
-                            </label>
-                            <label class="field">
-                                <span>${t("event_manual_latency")}</span>
-                                <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
-                                <small>${t("event_engine_triggers_earlier")}</small>
-                            </label>
-                        </div>
-                    </fieldset>
-                    <fieldset class="form-group">
-                        <legend>${t("event_exit_window")}</legend>
-                        <label class="field">
-                            <span>${t("event_planned_exit")}</span>
-                            <input name="plannedExitAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultExit)}">
-                        </label>
-                    </fieldset>
-                    <fieldset class="form-group">
-                        <legend>${t("event_risk_management")}</legend>
-                        <div class="drawer-form-row labeled-row">
-                            <label class="field">
-                                <span>${t("event_stop_loss")}</span>
-                                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="${t("event_stop_loss_placeholder")}">
-                                <small>${t("event_stop_loss_note")}</small>
-                            </label>
-                            <label class="field">
-                                <span>${t("event_take_profit")}</span>
-                                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="${t("event_take_profit_placeholder")}">
-                                <small>${t("event_take_profit_note")}</small>
-                            </label>
-                        </div>
-                    </fieldset>
-                    <label class="field">
-                        <span>${t("event_prep_note")}</span>
-                        <textarea name="notes" placeholder="${t("event_prep_note_placeholder")}"></textarea>
-                    </label>
-                    <div class="actions">
-                        <button class="button" type="submit">${t("event_create_trade")}</button>
-                    </div>
-                </form>
-            </div>
-        `) : ""}
+        ${canArm ? section(t("event_arm_title"), buildArmForm(event, suggestedNotional)) : ""}
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}

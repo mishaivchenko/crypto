@@ -184,7 +184,7 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
     const healthChip = `<span class="chip chip-${escapeHtml(health.tone)}">${escapeHtml(health.label)}</span>`;
 
     return `
-        <article class="list-item history-card" data-open-history-trade="${escapeHtml(trade.id)}">
+        <article class="list-item history-card" data-trade-id="${escapeHtml(trade.id)}">
             <header>
                 <div>
                     <h3 class="item-title">${venueIcon(trade.venue)}${escapeHtml(trade.symbol ?? `${t("card_trade_prefix")}${trade.id}`)}</h3>
@@ -194,7 +194,6 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
                     ${formatBadge("historyStage", historyStage.code)}
                     ${healthChip}
                     ${testnetBadge}
-                    <button class="button secondary" type="button">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="chip-row">
@@ -206,6 +205,12 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
                 ${latChip}
                 ${manualChip}
             </div>
+            <details class="card-expansion" data-lazy-history="${escapeHtml(trade.id)}">
+                <summary class="card-expand-toggle">${t("card_expand_history")}</summary>
+                <div class="card-full-content">
+                    <p class="card-loading">…</p>
+                </div>
+            </details>
         </article>
     `;
 }
