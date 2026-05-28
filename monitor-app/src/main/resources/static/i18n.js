@@ -298,6 +298,12 @@ const translations = {
         ai_analyze_button: "Analyze",
         ai_analyzing: "Analyzing…",
         ai_disabled_hint: "Enable AI Advisor in settings to use this feature.",
+        ai_performance_title: "Advisor Performance",
+        ai_performance_no_data: "Not enough data yet (need ≥ 3 closed trades)",
+        ai_performance_trades: "trades",
+        ai_performance_win_rate: "Win rate",
+        ai_performance_avg_pnl: "Avg PnL",
+        ai_performance_total: "Total closed trades",
 
         // Event detail
         event_modal_type: "Funding Event",
@@ -956,6 +962,12 @@ const translations = {
         ai_analyze_button: "Анализировать",
         ai_analyzing: "Анализирую…",
         ai_disabled_hint: "Включите AI Советник в настройках.",
+        ai_performance_title: "Эффективность советника",
+        ai_performance_no_data: "Недостаточно данных (нужно ≥ 3 закрытых сделки)",
+        ai_performance_trades: "сделок",
+        ai_performance_win_rate: "Прибыльных",
+        ai_performance_avg_pnl: "Средний PnL",
+        ai_performance_total: "Всего закрытых сделок",
 
         // Event detail
         event_modal_type: "Событие фандинга",

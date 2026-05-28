@@ -271,6 +271,9 @@ export const api = {
     setAiEnabled(enabled) {
         return request(enabled ? "/api/v1/ai/enable" : "/api/v1/ai/disable", { method: "POST" });
     },
+    getAiPerformance() {
+        return request("/api/v1/ai/performance");
+    },
     assessLiquidity(venue, venueSymbol, tradeId) {
         const params = new URLSearchParams({ tradeId: String(tradeId) });
         return request(`/api/v1/venues/${venue}/symbols/${encodeURIComponent(venueSymbol)}/liquidity-assessment?${params}`, {
