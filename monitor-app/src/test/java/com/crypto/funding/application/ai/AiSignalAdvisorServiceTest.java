@@ -41,6 +41,7 @@ class AiSignalAdvisorServiceTest
     private LiquidityAssessmentService liquidityAssessmentService;
     private VenueRequestTimingService venueRequestTimingService;
     private AiSignalAdviceJpaRepository adviceRepository;
+    private AiAdvisorPerformanceService performanceService;
     private AiSignalAdvisorService service;
 
     @BeforeEach
@@ -52,6 +53,9 @@ class AiSignalAdvisorServiceTest
         liquidityAssessmentService = mock( LiquidityAssessmentService.class );
         venueRequestTimingService = mock( VenueRequestTimingService.class );
         adviceRepository = mock( AiSignalAdviceJpaRepository.class );
+        performanceService = mock( AiAdvisorPerformanceService.class );
+        when( performanceService.getPerformanceStats() )
+            .thenReturn( new AiAdvisorPerformanceService.PerformanceStats( List.of(), 0 ) );
 
         service = new AiSignalAdvisorService(
             deepSeekProperties,
@@ -59,7 +63,8 @@ class AiSignalAdvisorServiceTest
             candidateQueryService,
             liquidityAssessmentService,
             venueRequestTimingService,
-            adviceRepository
+            adviceRepository,
+            performanceService
         );
     }
 

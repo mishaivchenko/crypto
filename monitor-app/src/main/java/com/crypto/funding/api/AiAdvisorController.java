@@ -1,5 +1,6 @@
 package com.crypto.funding.api;
 
+import com.crypto.funding.application.ai.AiAdvisorPerformanceService;
 import com.crypto.funding.config.DeepSeekProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,10 +14,12 @@ import java.util.Map;
 public class AiAdvisorController
 {
     private final DeepSeekProperties deepSeekProperties;
+    private final AiAdvisorPerformanceService performanceService;
 
-    public AiAdvisorController( DeepSeekProperties deepSeekProperties )
+    public AiAdvisorController( DeepSeekProperties deepSeekProperties, AiAdvisorPerformanceService performanceService )
     {
         this.deepSeekProperties = deepSeekProperties;
+        this.performanceService = performanceService;
     }
 
     @GetMapping("/status")
@@ -37,5 +40,11 @@ public class AiAdvisorController
     {
         deepSeekProperties.setEnabled( false );
         return Map.of( "enabled", false );
+    }
+
+    @GetMapping("/performance")
+    public AiAdvisorPerformanceService.PerformanceStats getPerformance()
+    {
+        return performanceService.getPerformanceStats();
     }
 }

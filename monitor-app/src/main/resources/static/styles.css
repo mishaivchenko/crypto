@@ -1278,6 +1278,40 @@ details[open] .dev-tools-summary h3::before {
     min-height: auto;
 }
 
+.ai-performance {
+    margin-top: 8px;
+}
+
+.ai-performance .helper-text.muted {
+    font-size: 11px;
+    margin: 0;
+}
+
+.perf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.perf-table th,
+.perf-table td {
+    padding: 3px 6px;
+    text-align: right;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+}
+
+.perf-table th:first-child,
+.perf-table td:first-child {
+    text-align: left;
+}
+
+.perf-table th {
+    color: var(--color-muted, rgba(255, 255, 255, 0.45));
+    font-weight: normal;
+}
+
 .empty-state.compact {
     padding: 14px;
     text-align: left;
