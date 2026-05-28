@@ -14,6 +14,7 @@ dependencies {
     implementation 'org.xerial:sqlite-jdbc:3.53.0.0'
     implementation 'org.hibernate.orm:hibernate-community-dialects:6.5.2.Final'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.nimbusds:nimbus-jose-jwt:10.3'
 
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 }

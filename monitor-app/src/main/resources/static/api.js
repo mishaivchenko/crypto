@@ -2,26 +2,12 @@ const jsonHeaders = {
     "Content-Type": "application/json"
 };
 
-const tokenStorageKey = "funding.operatorToken";
-
-function operatorToken() {
-    return window.localStorage?.getItem(tokenStorageKey)?.trim() ?? "";
-}
-
-function withOperatorHeaders(options = {}) {
-    const headers = new Headers(options.headers ?? {});
-    const token = operatorToken();
-    if (token) {
-        headers.set("X-Operator-Token", token);
-    }
-    return {
-        ...options,
-        headers
-    };
-}
-
 async function request(path, options = {}) {
-    const response = await fetch(path, withOperatorHeaders(options));
+    const response = await fetch(path, { credentials: "same-origin", ...options });
+    if (response.status === 401) {
+        window.location.reload();
+        return;
+    }
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
 
@@ -33,16 +19,6 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-    getOperatorToken() {
-        return operatorToken();
-    },
-    setOperatorToken(token) {
-        if (token?.trim()) {
-            window.localStorage?.setItem(tokenStorageKey, token.trim());
-        } else {
-            window.localStorage?.removeItem(tokenStorageKey);
-        }
-    },
     getOverview() {
         return request("/api/v2/monitor/overview");
     },

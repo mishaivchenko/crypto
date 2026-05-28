@@ -7,7 +7,5 @@ import java.util.Optional;
 
 public interface OperatorAccountJpaRepository extends JpaRepository<OperatorAccountEntity, Long>
 {
-    Optional<OperatorAccountEntity> findByTokenHashAndEnabledTrue( String tokenHash );
-
     Optional<OperatorAccountEntity> findByUsername( String username );
 }

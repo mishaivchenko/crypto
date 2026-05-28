@@ -1,8 +1,17 @@
 package com.crypto.funding.api;
 
-import com.crypto.funding.infrastructure.persistence.repository.OperatorExchangeCredentialJpaRepository;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.KeyUse;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import com.crypto.funding.infrastructure.persistence.repository.OperatorExchangeCredentialJpaRepository;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,12 +22,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.Date;
+import java.util.UUID;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,23 +44,48 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "trading.metadata.schedule-enabled=false",
     "trading.metadata.require-credentials-on-startup=false",
     "security.operators.auth-enabled=true",
-    "security.operators.bootstrap-users=alice:alice-token,bob:bob-token",
+    "security.cloudflare.audience=test-aud",
+    "security.cloudflare.team-domain=test-team.cloudflareaccess.com",
     "credentials.storage.enabled=true",
     "credentials.storage.master-key-base64=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 })
 @AutoConfigureMockMvc
 class OperatorSecurityIntegrationTest
 {
+    private static final WireMockServer JWKS_SERVER = new WireMockServer( options().dynamicPort() );
     private static final WireMockServer BYBIT_SERVER = new WireMockServer( options().dynamicPort() );
 
-    static
+    private static RSAKey RSA_KEY;
+
+    @BeforeAll
+    static void startServers() throws Exception
     {
+        RSA_KEY = new RSAKeyGenerator( 2048 )
+            .keyUse( KeyUse.SIGNATURE )
+            .keyID( "test-kid-1" )
+            .generate();
+
+        String jwksBody = new com.nimbusds.jose.jwk.JWKSet( RSA_KEY.toPublicJWK() ).toString();
+
+        JWKS_SERVER.start();
+        JWKS_SERVER.stubFor( com.github.tomakehurst.wiremock.client.WireMock.get( urlPathEqualTo( "/cdn-cgi/access/certs" ) )
+            .willReturn( okJson( jwksBody ) ) );
+
         BYBIT_SERVER.start();
+    }
+
+    @AfterAll
+    static void stopServers()
+    {
+        JWKS_SERVER.stop();
+        BYBIT_SERVER.stop();
     }
 
     @DynamicPropertySource
     static void configureProperties( DynamicPropertyRegistry registry )
     {
+        registry.add( "security.cloudflare.certs-url",
+            () -> JWKS_SERVER.baseUrl() + "/cdn-cgi/access/certs" );
         registry.add( "trading.bybit.production.base-url", BYBIT_SERVER::baseUrl );
     }
 
@@ -61,74 +96,46 @@ class OperatorSecurityIntegrationTest
     private OperatorExchangeCredentialJpaRepository credentialRepository;
 
     @BeforeEach
-    void cleanCredentials()
+    void clean()
     {
         BYBIT_SERVER.resetAll();
         credentialRepository.deleteAll();
     }
 
-    @AfterAll
-    static void stopWireMock()
-    {
-        BYBIT_SERVER.stop();
-    }
-
     @Test
-    void rejectsOperatorApiWithoutToken() throws Exception
+    void rejectsApiWithoutJwt() throws Exception
     {
         mockMvc.perform( get( "/api/v1/candidates" ) )
                .andExpect( status().isUnauthorized() )
-               .andExpect( jsonPath( "$.message" ).value( "Valid X-Operator-Token is required." ) );
+               .andExpect( jsonPath( "$.message" ).value( "Valid Cloudflare Access session required." ) );
     }
 
     @Test
-    void storesEncryptedCredentialsPerOperator() throws Exception
+    void rejectsApiWithInvalidJwt() throws Exception
     {
-        mockMvc.perform( put( "/api/v1/operators/me/credentials/bybit/production" )
-                .header( "X-Operator-Token", "alice-token" )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
-                    {
-                      "apiKey":"alice-public-key",
-                      "secretKey":"alice-secret-key",
-                      "passphrase":"alice-passphrase"
-                    }
-                    """ ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.configured" ).value( true ) )
-            .andExpect( jsonPath( "$.apiKeyMask" ).value( "****-key" ) )
-            .andExpect( jsonPath( "$.secretKeyMask" ).value( "****-key" ) );
-
-        mockMvc.perform( get( "/api/v1/operators/me/credentials" )
-                .header( "X-Operator-Token", "bob-token" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$" ).isEmpty() );
-
-        mockMvc.perform( get( "/api/v1/operators/me/credentials" )
-                .header( "X-Operator-Token", "alice-token" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$[0].venue" ).value( "bybit" ) )
-            .andExpect( jsonPath( "$[0].mode" ).value( "PRODUCTION" ) );
-
-        var stored = credentialRepository.findAll().getFirst();
-        assertThat( stored.getApiKeyCiphertext() ).doesNotContain( "alice-public-key" );
-        assertThat( stored.getSecretKeyCiphertext() ).doesNotContain( "alice-secret-key" );
-        assertThat( stored.getPassphraseCiphertext() ).doesNotContain( "alice-passphrase" );
+        mockMvc.perform( get( "/api/v1/candidates" )
+                .header( "Cf-Access-Jwt-Assertion", "not.a.jwt" ) )
+               .andExpect( status().isUnauthorized() );
     }
 
     @Test
-    void checksStoredCredentialsWithoutReturningSecrets() throws Exception
+    void acceptsValidJwtAndAutoProvisions() throws Exception
     {
-        BYBIT_SERVER.stubFor( com.github.tomakehurst.wiremock.client.WireMock.get( urlPathEqualTo( "/v5/account/wallet-balance" ) )
-            .willReturn( okJson( """
-                {
-                  "retCode": 10003,
-                  "retMsg": "invalid api key"
-                }
-                """ ) ) );
+        String jwt = buildJwt( "alice@example.com", "test-aud" );
+
+        mockMvc.perform( get( "/api/v1/candidates" )
+                .header( "Cf-Access-Jwt-Assertion", jwt ) )
+               .andExpect( status().isOk() );
+    }
+
+    @Test
+    void isolatesCredentialsByEmail() throws Exception
+    {
+        String aliceJwt = buildJwt( "alice@example.com", "test-aud" );
+        String bobJwt = buildJwt( "bob@example.com", "test-aud" );
 
         mockMvc.perform( put( "/api/v1/operators/me/credentials/bybit/production" )
-                .header( "X-Operator-Token", "alice-token" )
+                .header( "Cf-Access-Jwt-Assertion", aliceJwt )
                 .contentType( MediaType.APPLICATION_JSON )
                 .content( """
                     {
@@ -137,15 +144,63 @@ class OperatorSecurityIntegrationTest
                       "passphrase":""
                     }
                     """ ) )
-            .andExpect( status().isOk() );
+               .andExpect( status().isOk() );
 
-        mockMvc.perform( post( "/api/v1/operators/me/credentials/bybit/production/check" )
-                .header( "X-Operator-Token", "alice-token" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.configured" ).value( true ) )
-            .andExpect( jsonPath( "$.apiKeyMask" ).value( "****-key" ) )
-            .andExpect( jsonPath( "$.connectionStatus" ).value( "INVALID_CREDENTIALS" ) )
-            .andExpect( jsonPath( "$.connectionMessage" ).value( "invalid api key" ) )
-            .andExpect( jsonPath( "$.lastConnectionHttpStatus" ).value( 200 ) );
+        mockMvc.perform( get( "/api/v1/operators/me/credentials" )
+                .header( "Cf-Access-Jwt-Assertion", bobJwt ) )
+               .andExpect( status().isOk() )
+               .andExpect( jsonPath( "$" ).isEmpty() );
+
+        mockMvc.perform( get( "/api/v1/operators/me/credentials" )
+                .header( "Cf-Access-Jwt-Assertion", aliceJwt ) )
+               .andExpect( status().isOk() )
+               .andExpect( jsonPath( "$[0].venue" ).value( "bybit" ) )
+               .andExpect( jsonPath( "$[0].mode" ).value( "PRODUCTION" ) );
+    }
+
+    @Test
+    void rejectsExpiredJwt() throws Exception
+    {
+        String jwt = buildJwtExpiredAt( "alice@example.com", "test-aud",
+            new Date( System.currentTimeMillis() - 60_000 ) );
+
+        mockMvc.perform( get( "/api/v1/candidates" )
+                .header( "Cf-Access-Jwt-Assertion", jwt ) )
+               .andExpect( status().isUnauthorized() );
+    }
+
+    @Test
+    void rejectsWrongAudience() throws Exception
+    {
+        String jwt = buildJwt( "alice@example.com", "wrong-aud" );
+
+        mockMvc.perform( get( "/api/v1/candidates" )
+                .header( "Cf-Access-Jwt-Assertion", jwt ) )
+               .andExpect( status().isUnauthorized() );
+    }
+
+    private static String buildJwt( String email, String audience ) throws Exception
+    {
+        return buildJwtExpiredAt( email, audience,
+            new Date( System.currentTimeMillis() + 3_600_000 ) );
+    }
+
+    private static String buildJwtExpiredAt( String email, String audience, Date exp ) throws Exception
+    {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+            .subject( email )
+            .claim( "email", email )
+            .issuer( "https://test-team.cloudflareaccess.com" )
+            .audience( audience )
+            .expirationTime( exp )
+            .jwtID( UUID.randomUUID().toString() )
+            .build();
+
+        SignedJWT jwt = new SignedJWT(
+            new JWSHeader.Builder( JWSAlgorithm.RS256 ).keyID( RSA_KEY.getKeyID() ).build(),
+            claims
+        );
+        jwt.sign( new RSASSASigner( RSA_KEY ) );
+        return jwt.serialize();
     }
 }

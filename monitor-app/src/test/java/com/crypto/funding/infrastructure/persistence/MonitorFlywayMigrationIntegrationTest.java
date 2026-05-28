@@ -43,7 +43,7 @@ class MonitorFlywayMigrationIntegrationTest
         {
             assertThat( tableExists( dbPath, "flyway_schema_history" ) ).isTrue();
             assertThat( countRows( dbPath, "signal_candidate" ) ).isEqualTo( 1 );
-            assertThat( historyTypes( dbPath ) ).containsExactly( "BASELINE", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC" );
+            assertThat( historyTypes( dbPath ) ).containsExactly( "BASELINE", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC", "JDBC" );
         }
     }
 
@@ -56,8 +56,7 @@ class MonitorFlywayMigrationIntegrationTest
                 "--spring.datasource.url=jdbc:sqlite:" + dbPath.toAbsolutePath(),
                 "--trading.candidate-source.enabled=false",
                 "--trading.metadata.sync-on-startup=false",
-                "--trading.metadata.schedule-enabled=false",
-                "--security.operators.bootstrap-users="
+                "--trading.metadata.schedule-enabled=false"
             );
     }
 
@@ -72,8 +71,7 @@ class MonitorFlywayMigrationIntegrationTest
                 "--spring.flyway.enabled=false",
                 "--trading.candidate-source.enabled=false",
                 "--trading.metadata.sync-on-startup=false",
-                "--trading.metadata.schedule-enabled=false",
-                "--security.operators.bootstrap-users="
+                "--trading.metadata.schedule-enabled=false"
             ) )
         {
             assertThat( tableExists( dbPath, "signal_candidate" ) ).isTrue();
