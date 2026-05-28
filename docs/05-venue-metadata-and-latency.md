@@ -66,7 +66,7 @@ Latency profile можно обновить двумя способами:
 **Ручной probe** через monitor API:
 
 ```bash
-POST /api/v2/monitor/venues/{venue}/latency-probe
+POST /api/v1/venues/{venue}/latency-probe
 ```
 
 `VenueLatencyProbeService` делает GET к публичному endpoint venue (Gate: `/futures/usdt/tickers?contract=BTC_USDT`, Bybit: `/v5/market/time`), измеряет wall-clock RTT, обновляет `VenueTimingProfileEntity.latencySampledAt` и возвращает `{ venue, durationMs, sampledAt }`.
