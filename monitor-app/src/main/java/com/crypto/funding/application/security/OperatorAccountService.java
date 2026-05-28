@@ -21,17 +21,30 @@ public class OperatorAccountService
     @Transactional
     public Optional<OperatorPrincipal> findOrProvision( String email )
     {
-        return repository.findByUsername( email )
-                         .map( entity -> entity.isEnabled()
-                             ? new OperatorPrincipal( entity.getId(), entity.getUsername() )
-                             : null )
-                         .or( () ->
-                         {
-                             OperatorAccountEntity entity = new OperatorAccountEntity();
-                             entity.setUsername( email );
-                             entity.setEnabled( true );
-                             repository.save( entity );
-                             return Optional.of( new OperatorPrincipal( entity.getId(), entity.getUsername() ) );
-                         } );
+        var existing = repository.findByUsername( email );
+        if( existing.isPresent() )
+        {
+            var entity = existing.get();
+            if( !entity.isEnabled() )
+            {
+                return Optional.empty();
+            }
+            return Optional.of( new OperatorPrincipal( entity.getId(), entity.getUsername() ) );
+        }
+        OperatorAccountEntity entity = new OperatorAccountEntity();
+        entity.setUsername( email );
+        entity.setEnabled( true );
+        repository.save( entity );
+        return Optional.of( new OperatorPrincipal( entity.getId(), entity.getUsername() ) );
+    }
+
+    @Transactional
+    public void renameUsername( String oldUsername, String newUsername )
+    {
+        repository.findByUsername( oldUsername ).ifPresent( entity ->
+        {
+            entity.setUsername( newUsername );
+            repository.save( entity );
+        } );
     }
 }

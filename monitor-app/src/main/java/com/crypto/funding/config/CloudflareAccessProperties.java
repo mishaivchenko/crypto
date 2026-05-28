@@ -8,6 +8,13 @@ public class CloudflareAccessProperties
     private String teamDomain = "";
     private String audience = "";
     private String certsUrl = "";
+    /**
+     * Comma-separated pairs oldUsername:newEmail for one-time credential migration.
+     * Each entry renames an operator_account row so credentials remain reachable
+     * after the bootstrap username is replaced by a Cloudflare email.
+     * Example: CLOUDFLARE_USERNAME_MIGRATIONS=alice:alice@corp.com,bob:bob@corp.com
+     */
+    private String usernameMigrations = "";
 
     public String getTeamDomain()
     {
@@ -41,5 +48,15 @@ public class CloudflareAccessProperties
     public void setCertsUrl( String certsUrl )
     {
         this.certsUrl = certsUrl;
+    }
+
+    public String getUsernameMigrations()
+    {
+        return usernameMigrations;
+    }
+
+    public void setUsernameMigrations( String usernameMigrations )
+    {
+        this.usernameMigrations = usernameMigrations;
     }
 }

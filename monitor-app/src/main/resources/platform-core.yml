@@ -45,6 +45,7 @@ security:
     cloudflare:
         team-domain: ${CLOUDFLARE_TEAM_DOMAIN:}
         audience: ${CLOUDFLARE_AUD:}
+        username-migrations: ${CLOUDFLARE_USERNAME_MIGRATIONS:}
 
 credentials:
     storage:

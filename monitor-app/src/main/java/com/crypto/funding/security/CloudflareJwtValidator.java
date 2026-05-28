@@ -113,7 +113,12 @@ public class CloudflareJwtValidator
         {
             return current.jwks();
         }
-        if( current != null && current.fetchedAt().plus( REFRESH_COOLDOWN ).isAfter( Instant.now() ) )
+        // Unknown kid. If we fetched recently and that fetch also lacked this kid, the token
+        // is genuinely invalid — skip another fetch. Otherwise refresh immediately to handle
+        // key rotation (new kid published since last fetch).
+        boolean recentlyFetched = current != null
+            && current.fetchedAt().plus( REFRESH_COOLDOWN ).isAfter( Instant.now() );
+        if( recentlyFetched )
         {
             return current.jwks();
         }

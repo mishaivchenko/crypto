@@ -9,6 +9,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.crypto.funding.infrastructure.persistence.model.OperatorAccountEntity;
+import com.crypto.funding.infrastructure.persistence.repository.OperatorAccountJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.OperatorExchangeCredentialJpaRepository;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -95,11 +97,15 @@ class OperatorSecurityIntegrationTest
     @Autowired
     private OperatorExchangeCredentialJpaRepository credentialRepository;
 
+    @Autowired
+    private OperatorAccountJpaRepository operatorAccountRepository;
+
     @BeforeEach
     void clean()
     {
         BYBIT_SERVER.resetAll();
         credentialRepository.deleteAll();
+        operatorAccountRepository.deleteAll();
     }
 
     @Test
@@ -177,6 +183,22 @@ class OperatorSecurityIntegrationTest
         mockMvc.perform( get( "/api/v1/candidates" )
                 .header( "Cf-Access-Jwt-Assertion", jwt ) )
                .andExpect( status().isUnauthorized() );
+    }
+
+    @Test
+    void returns403ForDisabledOperator() throws Exception
+    {
+        OperatorAccountEntity disabled = new OperatorAccountEntity();
+        disabled.setUsername( "disabled@example.com" );
+        disabled.setEnabled( false );
+        operatorAccountRepository.save( disabled );
+
+        String jwt = buildJwt( "disabled@example.com", "test-aud" );
+
+        mockMvc.perform( get( "/api/v1/candidates" )
+                .header( "Cf-Access-Jwt-Assertion", jwt ) )
+               .andExpect( status().isForbidden() )
+               .andExpect( jsonPath( "$.message" ).value( "Operator account is disabled." ) );
     }
 
     private static String buildJwt( String email, String audience ) throws Exception
