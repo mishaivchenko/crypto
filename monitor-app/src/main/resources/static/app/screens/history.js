@@ -21,7 +21,10 @@ export function renderHistory({ nodes, trades, attemptsByTrade = {}, outcomesByT
     nodes.historyCount.textContent = rendered.countLabel;
     nodes.historyList.innerHTML = rendered.listMarkup;
 
-    wireHistoryExpansion(nodes.historyList, { attemptsByTrade, showError, onRefresh });
+    if (!nodes.historyList._expansionWired) {
+        nodes.historyList._expansionWired = true;
+        wireHistoryExpansion(nodes.historyList, { attemptsByTrade, showError, onRefresh });
+    }
 }
 
 function wireHistoryExpansion(container, { attemptsByTrade, showError, onRefresh }) {

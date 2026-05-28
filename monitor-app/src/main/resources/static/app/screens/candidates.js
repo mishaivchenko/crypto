@@ -96,7 +96,7 @@ function wireDeleteCandidate(container, { showError, onRefresh }) {
         const btn = form.querySelector("[type='submit']");
         btn.disabled = true;
         try {
-            await api.deleteCandidate(id, { deleteNote: data.get("deleteNote") });
+            await api.deleteCandidate(id, data.get("deleteNote") ?? "");
             if (onRefresh) await onRefresh();
         } catch (err) {
             btn.disabled = false;

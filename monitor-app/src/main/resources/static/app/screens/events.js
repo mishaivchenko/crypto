@@ -31,7 +31,10 @@ export async function renderFundingEvents({ nodes, page, showError, onRefresh })
     }
 
     nodes.eventsList.innerHTML = eventsListMarkup(page, { tradeMap, outcomeMap });
-    wireEventCardExpansion(nodes.eventsList, { showError, onRefresh });
+    if (!nodes.eventsList._expansionWired) {
+        nodes.eventsList._expansionWired = true;
+        wireEventCardExpansion(nodes.eventsList, { showError, onRefresh });
+    }
 }
 
 function wireEventCardExpansion(container, { showError, onRefresh }) {
@@ -69,6 +72,7 @@ function wireEventCardExpansion(container, { showError, onRefresh }) {
 
             wireArmForm(contentEl, { showError, onRefresh });
             wireAssessLiquidity(contentEl, { showError, onRefresh });
+            wireDeleteSource(contentEl, { showError, onRefresh });
         } catch (err) {
             contentEl.innerHTML = `<p class="card-loading">${err.message}</p>`;
         }
@@ -110,14 +114,48 @@ function wireArmForm(container, { showError, onRefresh }) {
 
 function wireAssessLiquidity(container, { showError, onRefresh }) {
     container.addEventListener("click", async (e) => {
-        const btn = e.target.closest("[data-assess-liquidity],[data-refresh-liquidity]");
-        if (!btn) return;
-        const id = btn.dataset.assessLiquidity || btn.dataset.refreshLiquidity;
-        const venue = btn.dataset.venue;
-        const symbol = btn.dataset.symbol;
+        const assessBtn = e.target.closest("[data-assess-liquidity]");
+        if (assessBtn) {
+            const venue = assessBtn.dataset.venue;
+            const symbol = assessBtn.dataset.symbol;
+            const tradeId = assessBtn.dataset.assessLiquidity;
+            assessBtn.disabled = true;
+            try {
+                await api.assessLiquidity(venue, symbol, tradeId);
+                if (onRefresh) await onRefresh();
+            } catch (err) {
+                assessBtn.disabled = false;
+                showError(err.message);
+            }
+            return;
+        }
+        const refreshBtn = e.target.closest("[data-refresh-liquidity]");
+        if (refreshBtn) {
+            const tradeId = refreshBtn.dataset.refreshLiquidity;
+            const venue = refreshBtn.dataset.venue;
+            const symbol = refreshBtn.dataset.symbol;
+            refreshBtn.disabled = true;
+            try {
+                await api.refreshTradeLiquidity(tradeId, venue, symbol);
+                if (onRefresh) await onRefresh();
+            } catch (err) {
+                refreshBtn.disabled = false;
+                showError(err.message);
+            }
+        }
+    });
+}
+
+function wireDeleteSource(container, { showError, onRefresh }) {
+    const form = container.querySelector("[data-action='delete-candidate']");
+    if (!form) return;
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const note = new FormData(form).get("deleteNote") ?? "";
+        const btn = form.querySelector("[type='submit']");
         btn.disabled = true;
         try {
-            await api.assessTradeLiquidity(id, { venue, symbol });
+            await api.deleteCandidate(form.dataset.id, note);
             if (onRefresh) await onRefresh();
         } catch (err) {
             btn.disabled = false;
