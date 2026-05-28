@@ -28,7 +28,4 @@ env:
 monitor:
     base-url: ${MONITOR_BASE_URL:http://localhost:8090}
     operator-token: ${MONITOR_OPERATOR_TOKEN:}
-
-ngrok:
-    enabled: ${NGROK_ENABLED:false}
-    api-url: ${NGROK_API_URL:http://localhost:4040}
+    public-url: ${MONITOR_PUBLIC_URL:}

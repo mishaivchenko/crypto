@@ -6,9 +6,7 @@ telegram:
 
 monitor:
     base-url: http://localhost:8090
-
-ngrok:
-    enabled: false
+    public-url:
 
 logging:
     level:

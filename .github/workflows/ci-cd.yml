@@ -224,11 +224,12 @@ jobs:
       - name: Restart services
         run: |
           cd ${{ env.PROJECT_DIR }}/deploy
-          docker rm -f funding-monitor funding-engine funding-telegram-bot funding-ngrok 2>/dev/null || true
+          docker rm -f funding-monitor funding-engine funding-telegram-bot 2>/dev/null || true
           IMAGE_MONITOR=funding-monitor:staging \
           IMAGE_ENGINE=funding-engine:staging \
           IMAGE_TELEGRAM_BOT=funding-telegram-bot:staging \
-          docker compose up -d --remove-orphans monitor engine ngrok telegram-bot
+          MONITOR_PUBLIC_URL=https://crypto-monitor.org \
+          docker compose up -d --remove-orphans monitor engine telegram-bot
 
       - name: Smoke test
         run: |
@@ -240,6 +241,13 @@ jobs:
               sleep 5
             done
           done
+
+      - name: Verify Cloudflare Tunnel
+        run: |
+          echo "Checking cloudflared service..."
+          launchctl list | grep -q com.cloudflare.cloudflared && echo "cloudflared: running" || echo "WARNING: cloudflared not running"
+          echo "Checking public URL..."
+          curl -sf --max-time 10 https://crypto-monitor.org/actuator/health && echo "crypto-monitor.org: OK" || echo "WARNING: public URL not responding"
 
   # ── 6. Deploy → production (VPS) ────────────────────────────────────────────
   deploy-prod:

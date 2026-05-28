@@ -4,8 +4,8 @@ import com.crypto.funding.telegram.bot.FundingBot;
 import com.crypto.funding.telegram.bot.MessageFormatter;
 import com.crypto.funding.telegram.client.MonitorApiClient;
 import com.crypto.funding.telegram.client.dto.ArmedTradeSummary;
+import com.crypto.funding.telegram.config.MonitorProperties;
 import com.crypto.funding.telegram.config.TelegramBotProperties;
-import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,21 +24,21 @@ public class TradeNotificationScheduler
     private final FundingBot fundingBot;
     private final NotificationState state;
     private final TelegramBotProperties botProperties;
-    private final NgrokTunnelService ngrokTunnelService;
+    private final MonitorProperties monitorProperties;
 
     public TradeNotificationScheduler(
         MonitorApiClient monitorApiClient,
         FundingBot fundingBot,
         NotificationState state,
         TelegramBotProperties botProperties,
-        NgrokTunnelService ngrokTunnelService
+        MonitorProperties monitorProperties
     )
     {
         this.monitorApiClient = monitorApiClient;
         this.fundingBot = fundingBot;
         this.state = state;
         this.botProperties = botProperties;
-        this.ngrokTunnelService = ngrokTunnelService;
+        this.monitorProperties = monitorProperties;
     }
 
     @Scheduled(fixedDelayString = "${telegram.bot.signal-poll-interval-ms:30000}")
@@ -74,9 +74,7 @@ public class TradeNotificationScheduler
 
     private void sendAlert( ArmedTradeSummary trade )
     {
-        String uiUrl = ngrokTunnelService.fetchTunnels()
-            .map( NgrokTunnelService.NgrokTunnels::monitorUrl )
-            .orElse( null );
+        String uiUrl = monitorProperties.publicUrl();
         String text = MessageFormatter.newTradeAlert( trade, uiUrl );
         long chatId = botProperties.notificationChatIdLong();
         fundingBot.sendAlert( chatId, text );

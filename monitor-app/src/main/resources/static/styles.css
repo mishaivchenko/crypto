@@ -480,6 +480,47 @@ details[open] .dev-tools-summary h3::before {
     background: var(--signal);
 }
 
+/* Inline card expansion — <details> accordion on any card type */
+.card-expansion {
+    border: none;
+    margin-top: 6px;
+}
+
+.card-expand-toggle {
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--muted);
+    padding: 4px 0;
+    user-select: none;
+}
+
+.card-expand-toggle::marker,
+.card-expand-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.card-expand-toggle::before {
+    content: "▶  ";
+    font-size: 0.65rem;
+}
+
+details[open] > .card-expand-toggle::before {
+    content: "▼  ";
+}
+
+.card-expansion > .card-full-content {
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+}
+
+.card-loading {
+    color: var(--muted);
+    font-size: 0.82rem;
+    padding: 8px 0;
+}
+
 /* Full signal card content — visible when both AI and liquidity are ready */
 .card-full-content {
     display: grid;

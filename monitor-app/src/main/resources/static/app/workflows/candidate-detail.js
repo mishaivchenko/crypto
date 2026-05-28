@@ -28,7 +28,7 @@ function recommendationRows(candidate) {
     ].join("");
 }
 
-function buildApproveSection(candidate) {
+export function buildApproveSection(candidate) {
     if (candidate.status === "EVENT_CREATED") {
         return section(
             t("candidate_event_created_title"),

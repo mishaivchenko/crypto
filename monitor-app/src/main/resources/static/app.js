@@ -22,9 +22,6 @@ import {
     openTradeDetail
 } from "./app/workflows/trade-detail.js";
 import {
-    openHistoryTradeDetail
-} from "./app/workflows/history-detail.js";
-import {
     openVenueDetail
 } from "./app/workflows/venue-detail.js";
 import {
@@ -65,7 +62,6 @@ function setLoadError(target, message) {
 const openCandidate = (id) => openCandidateDetail({ id, nodes, showError });
 const openEvent = (id) => openEventDetail({ id, nodes, showError });
 const openTrade = (id) => openTradeDetail({ id, nodes, showError, onRefresh: refreshCurrentScreen });
-const openHistoryTrade = (id) => openHistoryTradeDetail({ id, nodes, showError, onRefresh: refreshCurrentScreen });
 const openVenue = (venueName) => openVenueDetail({ venueName, nodes, showError });
 const openDevTestRun = () => openDevTestRunTool({ nodes, showError });
 
@@ -111,7 +107,8 @@ async function refreshCurrentScreen() {
             renderFundingEvents({
                 nodes,
                 page: await api.listFundingEvents(state.eventFilters),
-                onOpenEvent: openEvent
+                showError,
+                onRefresh: refreshCurrentScreen
             });
             return;
         }
@@ -121,7 +118,8 @@ async function refreshCurrentScreen() {
             renderTrades({
                 nodes,
                 trades: await api.listArmedTrades(),
-                onOpenTrade: openTrade
+                showError,
+                onRefresh: refreshCurrentScreen
             });
             return;
         }
@@ -140,7 +138,8 @@ async function refreshCurrentScreen() {
                 attemptsByTrade: groupAttemptsByTrade(attempts),
                 outcomesByTrade,
                 filters: state.historyFilters,
-                onOpenHistoryTrade: openHistoryTrade
+                showError,
+                onRefresh: refreshCurrentScreen
             });
             return;
         }

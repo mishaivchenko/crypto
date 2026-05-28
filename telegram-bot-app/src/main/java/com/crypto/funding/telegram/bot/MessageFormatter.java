@@ -4,14 +4,12 @@ import com.crypto.funding.telegram.client.dto.ArmedTradeSummary;
 import com.crypto.funding.telegram.client.dto.CandidateSummary;
 import com.crypto.funding.telegram.client.dto.MonitorOverview;
 import com.crypto.funding.telegram.config.EnvironmentLinksProperties;
-import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 
 public final class MessageFormatter
 {
@@ -70,20 +68,20 @@ public final class MessageFormatter
             """;
     }
 
-    public static String linksMessage( Optional<NgrokTunnelService.NgrokTunnels> ngrok,
+    public static String linksMessage( String publicUrl,
                                        EnvironmentLinksProperties envLinks )
     {
         StringBuilder sb = new StringBuilder();
         sb.append( "🔗 *Актуальные ссылки*\n\n" );
         sb.append( "━━━━━━━━━━━━━━━━━━━━\n" );
-        sb.append( "🟡 *Staging \\(ngrok\\)*\n" );
-        if( ngrok.isPresent() )
+        sb.append( "🟡 *Staging*\n" );
+        if( publicUrl != null && !publicUrl.isBlank() )
         {
-            sb.append( "_Ссылки получены из ngrok — кнопки ниже актуальны_\n" );
+            sb.append( "_Кнопки ниже актуальны_\n" );
         }
         else
         {
-            sb.append( "_ngrok недоступен или туннель не запущен_\n" );
+            sb.append( "_Публичный URL не настроен_\n" );
         }
 
         boolean hasStagingStatic = envLinks.staging() != null && !envLinks.staging().isEmpty();

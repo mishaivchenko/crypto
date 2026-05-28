@@ -5,8 +5,8 @@ import com.crypto.funding.telegram.bot.MessageFormatter;
 import com.crypto.funding.telegram.client.MonitorApiClient;
 import com.crypto.funding.telegram.client.PageResponse;
 import com.crypto.funding.telegram.client.dto.CandidateSummary;
+import com.crypto.funding.telegram.config.MonitorProperties;
 import com.crypto.funding.telegram.config.TelegramBotProperties;
-import com.crypto.funding.telegram.ngrok.NgrokTunnelService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -25,21 +25,21 @@ public class SignalNotificationScheduler
     private final FundingBot fundingBot;
     private final NotificationState state;
     private final TelegramBotProperties botProperties;
-    private final NgrokTunnelService ngrokTunnelService;
+    private final MonitorProperties monitorProperties;
 
     public SignalNotificationScheduler(
         MonitorApiClient monitorApiClient,
         FundingBot fundingBot,
         NotificationState state,
         TelegramBotProperties botProperties,
-        NgrokTunnelService ngrokTunnelService
+        MonitorProperties monitorProperties
     )
     {
         this.monitorApiClient = monitorApiClient;
         this.fundingBot = fundingBot;
         this.state = state;
         this.botProperties = botProperties;
-        this.ngrokTunnelService = ngrokTunnelService;
+        this.monitorProperties = monitorProperties;
     }
 
     @Scheduled(fixedDelayString = "${telegram.bot.signal-poll-interval-ms:30000}")
@@ -73,17 +73,10 @@ public class SignalNotificationScheduler
 
     private void sendAlert( CandidateSummary candidate )
     {
-        String uiUrl = resolveUiUrl();
+        String uiUrl = monitorProperties.publicUrl();
         String text = MessageFormatter.newSignalAlert( candidate, uiUrl );
         long chatId = botProperties.notificationChatIdLong();
         fundingBot.sendAlert( chatId, text );
         log.info( "Sent signal alert for candidate {} ({})", candidate.id(), candidate.displaySymbol() );
-    }
-
-    private String resolveUiUrl()
-    {
-        return ngrokTunnelService.fetchTunnels()
-            .map( NgrokTunnelService.NgrokTunnels::monitorUrl )
-            .orElse( null );
     }
 }

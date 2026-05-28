@@ -66,7 +66,7 @@ function buildLiquiditySection(liquidity, trade) {
     `);
 }
 
-function buildLatencyChainSection(trade) {
+export function buildLatencyChainSection(trade) {
     const p50 = trade.warmupP50Ms != null ? `${trade.warmupP50Ms} ms` : "—";
     const p95 = trade.warmupP95Ms != null ? `${trade.warmupP95Ms} ms` : null;
     const manualAdj = trade.manualLatencyAdjustmentMs ?? 0;
@@ -113,7 +113,7 @@ function warmupSection(trade) {
     `);
 }
 
-function buildPositionSection(position) {
+export function buildPositionSection(position) {
     if (!position) return "";
     return section(t("event_position"), `
         <div class="meta-grid">
@@ -126,7 +126,7 @@ function buildPositionSection(position) {
     `);
 }
 
-function buildOutcomeSection(outcome) {
+export function buildOutcomeSection(outcome) {
     if (!outcome) return "";
     const net = outcome.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
     const netTone = net == null ? "muted" : net >= 0 ? "good" : "bad";
@@ -144,7 +144,7 @@ function buildOutcomeSection(outcome) {
     `);
 }
 
-function buildCancelSection(trade) {
+export function buildCancelSection(trade) {
     if (CLOSEABLE_STATES.has(trade.state)) {
         return section(t("trade_close_position_title"), `
             <p class="muted">${t("trade_close_position_detail")}</p>
@@ -158,6 +158,90 @@ function buildCancelSection(trade) {
         <p class="muted">${t("trade_cancel_detail")}</p>
         <button class="button danger" type="button" data-cancel-trade="${trade.id}">${t("trade_cancel_button")}</button>
     `);
+}
+
+export function buildTradeExpansionContent({ trade, attempts = [], liquidity = null, position = null, outcome = null }) {
+    return `
+        ${buildLiquiditySection(liquidity, trade)}
+        ${buildLatencyChainSection(trade)}
+        ${attempts.length ? section(t("trade_exec_attempts"), attempts.map((attempt) => `
+            <div class="meta-row">
+                <span class="meta-label">#${escapeHtml(String(attempt.attemptNumber ?? "—"))} · ${escapeHtml(attempt.status)}</span>
+                <strong class="meta-value">${escapeHtml(attempt.symbol ?? "—")} ${escapeHtml(attempt.side ?? "—")}</strong>
+                <span class="meta-helper">
+                    ${attempt.averageFillPrice != null ? `${t("event_fill_price")} ${formatDecimal(attempt.averageFillPrice, 4)} · ` : ""}
+                    ${attempt.feeUsd != null ? `${t("event_fees")} ${formatDecimal(attempt.feeUsd, 4)} USD · ` : ""}
+                    ${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)}
+                </span>
+            </div>
+        `).join("")) : ""}
+        ${warmupSection(trade)}
+        ${buildPositionSection(position)}
+        ${buildOutcomeSection(outcome)}
+        ${buildCancelSection(trade)}
+        ${trade.state === "ARMED" ? `
+            <details class="technical-details">
+                <summary>${t("trade_edit_summary")}</summary>
+                <form class="drawer-form" data-action="edit-trade" data-id="${trade.id}">
+                    <fieldset class="form-group">
+                        <legend>${t("event_entry_window")}</legend>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>${t("trade_notional_usd")}</span>
+                                <input name="notionalUsd" type="number" step="0.01" value="${escapeHtml(String(trade.notionalUsd ?? ""))}">
+                            </label>
+                            <label class="field">
+                                <span>${t("trade_entry_attempts_label")}</span>
+                                <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="${escapeHtml(String(trade.entryAttemptCount ?? 1))}">
+                            </label>
+                        </div>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>${t("trade_planned_entry")}</span>
+                                <input name="plannedEntryAt" type="datetime-local" step="0.001" value="${escapeHtml(toLocalInputValue(trade.plannedEntryAt) ?? "")}">
+                            </label>
+                            <label class="field">
+                                <span>${t("trade_spacing_ms")}</span>
+                                <input name="entrySpacingMs" type="number" min="0" step="1" value="${escapeHtml(String(trade.entrySpacingMs ?? 0))}">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>${t("event_manual_latency")}</span>
+                            <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="${escapeHtml(String(trade.manualLatencyAdjustmentMs ?? 0))}">
+                        </label>
+                    </fieldset>
+                    <fieldset class="form-group">
+                        <legend>${t("event_exit_window")}</legend>
+                        <label class="field">
+                            <span>${t("trade_planned_exit")}</span>
+                            <input name="plannedExitAt" type="datetime-local" step="0.001" value="${escapeHtml(toLocalInputValue(trade.plannedExitAt) ?? "")}">
+                        </label>
+                    </fieldset>
+                    <fieldset class="form-group">
+                        <legend>${t("event_risk_management")}</legend>
+                        <div class="drawer-form-row labeled-row">
+                            <label class="field">
+                                <span>${t("event_stop_loss")}</span>
+                                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="${t("event_stop_loss_placeholder")}" value="${escapeHtml(trade.stopLossUsd != null ? String(trade.stopLossUsd) : "")}">
+                            </label>
+                            <label class="field">
+                                <span>${t("event_take_profit")}</span>
+                                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="${t("event_take_profit_placeholder")}" value="${escapeHtml(trade.takeProfitUsd != null ? String(trade.takeProfitUsd) : "")}">
+                            </label>
+                        </div>
+                    </fieldset>
+                    <label class="field">
+                        <span>${t("trade_note")}</span>
+                        <textarea name="notes">${escapeHtml(trade.notes ?? "")}</textarea>
+                    </label>
+                    <div class="actions">
+                        <button class="button" type="submit">${t("trade_save_button")}</button>
+                    </div>
+                </form>
+            </details>
+        ` : ""}
+        ${trade.signalCandidateId ? buildDeleteCandidateSection({ id: trade.signalCandidateId }, t("event_delete_source")) : ""}
+    `;
 }
 
 export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null }) {

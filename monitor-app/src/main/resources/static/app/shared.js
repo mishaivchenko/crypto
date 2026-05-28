@@ -253,6 +253,13 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                 <span class="muted">${escapeHtml(candidateStateLine(candidate))}</span>
             </div>
             ${fullContent}
+            ${candidate.status === "FAILED" ? `
+            <details class="card-expansion" data-lazy-candidate-repair="${candidate.id}">
+                <summary class="card-expand-toggle">${t("card_expand_repair")}</summary>
+                <div class="card-full-content">
+                    <p class="card-loading">…</p>
+                </div>
+            </details>` : ""}
         </article>
     `;
 }
@@ -281,6 +288,8 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
         ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
         : "";
 
+    const expandLabel = event.status === "DISCOVERED" ? t("card_expand_arm") : t("card_expand_details");
+
     return `
         <article class="list-item event-card" data-event-id="${event.id}">
             <header>
@@ -290,7 +299,6 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
                 </div>
                 <div class="actions">
                     ${formatBadge("event", event.status)}
-                    <button class="button secondary" type="button" data-open-event="${event.id}">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="chip-row">
@@ -300,6 +308,12 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
                 ${tradeChips}
                 ${pnlChip}
             </div>
+            <details class="card-expansion" data-lazy-event="${event.id}">
+                <summary class="card-expand-toggle">${expandLabel}</summary>
+                <div class="card-full-content">
+                    <p class="card-loading">…</p>
+                </div>
+            </details>
         </article>
     `;
 }
@@ -332,7 +346,7 @@ export function tradeCard(trade, outcome = null) {
     const countdownChip = `<span class="chip chip-muted">${countdown}</span>`;
 
     return `
-        <article class="list-item trade-card">
+        <article class="list-item trade-card" data-trade-id="${trade.id}">
             <header>
                 <div>
                     <h3 class="item-title">${venueIcon(trade.venue)}${escapeHtml(trade.symbol ?? `${t("card_trade_prefix")}${trade.id}`)}</h3>
@@ -342,7 +356,6 @@ export function tradeCard(trade, outcome = null) {
                     ${formatBadge("trade", trade.state)}
                     ${trade.mode === "testnet" ? formatBadge("venue", t("label_testnet"), "info") : ""}
                     ${formatPnlBadge(outcome)}
-                    <button class="button secondary" type="button" data-open-trade="${trade.id}">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="chip-row">
@@ -354,6 +367,12 @@ export function tradeCard(trade, outcome = null) {
                 <span class="chip chip-muted">entry ${formatInstant(trade.plannedEntryAt)}</span>
                 ${pnlChip}
             </div>
+            <details class="card-expansion" data-lazy-trade="${trade.id}">
+                <summary class="card-expand-toggle">${t("card_expand_details")}</summary>
+                <div class="card-full-content">
+                    <p class="card-loading">…</p>
+                </div>
+            </details>
         </article>
     `;
 }
