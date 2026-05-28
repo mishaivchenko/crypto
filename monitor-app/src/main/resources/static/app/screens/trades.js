@@ -1,5 +1,5 @@
 import { api } from "../../api.js";
-import { emptyState, tradeCard } from "../shared.js";
+import { emptyState, tradeCard, escapeHtml } from "../shared.js";
 import { buildTradeExpansionContent } from "../workflows/trade-detail.js";
 import { t } from "../../i18n.js";
 
@@ -60,7 +60,7 @@ function wireTradeCardExpansion(container, { showError, onRefresh }) {
             wireAssessLiquidity(contentEl, { showError, onRefresh });
             wireDeleteSource(contentEl, { showError, onRefresh });
         } catch (err) {
-            contentEl.innerHTML = `<p class="card-loading">${err.message}</p>`;
+            contentEl.innerHTML = `<p class="card-loading">${escapeHtml(err.message)}</p>`;
         }
     }, true);
 }

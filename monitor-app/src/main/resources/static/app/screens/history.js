@@ -1,5 +1,5 @@
 import { filterHistoryTrades, historyTradeRow } from "../../history.js";
-import { emptyState, formatNumber, optionalRequest } from "../shared.js";
+import { emptyState, formatNumber, optionalRequest, escapeHtml } from "../shared.js";
 import { buildHistoryTradeDrawerContent } from "../workflows/history-detail.js";
 import { api } from "../../api.js";
 import { t } from "../../i18n.js";
@@ -51,7 +51,7 @@ function wireHistoryExpansion(container, { attemptsByTrade, showError, onRefresh
 
             wireCancelTrade(contentEl, { showError, onRefresh });
         } catch (err) {
-            contentEl.innerHTML = `<p class="card-loading">${err.message}</p>`;
+            contentEl.innerHTML = `<p class="card-loading">${escapeHtml(err.message)}</p>`;
         }
     }, true);
 }

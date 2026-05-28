@@ -1,5 +1,5 @@
 import { api } from "../../api.js";
-import { emptyState, candidateCard } from "../shared.js";
+import { emptyState, candidateCard, escapeHtml } from "../shared.js";
 import { buildApproveSection } from "../workflows/candidate-detail.js";
 import { buildDeleteCandidateSection } from "../workflows/pipeline.js";
 import { t } from "../../i18n.js";
@@ -52,7 +52,7 @@ function wireRepairExpansion(container, { showError, onRefresh }) {
             wireApproveForm(contentEl, { showError, onRefresh });
             wireDeleteCandidate(contentEl, { showError, onRefresh });
         } catch (err) {
-            contentEl.innerHTML = `<p class="card-loading">${err.message}</p>`;
+            contentEl.innerHTML = `<p class="card-loading">${escapeHtml(err.message)}</p>`;
         }
     }, true);
 }

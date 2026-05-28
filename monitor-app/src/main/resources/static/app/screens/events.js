@@ -1,5 +1,5 @@
 import { api } from "../../api.js";
-import { emptyState, eventCard } from "../shared.js";
+import { emptyState, eventCard, escapeHtml } from "../shared.js";
 import { buildEventExpansionContent } from "../workflows/event-detail.js";
 import { t } from "../../i18n.js";
 
@@ -74,7 +74,7 @@ function wireEventCardExpansion(container, { showError, onRefresh }) {
             wireAssessLiquidity(contentEl, { showError, onRefresh });
             wireDeleteSource(contentEl, { showError, onRefresh });
         } catch (err) {
-            contentEl.innerHTML = `<p class="card-loading">${err.message}</p>`;
+            contentEl.innerHTML = `<p class="card-loading">${escapeHtml(err.message)}</p>`;
         }
     }, true);
 }
