@@ -453,6 +453,7 @@ if (langToggle) {
 function openSettings() {
     document.getElementById("settings-panel").hidden = false;
     document.getElementById("settings-toggle").setAttribute("aria-expanded", "true");
+    loadAiPerformance();
 }
 
 function closeSettings() {
@@ -525,6 +526,38 @@ async function loadAiStatus() {
         nodes.aiToggleCheckbox.checked = Boolean(status.enabled);
     } catch {
         // non-critical — leave checkbox as-is
+    }
+}
+
+async function loadAiPerformance() {
+    const container = document.getElementById("ai-performance-container");
+    if (!container) return;
+    try {
+        const perf = await api.getAiPerformance();
+        if (!perf || perf.totalTrades < 3) {
+            container.innerHTML = `<p class="helper-text muted">${t("ai_performance_no_data")}</p>`;
+            return;
+        }
+        const rows = perf.stats.map(s => {
+            const winRate = s.winRate != null ? `${Math.round(s.winRate * 100)}%` : "—";
+            const avgPnl = s.avgPnlUsd != null
+                ? `${parseFloat(s.avgPnlUsd) >= 0 ? "+" : ""}$${parseFloat(s.avgPnlUsd).toFixed(2)}`
+                : "—";
+            const rec = t(`ai_recommendation_${s.recommendation}`) || s.recommendation;
+            return `<tr><td>${rec}</td><td>${s.tradeCount}</td><td>${winRate}</td><td>${avgPnl}</td></tr>`;
+        }).join("");
+        container.innerHTML = `
+            <table class="perf-table">
+                <thead><tr>
+                    <th></th>
+                    <th>${t("ai_performance_trades")}</th>
+                    <th>${t("ai_performance_win_rate")}</th>
+                    <th>${t("ai_performance_avg_pnl")}</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    } catch (err) {
+        console.debug("AI performance load failed:", err);
     }
 }
 

@@ -16,7 +16,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -30,6 +32,7 @@ public class AiSignalAdvisorService
     private final LiquidityAssessmentService liquidityAssessmentService;
     private final VenueRequestTimingService venueRequestTimingService;
     private final AiSignalAdviceJpaRepository adviceRepository;
+    private final AiAdvisorPerformanceService performanceService;
 
     public AiSignalAdvisorService(
         DeepSeekProperties deepSeekProperties,
@@ -37,7 +40,8 @@ public class AiSignalAdvisorService
         SignalCandidateQueryService candidateQueryService,
         LiquidityAssessmentService liquidityAssessmentService,
         VenueRequestTimingService venueRequestTimingService,
-        AiSignalAdviceJpaRepository adviceRepository
+        AiSignalAdviceJpaRepository adviceRepository,
+        AiAdvisorPerformanceService performanceService
     )
     {
         this.deepSeekProperties = deepSeekProperties;
@@ -46,6 +50,7 @@ public class AiSignalAdvisorService
         this.liquidityAssessmentService = liquidityAssessmentService;
         this.venueRequestTimingService = venueRequestTimingService;
         this.adviceRepository = adviceRepository;
+        this.performanceService = performanceService;
     }
 
     @Async
@@ -79,7 +84,9 @@ public class AiSignalAdvisorService
             ? venueRequestTimingService.snapshot( venue, "order_book" )
             : null;
 
-        String prompt = buildPrompt( candidate, liquidityOpt.orElse( null ), latency );
+        AiAdvisorPerformanceService.PerformanceStats perfStats = performanceService.getPerformanceStats();
+
+        String prompt = buildPrompt( candidate, liquidityOpt.orElse( null ), latency, perfStats );
 
         DeepSeekClient.AdviceResult result = deepSeekClient.analyze( prompt );
 
@@ -106,12 +113,13 @@ public class AiSignalAdvisorService
                                .map( this::toDomain );
     }
 
-    private String buildPrompt( SignalCandidate candidate, LiquidityAssessment liquidity, VenueRequestTimingService.Snapshot latency )
+    private String buildPrompt(
+        SignalCandidate candidate,
+        LiquidityAssessment liquidity,
+        VenueRequestTimingService.Snapshot latency,
+        AiAdvisorPerformanceService.PerformanceStats perfStats
+    )
     {
-        long minutesUntilFunding = candidate.sourceFundingTime() != null
-            ? java.time.Duration.between( Instant.now(), candidate.sourceFundingTime() ).toMinutes()
-            : -1;
-
         StringBuilder sb = new StringBuilder();
         sb.append( "Ты торговый советник для краткосрочной SHORT-стратегии на перпетуальных фьючерсах.\n\n" );
         sb.append( "СТРАТЕГИЯ (важно понять правильно):\n" );
@@ -128,11 +136,8 @@ public class AiSignalAdvisorService
             sb.append( "Ставка финансирования: " ).append( candidate.sourceFundingRatePct() ).append( "%" );
             sb.append( "  ← чем выше, тем сильнее ожидаемое ценовое движение\n" );
         }
-        if( minutesUntilFunding >= 0 )
-        {
-            sb.append( "До момента фандинга: " ).append( minutesUntilFunding ).append( " мин" );
-            sb.append( "  ← оптимально < 10 мин; > 30 мин — сигнал неактуален для входа\n" );
-        }
+
+        appendTimingSection( sb, candidate, latency );
 
         if( liquidity != null )
         {
@@ -159,8 +164,10 @@ public class AiSignalAdvisorService
             {
                 sb.append( ", p95: " ).append( latency.p95DurationMs() ).append( " ms" );
             }
-            sb.append( "  ← критично: должны успеть войти ДО фандинга\n" );
+            sb.append( "\n" );
         }
+
+        appendPerformanceSection( sb, perfStats );
 
         sb.append( "\nКритерии оценки:\n" );
         sb.append( "- GO: ставка > 0.1%, до фандинга < 10 мин, хорошая ликвидность, задержка < 100 ms\n" );
@@ -173,6 +180,95 @@ public class AiSignalAdvisorService
         sb.append( "reasoning — 2-3 предложения на русском: объясни ожидаемое ценовое движение, а не сбор фандинга\n" );
 
         return sb.toString();
+    }
+
+    private void appendTimingSection( StringBuilder sb, SignalCandidate candidate, VenueRequestTimingService.Snapshot latency )
+    {
+        if( candidate.sourceFundingTime() == null )
+        {
+            return;
+        }
+        long secondsUntilFunding = Duration.between( Instant.now(), candidate.sourceFundingTime() ).toSeconds();
+
+        if( secondsUntilFunding < 0 )
+        {
+            sb.append( "До момента фандинга: ПРОСРОЧЕН (фандинг уже прошёл " )
+              .append( Math.abs( secondsUntilFunding ) )
+              .append( " сек назад)  ← рекомендация PASS\n" );
+            return;
+        }
+
+        String urgency;
+        if( secondsUntilFunding <= 60 )
+        {
+            urgency = "CRITICAL — немедленный старт";
+            sb.append( "До момента фандинга: " ).append( secondsUntilFunding ).append( " сек  ← " ).append( urgency ).append( "\n" );
+        }
+        else if( secondsUntilFunding <= 300 )
+        {
+            urgency = "TIGHT";
+            sb.append( "До момента фандинга: " ).append( secondsUntilFunding ).append( " сек (~" )
+              .append( secondsUntilFunding / 60 ).append( " мин)  ← " ).append( urgency ).append( "\n" );
+        }
+        else if( secondsUntilFunding <= 600 )
+        {
+            urgency = "OPTIMAL";
+            sb.append( "До момента фандинга: " ).append( secondsUntilFunding / 60 ).append( " мин  ← " ).append( urgency ).append( "\n" );
+        }
+        else if( secondsUntilFunding <= 1800 )
+        {
+            urgency = "EARLY — сигнал актуален, но рановато";
+            sb.append( "До момента фандинга: " ).append( secondsUntilFunding / 60 ).append( " мин  ← " ).append( urgency ).append( "\n" );
+        }
+        else
+        {
+            urgency = "PREMATURE — слишком рано для торговли";
+            sb.append( "До момента фандинга: " ).append( secondsUntilFunding / 60 ).append( " мин  ← " ).append( urgency ).append( "\n" );
+        }
+
+        // Estimated execution attempts in the warmup window
+        if( latency != null && latency.p50DurationMs() != null && latency.p50DurationMs() > 0
+            && secondsUntilFunding > 0 && secondsUntilFunding <= 600 )
+        {
+            long warmupBudgetMs = 500L;
+            long usableWindowMs = secondsUntilFunding * 1000L - warmupBudgetMs;
+            if( usableWindowMs > 0 )
+            {
+                long estimatedAttempts = usableWindowMs / latency.p50DurationMs();
+                sb.append( "Оценочное окно исполнения: ~" ).append( estimatedAttempts )
+                  .append( " попыток (p50=" ).append( latency.p50DurationMs() )
+                  .append( "ms, warmup=500ms)\n" );
+            }
+        }
+    }
+
+    private void appendPerformanceSection( StringBuilder sb, AiAdvisorPerformanceService.PerformanceStats perfStats )
+    {
+        if( perfStats == null || perfStats.totalTrades() < 3 )
+        {
+            return;
+        }
+        sb.append( "\nИсторическая эффективность советника (последние " ).append( perfStats.totalTrades() ).append( " сделок):\n" );
+        for( AiAdvisorPerformanceService.RecommendationStat stat : perfStats.stats() )
+        {
+            if( stat.tradeCount() == 0 )
+            {
+                sb.append( "- " ).append( stat.recommendation() ).append( ": сделки не открывались\n" );
+            }
+            else
+            {
+                String winPct = stat.winRate() != null
+                    ? String.format( "%.0f%%", stat.winRate() * 100 )
+                    : "—";
+                String avgPnl = stat.avgPnlUsd() != null
+                    ? (stat.avgPnlUsd().compareTo( java.math.BigDecimal.ZERO ) >= 0 ? "+" : "") + "$" + stat.avgPnlUsd()
+                    : "—";
+                sb.append( "- " ).append( stat.recommendation() ).append( ": " )
+                  .append( stat.tradeCount() ).append( " сделок, win rate " ).append( winPct )
+                  .append( ", avg PnL " ).append( avgPnl ).append( "\n" );
+            }
+        }
+        sb.append( "(Используй эти данные для калибровки порогов GO/WATCH/PASS)\n" );
     }
 
     private String resolveVenue( SignalCandidate candidate )
