@@ -13,7 +13,7 @@ import {
     metaRow,
     section
 } from "./ui.js";
-import { modeLabel } from "./app/shared.js";
+import { modeLabel, sideLabel, venueIcon } from "./app/shared.js";
 import { t } from "./i18n.js";
 
 const FAILURE_ATTEMPT_STATUSES = new Set(["CANCELLED", "REJECTED", "FAILED", "EXPIRED"]);
@@ -150,34 +150,61 @@ export function filterHistoryTrades(trades, filters = {}, attemptsByTrade = {}) 
 export function historyTradeRow(trade, attempts = [], outcome = null) {
     const historyStage = deriveHistoryStage(trade, null, attempts);
     const health = deriveTradeHealth(trade, attempts);
-    const summary = summarizeAttempts(attempts);
     const isTestnet = trade.mode === "testnet" || (!trade.mode && String(trade.notes ?? "").includes("DEV_TEST_RUN"));
     const configuredAttempts = Number(trade.entryAttemptCount ?? 1);
     const spacingMs = Number(trade.entrySpacingMs ?? 0);
     const manualAdjustment = Number(trade.manualLatencyAdjustmentMs ?? 0);
-    const attemptSummary = summary.total
-        ? `${formatNumber(summary.failed)} ${t("history_fail_count")} / ${formatNumber(summary.total)} ${t("history_recorded_count")}`
-        : t("history_attempts_not_recorded");
-    const pnlBadge = outcome?.netPnlUsd != null
-        ? `<span class="badge ${Number(outcome.netPnlUsd) >= 0 ? "good" : "bad"}">${Number(outcome.netPnlUsd) >= 0 ? "+" : ""}${formatDecimal(outcome.netPnlUsd, 2)} USD</span>`
+    const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
+
+    const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+    const pnlChip = net != null
+        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 2)} USD</span>`
         : "";
 
+    const notionalChip = trade.notionalUsd != null
+        ? `<span class="chip chip-muted" title="${t("trade_notional")}">${formatDecimal(trade.notionalUsd, 2)} USD</span>`
+        : "";
+
+    const countdown = formatFundingCountdown(trade.fundingTime);
+    const countdownChip = `<span class="chip chip-muted">${countdown}</span>`;
+
+    const sideChip = `<span class="chip chip-muted" title="${t("trade_side")}">${escapeHtml(sideLabel(trade.intendedSide))}</span>`;
+
+    const attemptsChip = `<span class="chip chip-muted" title="${t("trade_entry_attempts")}">${formatNumber(configuredAttempts)}x · ${formatPlainMs(spacingMs)}</span>`;
+
+    const latChip = effLat != null
+        ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>`
+        : "";
+
+    const manualChip = manualAdjustment !== 0
+        ? `<span class="chip chip-warning" title="${t("history_manual_adj")}">adj ${formatSignedMs(manualAdjustment)}</span>`
+        : "";
+
+    const testnetBadge = isTestnet ? formatBadge("venue", t("label_testnet"), "info") : "";
+    const healthChip = `<span class="chip chip-${escapeHtml(health.tone)}">${escapeHtml(health.label)}</span>`;
+
     return `
-        <article class="history-row" data-open-history-trade="${escapeHtml(trade.id)}">
-            <div class="history-row-main">
-                <strong class="history-symbol">${escapeHtml(trade.symbol ?? `${t("card_trade_prefix")}${trade.id}`)}${isTestnet ? ` ${formatBadge("venue", t("label_testnet"), "info")}` : ""}</strong>
-                <span class="history-venue">${escapeHtml(trade.venue ?? "venue —")}</span>
-                <span class="history-time">${t("label_funding")} ${formatInstant(trade.fundingTime)}</span>
-                <span class="history-side">${escapeHtml(trade.intendedSide ?? "SHORT")}</span>
-                ${pnlBadge}
-            </div>
-            <div class="history-row-plan">
-                <span>${formatNumber(configuredAttempts)} attempts / ${formatPlainMs(spacingMs)}</span>
-                <span>trigger ${formatDurationMs(trade.effectiveEntryLatencyMs ?? 0)}</span>
-                <span>${escapeHtml(attemptSummary)}${summary.lastRecordedAt ? ` · last ${escapeHtml(formatInstant(summary.lastRecordedAt))}` : ""}</span>
-                ${formatBadge("historyStage", historyStage.code)}
-                <span class="badge ${escapeHtml(health.tone)}">${escapeHtml(health.label)}</span>
-                <span>manual ${formatSignedMs(manualAdjustment)}</span>
+        <article class="list-item history-card" data-open-history-trade="${escapeHtml(trade.id)}">
+            <header>
+                <div>
+                    <h3 class="item-title">${venueIcon(trade.venue)}${escapeHtml(trade.symbol ?? `${t("card_trade_prefix")}${trade.id}`)}</h3>
+                    <p class="muted">${escapeHtml(trade.venue ?? "—")} · ${t("label_funding")} ${formatInstant(trade.fundingTime)}</p>
+                </div>
+                <div class="actions">
+                    ${formatBadge("historyStage", historyStage.code)}
+                    ${healthChip}
+                    ${testnetBadge}
+                    <button class="button secondary" type="button">${t("label_inspect")}</button>
+                </div>
+            </header>
+            <div class="chip-row">
+                ${pnlChip}
+                ${notionalChip}
+                ${sideChip}
+                ${countdownChip}
+                ${attemptsChip}
+                ${latChip}
+                ${manualChip}
             </div>
         </article>
     `;

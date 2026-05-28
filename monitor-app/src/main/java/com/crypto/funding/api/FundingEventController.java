@@ -124,7 +124,8 @@ public class FundingEventController
             trade.warmupP50Ms(),
             trade.warmupP95Ms(),
             trade.warmupFallbackUsed(),
-            trade.warmupDoneAt()
+            trade.warmupDoneAt(),
+            event.fundingRatePct()
         );
     }
 

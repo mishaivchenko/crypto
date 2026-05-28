@@ -40,12 +40,12 @@ function signalAnalysisChips(candidate, liquidity) {
            ${liquidity.bestBid != null ? `<span class="chip chip-muted">${formatDecimal(liquidity.bestBid, 4)} / ${formatDecimal(liquidity.bestAsk, 4)}</span>` : ""}
            ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
            ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}`
-        : "";
+        : `<span class="chip chip-muted">${t("event_liquidity_unavailable")}</span>`;
 
     return `
         <div class="event-signal-analysis">
             <div class="chip-row">${aiPart}</div>
-            ${liqPart ? `<div class="chip-row">${liqPart}</div>` : ""}
+            <div class="chip-row">${liqPart}</div>
         </div>`;
 }
 
@@ -204,6 +204,7 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
         ${canArm ? section(t("event_arm_title"), `
             <div class="action-card primary">
                 <p class="helper-text">${t("event_arm_helper")}</p>
+                ${event.fundingRatePct != null ? `<div class="chip-row" style="margin-bottom:8px"><span class="chip chip-muted" title="${t("card_rate")}">${t("event_funding_rate")} ${Number(event.fundingRatePct) >= 0 ? "+" : ""}${formatDecimal(event.fundingRatePct, 6)}%</span></div>` : ""}
                 <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
                     <fieldset class="form-group">
                         <legend>${t("event_entry_window")}</legend>
