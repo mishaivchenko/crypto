@@ -893,7 +893,7 @@ const translations = {
         metrics_total_fees: "Комиссии",
         metrics_closed_trades: "Закрытых сделок",
         metrics_profitable: "прибыльных",
-        metrics_win_rate: "Win rate",
+        metrics_win_rate: "Процент побед",
         metrics_closed_trades_short: "сделок",
 
         // Candidate detail

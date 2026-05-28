@@ -90,9 +90,9 @@ test("history row exposes key trading context", () => {
 
     assert.match(row, /WET\/USDT/);
     assert.match(row, /gate/);
-    assert.match(row, /3 attempts \/ 150 ms/);
+    assert.match(row, /3x · 150 ms/);
     assert.match(row, /Attempts failed/);
-    assert.match(row, /manual \+10 ms/);
+    assert.match(row, /adj \+10 ms/);
 });
 
 test("detail markup tells the full source-to-outcome story", () => {

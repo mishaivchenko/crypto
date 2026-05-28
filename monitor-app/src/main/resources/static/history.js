@@ -194,7 +194,7 @@ export function historyTradeRow(trade, attempts = [], outcome = null) {
                     ${formatBadge("historyStage", historyStage.code)}
                     ${healthChip}
                     ${testnetBadge}
-                    <button class="button secondary" type="button" data-open-history-trade="${escapeHtml(trade.id)}">${t("label_inspect")}</button>
+                    <button class="button secondary" type="button">${t("label_inspect")}</button>
                 </div>
             </header>
             <div class="chip-row">
