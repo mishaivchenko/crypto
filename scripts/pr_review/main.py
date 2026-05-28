@@ -35,6 +35,7 @@ import pr_review.parser as parser
 import pr_review.prompt_builder as prompt_builder
 import pr_review.quality_gate as quality_gate
 import pr_review.renderer as renderer
+from pr_review.renderer import _SUMMARY_MARKER
 
 
 def main() -> None:
