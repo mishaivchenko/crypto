@@ -241,6 +241,8 @@ const translations = {
         metrics_total_fees: "Total fees",
         metrics_closed_trades: "Closed trades",
         metrics_profitable: "profitable",
+        metrics_win_rate: "Win rate",
+        metrics_closed_trades_short: "trades",
 
         // Candidate detail
         candidate_modal_type: "Signal",
@@ -303,6 +305,7 @@ const translations = {
         event_status: "Status",
         event_funding_time: "Funding time",
         event_funding_rate: "Funding rate",
+        event_liquidity_unavailable: "Liquidity: no data",
         event_venue: "Venue",
         event_source: "Source",
         event_linked_signal: "Linked signal",
@@ -890,6 +893,8 @@ const translations = {
         metrics_total_fees: "Комиссии",
         metrics_closed_trades: "Закрытых сделок",
         metrics_profitable: "прибыльных",
+        metrics_win_rate: "Win rate",
+        metrics_closed_trades_short: "сделок",
 
         // Candidate detail
         candidate_modal_type: "Сигнал",
@@ -952,6 +957,7 @@ const translations = {
         event_status: "Статус",
         event_funding_time: "Время фандинга",
         event_funding_rate: "Ставка фандинга",
+        event_liquidity_unavailable: "Ликвидность: нет данных",
         event_venue: "Площадка",
         event_source: "Источник",
         event_linked_signal: "Связанный сигнал",

@@ -38,7 +38,8 @@ public record ArmedTradeResponse(
     Long warmupP50Ms,
     Long warmupP95Ms,
     Boolean warmupFallbackUsed,
-    Instant warmupDoneAt
+    Instant warmupDoneAt,
+    BigDecimal fundingRatePct
 )
 {
 }

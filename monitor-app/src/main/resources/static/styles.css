@@ -235,7 +235,6 @@ body {
     margin: 0;
 }
 
-.chip,
 .badge {
     display: inline-flex;
     align-items: center;
@@ -245,12 +244,6 @@ body {
     font-size: 0.77rem;
     line-height: 1;
     border: 1px solid transparent;
-}
-
-.chip {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: var(--border);
-    color: var(--ink);
 }
 
 .compact-field {
@@ -628,6 +621,18 @@ details[open] .dev-tools-summary h3::before {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.08);
     color: var(--muted);
+}
+
+.chip-neutral {
+    background: rgba(185, 196, 209, 0.1);
+    border-color: rgba(185, 196, 209, 0.2);
+    color: #d9dde3;
+}
+
+.chip-info {
+    background: rgba(94, 200, 255, 0.12);
+    border-color: rgba(94, 200, 255, 0.25);
+    color: #dff4ff;
 }
 
 .chip-btn {
@@ -1140,51 +1145,9 @@ details[open] .dev-tools-summary h3::before {
     gap: 8px;
 }
 
-.history-row {
-    display: grid;
-    gap: 9px;
-    padding: 13px 14px;
-    border-radius: 10px 6px 18px 6px;
-    background:
-        linear-gradient(90deg, rgba(100, 228, 156, 0.08), transparent 2px),
-        linear-gradient(180deg, rgba(18, 25, 34, 0.96), rgba(9, 13, 19, 0.96));
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: 120ms ease;
-}
-
-.history-row:hover {
-    border-color: rgba(124, 224, 207, 0.35);
-    transform: translateY(-1px);
-}
-
-.history-row-main,
-.history-row-plan {
-    display: grid;
-    grid-template-columns: 1.25fr 0.75fr 1.6fr 0.55fr;
-    gap: 10px;
-    align-items: center;
-}
-
-.history-row-plan {
-    grid-template-columns: 1fr 1fr 1fr auto auto;
-    color: var(--muted);
-    font-size: 0.86rem;
-}
-
-.history-symbol,
-.history-side,
-.history-venue,
-.history-time,
 .attempt-number,
 .latency-node strong {
     font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
-}
-
-.history-venue,
-.history-time,
-.history-side {
-    color: var(--muted);
 }
 
 .history-health-card {
@@ -1336,8 +1299,6 @@ details[open] .dev-tools-summary h3::before {
     }
 
     .history-board,
-    .history-row-main,
-    .history-row-plan,
     .latency-strip {
         grid-template-columns: 1fr;
     }

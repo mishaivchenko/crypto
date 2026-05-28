@@ -191,7 +191,8 @@ public class ArmedTradeController
             trade.warmupP50Ms(),
             trade.warmupP95Ms(),
             trade.warmupFallbackUsed(),
-            trade.warmupDoneAt()
+            trade.warmupDoneAt(),
+            fundingEvent.fundingRatePct()
         );
     }
 

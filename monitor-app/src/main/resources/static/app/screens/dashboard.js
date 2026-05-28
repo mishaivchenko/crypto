@@ -118,7 +118,9 @@ export function criticalMetricsPanelMarkup(metrics, pnl) {
     const venueSubmitRows = metrics
         ? Object.entries(metrics.averageSubmitDurationMsByVenue ?? {}).map(([venue, avg]) => {
             const last = metrics.lastSubmitDurationMsByVenue?.[venue] ?? null;
-            return metaRow(escapeHtml(venue), formatDurationMs(avg), last != null ? `${t("metrics_last")} ${formatDurationMs(last)}` : "");
+            const avgTone = avg > 500 ? "chip-warning" : "chip-muted";
+            const avgValue = `<span class="chip ${avgTone}">${formatDurationMs(avg)}</span>`;
+            return metaRow(escapeHtml(venue), avgValue, last != null ? `${t("metrics_last")} ${formatDurationMs(last)}` : "");
         }).join("")
         : "";
 
@@ -126,22 +128,33 @@ export function criticalMetricsPanelMarkup(metrics, pnl) {
         ? `<div class="meta-grid">${venueSubmitRows}</div>`
         : `<p class="muted">${t("empty_engine_no_latency")}</p>`;
 
+    const planFetchTone = metrics && metrics.averagePlanFetchDurationMs > 200 ? "chip-warning" : "chip-muted";
     const internalTimingSection = metrics ? `
         <div class="meta-grid">
-            ${metaRow(t("metrics_plan_fetch"), formatDurationMs(metrics.averagePlanFetchDurationMs), `${t("metrics_last")} ${formatDurationMs(metrics.lastPlanFetchDurationMs)}`)}
+            ${metaRow(t("metrics_plan_fetch"), `<span class="chip ${planFetchTone}">${formatDurationMs(metrics.averagePlanFetchDurationMs)}</span>`, `${t("metrics_last")} ${formatDurationMs(metrics.lastPlanFetchDurationMs)}`)}
             ${metaRow(t("metrics_attempt_record"), formatDurationMs(metrics.averageAttemptRecordDurationMs), `${t("metrics_last")} ${formatDurationMs(metrics.lastAttemptRecordDurationMs)}`)}
             ${metaRow(t("metrics_execution_run"), formatDurationMs(metrics.averageExecutionRunDurationMs), `${t("metrics_last")} ${formatDurationMs(metrics.lastExecutionRunDurationMs)}`)}
         </div>
     ` : `<p class="muted">${t("empty_engine_no_data")}</p>`;
 
-    const pnlSection = pnl ? `
-        <div class="meta-grid">
-            ${metaRow(t("metrics_net_pnl"), `${pnl.totalNetPnlUsd >= 0 ? "+" : ""}${formatDecimal(pnl.totalNetPnlUsd, 4)} USD`)}
-            ${metaRow(t("metrics_gross_pnl"), `${formatDecimal(pnl.totalGrossPnlUsd, 4)} USD`)}
-            ${metaRow(t("metrics_total_fees"), `${formatDecimal(pnl.totalFeesUsd, 4)} USD`)}
-            ${metaRow(t("metrics_closed_trades"), formatNumber(pnl.closedTrades), `${formatNumber(pnl.profitableTrades)} ${t("metrics_profitable")}`)}
-        </div>
-    ` : `<p class="muted">${t("empty_engine_no_closed")}</p>`;
+    const pnlSection = pnl ? (() => {
+        const net = Number(pnl.totalNetPnlUsd ?? 0);
+        const netTone = net >= 0 ? "chip-good" : "chip-bad";
+        const netValue = `<span class="chip ${netTone}">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`;
+        const winRate = pnl.closedTrades > 0 ? pnl.profitableTrades / pnl.closedTrades : null;
+        const winTone = winRate == null ? "chip-muted" : winRate >= 0.6 ? "chip-good" : winRate >= 0.4 ? "chip-warning" : "chip-bad";
+        const winValue = winRate != null
+            ? `<span class="chip ${winTone}">${formatNumber(pnl.profitableTrades)}/${formatNumber(pnl.closedTrades)} (${Math.round(winRate * 100)}%)</span>`
+            : `<span class="chip chip-muted">${formatNumber(pnl.closedTrades)} ${t("metrics_closed_trades_short")}</span>`;
+        return `
+            <div class="meta-grid">
+                ${metaRow(t("metrics_net_pnl"), netValue)}
+                ${metaRow(t("metrics_gross_pnl"), `${formatDecimal(pnl.totalGrossPnlUsd, 4)} USD`)}
+                ${metaRow(t("metrics_total_fees"), `${formatDecimal(pnl.totalFeesUsd, 4)} USD`)}
+                ${metaRow(t("metrics_win_rate"), winValue, `${formatNumber(pnl.closedTrades)} ${t("metrics_closed_trades_short")}`)}
+            </div>
+        `;
+    })() : `<p class="muted">${t("empty_engine_no_closed")}</p>`;
 
     return `
         <div class="panel-header">

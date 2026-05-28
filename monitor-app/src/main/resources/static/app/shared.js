@@ -222,6 +222,16 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
             </div>`;
     }
 
+    const cardFundingTime = candidate.suggestedFundingTime ?? candidate.sourceFundingTime ?? null;
+    const cardRatePct = candidate.suggestedFundingRatePct ?? candidate.sourceFundingRatePct ?? null;
+    const cardRateTone = cardRatePct == null ? "muted" : Number(cardRatePct) > 0.001 ? "good" : Number(cardRatePct) > 0.0005 ? "warning" : "muted";
+    const cardRateChip = cardRatePct != null
+        ? `<span class="chip chip-${cardRateTone}" title="${t("card_rate")}">${Number(cardRatePct) >= 0 ? "+" : ""}${formatDecimal(cardRatePct, 6)}%</span>`
+        : "";
+    const cardCountdownChip = cardFundingTime
+        ? `<span class="chip chip-muted">${formatFundingCountdown(cardFundingTime)}</span>`
+        : "";
+
     return `
         <article class="list-item signal-card" data-candidate-id="${candidate.id}">
             <header>
@@ -234,9 +244,13 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                     ${formatAiBadge(ai)}
                 </div>
             </header>
+            <div class="chip-row">
+                ${cardRateChip}
+                ${cardCountdownChip}
+                <span class="chip chip-muted">${formatInstant(candidate.detectedAt)} · ${formatRelative(candidate.detectedAt)}</span>
+            </div>
             <div class="item-row">
                 <span class="muted">${escapeHtml(candidateStateLine(candidate))}</span>
-                <span class="muted">${formatInstant(candidate.detectedAt)} · ${formatRelative(candidate.detectedAt)}</span>
             </div>
             ${fullContent}
         </article>
@@ -307,6 +321,16 @@ export function tradeCard(trade, outcome = null) {
         ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
         : "";
     const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
+
+    const ratePct = trade.fundingRatePct != null ? Number(trade.fundingRatePct) : null;
+    const rateTone = ratePct == null ? "muted" : ratePct > 0.001 ? "good" : ratePct > 0.0005 ? "warning" : "muted";
+    const rateChip = ratePct != null
+        ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
+        : "";
+
+    const countdown = formatFundingCountdown(trade.fundingTime);
+    const countdownChip = `<span class="chip chip-muted">${countdown}</span>`;
+
     return `
         <article class="list-item trade-card">
             <header>
@@ -322,6 +346,8 @@ export function tradeCard(trade, outcome = null) {
                 </div>
             </header>
             <div class="chip-row">
+                ${rateChip}
+                ${countdownChip}
                 <span class="chip chip-muted" title="${t("trade_side")}">${escapeHtml(sideLabel(trade.intendedSide))}</span>
                 <span class="chip chip-muted" title="${t("trade_entry_attempts")}">${formatNumber(trade.entryAttemptCount ?? 1)}x · ${formatDurationMs(trade.entrySpacingMs ?? 0)}</span>
                 ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
