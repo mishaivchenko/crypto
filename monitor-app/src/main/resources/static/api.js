@@ -2,21 +2,13 @@ const jsonHeaders = {
     "Content-Type": "application/json"
 };
 
-const AUTH_RELOAD_KEY = "fd_auth_reloaded";
-
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
     if (response.status === 401) {
-        if (!sessionStorage.getItem(AUTH_RELOAD_KEY)) {
-            sessionStorage.setItem(AUTH_RELOAD_KEY, "1");
-            window.location.reload();
-            return new Promise(() => {}); // never resolves — reload is in flight
-        }
         const err = new Error("Session expired. Please reload the page to sign in.");
         err.isAuthError = true;
         throw err;
     }
-    sessionStorage.removeItem(AUTH_RELOAD_KEY);
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
 
