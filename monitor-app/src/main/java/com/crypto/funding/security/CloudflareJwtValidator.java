@@ -90,10 +90,6 @@ public class CloudflareJwtValidator
                     return Optional.empty();
                 }
             }
-            else
-            {
-                log.debug( "CLOUDFLARE_AUD not configured — skipping audience check" );
-            }
 
             String configuredTeam = properties.getTeamDomain();
             if( configuredTeam != null && !configuredTeam.isBlank() )
@@ -105,10 +101,6 @@ public class CloudflareJwtValidator
                     log.warn( "CF JWT issuer mismatch: expected={} actual={}", expectedIssuer, issuer );
                     return Optional.empty();
                 }
-            }
-            else
-            {
-                log.debug( "CLOUDFLARE_TEAM_DOMAIN not configured — skipping issuer check" );
             }
 
             String email = claims.getStringClaim( "email" );

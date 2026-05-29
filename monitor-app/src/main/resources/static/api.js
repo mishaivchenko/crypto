@@ -2,29 +2,20 @@ const jsonHeaders = {
     "Content-Type": "application/json"
 };
 
-const AUTH_RELOAD_KEY = "fd_auth_reloaded";
-
-export function clearAuthFlag() {
-    if (typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem(AUTH_RELOAD_KEY);
-    }
-}
-
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
     if (response.status === 401) {
-        if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem(AUTH_RELOAD_KEY)) {
-            sessionStorage.setItem(AUTH_RELOAD_KEY, "1");
+        if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem("fd_auth_reloaded")) {
+            sessionStorage.setItem("fd_auth_reloaded", "1");
             window.location.reload();
             return new Promise(() => {}); // never resolves — reload is in flight
         }
-        const err = new Error("Session expired. Please reload the page to sign in.");
+        const err = new Error("Session expired.");
         err.isAuthError = true;
         throw err;
     }
-    // Non-401 means auth layer passed — clear reload guard so future 401s get one fresh attempt.
     if (typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem(AUTH_RELOAD_KEY);
+        sessionStorage.removeItem("fd_auth_reloaded");
     }
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();

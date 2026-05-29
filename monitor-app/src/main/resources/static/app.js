@@ -1,4 +1,4 @@
-import { api, clearAuthFlag } from "./api.js";
+import { api } from "./api.js";
 import { createAppState } from "./app/state.js";
 import { createNodes } from "./app/dom.js";
 import { closeModal, emptyState, groupAttemptsByTrade, resetDrawer, toIsoOrNull } from "./app/shared.js";
@@ -154,7 +154,9 @@ async function refreshCurrentScreen() {
         }
     } catch (error) {
         if (error.isAuthError) {
-            handleAuthError();
+            document.querySelectorAll(".screen").forEach(s => {
+                s.innerHTML = `<div class="empty-state"><p>${error.message}</p><button class="btn btn-primary" onclick="if(typeof sessionStorage!=='undefined')sessionStorage.removeItem('fd_auth_reloaded');window.location.href='/'">Sign in again</button></div>`;
+            });
             return;
         }
         showError(error.message);
@@ -162,21 +164,6 @@ async function refreshCurrentScreen() {
             setLoadError(loadingTarget, error.message);
         }
     }
-}
-
-function handleAuthError() {
-    const msg = t("app_session_expired");
-    const btnLabel = t("app_sign_in_again");
-    showError(msg);
-    document.querySelectorAll(".screen").forEach(s => {
-        s.innerHTML = `<div class="empty-state"><p>${msg}</p><button class="btn btn-primary auth-retry-btn">${btnLabel}</button></div>`;
-    });
-    document.querySelectorAll(".auth-retry-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            clearAuthFlag();
-            window.location.href = "/";
-        });
-    });
 }
 
 function applyStaticTranslations() {
@@ -519,11 +506,7 @@ async function loadGlobalMode() {
         const globalMode = await api.getGlobalVenueMode();
         nodes.globalModeSelect.value = String(globalMode.mode ?? "TESTNET").toUpperCase();
     } catch (error) {
-        if (error.isAuthError) {
-            handleAuthError();
-            return;
-        }
-        showError(error.message);
+        if (!error.isAuthError) showError(error.message);
     }
 }
 
