@@ -52,16 +52,19 @@ public class BitgetCredentialChecker implements VenueCredentialCheckPort
         String signPayload = timestamp + "GET" + requestPath + "?" + query;
         String sign = HmacSigner.hmacSha256Base64( credentials.secretKey(), signPayload );
 
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                                          .uri( URI.create( credentials.baseUrl() + requestPath + "?" + query ) )
                                          .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )
                                          .header( "ACCESS-KEY", credentials.apiKey() )
                                          .header( "ACCESS-SIGN", sign )
                                          .header( "ACCESS-TIMESTAMP", timestamp )
                                          .header( "ACCESS-PASSPHRASE", credentials.passphrase() == null ? "" : credentials.passphrase() )
-                                         .header( "locale", "en-US" )
-                                         .GET()
-                                         .build();
+                                         .header( "locale", "en-US" );
+        if( credentials.mode() == VenueAccessMode.TESTNET )
+        {
+            builder.header( "paptrading", "1" );
+        }
+        HttpRequest request = builder.GET().build();
 
         HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
         JsonNode root = parseBody( response.body() );
