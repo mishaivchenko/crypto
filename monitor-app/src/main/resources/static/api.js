@@ -3,6 +3,11 @@ const jsonHeaders = {
 };
 
 const AUTH_RELOAD_KEY = "fd_auth_reloaded";
+// Clear the flag on every fresh page load so a manual reload always gets one
+// CF-login attempt, regardless of what happened in the previous navigation.
+if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem(AUTH_RELOAD_KEY);
+}
 
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
@@ -15,10 +20,6 @@ async function request(path, options = {}) {
         const err = new Error("Session expired. Please reload the page to sign in.");
         err.isAuthError = true;
         throw err;
-    }
-    // Non-401 means auth layer passed — clear reload guard so future 401s get one fresh attempt.
-    if (typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem(AUTH_RELOAD_KEY);
     }
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
