@@ -3,6 +3,9 @@ const jsonHeaders = {
 };
 
 const AUTH_RELOAD_KEY = "fd_auth_reloaded";
+// Clear the flag on every fresh page load so a manual reload always gets one
+// CF-login attempt, regardless of what happened in the previous navigation.
+sessionStorage.removeItem(AUTH_RELOAD_KEY);
 
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
@@ -16,7 +19,6 @@ async function request(path, options = {}) {
         err.isAuthError = true;
         throw err;
     }
-    sessionStorage.removeItem(AUTH_RELOAD_KEY);
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
 
