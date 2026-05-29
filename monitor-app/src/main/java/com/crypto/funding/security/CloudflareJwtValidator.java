@@ -59,8 +59,6 @@ public class CloudflareJwtValidator
             JWK jwk = jwks.getKeyByKeyId( kid );
             if( jwk == null )
             {
-                log.warn( "CF JWT kid={} not found in JWKS (keys={})", kid,
-                    jwks.getKeys().stream().map( k -> k.getKeyID() ).toList() );
                 return Optional.empty();
             }
 
@@ -80,35 +78,19 @@ public class CloudflareJwtValidator
                 return Optional.empty();
             }
 
-            String configuredAud = properties.getAudience();
-            if( configuredAud != null && !configuredAud.isBlank() )
+            List<String> aud = claims.getAudience();
+            if( aud == null || !aud.contains( properties.getAudience() ) )
             {
-                List<String> aud = claims.getAudience();
-                if( aud == null || !aud.contains( configuredAud ) )
-                {
-                    log.warn( "CF JWT audience mismatch: expected={} got={}", configuredAud, aud );
-                    return Optional.empty();
-                }
-            }
-            else
-            {
-                log.debug( "CLOUDFLARE_AUD not configured — skipping audience check" );
+                log.debug( "CF JWT audience mismatch" );
+                return Optional.empty();
             }
 
-            String configuredTeam = properties.getTeamDomain();
-            if( configuredTeam != null && !configuredTeam.isBlank() )
+            String issuer = claims.getIssuer();
+            String expectedIssuer = "https://" + properties.getTeamDomain();
+            if( !expectedIssuer.equals( issuer ) )
             {
-                String issuer = claims.getIssuer();
-                String expectedIssuer = "https://" + configuredTeam;
-                if( !expectedIssuer.equals( issuer ) )
-                {
-                    log.warn( "CF JWT issuer mismatch: expected={} actual={}", expectedIssuer, issuer );
-                    return Optional.empty();
-                }
-            }
-            else
-            {
-                log.debug( "CLOUDFLARE_TEAM_DOMAIN not configured — skipping issuer check" );
+                log.debug( "CF JWT issuer mismatch: expected={} actual={}", expectedIssuer, issuer );
+                return Optional.empty();
             }
 
             String email = claims.getStringClaim( "email" );
