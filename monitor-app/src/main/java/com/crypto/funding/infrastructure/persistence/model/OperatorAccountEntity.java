@@ -12,8 +12,7 @@ import jakarta.persistence.Table;
 @Table(
     name = "operator_account",
     indexes = {
-        @Index(name = "idx_operator_account_username", columnList = "username", unique = true),
-        @Index(name = "idx_operator_account_token_hash", columnList = "token_hash", unique = true)
+        @Index(name = "idx_operator_account_username", columnList = "username", unique = true)
     }
 )
 public class OperatorAccountEntity extends AuditableEntity
@@ -25,9 +24,6 @@ public class OperatorAccountEntity extends AuditableEntity
 
     @Column(name = "username", nullable = false, unique = true)
     private String username;
-
-    @Column(name = "token_hash", nullable = false, unique = true, length = 128)
-    private String tokenHash;
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
@@ -45,16 +41,6 @@ public class OperatorAccountEntity extends AuditableEntity
     public void setUsername( String username )
     {
         this.username = username;
-    }
-
-    public String getTokenHash()
-    {
-        return tokenHash;
-    }
-
-    public void setTokenHash( String tokenHash )
-    {
-        this.tokenHash = tokenHash;
     }
 
     public boolean isEnabled()

@@ -41,8 +41,11 @@ spring:
 security:
     operators:
         auth-enabled: ${SECURITY_OPERATOR_AUTH_ENABLED:false}
-        bootstrap-users: ${SECURITY_OPERATOR_BOOTSTRAP_USERS:}
         internal-token: ${INTERNAL_ENGINE_TOKEN:}
+    cloudflare:
+        team-domain: ${CLOUDFLARE_TEAM_DOMAIN:}
+        audience: ${CLOUDFLARE_AUD:}
+        username-migrations: ${CLOUDFLARE_USERNAME_MIGRATIONS:}
 
 credentials:
     storage:

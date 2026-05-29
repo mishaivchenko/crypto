@@ -176,12 +176,6 @@ function applyStaticTranslations() {
         btn.textContent = t(key);
     });
 
-    const operatorTokenLabel = document.querySelector("#operator-token-form label span");
-    if (operatorTokenLabel) operatorTokenLabel.textContent = t("topbar_operator_token");
-    nodes.operatorTokenInput.placeholder = t("topbar_token_placeholder");
-    const saveTokenBtn = document.querySelector("#operator-token-form button[type='submit']");
-    if (saveTokenBtn) saveTokenBtn.textContent = t("topbar_save_token");
-
     const accessModeLabel = document.querySelector("#global-mode-form label span");
     if (accessModeLabel) accessModeLabel.textContent = t("topbar_access_mode");
     const applyModeBtn = document.querySelector("#global-mode-form button[type='submit']");
@@ -366,15 +360,6 @@ nodes.nav.addEventListener("click", (event) => {
 nodes.refreshAllButton.addEventListener("click", async () => {
     await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
     showSuccess(t("app_refreshed"));
-});
-
-nodes.operatorTokenInput.value = api.getOperatorToken();
-nodes.operatorTokenForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    api.setOperatorToken(nodes.operatorTokenInput.value);
-    await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
-    closeSettings();
-    showSuccess(t("app_token_saved"));
 });
 
 nodes.globalModeForm.addEventListener("submit", async (event) => {
