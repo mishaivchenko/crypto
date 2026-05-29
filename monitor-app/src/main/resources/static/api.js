@@ -5,9 +5,8 @@ const jsonHeaders = {
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
     if (response.status === 401) {
-        const err = new Error("Session expired. Please reload the page to sign in.");
-        err.isAuthError = true;
-        throw err;
+        window.location.reload();
+        return;
     }
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
