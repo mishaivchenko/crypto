@@ -4,12 +4,6 @@ const jsonHeaders = {
 
 const AUTH_RELOAD_KEY = "fd_auth_reloaded";
 
-export function clearAuthFlag() {
-    if (typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem(AUTH_RELOAD_KEY);
-    }
-}
-
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
     if (response.status === 401) {
