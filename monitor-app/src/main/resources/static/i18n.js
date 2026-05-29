@@ -11,6 +11,9 @@ const translations = {
         nav_venue_access: "Venue Access",
 
         // Topbar
+        topbar_operator_token: "Operator token",
+        topbar_token_placeholder: "X-Operator-Token",
+        topbar_save_token: "Save token",
         topbar_access_mode: "Access mode",
         topbar_apply_mode: "Apply mode",
         topbar_refresh: "Refresh",
@@ -573,6 +576,7 @@ const translations = {
 
         // App-level messages
         app_refreshed: "Desk refreshed.",
+        app_token_saved: "Operator token saved to localStorage.",
         app_mode_updated: "Global access mode updated.",
         app_engine_run_completed: "Engine run-once completed: scanned",
         app_engine_run_submitted: "submitted",
@@ -671,6 +675,9 @@ const translations = {
         nav_venue_access: "Площадки",
 
         // Topbar
+        topbar_operator_token: "Operator token",
+        topbar_token_placeholder: "X-Operator-Token",
+        topbar_save_token: "Сохранить токен",
         topbar_access_mode: "Режим доступа",
         topbar_apply_mode: "Применить",
         topbar_refresh: "Обновить",
@@ -1233,6 +1240,7 @@ const translations = {
 
         // App-level messages
         app_refreshed: "Контур обновлён.",
+        app_token_saved: "Operator token сохранён в localStorage.",
         app_mode_updated: "Глобальный режим доступа обновлён.",
         app_engine_run_completed: "Прогон engine завершён: проверено",
         app_engine_run_submitted: "отправлено",

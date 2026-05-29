@@ -300,8 +300,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         body.put( "clOrdId", orderLinkId( plan, reduceOnly ) );
         String bodyJson = objectMapper.writeValueAsString( body );
 
-        Instant tsNow = Instant.now();
-        String timestamp = tsNow.getEpochSecond() + "." + String.format( "%03d", tsNow.getNano() / 1_000_000 );
+        String timestamp = Instant.now().toString();
         String apiKey = credential( "okx", "api-key" );
         String secretKey = credential( "okx", "secret-key" );
         String passphrase = credential( "okx", "passphrase" );
@@ -353,8 +352,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         String baseUrl = baseUrl( "okx" );
         String requestPath = "/api/v5/trade/order";
         String query = "instId=" + encode( plan.venueSymbol() ) + "&ordId=" + encode( orderId );
-        Instant tsNow = Instant.now();
-        String timestamp = tsNow.getEpochSecond() + "." + String.format( "%03d", tsNow.getNano() / 1_000_000 );
+        String timestamp = Instant.now().toString();
         String signPayload = timestamp + "GET" + requestPath + "?" + query;
         String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
 

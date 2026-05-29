@@ -166,30 +166,6 @@ class EngineRuntimeControlServiceTest
     }
 
     @Test
-    void updatesLiveSafetyFlagsViaRuntimeUpdate()
-    {
-        // REQ: ENG-RTC-005
-        EngineProperties properties = new EngineProperties();
-        properties.setLiveOrderEnabled( false );
-        properties.setKillSwitchEnabled( false );
-        EngineRuntimeControlService service = new EngineRuntimeControlService(
-            properties,
-            new EngineTelemetryService(),
-            Clock.fixed( Instant.parse( "2030-01-01T00:00:00Z" ), ZoneOffset.UTC )
-        );
-
-        var response = service.update( new EngineRuntimeControlRequest( null, null, true, true ) );
-
-        assertThat( response.liveOrderEnabled() ).isTrue();
-        assertThat( response.killSwitchEnabled() ).isTrue();
-
-        var response2 = service.update( new EngineRuntimeControlRequest( null, null, false, false ) );
-
-        assertThat( response2.liveOrderEnabled() ).isFalse();
-        assertThat( response2.killSwitchEnabled() ).isFalse();
-    }
-
-    @Test
     void refusesScheduledLoopWhenRuntimeGateIsDisabled()
     {
         // REQ: ENG-RTC-002
@@ -237,5 +213,29 @@ class EngineRuntimeControlServiceTest
         {
             instant.set( next );
         }
+    }
+
+    @Test
+    void updatesLiveSafetyFlagsViaRuntimeUpdate()
+    {
+        // REQ: ENG-RTC-005
+        EngineProperties properties = new EngineProperties();
+        properties.setLiveOrderEnabled( false );
+        properties.setKillSwitchEnabled( false );
+        EngineRuntimeControlService service = new EngineRuntimeControlService(
+            properties,
+            new EngineTelemetryService(),
+            Clock.fixed( Instant.parse( "2030-01-01T00:00:00Z" ), ZoneOffset.UTC )
+        );
+
+        var response = service.update( new EngineRuntimeControlRequest( null, null, true, true ) );
+
+        assertThat( response.liveOrderEnabled() ).isTrue();
+        assertThat( response.killSwitchEnabled() ).isTrue();
+
+        var response2 = service.update( new EngineRuntimeControlRequest( null, null, false, false ) );
+
+        assertThat( response2.liveOrderEnabled() ).isFalse();
+        assertThat( response2.killSwitchEnabled() ).isFalse();
     }
 }

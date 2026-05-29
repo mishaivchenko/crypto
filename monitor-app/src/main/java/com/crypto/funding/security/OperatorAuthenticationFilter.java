@@ -16,17 +16,14 @@ import java.io.IOException;
 public class OperatorAuthenticationFilter extends OncePerRequestFilter
 {
     private final OperatorSecurityProperties properties;
-    private final CloudflareJwtValidator jwtValidator;
     private final OperatorAccountService operatorAccountService;
 
     public OperatorAuthenticationFilter(
         OperatorSecurityProperties properties,
-        CloudflareJwtValidator jwtValidator,
         OperatorAccountService operatorAccountService
     )
     {
         this.properties = properties;
-        this.jwtValidator = jwtValidator;
         this.operatorAccountService = operatorAccountService;
     }
 
@@ -47,17 +44,11 @@ public class OperatorAuthenticationFilter extends OncePerRequestFilter
     {
         try
         {
-            String jwt = request.getHeader( "Cf-Access-Jwt-Assertion" );
-            var email = jwtValidator.validateAndExtractEmail( jwt );
-            if( email.isEmpty() )
-            {
-                reject( response, HttpServletResponse.SC_UNAUTHORIZED, "Valid Cloudflare Access session required." );
-                return;
-            }
-            var principal = operatorAccountService.findOrProvision( email.get() );
+            String token = request.getHeader( "X-Operator-Token" );
+            var principal = operatorAccountService.authenticate( token );
             if( principal.isEmpty() )
             {
-                reject( response, HttpServletResponse.SC_FORBIDDEN, "Operator account is disabled." );
+                reject( response, HttpServletResponse.SC_UNAUTHORIZED, "Valid X-Operator-Token is required." );
                 return;
             }
             OperatorContext.set( principal.get() );

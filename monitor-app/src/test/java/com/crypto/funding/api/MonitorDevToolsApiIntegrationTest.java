@@ -1,14 +1,6 @@
 package com.crypto.funding.api;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.KeyUse;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.crypto.funding.domain.venue.InstrumentStatus;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
 import com.crypto.funding.infrastructure.persistence.model.InstrumentMetadataEntity;
@@ -18,7 +10,6 @@ import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetada
 import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.VenueProfileJpaRepository;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,8 +33,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Date;
-import java.util.UUID;
 
 @SpringBootTest(properties = {
     "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -58,61 +47,23 @@ import java.util.UUID;
     "trading.venue-access.mode=testnet",
     "monitor.dev-test-tool.enabled=true",
     "security.operators.auth-enabled=true",
-    "security.cloudflare.audience=test-aud",
-    "security.cloudflare.team-domain=test-team.cloudflareaccess.com",
+    "security.operators.bootstrap-users=alice:alice-token",
     "monitor.engine-control.internal-token=test-internal-token"
 })
 @AutoConfigureMockMvc
 class MonitorDevToolsApiIntegrationTest
 {
     private static final WireMockServer ENGINE = new WireMockServer( options().dynamicPort() );
-    private static final WireMockServer JWKS_SERVER = new WireMockServer( options().dynamicPort() );
-    private static RSAKey RSA_KEY;
-    private static String ALICE_JWT;
 
     static
     {
         ENGINE.start();
-        JWKS_SERVER.start();
-    }
-
-    @BeforeAll
-    static void initJwks() throws Exception
-    {
-        RSA_KEY = new RSAKeyGenerator( 2048 )
-            .keyUse( KeyUse.SIGNATURE )
-            .keyID( "dev-tools-kid" )
-            .generate();
-        String jwksBody = new com.nimbusds.jose.jwk.JWKSet( RSA_KEY.toPublicJWK() ).toString();
-        JWKS_SERVER.stubFor( com.github.tomakehurst.wiremock.client.WireMock.get( urlPathEqualTo( "/cdn-cgi/access/certs" ) )
-            .willReturn( okJson( jwksBody ) ) );
-        ALICE_JWT = buildJwt( "alice@example.com" );
     }
 
     @DynamicPropertySource
     static void configureProperties( DynamicPropertyRegistry registry )
     {
         registry.add( "monitor.engine-control.base-url", ENGINE::baseUrl );
-        registry.add( "security.cloudflare.certs-url",
-            () -> JWKS_SERVER.baseUrl() + "/cdn-cgi/access/certs" );
-    }
-
-    private static String buildJwt( String email ) throws Exception
-    {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-            .subject( email )
-            .claim( "email", email )
-            .issuer( "https://test-team.cloudflareaccess.com" )
-            .audience( "test-aud" )
-            .expirationTime( new Date( System.currentTimeMillis() + 3_600_000L ) )
-            .jwtID( UUID.randomUUID().toString() )
-            .build();
-        SignedJWT jwt = new SignedJWT(
-            new JWSHeader.Builder( JWSAlgorithm.RS256 ).keyID( RSA_KEY.getKeyID() ).build(),
-            claims
-        );
-        jwt.sign( new RSASSASigner( RSA_KEY ) );
-        return jwt.serialize();
     }
 
     @Autowired
@@ -228,10 +179,9 @@ class MonitorDevToolsApiIntegrationTest
     }
 
     @AfterAll
-    static void stopServers()
+    static void stopEngine()
     {
         ENGINE.stop();
-        JWKS_SERVER.stop();
     }
 
     @Test
@@ -240,7 +190,7 @@ class MonitorDevToolsApiIntegrationTest
         // REQ: ENG-ACC-007
         mockMvc.perform( post( "/api/v2/monitor/dev/engine/run-once" ) )
                .andExpect( status().isUnauthorized() )
-               .andExpect( jsonPath( "$.message" ).value( "Valid Cloudflare Access session required." ) );
+               .andExpect( jsonPath( "$.message" ).value( "Valid X-Operator-Token is required." ) );
     }
 
     @Test
@@ -248,7 +198,7 @@ class MonitorDevToolsApiIntegrationTest
     {
         // REQ: ENG-ACC-007
         mockMvc.perform( post( "/api/v2/monitor/dev/engine/run-once" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .param( "force", "true" ) )
                .andExpect( status().isOk() )
                .andExpect( jsonPath( "$.force" ).value( true ) )
@@ -266,7 +216,7 @@ class MonitorDevToolsApiIntegrationTest
     {
         // REQ: ENG-ACC-007
         mockMvc.perform( get( "/api/v2/monitor/dev/engine/runtime" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT ) )
+                .header( "X-Operator-Token", "alice-token" ) )
                .andExpect( status().isOk() )
                .andExpect( jsonPath( "$.tradingVenueAccessMode" ).value( "testnet" ) )
                .andExpect( jsonPath( "$.liveOrderEnabled" ).value( true ) )
@@ -275,7 +225,7 @@ class MonitorDevToolsApiIntegrationTest
                .andExpect( jsonPath( "$.executionLoopIntervalMs" ).value( 1000 ) );
 
         mockMvc.perform( post( "/api/v2/monitor/dev/engine/runtime" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( """
                     {
@@ -300,7 +250,7 @@ class MonitorDevToolsApiIntegrationTest
         seedInstrument( "gate", "ETH/USDT", "ETH_USDT" );
 
         mockMvc.perform( get( "/api/v2/monitor/dev/test-runs/options" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT ) )
+                .header( "X-Operator-Token", "alice-token" ) )
                .andExpect( status().isOk() )
                .andExpect( jsonPath( "$.enabled" ).value( true ) )
                .andExpect( jsonPath( "$.currentMode" ).value( "TESTNET" ) )
@@ -316,7 +266,7 @@ class MonitorDevToolsApiIntegrationTest
         seedInstrument( "bybit", "BTC/USDT", "BTCUSDT" );
 
         mockMvc.perform( post( "/api/v2/monitor/dev/test-runs" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( """
                     {
@@ -356,7 +306,7 @@ class MonitorDevToolsApiIntegrationTest
         Long armedTradeId = createDevRun( "bybit", "BTC/USDT" );
 
         mockMvc.perform( post( "/api/v2/monitor/dev/test-runs/{armedTradeId}/entry", armedTradeId )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( "{}" ) )
                .andExpect( status().isOk() )
@@ -375,7 +325,7 @@ class MonitorDevToolsApiIntegrationTest
     {
         seedInstrument( "bybit", "BTC/USDT", "BTCUSDT" );
         mockMvc.perform( post( "/api/v1/venues/access-mode" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( "{\"mode\":\"PRODUCTION\"}" ) )
                .andExpect( status().isOk() )
@@ -383,7 +333,7 @@ class MonitorDevToolsApiIntegrationTest
         Long armedTradeId = createDevRun( "bybit", "BTC/USDT" );
 
         mockMvc.perform( post( "/api/v2/monitor/dev/test-runs/{armedTradeId}/entry", armedTradeId )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( "{\"productionConfirm\":\"wrong\"}" ) )
                .andExpect( status().isConflict() )
@@ -395,7 +345,7 @@ class MonitorDevToolsApiIntegrationTest
     {
         seedInstrument( "bybit", "BTC/USDT", "BTCUSDT" );
         mockMvc.perform( post( "/api/v1/venues/access-mode" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( "{\"mode\":\"PRODUCTION\"}" ) )
                .andExpect( status().isOk() );
@@ -432,7 +382,7 @@ class MonitorDevToolsApiIntegrationTest
                 """ ) ) );
 
         mockMvc.perform( post( "/api/v2/monitor/dev/test-runs/{armedTradeId}/entry", armedTradeId )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( "{\"productionConfirm\":\"bybit BTC/USDT LIVE\"}" ) )
                .andExpect( status().isConflict() )
@@ -442,7 +392,7 @@ class MonitorDevToolsApiIntegrationTest
     private Long createDevRun( String venue, String symbol ) throws Exception
     {
         mockMvc.perform( post( "/api/v2/monitor/dev/test-runs" )
-                .header( "Cf-Access-Jwt-Assertion", ALICE_JWT )
+                .header( "X-Operator-Token", "alice-token" )
                 .contentType( "application/json" )
                 .content( """
                     {

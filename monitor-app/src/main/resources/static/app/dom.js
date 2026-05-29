@@ -2,6 +2,8 @@ export function createNodes(doc = document) {
     return {
         nav: doc.getElementById("nav"),
         refreshAllButton: doc.getElementById("refresh-all-button"),
+        operatorTokenForm: doc.getElementById("operator-token-form"),
+        operatorTokenInput: doc.getElementById("operator-token-input"),
         globalModeForm: doc.getElementById("global-mode-form"),
         globalModeSelect: doc.getElementById("global-mode-select"),
         globalError: doc.getElementById("global-error"),
