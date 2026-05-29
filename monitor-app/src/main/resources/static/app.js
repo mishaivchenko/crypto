@@ -153,11 +153,23 @@ async function refreshCurrentScreen() {
             });
         }
     } catch (error) {
+        if (error.isAuthError) {
+            handleAuthError();
+            return;
+        }
         showError(error.message);
         if (loadingTarget) {
             setLoadError(loadingTarget, error.message);
         }
     }
+}
+
+function handleAuthError() {
+    const msg = t("app_session_expired");
+    showError(msg);
+    document.querySelectorAll(".screen").forEach(s => {
+        s.innerHTML = `<div class="empty-state"><p>${msg}</p></div>`;
+    });
 }
 
 function applyStaticTranslations() {
@@ -500,6 +512,10 @@ async function loadGlobalMode() {
         const globalMode = await api.getGlobalVenueMode();
         nodes.globalModeSelect.value = String(globalMode.mode ?? "TESTNET").toUpperCase();
     } catch (error) {
+        if (error.isAuthError) {
+            handleAuthError();
+            return;
+        }
         showError(error.message);
     }
 }
