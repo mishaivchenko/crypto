@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+import { api, clearAuthFlag } from "./api.js";
 import { createAppState } from "./app/state.js";
 import { createNodes } from "./app/dom.js";
 import { closeModal, emptyState, groupAttemptsByTrade, resetDrawer, toIsoOrNull } from "./app/shared.js";
@@ -166,9 +166,16 @@ async function refreshCurrentScreen() {
 
 function handleAuthError() {
     const msg = t("app_session_expired");
+    const btnLabel = t("app_sign_in_again");
     showError(msg);
     document.querySelectorAll(".screen").forEach(s => {
-        s.innerHTML = `<div class="empty-state"><p>${msg}</p></div>`;
+        s.innerHTML = `<div class="empty-state"><p>${msg}</p><button class="btn btn-primary auth-retry-btn">${btnLabel}</button></div>`;
+    });
+    document.querySelectorAll(".auth-retry-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            clearAuthFlag();
+            window.location.href = "/";
+        });
     });
 }
 
