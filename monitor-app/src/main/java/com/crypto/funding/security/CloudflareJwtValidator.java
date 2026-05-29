@@ -59,6 +59,8 @@ public class CloudflareJwtValidator
             JWK jwk = jwks.getKeyByKeyId( kid );
             if( jwk == null )
             {
+                log.warn( "CF JWT kid={} not found in JWKS (keys={})", kid,
+                    jwks.getKeys().stream().map( k -> k.getKeyID() ).toList() );
                 return Optional.empty();
             }
 
@@ -78,19 +80,27 @@ public class CloudflareJwtValidator
                 return Optional.empty();
             }
 
-            List<String> aud = claims.getAudience();
-            if( aud == null || !aud.contains( properties.getAudience() ) )
+            String configuredAud = properties.getAudience();
+            if( configuredAud != null && !configuredAud.isBlank() )
             {
-                log.debug( "CF JWT audience mismatch" );
-                return Optional.empty();
+                List<String> aud = claims.getAudience();
+                if( aud == null || !aud.contains( configuredAud ) )
+                {
+                    log.warn( "CF JWT audience mismatch: expected={} got={}", configuredAud, aud );
+                    return Optional.empty();
+                }
             }
 
-            String issuer = claims.getIssuer();
-            String expectedIssuer = "https://" + properties.getTeamDomain();
-            if( !expectedIssuer.equals( issuer ) )
+            String configuredTeam = properties.getTeamDomain();
+            if( configuredTeam != null && !configuredTeam.isBlank() )
             {
-                log.debug( "CF JWT issuer mismatch: expected={} actual={}", expectedIssuer, issuer );
-                return Optional.empty();
+                String issuer = claims.getIssuer();
+                String expectedIssuer = "https://" + configuredTeam;
+                if( !expectedIssuer.equals( issuer ) )
+                {
+                    log.warn( "CF JWT issuer mismatch: expected={} actual={}", expectedIssuer, issuer );
+                    return Optional.empty();
+                }
             }
 
             String email = claims.getStringClaim( "email" );

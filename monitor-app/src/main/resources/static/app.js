@@ -153,6 +153,12 @@ async function refreshCurrentScreen() {
             });
         }
     } catch (error) {
+        if (error.isAuthError) {
+            document.querySelectorAll(".screen").forEach(s => {
+                s.innerHTML = `<div class="empty-state"><p>${error.message}</p><button class="btn btn-primary" onclick="if(typeof sessionStorage!=='undefined')sessionStorage.removeItem('fd_auth_reloaded');window.location.href='/'">Sign in again</button></div>`;
+            });
+            return;
+        }
         showError(error.message);
         if (loadingTarget) {
             setLoadError(loadingTarget, error.message);
@@ -500,7 +506,7 @@ async function loadGlobalMode() {
         const globalMode = await api.getGlobalVenueMode();
         nodes.globalModeSelect.value = String(globalMode.mode ?? "TESTNET").toUpperCase();
     } catch (error) {
-        showError(error.message);
+        if (!error.isAuthError) showError(error.message);
     }
 }
 

@@ -5,8 +5,17 @@ const jsonHeaders = {
 async function request(path, options = {}) {
     const response = await fetch(path, { credentials: "same-origin", ...options });
     if (response.status === 401) {
-        window.location.reload();
-        return;
+        if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem("fd_auth_reloaded")) {
+            sessionStorage.setItem("fd_auth_reloaded", "1");
+            window.location.reload();
+            return new Promise(() => {}); // never resolves — reload is in flight
+        }
+        const err = new Error("Session expired.");
+        err.isAuthError = true;
+        throw err;
+    }
+    if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem("fd_auth_reloaded");
     }
     const isJson = response.headers.get("content-type")?.includes("application/json");
     const payload = isJson ? await response.json() : await response.text();
