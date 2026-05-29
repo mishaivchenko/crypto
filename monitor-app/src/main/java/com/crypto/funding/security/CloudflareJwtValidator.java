@@ -29,6 +29,7 @@ public class CloudflareJwtValidator
 {
     private static final Logger log = LoggerFactory.getLogger( CloudflareJwtValidator.class );
     private static final Duration REFRESH_COOLDOWN = Duration.ofMinutes( 5 );
+    private static final Duration UNKNOWN_KID_COOLDOWN = Duration.ofSeconds( 30 );
 
     private final CloudflareAccessProperties properties;
     private final AtomicReference<CachedJwks> cache = new AtomicReference<>();
@@ -113,9 +114,14 @@ public class CloudflareJwtValidator
         {
             return current.jwks();
         }
-        // Unknown kid: always refresh — handles key rotation regardless of how recently
-        // the cache was last populated. refreshJwks() updates the cache timestamp, so the
-        // next call for a kid that was known will hit the hasKey fast-path above.
+        // Unknown kid: refresh to pick up CF key rotation. Apply a short cooldown after
+        // a recent fetch so bogus kids don't cause an unbounded number of JWKS requests.
+        boolean fetchedRecently = current != null
+            && current.fetchedAt().plus( UNKNOWN_KID_COOLDOWN ).isAfter( Instant.now() );
+        if( fetchedRecently )
+        {
+            return current.jwks();
+        }
         return refreshJwks();
     }
 
