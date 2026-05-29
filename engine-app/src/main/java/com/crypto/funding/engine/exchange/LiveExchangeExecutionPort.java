@@ -517,16 +517,20 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         String signPayload = timestamp + "POST" + requestPath + bodyJson;
         String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
 
-        HttpRequest request = HttpRequest.newBuilder()
+        boolean isTestnet = "testnet".equals( property( "engine.trading-venue-access-mode", "testnet" ).trim().toLowerCase( java.util.Locale.ROOT ) );
+        HttpRequest.Builder bitgetBuilder = HttpRequest.newBuilder()
                                           .uri( URI.create( baseUrl + requestPath ) )
                                           .timeout( REQUEST_TIMEOUT )
                                           .header( "Content-Type", "application/json" )
                                           .header( "ACCESS-KEY", apiKey )
                                           .header( "ACCESS-SIGN", sign )
                                           .header( "ACCESS-TIMESTAMP", timestamp )
-                                          .header( "ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase )
-                                          .POST( HttpRequest.BodyPublishers.ofString( bodyJson ) )
-                                          .build();
+                                          .header( "ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase );
+        if( isTestnet )
+        {
+            bitgetBuilder.header( "paptrading", "1" );
+        }
+        HttpRequest request = bitgetBuilder.POST( HttpRequest.BodyPublishers.ofString( bodyJson ) ).build();
 
         HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
         JsonNode root = parseBody( response.body() );
@@ -536,7 +540,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
             return rejected( plan, intent, quantity, attemptedAt, "Bitget order rejected: " + root.path( "msg" ).asText( response.body() ) );
         }
         String orderId = root.path( "data" ).path( "orderId" ).asText();
-        return bitgetStatus( plan, intent, quantity, orderId, attemptedAt, apiKey, secretKey, passphrase );
+        return bitgetStatus( plan, intent, quantity, orderId, attemptedAt, isTestnet, apiKey, secretKey, passphrase );
     }
 
     private OrderAttempt bitgetStatus(
@@ -545,6 +549,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         BigDecimal quantity,
         String orderId,
         Instant attemptedAt,
+        boolean isTestnet,
         String apiKey,
         String secretKey,
         String passphrase
@@ -557,15 +562,18 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         String signPayload = timestamp + "GET" + requestPath + "?" + query;
         String sign = HmacSigner.hmacSha256Base64( secretKey, signPayload );
 
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder statusBuilder = HttpRequest.newBuilder()
                                           .uri( URI.create( baseUrl + requestPath + "?" + query ) )
                                           .timeout( REQUEST_TIMEOUT )
                                           .header( "ACCESS-KEY", apiKey )
                                           .header( "ACCESS-SIGN", sign )
                                           .header( "ACCESS-TIMESTAMP", timestamp )
-                                          .header( "ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase )
-                                          .GET()
-                                          .build();
+                                          .header( "ACCESS-PASSPHRASE", passphrase == null ? "" : passphrase );
+        if( isTestnet )
+        {
+            statusBuilder.header( "paptrading", "1" );
+        }
+        HttpRequest request = statusBuilder.GET().build();
 
         HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
         JsonNode root = parseBody( response.body() );
