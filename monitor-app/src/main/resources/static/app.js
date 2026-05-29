@@ -153,12 +153,6 @@ async function refreshCurrentScreen() {
             });
         }
     } catch (error) {
-        if (error.isAuthError) {
-            document.querySelectorAll(".screen").forEach(s => {
-                s.innerHTML = `<div class="empty-state"><p>${error.message}</p><button class="btn btn-primary" onclick="if(typeof sessionStorage!=='undefined')sessionStorage.removeItem('fd_auth_reloaded');window.location.href='/'">Sign in again</button></div>`;
-            });
-            return;
-        }
         showError(error.message);
         if (loadingTarget) {
             setLoadError(loadingTarget, error.message);
@@ -181,6 +175,12 @@ function applyStaticTranslations() {
         const key = mapped[btn.dataset.screen] ?? screenKey;
         btn.textContent = t(key);
     });
+
+    const operatorTokenLabel = document.querySelector("#operator-token-form label span");
+    if (operatorTokenLabel) operatorTokenLabel.textContent = t("topbar_operator_token");
+    nodes.operatorTokenInput.placeholder = t("topbar_token_placeholder");
+    const saveTokenBtn = document.querySelector("#operator-token-form button[type='submit']");
+    if (saveTokenBtn) saveTokenBtn.textContent = t("topbar_save_token");
 
     const accessModeLabel = document.querySelector("#global-mode-form label span");
     if (accessModeLabel) accessModeLabel.textContent = t("topbar_access_mode");
@@ -368,6 +368,15 @@ nodes.refreshAllButton.addEventListener("click", async () => {
     showSuccess(t("app_refreshed"));
 });
 
+nodes.operatorTokenInput.value = api.getOperatorToken();
+nodes.operatorTokenForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    api.setOperatorToken(nodes.operatorTokenInput.value);
+    await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
+    closeSettings();
+    showSuccess(t("app_token_saved"));
+});
+
 nodes.globalModeForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -506,7 +515,7 @@ async function loadGlobalMode() {
         const globalMode = await api.getGlobalVenueMode();
         nodes.globalModeSelect.value = String(globalMode.mode ?? "TESTNET").toUpperCase();
     } catch (error) {
-        if (!error.isAuthError) showError(error.message);
+        showError(error.message);
     }
 }
 

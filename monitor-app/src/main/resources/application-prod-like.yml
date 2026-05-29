@@ -6,9 +6,6 @@ spring:
 security:
     operators:
         auth-enabled: true
-    cloudflare:
-        team-domain: ${CLOUDFLARE_TEAM_DOMAIN}
-        audience: ${CLOUDFLARE_AUD}
 
 credentials:
     storage:

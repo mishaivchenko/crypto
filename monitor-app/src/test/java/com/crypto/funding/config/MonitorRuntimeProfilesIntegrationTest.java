@@ -62,6 +62,7 @@ class MonitorRuntimeProfilesIntegrationTest
                 "--spring.main.web-application-type=none",
                 "--spring.datasource.url=jdbc:sqlite:" + dbPath.toAbsolutePath(),
                 "--credentials.storage.master-key-base64=" + TEST_MASTER_KEY,
+                "--security.operators.bootstrap-users=",
                 "--trading.candidate-source.enabled=false",
                 "--trading.metadata.sync-on-startup=false",
                 "--trading.metadata.schedule-enabled=false"

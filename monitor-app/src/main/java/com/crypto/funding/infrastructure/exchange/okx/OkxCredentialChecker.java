@@ -49,8 +49,7 @@ public class OkxCredentialChecker implements VenueCredentialCheckPort
     {
         String requestPath = "/api/v5/account/balance";
         String query = "ccy=USDT";
-        Instant now = Instant.now();
-        String timestamp = now.getEpochSecond() + "." + String.format( "%03d", now.getNano() / 1_000_000 );
+        String timestamp = Instant.now().toString();
         String signPayload = timestamp + "GET" + requestPath + "?" + query;
         String sign = HmacSigner.hmacSha256Base64( credentials.secretKey(), signPayload );
 
