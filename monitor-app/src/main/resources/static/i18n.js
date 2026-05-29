@@ -573,7 +573,8 @@ const translations = {
 
         // App-level messages
         app_refreshed: "Desk refreshed.",
-        app_session_expired: "Session expired — please reload the page to sign in.",
+        app_session_expired: "Session expired — please sign in again.",
+        app_sign_in_again: "Sign in again",
         app_mode_updated: "Global access mode updated.",
         app_engine_run_completed: "Engine run-once completed: scanned",
         app_engine_run_submitted: "submitted",
@@ -1234,7 +1235,8 @@ const translations = {
 
         // App-level messages
         app_refreshed: "Контур обновлён.",
-        app_session_expired: "Сессия истекла — перезагрузите страницу для входа.",
+        app_session_expired: "Сессия истекла — войдите снова.",
+        app_sign_in_again: "Войти снова",
         app_mode_updated: "Глобальный режим доступа обновлён.",
         app_engine_run_completed: "Прогон engine завершён: проверено",
         app_engine_run_submitted: "отправлено",
