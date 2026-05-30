@@ -178,6 +178,8 @@ const translations = {
         label_no_instruments: "No instruments",
         label_no_sync: "No sync",
         label_registry_ready: "Registry ready",
+        label_ready: "Ready",
+        label_offline: "Offline",
         label_api_funding: "Funding API",
         label_active_instruments: "active instruments",
         label_side_not_set: "Side not set",
@@ -412,6 +414,9 @@ const translations = {
         warmup_fallback_no: "No — live probe data",
         warmup_done_at: "Probes completed at",
         warmup_note: "Calibrated latency = p50 + manual adj. Applied to trigger timing.",
+        warmup_fallback_warning: "Warm-up probes failed — entry used default latency",
+        latency_details: "Latency Details",
+        liquidity_details: "Liquidity Details",
 
         // History
         history_modal_type: "Trade History",
@@ -454,6 +459,7 @@ const translations = {
         history_2_event: "2. Event",
         history_3_plan: "3. Plan",
         history_4_attempts: "4. Attempts",
+        history_attempt_details: "Attempt Details",
         history_5_position: "5. Position",
         history_6_outcome: "6. Outcome",
         history_health: "Health",
@@ -842,6 +848,8 @@ const translations = {
         label_no_instruments: "Нет инструментов",
         label_no_sync: "Нет синхр.",
         label_registry_ready: "Реестр готов",
+        label_ready: "Готово",
+        label_offline: "Недоступен",
         label_api_funding: "API фандинга",
         label_active_instruments: "активных инструментов",
         label_side_not_set: "Side не задан",
@@ -1076,6 +1084,9 @@ const translations = {
         warmup_fallback_no: "Нет — данные от живых проб",
         warmup_done_at: "Пробы завершены в",
         warmup_note: "Откалиброванная задержка = p50 + ручная коррекция. Применяется к расчёту триггера.",
+        warmup_fallback_warning: "Прогревочные пробы не удались — вход использовал задержку по умолчанию",
+        latency_details: "Детали задержки",
+        liquidity_details: "Детали ликвидности",
 
         // History
         history_modal_type: "История сделок",
@@ -1118,6 +1129,7 @@ const translations = {
         history_2_event: "2. Событие",
         history_3_plan: "3. План",
         history_4_attempts: "4. Попытки",
+        history_attempt_details: "Детали попыток",
         history_5_position: "5. Позиция",
         history_6_outcome: "6. Итог",
         history_health: "Health",

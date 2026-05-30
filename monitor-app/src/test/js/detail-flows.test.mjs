@@ -118,7 +118,7 @@ test("trade and history drawers keep source-to-outcome narrative", () => {
     assert.match(tradeMarkup, /Trade parameters/);
     assert.match(tradeMarkup, /Execution attempts/);
     assert.match(historyMarkup, /1\. Source/);
-    assert.match(historyMarkup, /6\. Outcome/);
+    assert.match(historyMarkup, /empty-state compact/);
 });
 
 test("venue drawer keeps actions and diagnostics", () => {

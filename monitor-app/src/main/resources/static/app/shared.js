@@ -113,7 +113,24 @@ export function summaryCard(title, value, detail, tone = "neutral", rawValue = f
     `;
 }
 
+export function venueStatusBadge(venue) {
+    if (!venue.credentialsConfigured && venue.credentialsRequired) {
+        return formatBadge("venue", t("label_no_keys"), "warning");
+    }
+    if (venue.connectionStatus && venue.connectionStatus !== "CONNECTED") {
+        return formatBadge("venue", t("label_offline"), "bad");
+    }
+    if (!venue.activeInstrumentCount || !venue.lastSyncedAt) {
+        return formatBadge("venue", t("label_no_instruments"), "warning");
+    }
+    return formatBadge("venue", t("label_ready"), "good");
+}
+
 export function venueCard(venue) {
+    const syncAgeMs = venue.lastSyncedAt ? Date.now() - new Date(venue.lastSyncedAt).getTime() : null;
+    const staleSyncChip = syncAgeMs != null && syncAgeMs > 5 * 60 * 1000
+        ? `<span class="chip chip-warning">${t("label_last_sync")} ${formatInstant(venue.lastSyncedAt)}</span>`
+        : "";
     return `
         <article class="list-item venue-card">
             <header>
@@ -122,16 +139,12 @@ export function venueCard(venue) {
                     <p class="muted">${escapeHtml(modeLabel(venue.mode ?? venue.configuredMode))} · ${formatNumber(venue.activeInstrumentCount)} ${t("label_active_instruments")}</p>
                 </div>
                 <div class="actions">
-                    ${credentialsBadge(venue)}
-                    ${formatConnectionBadge(venue.connectionStatus)}
-                    ${venueHealthBadge(venue)}
+                    ${venueStatusBadge(venue)}
+                    ${staleSyncChip}
                     <button class="button secondary" type="button" data-open-venue="${escapeHtml(venue.venue)}">${t("label_open")}</button>
                 </div>
             </header>
-            <div class="item-row">
-                <span class="muted">${connectionLine(venue)}</span>
-                <span class="muted">${t("label_last_sync")} ${formatInstant(venue.lastSyncedAt)} · ${t("card_avg")} ${formatDurationMs(venue.averageRequestTimeMs)} · ${t("card_req")} ${formatNumber(venue.requests ?? 0)}</span>
-            </div>
+            ${venue.connectionMessage ? `<div class="item-row"><span class="muted">${connectionLine(venue)}</span></div>` : ""}
         </article>
     `;
 }

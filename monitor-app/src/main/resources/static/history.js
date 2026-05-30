@@ -352,68 +352,43 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
     const sourceSymbol = candidate?.normalizedSymbol ?? candidate?.rawSymbol ?? trade.symbol ?? "—";
     const summary = summarizeAttempts(attempts);
 
+    // Outcome highlight
+    const outcomeBlock = outcome ? `
+        <div class="outcome-highlight ${outcome.netPnlUsd > 0 ? "positive" : outcome.netPnlUsd < 0 ? "negative" : "neutral"}">
+            <span class="outcome-pnl">${outcome.netPnlUsd >= 0 ? "+" : ""}${formatDecimal(outcome.netPnlUsd, 4)} USD</span>
+            <span class="outcome-detail">gross ${formatDecimal(outcome.grossPnlUsd, 4)} USD · fees ${outcome.feesUsd != null ? formatDecimal(outcome.feesUsd, 4) + " USD" : "—"} · ${escapeHtml(outcome.outcomeCode ?? "—")}</span>
+        </div>
+    ` : `
+        <div class="empty-state compact">
+            <strong>${t("empty_outcome")}</strong>
+            <p>${t("empty_outcome_detail")}</p>
+        </div>
+    `;
+
+    // Compact source line
+    const sourceLine = `<p class="history-source-line">${
+        trade.signalCandidateId ? `#${trade.signalCandidateId} · ` : t("label_manual") + " · "
+    }${escapeHtml(sourceSymbol)} · ${escapeHtml(trade.venue ?? event?.venue ?? "—")} · ${formatInstant(candidate?.detectedAt)}${
+        candidate?.reviewNotes ? ` · "${escapeHtml(candidate.reviewNotes)}"` : ""
+    }</p>`;
+
+    // Compact event line
+    const eventLine = `<p class="history-event-line">${
+        formatBadge("historyStage", historyStage.code)
+    } ${formatDecimal(event?.fundingRatePct, 6)}% · ${formatInstant(trade.fundingTime ?? event?.fundingTime)}${
+        event?.status ? ` · ${formatBadge("event", event.status)}` : ""
+    }</p>`;
+
     return `
-        ${section(t("history_0_timeline"), lifecycleTimelineMarkup(trade, event, candidate, attempts, position))}
+        ${outcomeBlock}
         ${section(t("history_health"), `
             <div class="history-health-card ${escapeHtml(health.tone)}">
                 <strong>${escapeHtml(health.label)}</strong>
                 <span>${escapeHtml(health.reason)}</span>
             </div>
         `)}
-        ${section(t("history_1_source"), `
-            <div class="meta-grid">
-                ${metaRow(t("history_source_type"), escapeHtml(candidate?.sourceType ?? event?.sourceType ?? "—"))}
-                ${metaRow(t("history_raw_symbol"), escapeHtml(candidate?.rawSymbol ?? "—"))}
-                ${metaRow(t("history_normalized"), escapeHtml(sourceSymbol))}
-                ${metaRow(t("history_candidate"), trade.signalCandidateId ? `#${trade.signalCandidateId}` : t("label_manual"))}
-                ${metaRow(t("history_detected"), formatInstant(candidate?.detectedAt))}
-                ${metaRow(t("history_review_note"), escapeHtml(candidate?.reviewNotes ?? "—"))}
-            </div>
-        `)}
-        ${section(t("history_2_event"), `
-            <div class="meta-grid">
-                ${metaRow(t("history_funding_event"), `#${trade.fundingEventId}`)}
-                ${metaRow(t("history_history_stage"), formatBadge("historyStage", historyStage.code), historyStage.reason)}
-                ${metaRow(t("history_raw_state"), formatBadge("trade", trade.state))}
-                ${metaRow(t("history_symbol"), escapeHtml(trade.venue ?? event?.venue ?? "—"))}
-                ${metaRow(t("trade_mode"), trade.mode ? formatBadge("venue", modeLabel(trade.mode), trade.mode === "testnet" ? "info" : "bad") : "—")}
-                ${metaRow(t("history_symbol"), escapeHtml(trade.symbol ?? event?.symbol ?? "—"))}
-                ${metaRow(t("event_funding_time"), formatInstant(trade.fundingTime ?? event?.fundingTime), formatFundingCountdown(trade.fundingTime ?? event?.fundingTime))}
-                ${metaRow(t("history_funding_rate"), formatDecimal(event?.fundingRatePct, 6))}
-                ${metaRow(t("history_event_status"), event?.status ? formatBadge("event", event.status) : "—")}
-            </div>
-        `)}
-        ${section(t("history_3_plan"), `
-            <div class="meta-grid">
-                ${metaRow(t("trade_side"), escapeHtml(trade.intendedSide ?? "SHORT"))}
-                ${metaRow(t("trade_notional"), `${formatDecimal(trade.notionalUsd, 2)} USD`)}
-                ${metaRow(t("history_planned_entry"), formatInstant(trade.plannedEntryAt))}
-                ${metaRow(t("history_planned_exit"), formatInstant(trade.plannedExitAt))}
-                ${metaRow(t("history_entry_attempts"), formatNumber(trade.entryAttemptCount ?? 1), `${t("history_spacing")} ${formatPlainMs(trade.entrySpacingMs ?? 0)}`)}
-                ${metaRow(t("history_attempts_recorded"), formatNumber(summary.total))}
-                ${metaRow(t("history_failed_attempts"), formatNumber(summary.failed))}
-                ${metaRow(t("history_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
-                ${metaRow(t("history_manual_adj"), formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
-                ${metaRow(t("history_effective_trigger"), formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
-                ${metaRow(t("history_arm_source"), escapeHtml(trade.armSource ?? "—"))}
-                ${metaRow(t("history_note"), escapeHtml(trade.notes ?? "—"))}
-            </div>
-        `)}
-        ${section(t("history_4_attempts"), `
-            ${attemptLadderMarkup(trade, attempts)}
-            ${attempts.length ? attempts.map((attempt) => `
-                <div class="meta-row">
-                    <span class="meta-label">#${escapeHtml(attempt.attemptNumber ?? "—")} · ${formatBadge("orderAttempt", attempt.status)}</span>
-                    <strong class="meta-value">${escapeHtml(attempt.symbol ?? trade.symbol ?? "—")}</strong>
-                    <span class="meta-helper">${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)} · ${t("trade_recorded")} ${formatInstant(attempt.createdAt)}</span>
-                </div>
-            `).join("") : `
-                <div class="empty-state compact">
-                    <strong>${t("empty_attempts")}</strong>
-                    <p>${t("empty_attempts_detail")}</p>
-                </div>
-            `}
-        `)}
+        ${section(t("history_1_source"), sourceLine)}
+        ${section(t("history_2_event"), eventLine)}
         ${section(t("history_5_position"), position ? `
             <div class="meta-grid">
                 ${metaRow(t("history_state_section"), formatBadge("position", position.state))}
@@ -429,20 +404,47 @@ export function tradeHistoryDetailMarkup({ trade, event, candidate, journal, att
                 <p>${t("empty_position_detail")}</p>
             </div>
         `)}
-        ${section(t("history_6_outcome"), outcome ? `
-            <div class="meta-grid">
-                ${metaRow(t("history_net_pnl"), formatBadge("outcome", (outcome.netPnlUsd >= 0 ? "+" : "") + formatDecimal(outcome.netPnlUsd, 4) + " USD", outcome.netPnlUsd >= 0 ? "good" : "bad"))}
-                ${metaRow(t("history_gross_pnl"), formatDecimal(outcome.grossPnlUsd, 4) + " USD")}
-                ${metaRow(t("history_fees"), outcome.feesUsd != null ? formatDecimal(outcome.feesUsd, 4) + " USD" : "—")}
-                ${metaRow(t("history_code"), escapeHtml(outcome.outcomeCode ?? "—"))}
-                ${metaRow(t("history_evaluated_at"), formatInstant(outcome.evaluatedAt))}
-            </div>
-        ` : `
-            <div class="empty-state compact">
-                <strong>${t("empty_outcome")}</strong>
-                <p>${t("empty_outcome_detail")}</p>
-            </div>
+        ${section(t("history_4_attempts"), `
+            ${attemptLadderMarkup(trade, attempts)}
+            ${attempts.length ? `
+                <details class="diagnostic-section">
+                    <summary class="diagnostic-toggle">${t("history_attempt_details")}</summary>
+                    ${attempts.map((attempt) => `
+                        <div class="meta-row">
+                            <span class="meta-label">#${escapeHtml(attempt.attemptNumber ?? "—")} · ${formatBadge("orderAttempt", attempt.status)}</span>
+                            <strong class="meta-value">${escapeHtml(attempt.symbol ?? trade.symbol ?? "—")}</strong>
+                            <span class="meta-helper">${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)}</span>
+                        </div>
+                    `).join("")}
+                </details>
+            ` : `
+                <div class="empty-state compact">
+                    <strong>${t("empty_attempts")}</strong>
+                    <p>${t("empty_attempts_detail")}</p>
+                </div>
+            `}
         `)}
+        <details class="diagnostic-section">
+            <summary class="diagnostic-toggle">${t("history_3_plan")}</summary>
+            <div class="meta-grid">
+                ${metaRow(t("trade_side"), escapeHtml(trade.intendedSide ?? "SHORT"))}
+                ${metaRow(t("trade_notional"), `${formatDecimal(trade.notionalUsd, 2)} USD`)}
+                ${metaRow(t("history_planned_entry"), formatInstant(trade.plannedEntryAt))}
+                ${metaRow(t("history_planned_exit"), formatInstant(trade.plannedExitAt))}
+                ${metaRow(t("history_entry_attempts"), formatNumber(trade.entryAttemptCount ?? 1), `${t("history_spacing")} ${formatPlainMs(trade.entrySpacingMs ?? 0)}`)}
+                ${metaRow(t("history_attempts_recorded"), formatNumber(summary.total))}
+                ${metaRow(t("history_failed_attempts"), formatNumber(summary.failed))}
+                ${metaRow(t("history_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+                ${metaRow(t("history_manual_adj"), formatSignedMs(trade.manualLatencyAdjustmentMs ?? 0))}
+                ${metaRow(t("history_effective_trigger"), formatDurationMs(trade.effectiveEntryLatencyMs ?? 0))}
+                ${metaRow(t("history_arm_source"), escapeHtml(trade.armSource ?? "—"))}
+                ${metaRow(t("history_note"), escapeHtml(trade.notes ?? "—"))}
+            </div>
+        </details>
+        <details class="diagnostic-section">
+            <summary class="diagnostic-toggle">${t("history_0_timeline")}</summary>
+            ${lifecycleTimelineMarkup(trade, event, candidate, attempts, position)}
+        </details>
         ${section("Journal", journalMarkup(journal))}
     `;
 }

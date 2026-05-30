@@ -49,67 +49,58 @@ function buildLiquiditySection(liquidity, trade) {
             : "";
     return section(t("liquidity_section_title"), `
         ${warning}
-        <div class="chip-row" style="margin-bottom:8px">
+        <p class="liquidity-summary">
             <span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
-            ${liquidity.bestBid != null ? `<span class="chip chip-muted">${formatDecimal(liquidity.bestBid, 4)} / ${liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—"}</span>` : ""}
+            ${liquidity.bestBid != null ? `<span>${formatDecimal(liquidity.bestBid, 4)} / ${liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—"}</span>` : ""}
             ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
             ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
-            ${refreshBtn}
-        </div>
-        <div class="meta-grid">
-            ${metaRow(t("liquidity_entry_bid_depth"), liquidity.entryBidDepthNotional != null ? `${formatDecimal(liquidity.entryBidDepthNotional, 2)} USD` : "—")}
-            ${metaRow(t("liquidity_exit_ask_depth"), liquidity.exitAskDepthNotional != null ? `${formatDecimal(liquidity.exitAskDepthNotional, 2)} USD` : "—")}
-            ${metaRow(t("liquidity_round_trip_safe"), liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
-            ${metaRow(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
-            ${metaRow(t("liquidity_expires_at"), formatInstant(liquidity.expiresAt))}
-        </div>
+        </p>
+        <details class="diagnostic-section">
+            <summary class="diagnostic-toggle">${t("liquidity_details")}</summary>
+            <div class="meta-grid" style="margin-top:8px">
+                ${metaRow(t("liquidity_entry_bid_depth"), liquidity.entryBidDepthNotional != null ? `${formatDecimal(liquidity.entryBidDepthNotional, 2)} USD` : "—")}
+                ${metaRow(t("liquidity_exit_ask_depth"), liquidity.exitAskDepthNotional != null ? `${formatDecimal(liquidity.exitAskDepthNotional, 2)} USD` : "—")}
+                ${metaRow(t("liquidity_round_trip_safe"), liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
+                ${metaRow(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
+                ${metaRow(t("liquidity_expires_at"), formatInstant(liquidity.expiresAt))}
+                <div class="chip-row" style="margin-top:4px">${refreshBtn}</div>
+            </div>
+        </details>
     `);
 }
 
 export function buildLatencyChainSection(trade) {
-    const p50 = trade.warmupP50Ms != null ? `${trade.warmupP50Ms} ms` : "—";
-    const p95 = trade.warmupP95Ms != null ? `${trade.warmupP95Ms} ms` : null;
+    const p50 = trade.warmupP50Ms ?? trade.measuredEntryLatencyMs;
     const manualAdj = trade.manualLatencyAdjustmentMs ?? 0;
-    const adjTone = manualAdj > 0 ? "chip-bad" : manualAdj < 0 ? "chip-good" : "chip-muted";
     const effectiveLead = trade.effectiveEntryLatencyMs ?? 0;
+    const p50Label = p50 != null ? `${p50}ms` : "—";
+    const adjLabel = formatSignedMs(manualAdj);
 
     return section(t("event_latency_chain"), `
-        <div class="latency-chain">
-            <div class="latency-node-inline">
-                <span class="latency-label-inline">${t("warmup_p50")}</span>
-                <strong class="latency-val">${p50}</strong>
-                ${p95 ? `<span class="latency-p95">${t("warmup_p95")} ${p95}</span>` : ""}
+        <p class="latency-summary">
+            <span>${p50Label} p50</span>
+            <span style="color:var(--muted)">+</span>
+            <span>${adjLabel} adj</span>
+            <span style="color:var(--muted)">=</span>
+            <strong>${formatDurationMs(effectiveLead)} ${t("trade_effective_trigger")}</strong>
+        </p>
+        <details class="diagnostic-section">
+            <summary class="diagnostic-toggle">${t("latency_details")}</summary>
+            <div class="meta-grid" style="margin-top:8px">
+                ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+                ${metaRow(t("trade_armed_at"), formatInstant(trade.armedAt))}
+                ${metaRow(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
+                ${metaRow(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
+                ${trade.armSource ? metaRow(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
             </div>
-            <span class="latency-op">+</span>
-            <div class="latency-node-inline">
-                <span class="latency-label-inline">${t("event_manual_latency")}</span>
-                <strong class="latency-val"><span class="chip ${adjTone}">${formatSignedMs(manualAdj)}</span></strong>
-            </div>
-            <span class="latency-op">=</span>
-            <div class="latency-node-inline latency-result-inline">
-                <span class="latency-label-inline">${t("trade_effective_trigger")}</span>
-                <strong class="latency-val latency-accent">${formatDurationMs(effectiveLead)}</strong>
-            </div>
-        </div>
-        <div class="meta-grid" style="margin-top:8px">
-            ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
-            ${metaRow(t("trade_armed_at"), formatInstant(trade.armedAt))}
-            ${metaRow(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
-            ${metaRow(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
-            ${trade.armSource ? metaRow(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
-        </div>
+        </details>
     `);
 }
 
 function warmupSection(trade) {
-    if (trade.warmupDoneAt == null && trade.warmupFallbackUsed == null) return "";
-    const fallback = trade.warmupFallbackUsed ? t("warmup_fallback_yes") : t("warmup_fallback_no");
+    if (!trade.warmupFallbackUsed) return "";
     return section(t("warmup_section_title"), `
-        <div class="meta-grid">
-            ${metaRow(t("warmup_fallback"), fallback)}
-            ${metaRow(t("warmup_done_at"), formatInstant(trade.warmupDoneAt))}
-        </div>
-        <p class="meta-helper">${t("warmup_note")}</p>
+        <p class="warmup-warning">${t("warmup_fallback_warning")}</p>
     `);
 }
 

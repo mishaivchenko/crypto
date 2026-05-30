@@ -524,10 +524,10 @@ details[open] > .card-expand-toggle::before {
 /* Full signal card content — visible when both AI and liquidity are ready */
 .card-full-content {
     display: grid;
-    margin-top: 8px;
+    margin-top: 12px;
     border-top: 1px solid var(--border);
-    padding-top: 8px;
-    gap: 6px;
+    padding-top: 12px;
+    gap: 14px;
 }
 
 .card-expansion-cols {
@@ -614,7 +614,7 @@ details[open] > .card-expand-toggle::before {
 .chip-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 10px;
     align-items: center;
 }
 
@@ -921,16 +921,17 @@ details[open] > .card-expand-toggle::before {
 
 .detail-section {
     border-radius: 18px 8px 24px 8px;
-    padding: 16px;
+    padding: 20px;
     background: rgba(8, 10, 14, 0.64);
     border: 1px solid var(--border);
     display: grid;
-    gap: 12px;
+    gap: 16px;
 }
 
 .detail-section h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
 }
 
 .lifecycle-timeline {
@@ -1014,7 +1015,7 @@ details[open] > .card-expand-toggle::before {
 .meta-row {
     display: grid;
     gap: 6px;
-    padding: 12px;
+    padding: 14px 12px;
     border-radius: 14px 6px 18px 6px;
     background: rgba(19, 27, 37, 0.82);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1130,9 +1131,9 @@ details[open] > .card-expand-toggle::before {
 .empty-state {
     border: 1px dashed var(--border-strong);
     border-radius: 18px 8px 22px 8px;
-    padding: 22px 16px;
+    padding: 36px 20px;
     display: grid;
-    gap: 6px;
+    gap: 8px;
     text-align: center;
     color: var(--muted);
 }
@@ -1613,4 +1614,134 @@ details[open] > .card-expand-toggle::before {
     .inspector-header {
         padding: 16px;
     }
+}
+
+/* ── Diagnostic collapsibles (Tasks 1 & 2) ─────────────────────────── */
+
+.diagnostic-section {
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.diagnostic-section > summary.diagnostic-toggle {
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 6px 0;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.diagnostic-section > summary.diagnostic-toggle::before {
+    content: "▶";
+    font-size: 0.65rem;
+    transition: transform 0.15s;
+    display: inline-block;
+}
+
+.diagnostic-section[open] > summary.diagnostic-toggle::before {
+    transform: rotate(90deg);
+}
+
+/* ── History: compact source / event lines ──────────────────────────── */
+
+.history-source-line,
+.history-event-line {
+    font-size: 0.84rem;
+    color: var(--muted);
+    padding: 4px 0;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Outcome highlight block ────────────────────────────────────────── */
+
+.outcome-highlight {
+    padding: 18px 20px;
+    border-radius: 14px 6px 18px 6px;
+    margin: 4px 0;
+    display: grid;
+    gap: 4px;
+    border: 1px solid transparent;
+}
+
+.outcome-highlight.positive {
+    background: rgba(106, 229, 141, 0.07);
+    border-color: rgba(106, 229, 141, 0.18);
+}
+
+.outcome-highlight.negative {
+    background: rgba(220, 80, 80, 0.07);
+    border-color: rgba(220, 80, 80, 0.18);
+}
+
+.outcome-highlight.neutral {
+    background: rgba(150, 163, 180, 0.07);
+    border-color: var(--border);
+}
+
+.outcome-pnl {
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+
+.outcome-highlight.positive .outcome-pnl { color: #c6ffd8; }
+.outcome-highlight.negative .outcome-pnl { color: #ffb3b3; }
+
+.outcome-detail {
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+
+/* ── Compact one-line summaries (latency, liquidity) ────────────────── */
+
+.latency-summary,
+.liquidity-summary {
+    font-size: 0.9rem;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    line-height: 1.6;
+}
+
+/* ── Warmup warning ─────────────────────────────────────────────────── */
+
+.warmup-warning {
+    font-size: 0.86rem;
+    color: #ffd580;
+    margin: 0;
+    padding: 8px 12px;
+    background: rgba(255, 200, 50, 0.07);
+    border-radius: 8px;
+    border-left: 2px solid rgba(255, 200, 50, 0.4);
+}
+
+/* ── Delete source: danger link button ──────────────────────────────── */
+
+.action-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.action-link.action-danger {
+    color: rgba(220, 80, 80, 0.7);
+}
+
+.action-link.action-danger:hover {
+    color: #ff8080;
+    background: rgba(220, 80, 80, 0.08);
 }

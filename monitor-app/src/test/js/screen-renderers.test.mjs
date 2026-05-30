@@ -182,5 +182,5 @@ test("venues screen renders empty and loaded states", () => {
     ]);
 
     assert.match(loaded, /bybit/);
-    assert.match(loaded, /Registry ready/);
+    assert.match(loaded, /Ready/);
 });
