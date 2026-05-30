@@ -140,7 +140,6 @@ test("event drawer content renders decorator sections conditionally", () => {
         journal: [],
         trade
     });
-    assert.match(armed, /Trade Parameters/);
     assert.match(armed, /Latency Chain/);
     assert.doesNotMatch(armed, /Arm Prepared Trade/);
     assert.doesNotMatch(armed, /Outcome/);
@@ -157,7 +156,6 @@ test("event drawer content renders decorator sections conditionally", () => {
         outcome,
         position
     });
-    assert.match(closed, /Trade Parameters/);
     assert.match(closed, /Latency Chain/);
     assert.match(closed, /Execution Attempts/);
     assert.match(closed, /Position/);

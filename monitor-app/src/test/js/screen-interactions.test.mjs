@@ -172,7 +172,7 @@ test("event expansion arm form is absent for ARMED event", () => {
         position: null
     });
     assert.doesNotMatch(markup, /arm-event/);
-    assert.match(markup, /edit-trade|Trade Parameters/);
+    assert.match(markup, /Latency Chain/);
 });
 
 // ── trades screen ─────────────────────────────────────────────────────────────

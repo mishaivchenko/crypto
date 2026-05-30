@@ -417,6 +417,12 @@ const translations = {
         warmup_fallback_warning: "Warm-up probes failed — entry used default latency",
         latency_details: "Latency Details",
         liquidity_details: "Liquidity Details",
+        tip_latency_p50: "Median round-trip latency measured by warm-up probes before entry (or last venue probe if no warm-up)",
+        tip_latency_adj: "Manual offset added to the p50 baseline. Positive = trigger earlier, negative = trigger later",
+        tip_latency_effective: "Final trigger lead = p50 + manual adj. Engine fires the order this many ms before the funding time",
+        tip_bid_depth: "Total USD available on the bid side at entry — how much can be sold without moving the price significantly",
+        tip_ask_depth: "Total USD available on the ask side at exit — how much can be bought to close the position",
+        tip_round_trip: "Minimum of entry bid depth and exit ask depth — the safe round-trip size for this instrument right now",
 
         // History
         history_modal_type: "Trade History",
@@ -1087,6 +1093,12 @@ const translations = {
         warmup_fallback_warning: "Прогревочные пробы не удались — вход использовал задержку по умолчанию",
         latency_details: "Детали задержки",
         liquidity_details: "Детали ликвидности",
+        tip_latency_p50: "Медианная задержка туда-обратно, измеренная прогревочными пробами перед входом (или последней пробой биржи)",
+        tip_latency_adj: "Ручная поправка к базовой задержке p50. Положительная = триггер раньше, отрицательная = позже",
+        tip_latency_effective: "Итоговое опережение триггера = p50 + ручная поправка. Движок отправляет ордер за столько мс до фандинга",
+        tip_bid_depth: "Суммарный USD на стороне bid при входе — сколько можно продать без существенного сдвига цены",
+        tip_ask_depth: "Суммарный USD на стороне ask при выходе — сколько можно купить для закрытия позиции",
+        tip_round_trip: "Минимум из глубины bid (вход) и ask (выход) — безопасный объём сделки туда-обратно прямо сейчас",
 
         // History
         history_modal_type: "История сделок",

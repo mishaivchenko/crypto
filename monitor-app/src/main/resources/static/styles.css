@@ -1745,3 +1745,109 @@ details[open] > .card-expand-toggle::before {
     color: #ff8080;
     background: rgba(220, 80, 80, 0.08);
 }
+
+/* ── Info-tip click-triggered popover (CSS-only) ─────────────────── */
+
+.info-tip {
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+}
+
+.info-tip > summary.info-tip-trigger {
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.72rem;
+    color: var(--muted);
+    opacity: 0.45;
+    padding: 0 3px;
+    line-height: 1;
+}
+
+.info-tip > summary.info-tip-trigger:hover { opacity: 1; }
+
+.info-tip[open] > .info-tip-body {
+    position: absolute;
+    z-index: 200;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px 4px 12px 4px;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--ink);
+    width: 220px;
+    white-space: normal;
+    pointer-events: none;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    font-weight: 400;
+}
+
+/* ── Compact horizontal kv-row ────────────────────────────────────── */
+
+.kv-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    padding: 8px 0 4px;
+}
+
+.kv-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 80px;
+}
+
+.kv-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.75;
+}
+
+.kv-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* ── Small danger action button ───────────────────────────────────── */
+
+.btn-danger-small {
+    background: none;
+    border: 1px solid rgba(220, 80, 80, 0.3);
+    color: rgba(220, 80, 80, 0.65);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-danger-small:hover {
+    border-color: rgba(220, 80, 80, 0.7);
+    color: #ff8080;
+}
+
+/* ── Action row (cancel/close placement) ──────────────────────────── */
+
+.action-row {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 6px;
+}
+
+/* ── Trade extras compact line (SL/TP/notes) ──────────────────────── */
+
+.trade-extras {
+    font-size: 0.84rem;
+    color: var(--muted);
+    padding: 4px 0;
+    margin: 0;
+}

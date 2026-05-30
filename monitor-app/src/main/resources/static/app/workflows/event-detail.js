@@ -21,6 +21,14 @@ import {
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
 
+function infoTip(text) {
+    return `<details class="info-tip"><summary class="info-tip-trigger">ⓘ</summary><div class="info-tip-body">${escapeHtml(text)}</div></details>`;
+}
+
+function kvItem(label, value) {
+    return `<div class="kv-item"><span class="kv-label">${label}</span><span class="kv-value">${value}</span></div>`;
+}
+
 function signalAnalysisChips(candidate, liquidity) {
     if (!candidate) return "";
     const ai = candidate.aiAdvice;
@@ -50,21 +58,13 @@ function signalAnalysisChips(candidate, liquidity) {
 }
 
 function buildTradeParamsSection(trade) {
-    return section(t("event_trade_params"), `
-        <div class="meta-grid">
-            ${metaRow(t("trade_status"), formatBadge("trade", trade.state))}
-            ${metaRow(t("trade_venue"), escapeHtml(trade.venue ?? "—"))}
-            ${metaRow(t("trade_instrument"), escapeHtml(trade.symbol ?? "—"))}
-            ${metaRow(t("trade_notional"), `${formatDecimal(trade.notionalUsd, 2)} USD`)}
-            ${metaRow(t("trade_side"), escapeHtml(trade.intendedSide ?? "—"))}
-            ${metaRow(t("trade_planned_entry"), formatInstant(trade.plannedEntryAt), formatFundingCountdown(trade.plannedEntryAt))}
-            ${metaRow(t("trade_planned_exit"), formatInstant(trade.plannedExitAt))}
-            ${metaRow(t("trade_entry_attempts"), String(trade.entryAttemptCount ?? 1), `${t("trade_spacing")} ${formatDurationMs(trade.entrySpacingMs ?? 0)}`)}
-            ${trade.stopLossUsd != null ? metaRow(t("trade_stop_loss"), `${formatDecimal(trade.stopLossUsd, 2)} USD`) : ""}
-            ${trade.takeProfitUsd != null ? metaRow(t("trade_take_profit"), `${formatDecimal(trade.takeProfitUsd, 2)} USD`) : ""}
-            ${trade.notes ? metaRow(t("trade_note"), escapeHtml(trade.notes)) : ""}
-        </div>
-    `);
+    const extras = [
+        trade.stopLossUsd != null ? `SL ${formatDecimal(trade.stopLossUsd, 2)} USD` : "",
+        trade.takeProfitUsd != null ? `TP ${formatDecimal(trade.takeProfitUsd, 2)} USD` : "",
+        trade.notes ? `"${escapeHtml(trade.notes)}"` : ""
+    ].filter(Boolean);
+    if (!extras.length) return "";
+    return `<p class="trade-extras">${extras.join(" · ")}</p>`;
 }
 
 function buildLatencyChainSection(trade) {
@@ -76,22 +76,19 @@ function buildLatencyChainSection(trade) {
 
     return section(t("event_latency_chain"), `
         <p class="latency-summary">
-            <span>${p50Label} p50</span>
+            <span>${p50Label} p50 ${infoTip(t("tip_latency_p50"))}</span>
             <span style="color:var(--muted)">+</span>
-            <span>${adjLabel} adj</span>
+            <span>${adjLabel} adj ${infoTip(t("tip_latency_adj"))}</span>
             <span style="color:var(--muted)">=</span>
-            <strong>${formatDurationMs(effectiveLead)} ${t("trade_effective_trigger")}</strong>
+            <strong>${formatDurationMs(effectiveLead)} ${t("trade_effective_trigger")} ${infoTip(t("tip_latency_effective"))}</strong>
         </p>
-        <details class="diagnostic-section">
-            <summary class="diagnostic-toggle">${t("latency_details")}</summary>
-            <div class="meta-grid" style="margin-top:8px">
-                ${metaRow(t("trade_armed_at"), formatInstant(trade.armedAt))}
-                ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
-                ${metaRow(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
-                ${metaRow(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
-                ${trade.armSource ? metaRow(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
-            </div>
-        </details>
+        <div class="kv-row">
+            ${kvItem(t("trade_armed_at"), formatInstant(trade.armedAt))}
+            ${kvItem(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+            ${kvItem(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
+            ${kvItem(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
+            ${trade.armSource ? kvItem(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
+        </div>
     `);
 }
 
@@ -112,15 +109,12 @@ function buildTradeLiquiditySection(tradeLiquidity) {
             ${tradeLiquidity.spreadBps != null ? `<span class="chip ${tradeLiquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(tradeLiquidity.spreadBps, 1)} bps</span>` : ""}
             ${tradeLiquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(tradeLiquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
         </p>
-        <details class="diagnostic-section">
-            <summary class="diagnostic-toggle">${t("liquidity_details")}</summary>
-            <div class="meta-grid" style="margin-top:8px">
-                ${metaRow(t("liquidity_entry_bid_depth"), tradeLiquidity.entryBidDepthNotional != null ? `${formatDecimal(tradeLiquidity.entryBidDepthNotional, 2)} USD` : "—")}
-                ${metaRow(t("liquidity_exit_ask_depth"), tradeLiquidity.exitAskDepthNotional != null ? `${formatDecimal(tradeLiquidity.exitAskDepthNotional, 2)} USD` : "—")}
-                ${metaRow(t("liquidity_round_trip_safe"), tradeLiquidity.roundTripSafeNotional != null ? `${formatDecimal(tradeLiquidity.roundTripSafeNotional, 2)} USD` : "—")}
-                ${metaRow(t("liquidity_sampled_at"), formatInstant(tradeLiquidity.sampledAt))}
-            </div>
-        </details>
+        <div class="kv-row">
+            ${kvItem(`${t("liquidity_entry_bid_depth")} ${infoTip(t("tip_bid_depth"))}`, tradeLiquidity.entryBidDepthNotional != null ? `${formatDecimal(tradeLiquidity.entryBidDepthNotional, 2)} USD` : "—")}
+            ${kvItem(`${t("liquidity_exit_ask_depth")} ${infoTip(t("tip_ask_depth"))}`, tradeLiquidity.exitAskDepthNotional != null ? `${formatDecimal(tradeLiquidity.exitAskDepthNotional, 2)} USD` : "—")}
+            ${kvItem(`${t("liquidity_round_trip_safe")} ${infoTip(t("tip_round_trip"))}`, tradeLiquidity.roundTripSafeNotional != null ? `${formatDecimal(tradeLiquidity.roundTripSafeNotional, 2)} USD` : "—")}
+            ${kvItem(t("liquidity_sampled_at"), formatInstant(tradeLiquidity.sampledAt))}
+        </div>
     `);
 }
 

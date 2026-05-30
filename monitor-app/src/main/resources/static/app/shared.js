@@ -37,6 +37,12 @@ export {
     section
 };
 
+export function formatShortTime(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 const VENUE_ICON_URLS = {
     gate: "https://coin-images.coingecko.com/markets/images/60/small/Frame_1.png?1747795534",
     bybit: "https://coin-images.coingecko.com/markets/images/698/small/bybit_spot.png?1706864649",
@@ -295,6 +301,8 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
             <span class="chip chip-muted" title="${t("trade_notional")}">${formatDecimal(trade.notionalUsd, 2)} USD</span>
             ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
             <span class="chip chip-muted" title="${t("trade_entry_attempts")}">${trade.entryAttemptCount ?? 1}x</span>
+            ${trade.plannedEntryAt ? `<span class="chip chip-muted" title="${t("trade_planned_entry")}">${formatShortTime(trade.plannedEntryAt)}</span>` : ""}
+            ${trade.plannedExitAt ? `<span class="chip chip-muted" title="${t("trade_planned_exit")}">${formatShortTime(trade.plannedExitAt)}</span>` : ""}
         `;
     }
 

@@ -22,6 +22,14 @@ import {
 import { t } from "../../i18n.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 
+function infoTip(text) {
+    return `<details class="info-tip"><summary class="info-tip-trigger">ⓘ</summary><div class="info-tip-body">${escapeHtml(text)}</div></details>`;
+}
+
+function kvItem(label, value) {
+    return `<div class="kv-item"><span class="kv-label">${label}</span><span class="kv-value">${value}</span></div>`;
+}
+
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED"]);
 const CLOSEABLE_STATES = new Set(["OPEN", "EXIT_PENDING"]);
 
@@ -54,18 +62,14 @@ function buildLiquiditySection(liquidity, trade) {
             ${liquidity.bestBid != null ? `<span>${formatDecimal(liquidity.bestBid, 4)} / ${liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—"}</span>` : ""}
             ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
             ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
+            ${refreshBtn}
         </p>
-        <details class="diagnostic-section">
-            <summary class="diagnostic-toggle">${t("liquidity_details")}</summary>
-            <div class="meta-grid" style="margin-top:8px">
-                ${metaRow(t("liquidity_entry_bid_depth"), liquidity.entryBidDepthNotional != null ? `${formatDecimal(liquidity.entryBidDepthNotional, 2)} USD` : "—")}
-                ${metaRow(t("liquidity_exit_ask_depth"), liquidity.exitAskDepthNotional != null ? `${formatDecimal(liquidity.exitAskDepthNotional, 2)} USD` : "—")}
-                ${metaRow(t("liquidity_round_trip_safe"), liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
-                ${metaRow(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
-                ${metaRow(t("liquidity_expires_at"), formatInstant(liquidity.expiresAt))}
-                <div class="chip-row" style="margin-top:4px">${refreshBtn}</div>
-            </div>
-        </details>
+        <div class="kv-row">
+            ${kvItem(`${t("liquidity_entry_bid_depth")} ${infoTip(t("tip_bid_depth"))}`, liquidity.entryBidDepthNotional != null ? `${formatDecimal(liquidity.entryBidDepthNotional, 2)} USD` : "—")}
+            ${kvItem(`${t("liquidity_exit_ask_depth")} ${infoTip(t("tip_ask_depth"))}`, liquidity.exitAskDepthNotional != null ? `${formatDecimal(liquidity.exitAskDepthNotional, 2)} USD` : "—")}
+            ${kvItem(`${t("liquidity_round_trip_safe")} ${infoTip(t("tip_round_trip"))}`, liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
+            ${kvItem(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
+        </div>
     `);
 }
 
@@ -78,22 +82,19 @@ export function buildLatencyChainSection(trade) {
 
     return section(t("event_latency_chain"), `
         <p class="latency-summary">
-            <span>${p50Label} p50</span>
+            <span>${p50Label} p50 ${infoTip(t("tip_latency_p50"))}</span>
             <span style="color:var(--muted)">+</span>
-            <span>${adjLabel} adj</span>
+            <span>${adjLabel} adj ${infoTip(t("tip_latency_adj"))}</span>
             <span style="color:var(--muted)">=</span>
-            <strong>${formatDurationMs(effectiveLead)} ${t("trade_effective_trigger")}</strong>
+            <strong>${formatDurationMs(effectiveLead)} ${t("trade_effective_trigger")} ${infoTip(t("tip_latency_effective"))}</strong>
         </p>
-        <details class="diagnostic-section">
-            <summary class="diagnostic-toggle">${t("latency_details")}</summary>
-            <div class="meta-grid" style="margin-top:8px">
-                ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
-                ${metaRow(t("trade_armed_at"), formatInstant(trade.armedAt))}
-                ${metaRow(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
-                ${metaRow(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
-                ${trade.armSource ? metaRow(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
-            </div>
-        </details>
+        <div class="kv-row">
+            ${kvItem(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+            ${kvItem(t("trade_armed_at"), formatInstant(trade.armedAt))}
+            ${kvItem(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
+            ${kvItem(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
+            ${trade.armSource ? kvItem(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
+        </div>
     `);
 }
 
@@ -137,18 +138,16 @@ export function buildOutcomeSection(outcome) {
 
 export function buildCancelSection(trade) {
     if (CLOSEABLE_STATES.has(trade.state)) {
-        return section(t("trade_close_position_title"), `
-            <p class="muted">${t("trade_close_position_detail")}</p>
-            <button class="button danger" type="button" data-close-trade="${trade.id}">${t("trade_close_button")}</button>
-        `);
+        return `<div class="action-row">
+            <button class="btn-danger-small" type="button" data-close-trade="${trade.id}">✕ ${t("trade_close_button")}</button>
+        </div>`;
     }
     if (!CANCELLABLE_STATES.has(trade.state)) {
         return "";
     }
-    return section(t("trade_cancel_title"), `
-        <p class="muted">${t("trade_cancel_detail")}</p>
-        <button class="button danger" type="button" data-cancel-trade="${trade.id}">${t("trade_cancel_button")}</button>
-    `);
+    return `<div class="action-row">
+        <button class="btn-danger-small" type="button" data-cancel-trade="${trade.id}">✕ ${t("trade_cancel_button")}</button>
+    </div>`;
 }
 
 export function buildTradeExpansionContent({ trade, attempts = [], liquidity = null, position = null, outcome = null }) {
