@@ -113,11 +113,13 @@ export function summaryCard(title, value, detail, tone = "neutral", rawValue = f
     `;
 }
 
+const FAILED_CONNECTION_STATUSES = new Set(["INVALID_CREDENTIALS", "ERROR"]);
+
 export function venueStatusBadge(venue) {
     if (!venue.credentialsConfigured && venue.credentialsRequired) {
         return formatBadge("venue", t("label_no_keys"), "warning");
     }
-    if (venue.connectionStatus && venue.connectionStatus !== "CONNECTED") {
+    if (FAILED_CONNECTION_STATUSES.has(venue.connectionStatus)) {
         return formatBadge("venue", t("label_offline"), "bad");
     }
     if (!venue.activeInstrumentCount || !venue.lastSyncedAt) {
