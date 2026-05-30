@@ -75,13 +75,13 @@ function buildLatencyChainSection(trade) {
     const adjLabel = formatSignedMs(manualAdj);
 
     return section(t("event_latency_chain"), `
-        <p class="latency-summary">
-            <span>${p50Label} p50 ${infoTip(t("tip_latency_p50"))}</span>
-            <span style="color:var(--muted)">+</span>
-            <span>${adjLabel} adj ${infoTip(t("tip_latency_adj"))}</span>
-            <span style="color:var(--muted)">=</span>
-            <strong>${formatDurationMs(effectiveLead)} ${t("trade_effective_trigger")} ${infoTip(t("tip_latency_effective"))}</strong>
-        </p>
+        <div class="latency-summary">
+            <span class="formula-item">${p50Label} p50 ${infoTip(t("tip_latency_p50"))}</span>
+            <span class="formula-op">+</span>
+            <span class="formula-item">${adjLabel} adj ${infoTip(t("tip_latency_adj"))}</span>
+            <span class="formula-op">=</span>
+            <strong class="formula-item formula-result">${effectiveLead}ms ${t("trade_effective_trigger")} ${infoTip(t("tip_latency_effective"))}</strong>
+        </div>
         <div class="kv-row">
             ${kvItem(t("trade_armed_at"), formatInstant(trade.armedAt))}
             ${kvItem(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
