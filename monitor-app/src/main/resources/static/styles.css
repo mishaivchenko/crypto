@@ -1707,9 +1707,25 @@ details[open] > .card-expand-toggle::before {
     margin: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px 8px;
     align-items: center;
     line-height: 1.6;
+}
+
+.formula-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.formula-op {
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 0 2px;
+}
+
+.formula-result {
+    font-weight: 600;
 }
 
 /* ── Warmup warning ─────────────────────────────────────────────────── */
