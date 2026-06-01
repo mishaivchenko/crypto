@@ -194,6 +194,7 @@ public class EnginePlanClient
         }
         catch( org.springframework.web.client.HttpClientErrorException.NotFound e )
         {
+            log.debug( "No credentials found in monitor for venue={} mode={}", venue, mode );
             return Optional.empty();
         }
         catch( Exception e )

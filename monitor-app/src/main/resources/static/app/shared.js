@@ -442,6 +442,15 @@ export function toLocalInputValue(value) {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}.${pad3(date.getMilliseconds())}`;
 }
 
+export function toLocalInputValueSeconds(value) {
+    if (!value) {
+        return "";
+    }
+    const date = new Date(value);
+    const pad2 = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+}
+
 export function offsetIso(value, seconds) {
     if (!value) {
         return null;
