@@ -214,11 +214,13 @@ jobs:
       - name: Build images locally
         run: |
           cd ${{ env.PROJECT_DIR }}
-          docker build --build-arg APP_MODULE=monitor-app --build-arg APP_CLASSIFIER=monitor --build-arg APP_PORT=8090 \
+          BASE_IMAGE=$(grep '^FROM' Dockerfile | awk '{print $2}')
+          docker pull "$BASE_IMAGE" || true
+          docker build --pull=false --build-arg APP_MODULE=monitor-app --build-arg APP_CLASSIFIER=monitor --build-arg APP_PORT=8090 \
             -t funding-monitor:staging .
-          docker build --build-arg APP_MODULE=engine-app --build-arg APP_CLASSIFIER=engine --build-arg APP_PORT=8091 \
+          docker build --pull=false --build-arg APP_MODULE=engine-app --build-arg APP_CLASSIFIER=engine --build-arg APP_PORT=8091 \
             -t funding-engine:staging .
-          docker build --build-arg APP_MODULE=telegram-bot-app --build-arg APP_CLASSIFIER=telegram-bot --build-arg APP_PORT=8092 \
+          docker build --pull=false --build-arg APP_MODULE=telegram-bot-app --build-arg APP_CLASSIFIER=telegram-bot --build-arg APP_PORT=8092 \
             -t funding-telegram-bot:staging .
 
       - name: Restart services
