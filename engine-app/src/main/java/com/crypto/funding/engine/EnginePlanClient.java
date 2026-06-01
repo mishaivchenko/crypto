@@ -2,6 +2,7 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
+import com.crypto.funding.contract.engine.EngineVenueCredentials;
 import com.crypto.funding.contract.engine.WarmupCalibrationRequest;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
@@ -172,6 +173,26 @@ public class EnginePlanClient
                   .body( request )
                   .retrieve()
                   .toBodilessEntity();
+    }
+
+    public Optional<EngineVenueCredentials> fetchCredentials( String venue, String mode )
+    {
+        try
+        {
+            EngineVenueCredentials credentials = restClient.get()
+                                                           .uri( uriBuilder -> uriBuilder
+                                                               .path( "/internal/v1/engine/credentials/{venue}" )
+                                                               .queryParam( "mode", mode )
+                                                               .build( venue ) )
+                                                           .headers( this::internalHeaders )
+                                                           .retrieve()
+                                                           .body( EngineVenueCredentials.class );
+            return Optional.ofNullable( credentials );
+        }
+        catch( Exception ignored )
+        {
+            return Optional.empty();
+        }
     }
 
     public Optional<MarkPriceResponse> fetchMarkPrice( String venue, String symbol )

@@ -1,5 +1,6 @@
 package com.crypto.funding.engine;
 
+import com.crypto.funding.contract.engine.EngineVenueCredentials;
 import com.crypto.funding.contract.engine.MarkPriceResponse;
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineOrderAttemptRecordRequest;
@@ -421,6 +422,40 @@ class EnginePlanClientTest
             Map.of( "bybit", 20L ),
             Map.of( "bybit", 20L )
         );
+    }
+
+    // REQ: ENG-CLI-008
+    @Test
+    void fetchCredentialsReturnsCredentialsOnSuccess()
+    {
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/credentials/okx?mode=testnet" ) )
+              .andExpect( method( HttpMethod.GET ) )
+              .andExpect( header( "X-Internal-Token", "internal-token" ) )
+              .andRespond( withSuccess( """
+                  {"apiKey":"my-key","secretKey":"my-secret","passphrase":"my-pass"}
+                  """, MediaType.APPLICATION_JSON ) );
+
+        Optional<EngineVenueCredentials> result = client.fetchCredentials( "okx", "testnet" );
+
+        assertThat( result ).isPresent();
+        assertThat( result.get().apiKey() ).isEqualTo( "my-key" );
+        assertThat( result.get().secretKey() ).isEqualTo( "my-secret" );
+        assertThat( result.get().passphrase() ).isEqualTo( "my-pass" );
+        server.verify();
+    }
+
+    // REQ: ENG-CLI-008
+    @Test
+    void fetchCredentialsReturnsEmptyOnServerError()
+    {
+        server.expect( requestTo( "http://monitor.test/internal/v1/engine/credentials/okx?mode=testnet" ) )
+              .andExpect( method( HttpMethod.GET ) )
+              .andRespond( withServerError() );
+
+        Optional<EngineVenueCredentials> result = client.fetchCredentials( "okx", "testnet" );
+
+        assertThat( result ).isEmpty();
+        server.verify();
     }
 
     private static LongSupplier advancingNanos( long startingNanos, long stepNanos )

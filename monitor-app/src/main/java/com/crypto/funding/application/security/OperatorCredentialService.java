@@ -5,6 +5,7 @@ import com.crypto.funding.application.ResourceNotFoundException;
 import com.crypto.funding.application.port.CredentialCipherPort;
 import com.crypto.funding.application.port.VenueCredentialCheckPort;
 import com.crypto.funding.config.CredentialStorageProperties;
+import com.crypto.funding.contract.engine.EngineVenueCredentials;
 import com.crypto.funding.domain.venue.VenueAccessMode;
 import com.crypto.funding.domain.venue.VenueConnectionStatus;
 import com.crypto.funding.infrastructure.persistence.model.OperatorExchangeCredentialEntity;
@@ -19,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -124,6 +126,19 @@ public class OperatorCredentialService
         entity.setLastConnectionHttpStatus( null );
         entity.setLastCheckedAt( null );
         return toSummary( repository.save( entity ) );
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<EngineVenueCredentials> resolveDecryptedForEngine( String rawVenue, VenueAccessMode mode )
+    {
+        String venue = normalizeVenue( rawVenue );
+        return repository.findFirstByVenueAndMode( venue, mode )
+                         .filter( e -> e.getApiKeyCiphertext() != null && e.getSecretKeyCiphertext() != null )
+                         .map( e -> new EngineVenueCredentials(
+                             cipher.decrypt( e.getApiKeyCiphertext() ),
+                             cipher.decrypt( e.getSecretKeyCiphertext() ),
+                             e.getPassphraseCiphertext() != null ? cipher.decrypt( e.getPassphraseCiphertext() ) : null
+                         ) );
     }
 
     @Transactional
