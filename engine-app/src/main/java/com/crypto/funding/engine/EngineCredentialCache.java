@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -36,10 +35,7 @@ public class EngineCredentialCache
         String mode = properties.getTradingVenueAccessMode();
         List<String> venues = properties.liveEnabledVenues();
         log.info( "Loading engine credentials for {} venue(s) in background", venues.size() );
-        CompletableFuture<?>[] futures = venues.stream()
-            .map( venue -> CompletableFuture.runAsync( () -> load( venue, mode ) ) )
-            .toArray( CompletableFuture[]::new );
-        CompletableFuture.allOf( futures ).join();
+        venues.forEach( venue -> load( venue, mode ) );
         log.info( "Engine credentials loaded: {}/{} venue(s) ready", cache.size(), venues.size() );
     }
 
