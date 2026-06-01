@@ -14,6 +14,8 @@ import com.crypto.funding.contract.engine.EngineTradeOutcomeRecordRequest;
 import com.crypto.funding.contract.engine.EngineTradeOutcomeResponse;
 import com.crypto.funding.contract.engine.EngineTradeStateUpdateRequest;
 import com.crypto.funding.contract.engine.EngineTradeStateUpdateResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +30,7 @@ import java.util.function.LongSupplier;
 @Component
 public class EnginePlanClient
 {
+    private static final Logger log = LoggerFactory.getLogger( EnginePlanClient.class );
     private static final ParameterizedTypeReference<List<EngineExecutionPlan>> PLAN_LIST =
         new ParameterizedTypeReference<>()
         {
@@ -189,8 +192,13 @@ public class EnginePlanClient
                                                            .body( EngineVenueCredentials.class );
             return Optional.ofNullable( credentials );
         }
-        catch( Exception ignored )
+        catch( org.springframework.web.client.HttpClientErrorException.NotFound e )
         {
+            return Optional.empty();
+        }
+        catch( Exception e )
+        {
+            log.warn( "Failed to fetch credentials for venue={} mode={}: {}", venue, mode, e.getMessage() );
             return Optional.empty();
         }
     }
