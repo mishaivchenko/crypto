@@ -2,12 +2,14 @@ package com.crypto.funding.engine.exchange;
 
 import com.crypto.funding.application.port.ExecutionPort;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
+import com.crypto.funding.contract.engine.EngineVenueCredentials;
 import com.crypto.funding.crypto.HmacSigner;
 import com.crypto.funding.domain.execution.ExecutionType;
 import com.crypto.funding.domain.execution.OrderAttempt;
 import com.crypto.funding.domain.execution.OrderAttemptStatus;
 import com.crypto.funding.domain.execution.OrderIntent;
 import com.crypto.funding.domain.trade.TradeSide;
+import com.crypto.funding.engine.EngineCredentialCache;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -40,26 +42,33 @@ public class LiveExchangeExecutionPort implements ExecutionPort
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final com.crypto.funding.engine.EngineProperties engineProperties;
+    private final EngineCredentialCache credentialCache;
 
     public LiveExchangeExecutionPort( Environment environment )
     {
-        this( environment, null, HttpClient.newHttpClient(), new ObjectMapper() );
+        this( environment, null, null, HttpClient.newHttpClient(), new ObjectMapper() );
     }
 
     public LiveExchangeExecutionPort( Environment environment, com.crypto.funding.engine.EngineProperties engineProperties )
     {
-        this( environment, engineProperties, HttpClient.newHttpClient(), new ObjectMapper() );
+        this( environment, engineProperties, null, HttpClient.newHttpClient(), new ObjectMapper() );
+    }
+
+    public LiveExchangeExecutionPort( Environment environment, com.crypto.funding.engine.EngineProperties engineProperties, EngineCredentialCache credentialCache )
+    {
+        this( environment, engineProperties, credentialCache, HttpClient.newHttpClient(), new ObjectMapper() );
     }
 
     protected LiveExchangeExecutionPort( Environment environment, HttpClient httpClient, ObjectMapper objectMapper )
     {
-        this( environment, null, httpClient, objectMapper );
+        this( environment, null, null, httpClient, objectMapper );
     }
 
-    protected LiveExchangeExecutionPort( Environment environment, com.crypto.funding.engine.EngineProperties engineProperties, HttpClient httpClient, ObjectMapper objectMapper )
+    protected LiveExchangeExecutionPort( Environment environment, com.crypto.funding.engine.EngineProperties engineProperties, EngineCredentialCache credentialCache, HttpClient httpClient, ObjectMapper objectMapper )
     {
         this.environment = environment;
         this.engineProperties = engineProperties;
+        this.credentialCache = credentialCache;
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
     }
@@ -885,14 +894,14 @@ public class LiveExchangeExecutionPort implements ExecutionPort
         if( apiKey == null || apiKey.isBlank() || secretKey == null || secretKey.isBlank() )
         {
             return "Missing engine credentials for " + venue
-                   + ". Configure engine.credentials." + venue + ".api-key and engine.credentials." + venue + ".secret-key.";
+                   + ". Add API key and secret for " + venue + " in the monitor venue settings.";
         }
         if( requiresPassphrase( venue ) )
         {
             String passphrase = credential( venue, "passphrase" );
             if( passphrase == null || passphrase.isBlank() )
             {
-                return "Missing engine passphrase for " + venue + ". Configure engine.credentials." + venue + ".passphrase.";
+                return "Missing engine passphrase for " + venue + ". Add passphrase for " + venue + " in the monitor venue settings.";
             }
         }
         return null;
@@ -934,6 +943,17 @@ public class LiveExchangeExecutionPort implements ExecutionPort
 
     private String credential( String venue, String name )
     {
+        if( credentialCache != null )
+        {
+            return credentialCache.get( venue ).map( creds -> switch( name )
+            {
+                case "api-key" -> creds.apiKey();
+                case "secret-key" -> creds.secretKey();
+                case "passphrase" -> creds.passphrase();
+                default -> null;
+            } ).orElse( null );
+        }
+        // fallback: ENV vars used only in tests (credentialCache is always non-null in production)
         return environment.getProperty( "engine.credentials." + venue + "." + name );
     }
 

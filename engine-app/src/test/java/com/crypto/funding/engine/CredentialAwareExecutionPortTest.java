@@ -59,8 +59,7 @@ class CredentialAwareExecutionPortTest
         assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FAILED );
         assertThat( attempt.venue() ).isEqualTo( "bybit" );
         assertThat( attempt.failureReason() ).contains( "Missing engine credentials for bybit." );
-        assertThat( attempt.failureReason() ).contains( "engine.credentials.bybit.api-key" );
-        assertThat( attempt.failureReason() ).contains( "engine.credentials.bybit.secret-key" );
+        assertThat( attempt.failureReason() ).contains( "Add API key and secret for bybit in the monitor venue settings." );
     }
 
     // REQ: ENG-CRED-002
@@ -77,7 +76,7 @@ class CredentialAwareExecutionPortTest
 
         assertThat( attempt.status() ).isEqualTo( OrderAttemptStatus.FAILED );
         assertThat( attempt.failureReason() ).contains( "Missing engine passphrase for " + venue + "." );
-        assertThat( attempt.failureReason() ).contains( "engine.credentials." + venue + ".passphrase" );
+        assertThat( attempt.failureReason() ).contains( "Add passphrase for " + venue + " in the monitor venue settings." );
     }
 
     // REQ: ENG-CRED-002

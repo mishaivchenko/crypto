@@ -18,4 +18,6 @@ public interface OperatorExchangeCredentialJpaRepository extends JpaRepository<O
     );
 
     void deleteByOperatorIdAndVenueAndMode( Long operatorId, String venue, VenueAccessMode mode );
+
+    Optional<OperatorExchangeCredentialEntity> findFirstByVenueAndMode( String venue, VenueAccessMode mode );
 }

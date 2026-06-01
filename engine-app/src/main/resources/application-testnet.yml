@@ -15,9 +15,5 @@ engine:
     latency-max-age-minutes: 1440
     monitor-base-url: ${MONITOR_INTERNAL_BASE_URL:http://localhost:8090}
     internal-token: ${INTERNAL_ENGINE_TOKEN:funding-local-internal-token}
-    credentials:
-        gate:
-            api-key: ${ENGINE_GATE_TESTNET_API_KEY:}
-            secret-key: ${ENGINE_GATE_TESTNET_SECRET_KEY:}
     metrics-publish:
         enabled: false

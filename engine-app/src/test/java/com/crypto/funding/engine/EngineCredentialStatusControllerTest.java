@@ -7,14 +7,16 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EngineCredentialStatusControllerTest
 {
     private final CredentialAwareExecutionPort executionPort = mock( CredentialAwareExecutionPort.class );
     private final EngineProperties properties = mock( EngineProperties.class );
+    private final EngineCredentialCache credentialCache = mock( EngineCredentialCache.class );
     private final EngineCredentialStatusController controller =
-        new EngineCredentialStatusController( executionPort, properties );
+        new EngineCredentialStatusController( executionPort, properties, credentialCache );
 
     @Test
     // REQ: ENG-CRED-CTL-001
@@ -40,5 +42,18 @@ class EngineCredentialStatusControllerTest
         Map<String, Boolean> result = controller.status();
 
         assertThat( result ).isEmpty();
+    }
+
+    @Test
+    // REQ: ENG-CRED-CTL-003
+    void reloadDelegatesAndReturnsUpdatedStatus()
+    {
+        when( properties.liveEnabledVenues() ).thenReturn( List.of( "okx" ) );
+        when( executionPort.hasCredentials( "okx" ) ).thenReturn( true );
+
+        Map<String, Boolean> result = controller.reload();
+
+        verify( credentialCache ).loadOnStartup();
+        assertThat( result ).containsEntry( "okx", true );
     }
 }

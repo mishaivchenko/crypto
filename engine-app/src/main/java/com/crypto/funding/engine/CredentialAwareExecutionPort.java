@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 public class CredentialAwareExecutionPort extends LiveExchangeExecutionPort
 {
     @Autowired
-    public CredentialAwareExecutionPort( Environment environment, EngineProperties engineProperties )
+    public CredentialAwareExecutionPort( Environment environment, EngineProperties engineProperties, EngineCredentialCache credentialCache )
     {
-        super( environment, engineProperties );
+        super( environment, engineProperties, credentialCache );
     }
 
     CredentialAwareExecutionPort( Environment environment )
