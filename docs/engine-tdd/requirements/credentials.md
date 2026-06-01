@@ -10,3 +10,4 @@ Primary classes: `CredentialAwareExecutionPort`, `EngineCredentialCache`.
 - `ENG-CACHE-002`: missing credentials (monitor returns empty) are logged as a warning without throwing.
 - `ENG-CACHE-003`: `get()` returns empty for unknown venues and present for loaded venues.
 - `ENG-CACHE-004`: `loadOnStartup` iterates all live-enabled venues using the configured access mode.
+- `ENG-CRED-CTL-003`: `EngineCredentialStatusController.reload` delegates to `EngineCredentialCache.loadOnStartup` and returns the updated status map.

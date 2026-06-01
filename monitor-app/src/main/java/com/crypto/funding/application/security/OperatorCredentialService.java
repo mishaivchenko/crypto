@@ -128,6 +128,8 @@ public class OperatorCredentialService
         return toSummary( repository.save( entity ) );
     }
 
+    // Single-operator system: findFirstByVenueAndMode is safe because only one operator exists.
+    // If multi-operator support is ever added, this method must be updated to filter by operatorId.
     @Transactional(readOnly = true)
     public Optional<EngineVenueCredentials> resolveDecryptedForEngine( String rawVenue, VenueAccessMode mode )
     {

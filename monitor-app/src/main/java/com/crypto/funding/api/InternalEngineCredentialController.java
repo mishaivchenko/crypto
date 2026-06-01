@@ -27,7 +27,15 @@ public class InternalEngineCredentialController
         @RequestParam(defaultValue = "testnet") String mode
     )
     {
-        VenueAccessMode accessMode = VenueAccessMode.valueOf( mode.toUpperCase() );
+        VenueAccessMode accessMode;
+        try
+        {
+            accessMode = VenueAccessMode.valueOf( mode.toUpperCase() );
+        }
+        catch( IllegalArgumentException e )
+        {
+            return ResponseEntity.badRequest().build();
+        }
         return credentialService.resolveDecryptedForEngine( venue, accessMode )
                                 .map( ResponseEntity::ok )
                                 .orElseGet( () -> ResponseEntity.notFound().build() );

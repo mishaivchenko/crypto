@@ -1,7 +1,7 @@
 # B-4 — ArmedTrade timing defaults
 
-**Тип:** Bug  
-**Приоритет:** high  
+**Тип:** Bug
+**Приоритет:** high
 **Статус:** open
 
 ## Подзадачи

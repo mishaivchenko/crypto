@@ -1,7 +1,7 @@
 # B-5 — Engine получает credentials из monitor (единое хранилище ключей)
 
-**Тип:** Bug / Architecture  
-**Приоритет:** high  
+**Тип:** Bug / Architecture
+**Приоритет:** high
 **Статус:** open
 
 ## Проблема

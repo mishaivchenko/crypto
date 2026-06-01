@@ -953,6 +953,7 @@ public class LiveExchangeExecutionPort implements ExecutionPort
                 default -> null;
             } ).orElse( null );
         }
+        // fallback: ENV vars used only in tests (credentialCache is always non-null in production)
         return environment.getProperty( "engine.credentials." + venue + "." + name );
     }
 
