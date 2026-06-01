@@ -167,7 +167,7 @@ function buildOutcomeSection(outcome) {
 }
 
 export function buildArmForm(event, suggestedNotional = 25) {
-    const defaultEntry = toLocalInputValue(offsetIso(event.fundingTime, -45));
+    const defaultEntry = toLocalInputValue(event.fundingTime);
     const defaultExit = toLocalInputValue(offsetIso(event.fundingTime, 90));
     return `
         <div class="action-card primary">
@@ -190,7 +190,7 @@ export function buildArmForm(event, suggestedNotional = 25) {
                     <div class="drawer-form-row labeled-row">
                         <label class="field">
                             <span>${t("event_planned_entry")}</span>
-                            <input name="plannedEntryAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultEntry)}">
+                            <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(defaultEntry)}">
                         </label>
                         <label class="field">
                             <span>${t("event_entry_attempts")}</span>
@@ -200,7 +200,7 @@ export function buildArmForm(event, suggestedNotional = 25) {
                     <div class="drawer-form-row labeled-row">
                         <label class="field">
                             <span>${t("event_spacing_ms")}</span>
-                            <input name="entrySpacingMs" type="number" min="0" step="1" value="150">
+                            <input name="entrySpacingMs" type="number" min="0" step="1" value="30">
                         </label>
                         <label class="field">
                             <span>${t("event_manual_latency")}</span>
@@ -213,7 +213,7 @@ export function buildArmForm(event, suggestedNotional = 25) {
                     <legend>${t("event_exit_window")}</legend>
                     <label class="field">
                         <span>${t("event_planned_exit")}</span>
-                        <input name="plannedExitAt" type="datetime-local" step="0.001" value="${escapeHtml(defaultExit)}">
+                        <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(defaultExit)}">
                     </label>
                 </fieldset>
                 <fieldset class="form-group">
