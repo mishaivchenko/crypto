@@ -99,8 +99,7 @@ public class DevTestRunService
             if( !credentialStatus.getOrDefault( venue, false ) )
             {
                 safetyIssues.add( "Engine credentials missing for " + venue.toUpperCase( Locale.ROOT )
-                                  + ". Set ENGINE_CREDENTIALS_" + venue.toUpperCase( Locale.ROOT )
-                                  + "_API_KEY and _SECRET_KEY env vars on the engine container." );
+                                  + ". Add API key and secret for " + venue + " in the monitor venue settings, then reload engine credentials." );
             }
         }
         return new DevTestRunOptionsResponse(

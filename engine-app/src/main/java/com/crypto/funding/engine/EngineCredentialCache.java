@@ -5,10 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -26,14 +29,18 @@ public class EngineCredentialCache
         this.properties = properties;
     }
 
+    @Async
     @EventListener(ApplicationReadyEvent.class)
     public void loadOnStartup()
     {
         String mode = properties.getTradingVenueAccessMode();
-        for( String venue : properties.liveEnabledVenues() )
-        {
-            load( venue, mode );
-        }
+        List<String> venues = properties.liveEnabledVenues();
+        log.info( "Loading engine credentials for {} venue(s) in background", venues.size() );
+        CompletableFuture<?>[] futures = venues.stream()
+            .map( venue -> CompletableFuture.runAsync( () -> load( venue, mode ) ) )
+            .toArray( CompletableFuture[]::new );
+        CompletableFuture.allOf( futures ).join();
+        log.info( "Engine credentials loaded: {}/{} venue(s) ready", cache.size(), venues.size() );
     }
 
     public void load( String venue, String mode )
