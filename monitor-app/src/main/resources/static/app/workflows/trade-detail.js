@@ -17,6 +17,7 @@ import {
     section,
     sideLabel,
     toLocalInputValue,
+    toLocalInputValueSeconds,
     venueIcon
 } from "../shared.js";
 import { t } from "../../i18n.js";
@@ -188,7 +189,7 @@ export function buildTradeExpansionContent({ trade, attempts = [], liquidity = n
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
                                 <span>${t("trade_planned_entry")}</span>
-                                <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValue(trade.plannedEntryAt) ?? "")}">
+                                <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValueSeconds(trade.plannedEntryAt) ?? "")}">
                             </label>
                             <label class="field">
                                 <span>${t("trade_spacing_ms")}</span>
@@ -204,7 +205,7 @@ export function buildTradeExpansionContent({ trade, attempts = [], liquidity = n
                         <legend>${t("event_exit_window")}</legend>
                         <label class="field">
                             <span>${t("trade_planned_exit")}</span>
-                            <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValue(trade.plannedExitAt) ?? "")}">
+                            <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValueSeconds(trade.plannedExitAt) ?? "")}">
                         </label>
                     </fieldset>
                     <fieldset class="form-group">
@@ -294,7 +295,7 @@ export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, p
                         <div class="drawer-form-row labeled-row">
                             <label class="field">
                                 <span>${t("trade_planned_entry")}</span>
-                                <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValue(trade.plannedEntryAt) ?? "")}">
+                                <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValueSeconds(trade.plannedEntryAt) ?? "")}">
                             </label>
                             <label class="field">
                                 <span>${t("trade_spacing_ms")}</span>
@@ -310,7 +311,7 @@ export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, p
                         <legend>${t("event_exit_window")}</legend>
                         <label class="field">
                             <span>${t("trade_planned_exit")}</span>
-                            <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValue(trade.plannedExitAt) ?? "")}">
+                            <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(toLocalInputValueSeconds(trade.plannedExitAt) ?? "")}">
                         </label>
                     </fieldset>
                     <fieldset class="form-group">

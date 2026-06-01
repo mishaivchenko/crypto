@@ -16,6 +16,7 @@ import {
     section,
     sourceLabel,
     toLocalInputValue,
+    toLocalInputValueSeconds,
     venueIcon
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
@@ -167,8 +168,8 @@ function buildOutcomeSection(outcome) {
 }
 
 export function buildArmForm(event, suggestedNotional = 25) {
-    const defaultEntry = toLocalInputValue(event.fundingTime);
-    const defaultExit = toLocalInputValue(offsetIso(event.fundingTime, 90));
+    const defaultEntry = toLocalInputValueSeconds(event.fundingTime);
+    const defaultExit = toLocalInputValueSeconds(offsetIso(event.fundingTime, 90));
     return `
         <div class="action-card primary">
             <p class="helper-text">${t("event_arm_helper")}</p>
