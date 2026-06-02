@@ -72,6 +72,39 @@ class EngineCredentialCacheTest
         assertThat( cache.get( "okx" ) ).isPresent();
     }
 
+    // REQ: ENG-CACHE-005
+    @Test
+    void getFetchesFromMonitorOnDemandWhenCacheMissed()
+    {
+        EngineProperties props = propertiesFor( "gate", "testnet" );
+        EngineVenueCredentials creds = new EngineVenueCredentials( "k", "s", null );
+        when( planClient.fetchCredentials( "gate", "testnet" ) ).thenReturn( Optional.of( creds ) );
+        EngineCredentialCache cache = new EngineCredentialCache( planClient, props );
+
+        // no loadOnStartup — cache is empty
+        Optional<EngineVenueCredentials> result = cache.get( "gate" );
+
+        assertThat( result ).contains( creds );
+        verify( planClient ).fetchCredentials( "gate", "testnet" );
+    }
+
+    // REQ: ENG-CACHE-006
+    @Test
+    void getReturnsCachedValueWithoutRefetchingMonitor()
+    {
+        EngineProperties props = propertiesFor( "gate", "testnet" );
+        EngineVenueCredentials creds = new EngineVenueCredentials( "k", "s", null );
+        when( planClient.fetchCredentials( "gate", "testnet" ) ).thenReturn( Optional.of( creds ) );
+        EngineCredentialCache cache = new EngineCredentialCache( planClient, props );
+        cache.loadOnStartup();
+        Mockito.clearInvocations( planClient );
+
+        cache.get( "gate" );
+        cache.get( "gate" );
+
+        Mockito.verifyNoInteractions( planClient );
+    }
+
     private static EngineProperties propertiesFor( String venues, String mode )
     {
         EngineProperties props = new EngineProperties();

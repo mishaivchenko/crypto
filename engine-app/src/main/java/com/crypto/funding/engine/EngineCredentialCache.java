@@ -52,6 +52,13 @@ public class EngineCredentialCache
 
     public Optional<EngineVenueCredentials> get( String venue )
     {
+        EngineVenueCredentials cached = cache.get( venue );
+        if( cached != null )
+        {
+            return Optional.of( cached );
+        }
+        log.info( "Credentials for venue={} not in cache, fetching from monitor on demand", venue );
+        load( venue, properties.getTradingVenueAccessMode() );
         return Optional.ofNullable( cache.get( venue ) );
     }
 }
