@@ -7,6 +7,7 @@ import org.mockito.Mockito;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,34 +75,36 @@ class EngineCredentialCacheTest
 
     // REQ: ENG-CACHE-005
     @Test
-    void getFetchesFromMonitorOnDemandWhenCacheMissed()
+    void retriesOnlyMissingVenuesUntilAllLoaded()
     {
-        EngineProperties props = propertiesFor( "gate", "testnet" );
-        EngineVenueCredentials creds = new EngineVenueCredentials( "k", "s", null );
-        when( planClient.fetchCredentials( "gate", "testnet" ) ).thenReturn( Optional.of( creds ) );
-        EngineCredentialCache cache = new EngineCredentialCache( planClient, props );
+        EngineProperties props = propertiesFor( "gate,okx", "testnet" );
+        // gate fails first attempt, succeeds second
+        when( planClient.fetchCredentials( "gate", "testnet" ) )
+            .thenReturn( Optional.empty() )
+            .thenReturn( Optional.of( new EngineVenueCredentials( "k1", "s1", null ) ) );
+        when( planClient.fetchCredentials( "okx", "testnet" ) )
+            .thenReturn( Optional.of( new EngineVenueCredentials( "k2", "s2", "pass" ) ) );
+        EngineCredentialCache cache = new EngineCredentialCacheTestable( planClient, props );
 
-        // no loadOnStartup — cache is empty
-        Optional<EngineVenueCredentials> result = cache.get( "gate" );
+        cache.loadOnStartup();
 
-        assertThat( result ).contains( creds );
-        verify( planClient ).fetchCredentials( "gate", "testnet" );
+        assertThat( cache.get( "gate" ) ).isPresent();
+        assertThat( cache.get( "okx" ) ).isPresent();
+        // gate retried once, okx fetched once (already cached on first attempt)
+        verify( planClient, times( 2 ) ).fetchCredentials( "gate", "testnet" );
+        verify( planClient, times( 1 ) ).fetchCredentials( "okx", "testnet" );
     }
 
     // REQ: ENG-CACHE-006
     @Test
-    void getReturnsCachedValueWithoutRefetchingMonitor()
+    void getReturnsEmptyWithoutBlockingWhenVenueNotInCache()
     {
         EngineProperties props = propertiesFor( "gate", "testnet" );
-        EngineVenueCredentials creds = new EngineVenueCredentials( "k", "s", null );
-        when( planClient.fetchCredentials( "gate", "testnet" ) ).thenReturn( Optional.of( creds ) );
         EngineCredentialCache cache = new EngineCredentialCache( planClient, props );
-        cache.loadOnStartup();
-        Mockito.clearInvocations( planClient );
 
-        cache.get( "gate" );
-        cache.get( "gate" );
+        Optional<EngineVenueCredentials> result = cache.get( "gate" );
 
+        assertThat( result ).isEmpty();
         Mockito.verifyNoInteractions( planClient );
     }
 
@@ -111,5 +114,20 @@ class EngineCredentialCacheTest
         props.setLiveEnabledVenues( venues );
         props.setTradingVenueAccessMode( mode );
         return props;
+    }
+
+    /** Subclass that skips Thread.sleep so retry tests run instantly. */
+    private static class EngineCredentialCacheTestable extends EngineCredentialCache
+    {
+        EngineCredentialCacheTestable( EnginePlanClient planClient, EngineProperties properties )
+        {
+            super( planClient, properties );
+        }
+
+        @Override
+        protected long retryIntervalMs()
+        {
+            return 0L;
+        }
     }
 }
