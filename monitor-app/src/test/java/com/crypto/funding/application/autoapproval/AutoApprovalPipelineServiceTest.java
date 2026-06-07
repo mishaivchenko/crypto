@@ -1,12 +1,9 @@
 package com.crypto.funding.application.autoapproval;
 
 import com.crypto.funding.application.ai.AiSignalAdvisorService;
-import com.crypto.funding.application.candidate.ApproveSignalCandidateCommand;
 import com.crypto.funding.application.candidate.RejectSignalCandidateCommand;
 import com.crypto.funding.application.candidate.SignalCandidateQueryService;
 import com.crypto.funding.application.candidate.SignalCandidateReviewService;
-import com.crypto.funding.application.event.ArmFundingEventCommand;
-import com.crypto.funding.application.event.FundingEventArmService;
 import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.config.AutoApprovalProperties;
 import com.crypto.funding.config.MonitorRiskProperties;
@@ -41,7 +38,7 @@ class AutoApprovalPipelineServiceTest
     private AutoApprovalRuleService ruleService;
     private SignalCandidateQueryService candidateQueryService;
     private SignalCandidateReviewService candidateReviewService;
-    private FundingEventArmService fundingEventArmService;
+    private AutoApprovalExecutor executor;
     private AiSignalAdvisorService aiSignalAdvisorService;
     private LiquidityAssessmentService liquidityAssessmentService;
     private MonitorRiskProperties riskProperties;
@@ -57,7 +54,7 @@ class AutoApprovalPipelineServiceTest
         ruleService = mock( AutoApprovalRuleService.class );
         candidateQueryService = mock( SignalCandidateQueryService.class );
         candidateReviewService = mock( SignalCandidateReviewService.class );
-        fundingEventArmService = mock( FundingEventArmService.class );
+        executor = mock( AutoApprovalExecutor.class );
         aiSignalAdvisorService = mock( AiSignalAdvisorService.class );
         liquidityAssessmentService = mock( LiquidityAssessmentService.class );
         riskProperties = new MonitorRiskProperties();
@@ -74,7 +71,7 @@ class AutoApprovalPipelineServiceTest
 
         service = new AutoApprovalPipelineService(
             properties, ruleService, candidateQueryService, candidateReviewService,
-            fundingEventArmService, aiSignalAdvisorService, liquidityAssessmentService,
+            executor, aiSignalAdvisorService, liquidityAssessmentService,
             riskProperties, venueProfileService
         );
 
@@ -96,7 +93,7 @@ class AutoApprovalPipelineServiceTest
         when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate( SignalCandidateStatus.NEW ) );
         when( ruleService.listActive() ).thenReturn( List.of() );
         service.tryAutoProcess( 1L );
-        verify( candidateReviewService, never() ).approve( any() );
+        verify( executor, never() ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
         verify( candidateReviewService, never() ).reject( any() );
     }
 
@@ -106,7 +103,7 @@ class AutoApprovalPipelineServiceTest
         when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate( SignalCandidateStatus.NORMALIZED ) );
         when( ruleService.listActive() ).thenReturn( List.of() );
         service.tryAutoProcess( 1L );
-        verify( candidateReviewService, never() ).approve( any() );
+        verify( executor, never() ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
         verify( candidateReviewService, never() ).reject( any() );
     }
 
@@ -117,23 +114,19 @@ class AutoApprovalPipelineServiceTest
         when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate( SignalCandidateStatus.NORMALIZED ) );
         when( ruleService.listActive() ).thenReturn( List.of( autoExecuteRule( new BigDecimal( "100" ) ) ) );
         service.tryAutoProcess( 1L );
-        verify( candidateReviewService, never() ).approve( any() );
+        verify( executor, never() ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
     }
 
     @Test
-    void autoExecuteApprovesAndArmsWhenRuleMatches()
+    void autoExecuteCallsExecutorWhenRuleMatches()
     {
         when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate( SignalCandidateStatus.NORMALIZED ) );
         when( ruleService.listActive() ).thenReturn( List.of( autoExecuteRule( new BigDecimal( "100" ) ) ) );
-
-        SignalCandidate approved = candidateWithEvent( 42L );
-        when( candidateReviewService.approve( any() ) ).thenReturn( approved );
-        when( fundingEventArmService.arm( eq( 42L ), any() ) ).thenReturn( armedTrade() );
+        when( executor.approveAndArm( any(), any(), any(), any(), any(), any(), any() ) ).thenReturn( armedTrade() );
 
         service.tryAutoProcess( 1L );
 
-        verify( candidateReviewService ).approve( any( ApproveSignalCandidateCommand.class ) );
-        verify( fundingEventArmService ).arm( eq( 42L ), any( ArmFundingEventCommand.class ) );
+        verify( executor ).approveAndArm( eq( 1L ), any(), any(), any(), any(), any(), any() );
     }
 
     @Test
@@ -148,7 +141,7 @@ class AutoApprovalPipelineServiceTest
         service.tryAutoProcess( 1L );
 
         verify( candidateReviewService ).reject( any( RejectSignalCandidateCommand.class ) );
-        verify( fundingEventArmService, never() ).arm( any(), any() );
+        verify( executor, never() ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
     }
 
     @Test
@@ -160,39 +153,36 @@ class AutoApprovalPipelineServiceTest
 
         service.tryAutoProcess( 1L );
 
-        verify( candidateReviewService, never() ).approve( any() );
-        verify( fundingEventArmService, never() ).arm( any(), any() );
+        verify( executor, never() ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
     }
 
     @Test
-    void armFailureDoesNotPropagateExceptionToCallerAfterApprove()
+    void executorFailureIsSwallowedByTryAutoProcess()
     {
         when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate( SignalCandidateStatus.NORMALIZED ) );
         when( ruleService.listActive() ).thenReturn( List.of( autoExecuteRule( new BigDecimal( "100" ) ) ) );
+        when( executor.approveAndArm( any(), any(), any(), any(), any(), any(), any() ) )
+            .thenThrow( new RuntimeException( "arm failed — rolls back approval too" ) );
 
-        when( candidateReviewService.approve( any() ) ).thenReturn( candidateWithEvent( 42L ) );
-        when( fundingEventArmService.arm( any(), any() ) ).thenThrow( new RuntimeException( "network error" ) );
-
-        // must not throw — arm failure is logged and swallowed inside autoExecute
+        // must not propagate
         service.tryAutoProcess( 1L );
 
-        verify( candidateReviewService ).approve( any() );
-        verify( fundingEventArmService ).arm( any(), any() );
+        verify( executor ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
     }
 
     @Test
-    void approveUsesActorRefContainingRuleId()
+    void executorReceivesActorRefContainingRuleId()
     {
         AutoApprovalRule rule = autoExecuteRule( new BigDecimal( "100" ) );
         when( candidateQueryService.getCandidate( 1L ) ).thenReturn( candidate( SignalCandidateStatus.NORMALIZED ) );
         when( ruleService.listActive() ).thenReturn( List.of( rule ) );
-        when( candidateReviewService.approve( any() ) ).thenReturn( candidateWithEvent( 42L ) );
-        when( fundingEventArmService.arm( any(), any() ) ).thenReturn( armedTrade() );
+        when( executor.approveAndArm( any(), any(), any(), any(), any(), any(), any() ) ).thenReturn( armedTrade() );
 
         service.tryAutoProcess( 1L );
 
-        verify( candidateReviewService ).approve(
-            argWithReviewNotes( "auto-approval:rule-" + rule.id() )
+        verify( executor ).approveAndArm(
+            eq( 1L ), any(), any(), any(), any(), any(),
+            org.mockito.ArgumentMatchers.argThat( ref -> ref != null && ref.contains( "rule-" + rule.id() ) )
         );
     }
 
@@ -207,18 +197,6 @@ class AutoApprovalPipelineServiceTest
             NOW, status,
             null, null, null, null,
             FUNDING_SOON, new BigDecimal( "0.10" ), null, NOW, NOW
-        );
-    }
-
-    private static SignalCandidate candidateWithEvent( Long fundingEventId )
-    {
-        return new SignalCandidate(
-            1L, "FUNDING_API", null, null, null,
-            "gate", "BTC/USDT", "BTC/USDT",
-            List.of( "gate" ),
-            NOW, SignalCandidateStatus.EVENT_CREATED,
-            NOW, ReviewDecision.APPROVE, "auto-approval:rule-1", null,
-            FUNDING_SOON, new BigDecimal( "0.10" ), fundingEventId, NOW, NOW
         );
     }
 
@@ -245,12 +223,5 @@ class AutoApprovalPipelineServiceTest
     private static ArmedTrade armedTrade()
     {
         return mock( ArmedTrade.class );
-    }
-
-    private static ApproveSignalCandidateCommand argWithReviewNotes( String expectedNotes )
-    {
-        return org.mockito.ArgumentMatchers.argThat(
-            cmd -> cmd != null && expectedNotes.equals( cmd.reviewNotes() )
-        );
     }
 }

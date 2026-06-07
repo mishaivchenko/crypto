@@ -100,7 +100,7 @@ function ruleForm(rule) {
         </div>
         <div class="form-row">
             <label>Default notional USD *</label>
-            <input type="number" step="1" min="1" name="defaultNotionalUsd" value="${rule?.defaultNotionalUsd ?? 100}" required>
+            <input type="number" step="1" min="1" name="defaultNotionalUsd" value="${rule?.defaultNotionalUsd ?? 10}" required>
         </div>
         <div class="form-row">
             <label>Default side *</label>

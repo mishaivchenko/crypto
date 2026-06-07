@@ -92,7 +92,7 @@ public class AutoApprovalController
     }
 
     @PutMapping("/rules/{id}")
-    public AutoApprovalRuleResponse update( @PathVariable Long id, @RequestBody AutoApprovalRuleRequest request )
+    public AutoApprovalRuleResponse update( @PathVariable Long id, @Valid @RequestBody AutoApprovalRuleRequest request )
     {
         AutoApprovalRule rule = ruleService.update( id, new UpdateAutoApprovalRuleCommand(
             request.name(),

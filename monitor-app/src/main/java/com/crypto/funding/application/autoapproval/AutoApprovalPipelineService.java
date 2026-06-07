@@ -1,12 +1,9 @@
 package com.crypto.funding.application.autoapproval;
 
 import com.crypto.funding.application.ai.AiSignalAdvisorService;
-import com.crypto.funding.application.candidate.ApproveSignalCandidateCommand;
 import com.crypto.funding.application.candidate.RejectSignalCandidateCommand;
 import com.crypto.funding.application.candidate.SignalCandidateQueryService;
 import com.crypto.funding.application.candidate.SignalCandidateReviewService;
-import com.crypto.funding.application.event.ArmFundingEventCommand;
-import com.crypto.funding.application.event.FundingEventArmService;
 import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.config.AutoApprovalProperties;
@@ -39,7 +36,7 @@ public class AutoApprovalPipelineService
     private final AutoApprovalRuleService ruleService;
     private final SignalCandidateQueryService candidateQueryService;
     private final SignalCandidateReviewService candidateReviewService;
-    private final FundingEventArmService fundingEventArmService;
+    private final AutoApprovalExecutor executor;
     private final AiSignalAdvisorService aiSignalAdvisorService;
     private final LiquidityAssessmentService liquidityAssessmentService;
     private final MonitorRiskProperties riskProperties;
@@ -50,7 +47,7 @@ public class AutoApprovalPipelineService
         AutoApprovalRuleService ruleService,
         SignalCandidateQueryService candidateQueryService,
         SignalCandidateReviewService candidateReviewService,
-        FundingEventArmService fundingEventArmService,
+        AutoApprovalExecutor executor,
         AiSignalAdvisorService aiSignalAdvisorService,
         LiquidityAssessmentService liquidityAssessmentService,
         MonitorRiskProperties riskProperties,
@@ -61,7 +58,7 @@ public class AutoApprovalPipelineService
         this.ruleService = ruleService;
         this.candidateQueryService = candidateQueryService;
         this.candidateReviewService = candidateReviewService;
-        this.fundingEventArmService = fundingEventArmService;
+        this.executor = executor;
         this.aiSignalAdvisorService = aiSignalAdvisorService;
         this.liquidityAssessmentService = liquidityAssessmentService;
         this.riskProperties = riskProperties;
@@ -150,43 +147,17 @@ public class AutoApprovalPipelineService
 
         String actorRef = "auto-approval:rule-" + rule.id();
 
-        SignalCandidate approved = candidateReviewService.approve( new ApproveSignalCandidateCommand(
+        // approve + arm execute in one transaction — arm failure rolls back the approval
+        ArmedTrade armedTrade = executor.approveAndArm(
             candidate.id(),
             resolveVenue( candidate ),
             candidate.normalizedSymbol(),
             candidate.sourceFundingTime(),
             candidate.sourceFundingRatePct(),
+            notional,
             actorRef
-        ) );
-
-        if( approved.fundingEventId() == null )
-        {
-            log.warn( "Auto-approval: approve did not produce fundingEventId for candidate {}", candidate.id() );
-            return;
-        }
-
-        try
-        {
-            ArmedTrade armedTrade = fundingEventArmService.arm(
-                approved.fundingEventId(),
-                new ArmFundingEventCommand(
-                    notional,
-                    rule.defaultSide(),
-                    candidate.sourceFundingTime(),  // default entry = funding time; engine computes lead from effectiveLatency
-                    null,
-                    null,
-                    null,
-                    null,
-                    actorRef
-                )
-            );
-            log.info( "Auto-approval: armed trade {} created for candidate {} via rule '{}'", armedTrade.id(), candidate.id(), rule.name() );
-        }
-        catch( Exception e )
-        {
-            log.error( "Auto-approval: arm failed for candidate {} (fundingEventId={}) via rule '{}': {}",
-                candidate.id(), approved.fundingEventId(), rule.name(), e.getMessage() );
-        }
+        );
+        log.info( "Auto-approval: armed trade {} created for candidate {} via rule '{}'", armedTrade.id(), candidate.id(), rule.name() );
     }
 
     private void autoReject( SignalCandidate candidate, AutoApprovalRule rule )
