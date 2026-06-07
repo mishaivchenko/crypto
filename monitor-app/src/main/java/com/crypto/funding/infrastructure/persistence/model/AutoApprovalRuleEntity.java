@@ -56,7 +56,7 @@ public class AutoApprovalRuleEntity extends AuditableEntity
     private String allowedLiquidityScores;
 
     @Column(name = "default_notional_usd", nullable = false, precision = 18, scale = 2)
-    private BigDecimal defaultNotionalUsd = new BigDecimal( "100.00" );
+    private BigDecimal defaultNotionalUsd = new BigDecimal( "10.00" );
 
     @Enumerated(EnumType.STRING)
     @Column(name = "default_side", nullable = false, length = 10)

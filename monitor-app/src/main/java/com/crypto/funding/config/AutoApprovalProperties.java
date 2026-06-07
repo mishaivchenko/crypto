@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 public class AutoApprovalProperties
 {
     private boolean enabled = false;
-    private BigDecimal maxNotionalUsd = new BigDecimal( "500" );
+    private BigDecimal maxNotionalUsd = new BigDecimal( "10" );
 
     public boolean isEnabled()
     {
