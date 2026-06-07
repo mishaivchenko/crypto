@@ -1,0 +1,39 @@
+# Gradle build outputs — only the bootJar is needed, not test reports/classes/sqlite files
+**/build/classes/
+**/build/generated/
+**/build/kotlin/
+**/build/reports/
+**/build/resources/
+**/build/test-results/
+**/build/tmp/
+**/*.sqlite
+**/*.sqlite-wal
+**/*.sqlite-shm
+
+# Gradle caches
+.gradle/
+gradle/
+
+# Source code — not needed in Docker context (only the pre-built JAR is COPYed)
+**/src/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Git
+.git/
+.gitignore
+
+# CI / scripts
+.github/
+scripts/
+tasks/
+docs/
+
+# Misc
+*.md
+deploy/logs/
+deploy/data/
