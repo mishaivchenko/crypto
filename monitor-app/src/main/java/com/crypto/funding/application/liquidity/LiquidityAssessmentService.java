@@ -70,13 +70,13 @@ public class LiquidityAssessmentService
         this.assessmentTimer = meterRegistry.timer( "liquidity.assessment.duration" );
     }
 
-    @Transactional
+    // No @Transactional here — port.fetchOrderBook() is a network call; repository.save() manages its own short transaction.
     public LiquidityAssessment assess( String venue, String venueSymbol, Long tradeId )
     {
         return assessmentTimer.record( () -> doAssess( venue, venueSymbol, tradeId, null ) );
     }
 
-    @Transactional
+    // No @Transactional here — port.fetchOrderBook() is a network call; repository.save() manages its own short transaction.
     public LiquidityAssessment assessForCandidate( String venue, String venueSymbol, Long signalCandidateId )
     {
         return assessmentTimer.record( () -> doAssess( venue, venueSymbol, null, signalCandidateId ) );

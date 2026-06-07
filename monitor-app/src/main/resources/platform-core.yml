@@ -18,7 +18,7 @@ spring:
         url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000&journal_mode=WAL}
         driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.sqlite.JDBC}
         hikari:
-            maximum-pool-size: 1
+            maximum-pool-size: 2
             connection-init-sql: |
                 PRAGMA journal_mode=WAL;
                 PRAGMA busy_timeout=5000;
