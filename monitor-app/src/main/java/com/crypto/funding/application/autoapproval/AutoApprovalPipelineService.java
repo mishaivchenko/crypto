@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -119,7 +120,18 @@ public class AutoApprovalPipelineService
 
     private void autoExecute( SignalCandidate candidate, AutoApprovalRule rule )
     {
+        BigDecimal notional = rule.defaultNotionalUsd();
+        BigDecimal cap = properties.getMaxNotionalUsd();
+        if( notional.compareTo( cap ) > 0 )
+        {
+            log.warn( "Auto-approval: rule '{}' notional {} exceeds global cap {} — aborting for candidate {}",
+                rule.name(), notional, cap, candidate.id() );
+            return;
+        }
+
         log.info( "Auto-approval AUTO_EXECUTE candidate {} via rule '{}' (id={})", candidate.id(), rule.name(), rule.id() );
+
+        String actorRef = "auto-approval:rule-" + rule.id();
 
         SignalCandidate approved = candidateReviewService.approve( new ApproveSignalCandidateCommand(
             candidate.id(),
@@ -127,7 +139,7 @@ public class AutoApprovalPipelineService
             candidate.normalizedSymbol(),
             candidate.sourceFundingTime(),
             candidate.sourceFundingRatePct(),
-            "auto-approval:rule-" + rule.id()
+            actorRef
         ) );
 
         if( approved.fundingEventId() == null )
@@ -136,20 +148,28 @@ public class AutoApprovalPipelineService
             return;
         }
 
-        ArmedTrade armedTrade = fundingEventArmService.arm(
-            approved.fundingEventId(),
-            new ArmFundingEventCommand(
-                rule.defaultNotionalUsd(),
-                rule.defaultSide(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                "auto-approval:rule-" + rule.id()
-            )
-        );
-        log.info( "Auto-approval: armed trade {} created for candidate {} via rule '{}'", armedTrade.id(), candidate.id(), rule.name() );
+        try
+        {
+            ArmedTrade armedTrade = fundingEventArmService.arm(
+                approved.fundingEventId(),
+                new ArmFundingEventCommand(
+                    notional,
+                    rule.defaultSide(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    actorRef
+                )
+            );
+            log.info( "Auto-approval: armed trade {} created for candidate {} via rule '{}'", armedTrade.id(), candidate.id(), rule.name() );
+        }
+        catch( Exception e )
+        {
+            log.error( "Auto-approval: arm failed for candidate {} (fundingEventId={}) via rule '{}': {}",
+                candidate.id(), approved.fundingEventId(), rule.name(), e.getMessage() );
+        }
     }
 
     private void autoReject( SignalCandidate candidate, AutoApprovalRule rule )
