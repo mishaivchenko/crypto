@@ -207,7 +207,9 @@ export async function renderAutoApproval({ nodes, showError, showSuccess }) {
     async function reload() {
         try {
             const [s, r] = await Promise.all([api.getAutoApprovalStatus(), api.listAutoApprovalRules()]);
-            render(r, s, null);
+            status = s;
+            rules = r;
+            render(rules, status, null);
         } catch (e) {
             showError(e.message);
         }

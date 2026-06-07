@@ -8,6 +8,7 @@ import com.crypto.funding.application.candidate.SignalCandidateReviewService;
 import com.crypto.funding.application.event.ArmFundingEventCommand;
 import com.crypto.funding.application.event.FundingEventArmService;
 import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
+import com.crypto.funding.application.venue.VenueProfileService;
 import com.crypto.funding.config.AutoApprovalProperties;
 import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.domain.ai.AiSignalAdvice;
@@ -16,11 +17,12 @@ import com.crypto.funding.domain.autoapproval.AutoApprovalEvaluator;
 import com.crypto.funding.domain.autoapproval.AutoApprovalRule;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
-import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import com.crypto.funding.domain.trade.ArmedTrade;
+import com.crypto.funding.domain.venue.VenueAccessMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +43,7 @@ public class AutoApprovalPipelineService
     private final AiSignalAdvisorService aiSignalAdvisorService;
     private final LiquidityAssessmentService liquidityAssessmentService;
     private final MonitorRiskProperties riskProperties;
+    private final VenueProfileService venueProfileService;
 
     public AutoApprovalPipelineService(
         AutoApprovalProperties properties,
@@ -50,7 +53,8 @@ public class AutoApprovalPipelineService
         FundingEventArmService fundingEventArmService,
         AiSignalAdvisorService aiSignalAdvisorService,
         LiquidityAssessmentService liquidityAssessmentService,
-        MonitorRiskProperties riskProperties
+        MonitorRiskProperties riskProperties,
+        VenueProfileService venueProfileService
     )
     {
         this.properties = properties;
@@ -61,6 +65,14 @@ public class AutoApprovalPipelineService
         this.aiSignalAdvisorService = aiSignalAdvisorService;
         this.liquidityAssessmentService = liquidityAssessmentService;
         this.riskProperties = riskProperties;
+        this.venueProfileService = venueProfileService;
+    }
+
+    @Async
+    @EventListener
+    public void onCandidateReady( CandidateReadyForAutoApprovalEvent event )
+    {
+        tryAutoProcess( event.candidateId() );
     }
 
     @Async
@@ -90,20 +102,25 @@ public class AutoApprovalPipelineService
         }
 
         String venue = resolveVenue( candidate );
-        if( venue != null && riskProperties.getDisabledVenues().contains( venue ) )
+        if( venue != null && riskProperties.disabledVenues().contains( venue ) )
         {
             log.debug( "Auto-approval skipped for candidate {} — venue {} is disabled", candidateId, venue );
             return;
         }
 
+        VenueAccessMode currentMode = venueProfileService.getGlobalAccessProfile().mode();
+
         AiSignalAdvice advice = aiSignalAdvisorService.findLatest( candidateId ).orElse( null );
         LiquidityAssessment liquidity = liquidityAssessmentService.findLatestForCandidate( candidateId ).orElse( null );
-        List<AutoApprovalRule> activeRules = ruleService.listActive();
+
+        List<AutoApprovalRule> activeRules = ruleService.listActive().stream()
+            .filter( r -> ruleAppliesToMode( r, currentMode ) )
+            .toList();
 
         Optional<AutoApprovalEvaluator.RuleMatch> match = AutoApprovalEvaluator.evaluate( candidate, advice, liquidity, activeRules );
         if( match.isEmpty() )
         {
-            log.debug( "Auto-approval: no matching rule for candidate {} — left for manual review", candidateId );
+            log.debug( "Auto-approval: no matching rule for candidate {} in mode {} — left for manual review", candidateId, currentMode );
             return;
         }
 
@@ -155,7 +172,7 @@ public class AutoApprovalPipelineService
                 new ArmFundingEventCommand(
                     notional,
                     rule.defaultSide(),
-                    null,
+                    candidate.sourceFundingTime(),  // default entry = funding time; engine computes lead from effectiveLatency
                     null,
                     null,
                     null,
@@ -179,6 +196,16 @@ public class AutoApprovalPipelineService
             candidate.id(),
             "auto-approval:rule-" + rule.id()
         ) );
+    }
+
+    private static boolean ruleAppliesToMode( AutoApprovalRule rule, VenueAccessMode currentMode )
+    {
+        String ruleMode = rule.mode();
+        if( ruleMode == null || "BOTH".equalsIgnoreCase( ruleMode ) )
+        {
+            return true;
+        }
+        return ruleMode.equalsIgnoreCase( currentMode.name() );
     }
 
     private static String resolveVenue( SignalCandidate candidate )

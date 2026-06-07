@@ -62,9 +62,20 @@ class AutoApprovalPipelineServiceTest
         liquidityAssessmentService = mock( LiquidityAssessmentService.class );
         riskProperties = new MonitorRiskProperties();
 
+        com.crypto.funding.application.venue.VenueProfileService venueProfileService =
+            mock( com.crypto.funding.application.venue.VenueProfileService.class );
+        com.crypto.funding.application.venue.VenueProfileService.GlobalAccessProfile globalProfile =
+            new com.crypto.funding.application.venue.VenueProfileService.GlobalAccessProfile(
+                com.crypto.funding.domain.venue.VenueAccessMode.TESTNET, false,
+                List.of( com.crypto.funding.domain.venue.VenueAccessMode.TESTNET,
+                         com.crypto.funding.domain.venue.VenueAccessMode.PRODUCTION )
+            );
+        when( venueProfileService.getGlobalAccessProfile() ).thenReturn( globalProfile );
+
         service = new AutoApprovalPipelineService(
             properties, ruleService, candidateQueryService, candidateReviewService,
-            fundingEventArmService, aiSignalAdvisorService, liquidityAssessmentService, riskProperties
+            fundingEventArmService, aiSignalAdvisorService, liquidityAssessmentService,
+            riskProperties, venueProfileService
         );
 
         when( aiSignalAdvisorService.findLatest( any() ) ).thenReturn( Optional.empty() );
