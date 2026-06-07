@@ -70,6 +70,9 @@ trading:
         mode: ${TRADING_VENUE_ACCESS_MODE:production}
     candidates:
         dedupe-window-minutes: ${TRADING_CANDIDATES_DEDUPE_WINDOW_MINUTES:15}
+    auto-approval:
+        enabled: ${TRADING_AUTO_APPROVAL_ENABLED:false}
+        max-notional-usd: ${TRADING_AUTO_APPROVAL_MAX_NOTIONAL_USD:10}
     candidate-source:
         enabled: ${TRADING_CANDIDATE_SOURCE_ENABLED:true}
         url: ${TRADING_CANDIDATE_SOURCE_URL:https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30}

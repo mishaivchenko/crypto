@@ -38,6 +38,18 @@ public class FundingEventArmService
     @Transactional
     public ArmedTrade arm( Long fundingEventId, ArmFundingEventCommand command )
     {
+        return arm( fundingEventId, command, TradeArmSource.EVENT_API, TradeJournalActorType.OPERATOR, "api" );
+    }
+
+    @Transactional
+    public ArmedTrade arm(
+        Long fundingEventId,
+        ArmFundingEventCommand command,
+        TradeArmSource armSource,
+        TradeJournalActorType actorType,
+        String actorRef
+    )
+    {
         fundingEventLifecycleService.expirePastEvents();
         FundingEventEntity fundingEvent = fundingEventRepository.findById( fundingEventId )
                                                                .orElseThrow( () -> new ResourceNotFoundException(
@@ -63,9 +75,9 @@ public class FundingEventArmService
                 null,
                 null
             ),
-            TradeArmSource.EVENT_API,
-            TradeJournalActorType.OPERATOR,
-            "api"
+            armSource,
+            actorType,
+            actorRef
         );
         liquidityAutoAssessService.assessAfterArm( armedTrade.id(), fundingEvent.getVenue(), fundingEvent.getSymbol() );
         return armedTrade;

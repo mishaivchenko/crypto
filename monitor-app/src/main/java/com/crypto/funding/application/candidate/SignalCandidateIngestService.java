@@ -1,6 +1,7 @@
 package com.crypto.funding.application.candidate;
 
 import com.crypto.funding.application.ai.AiSignalAdvisorService;
+import com.crypto.funding.application.autoapproval.AutoApprovalPipelineService;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.infrastructure.persistence.mapper.SignalCandidateMapper;
@@ -24,13 +25,15 @@ public class SignalCandidateIngestService
     private final CandidateProperties candidateProperties;
     private final SignalLiquidityService signalLiquidityService;
     private final AiSignalAdvisorService aiSignalAdvisorService;
+    private final AutoApprovalPipelineService autoApprovalPipelineService;
 
     public SignalCandidateIngestService(
         SignalCandidateJpaRepository candidateRepository,
         SymbolNormalizationService symbolNormalizationService,
         CandidateProperties candidateProperties,
         SignalLiquidityService signalLiquidityService,
-        AiSignalAdvisorService aiSignalAdvisorService
+        AiSignalAdvisorService aiSignalAdvisorService,
+        AutoApprovalPipelineService autoApprovalPipelineService
     )
     {
         this.candidateRepository = candidateRepository;
@@ -38,6 +41,7 @@ public class SignalCandidateIngestService
         this.candidateProperties = candidateProperties;
         this.signalLiquidityService = signalLiquidityService;
         this.aiSignalAdvisorService = aiSignalAdvisorService;
+        this.autoApprovalPipelineService = autoApprovalPipelineService;
     }
 
     @Transactional
@@ -89,6 +93,7 @@ public class SignalCandidateIngestService
                 {
                     signalLiquidityService.assessAsync( committed );
                     aiSignalAdvisorService.analyzeAsync( committed.id() );
+                    autoApprovalPipelineService.tryAutoProcess( committed.id() );
                 }
             } );
         }

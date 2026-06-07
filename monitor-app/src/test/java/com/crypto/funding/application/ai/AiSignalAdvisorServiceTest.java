@@ -64,7 +64,8 @@ class AiSignalAdvisorServiceTest
             liquidityAssessmentService,
             venueRequestTimingService,
             adviceRepository,
-            performanceService
+            performanceService,
+            mock( org.springframework.context.ApplicationEventPublisher.class )
         );
     }
 

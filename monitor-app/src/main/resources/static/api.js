@@ -279,5 +279,32 @@ export const api = {
         return request(`/api/v1/venues/${venue}/symbols/${encodeURIComponent(venueSymbol)}/liquidity-assessment?${params}`, {
             method: "POST"
         });
+    },
+    getAutoApprovalStatus() {
+        return request("/api/v1/auto-approval/status");
+    },
+    enableAutoApproval() {
+        return request("/api/v1/auto-approval/enable", { method: "POST" });
+    },
+    disableAutoApproval() {
+        return request("/api/v1/auto-approval/disable", { method: "POST" });
+    },
+    listAutoApprovalRules() {
+        return request("/api/v1/auto-approval/rules");
+    },
+    createAutoApprovalRule(body) {
+        return request("/api/v1/auto-approval/rules", { method: "POST", headers: jsonHeaders, body: JSON.stringify(body) });
+    },
+    updateAutoApprovalRule(id, body) {
+        return request(`/api/v1/auto-approval/rules/${id}`, { method: "PUT", headers: jsonHeaders, body: JSON.stringify(body) });
+    },
+    deleteAutoApprovalRule(id) {
+        return request(`/api/v1/auto-approval/rules/${id}`, { method: "DELETE" });
+    },
+    enableAutoApprovalRule(id) {
+        return request(`/api/v1/auto-approval/rules/${id}/enable`, { method: "POST" });
+    },
+    disableAutoApprovalRule(id) {
+        return request(`/api/v1/auto-approval/rules/${id}/disable`, { method: "POST" });
     }
 };
