@@ -18,8 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -145,6 +147,27 @@ class EngineMetricsPublisherTest
         publisher.publishOnSchedule();
 
         assertThat( publisher.published ).isTrue();
+    }
+
+    // REQ: ENG-PUB-004
+    @Test
+    void publishOnScheduleSwallowsExceptionSoSchedulerKeepsRunning()
+    {
+        EnginePlanService planService = mock( EnginePlanService.class );
+        EnginePlanClient client = mock( EnginePlanClient.class );
+        EngineRuntimeControlService runtimeControlService = mock( EngineRuntimeControlService.class );
+        Instant now = Instant.parse( "2030-01-01T00:00:00Z" );
+        when( planService.loadPlanSnapshot() ).thenThrow( new RuntimeException( "monitor 500" ) );
+
+        EngineMetricsPublisher publisher = new EngineMetricsPublisher(
+            planService,
+            client,
+            runtimeControlService,
+            new EngineTelemetryService(),
+            Clock.fixed( now, ZoneOffset.UTC )
+        );
+
+        assertThatNoException().isThrownBy( publisher::publishOnSchedule );
     }
 
     private static EngineExecutionPlan plan( Long armedTradeId, String venue, EnginePlanStatus status )

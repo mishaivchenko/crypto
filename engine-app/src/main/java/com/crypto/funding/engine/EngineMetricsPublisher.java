@@ -2,6 +2,8 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineMetricsSnapshot;
 import com.crypto.funding.contract.engine.EngineSummaryResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,6 +16,8 @@ import java.time.Instant;
 @ConditionalOnProperty(prefix = "engine.metrics-publish", name = "enabled", havingValue = "true")
 public class EngineMetricsPublisher
 {
+    private static final Logger log = LoggerFactory.getLogger( EngineMetricsPublisher.class );
+
     private final EnginePlanService enginePlanService;
     private final EnginePlanClient enginePlanClient;
     private final EngineRuntimeControlService engineRuntimeControlService;
@@ -52,7 +56,14 @@ public class EngineMetricsPublisher
     )
     public void publishOnSchedule()
     {
-        publishSnapshot();
+        try
+        {
+            publishSnapshot();
+        }
+        catch( Exception e )
+        {
+            log.warn( "Engine metrics publish failed (will retry next interval): {}", e.getMessage() );
+        }
     }
 
     public void publishSnapshot()

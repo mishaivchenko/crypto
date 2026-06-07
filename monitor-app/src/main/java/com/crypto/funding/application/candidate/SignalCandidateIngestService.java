@@ -9,6 +9,8 @@ import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJ
 import com.crypto.funding.config.CandidateProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -77,8 +79,18 @@ public class SignalCandidateIngestService
         SignalCandidate saved = SignalCandidateMapper.toDomain( candidateRepository.save( entity ) );
         if( saved.status() == SignalCandidateStatus.NORMALIZED )
         {
-            signalLiquidityService.assessAsync( saved );
-            aiSignalAdvisorService.analyzeAsync( saved.id() );
+            // Defer async fan-out until after this transaction commits so analyzeAsync/assessAsync
+            // can read the candidate row without racing against an uncommitted write.
+            SignalCandidate committed = saved;
+            TransactionSynchronizationManager.registerSynchronization( new TransactionSynchronization()
+            {
+                @Override
+                public void afterCommit()
+                {
+                    signalLiquidityService.assessAsync( committed );
+                    aiSignalAdvisorService.analyzeAsync( committed.id() );
+                }
+            } );
         }
         return saved;
     }

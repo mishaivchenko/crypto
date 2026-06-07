@@ -2,6 +2,7 @@ package com.crypto.funding.engine;
 
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,5 +34,17 @@ class EngineExecutionSchedulerTest
         new EngineExecutionScheduler( runtimeControlService, executionService ).runLoop();
 
         verify( executionService ).runOnce( false );
+    }
+
+    // REQ: ENG-SCH-003
+    @Test
+    void swallowsRunOnceExceptionSoSchedulerKeepsRunning()
+    {
+        EngineRuntimeControlService runtimeControlService = mock( EngineRuntimeControlService.class );
+        EngineExecutionService executionService = mock( EngineExecutionService.class );
+        when( runtimeControlService.shouldRunScheduledLoop() ).thenReturn( true );
+        when( executionService.runOnce( false ) ).thenThrow( new RuntimeException( "monitor 500" ) );
+
+        assertThatNoException().isThrownBy( () -> new EngineExecutionScheduler( runtimeControlService, executionService ).runLoop() );
     }
 }
