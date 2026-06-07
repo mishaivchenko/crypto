@@ -943,18 +943,17 @@ public class LiveExchangeExecutionPort implements ExecutionPort
 
     private String credential( String venue, String name )
     {
-        if( credentialCache != null )
+        if( credentialCache == null )
         {
-            return credentialCache.get( venue ).map( creds -> switch( name )
-            {
-                case "api-key" -> creds.apiKey();
-                case "secret-key" -> creds.secretKey();
-                case "passphrase" -> creds.passphrase();
-                default -> null;
-            } ).orElse( null );
+            return environment.getProperty( "engine.credentials." + venue + "." + name );
         }
-        // fallback: ENV vars used only in tests (credentialCache is always non-null in production)
-        return environment.getProperty( "engine.credentials." + venue + "." + name );
+        return credentialCache.get( venue ).map( creds -> switch( name )
+        {
+            case "api-key" -> creds.apiKey();
+            case "secret-key" -> creds.secretKey();
+            case "passphrase" -> creds.passphrase();
+            default -> null;
+        } ).orElse( null );
     }
 
     private String property( String name, String fallback )

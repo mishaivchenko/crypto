@@ -17,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EngineCredentialCache
 {
     private static final Logger log = LoggerFactory.getLogger( EngineCredentialCache.class );
+    private static final int MAX_RETRIES = 10;
+    private static final long RETRY_INTERVAL_MS = 10_000L;
 
     private final Map<String, EngineVenueCredentials> cache = new ConcurrentHashMap<>();
     private final EnginePlanClient planClient;
@@ -35,8 +37,34 @@ public class EngineCredentialCache
         String mode = properties.getTradingVenueAccessMode();
         List<String> venues = properties.liveEnabledVenues();
         log.info( "Loading engine credentials for {} venue(s) in background", venues.size() );
-        venues.forEach( venue -> load( venue, mode ) );
-        log.info( "Engine credentials loaded: {}/{} venue(s) ready", cache.size(), venues.size() );
+
+        for( int attempt = 1; attempt <= MAX_RETRIES; attempt++ )
+        {
+            venues.stream()
+                  .filter( venue -> !cache.containsKey( venue ) )
+                  .forEach( venue -> load( venue, mode ) );
+
+            int loaded = cache.size();
+            log.info( "Engine credentials loaded: {}/{} venue(s) ready (attempt {}/{})", loaded, venues.size(), attempt, MAX_RETRIES );
+
+            if( loaded >= venues.size() )
+            {
+                return;
+            }
+            if( attempt < MAX_RETRIES )
+            {
+                try
+                {
+                    Thread.sleep( retryIntervalMs() );
+                }
+                catch( InterruptedException e )
+                {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+        log.warn( "Engine credentials still incomplete after {} retries: {}/{} venue(s) ready", MAX_RETRIES, cache.size(), venues.size() );
     }
 
     public void load( String venue, String mode )
@@ -46,19 +74,17 @@ public class EngineCredentialCache
                 cache.put( venue, creds );
                 log.info( "Engine credentials loaded for venue={} mode={}", venue, mode );
             },
-            () -> log.warn( "Engine credentials not found in monitor for venue={} mode={} — live orders will fail for this venue", venue, mode )
+            () -> log.warn( "Engine credentials not found in monitor for venue={} mode={} — will retry", venue, mode )
         );
     }
 
     public Optional<EngineVenueCredentials> get( String venue )
     {
-        EngineVenueCredentials cached = cache.get( venue );
-        if( cached != null )
-        {
-            return Optional.of( cached );
-        }
-        log.info( "Credentials for venue={} not in cache, fetching from monitor on demand", venue );
-        load( venue, properties.getTradingVenueAccessMode() );
         return Optional.ofNullable( cache.get( venue ) );
+    }
+
+    protected long retryIntervalMs()
+    {
+        return RETRY_INTERVAL_MS;
     }
 }

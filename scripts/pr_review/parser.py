@@ -56,8 +56,18 @@ def parse(raw: str) -> ReviewResult | None:
     try:
         data = json.loads(text)
     except (json.JSONDecodeError, ValueError):
-        print(f"[parser] JSON decode failed. First 200 chars: {text[:200]!r}")
-        return None
+        # Fallback: extract the first {...} block if the model prepended/appended prose
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end > start:
+            try:
+                data = json.loads(text[start:end + 1])
+            except (json.JSONDecodeError, ValueError):
+                print(f"[parser] JSON decode failed (incl. fallback). First 200 chars: {text[:200]!r}")
+                return None
+        else:
+            print(f"[parser] JSON decode failed — no {{...}} found. First 200 chars: {text[:200]!r}")
+            return None
 
     if not isinstance(data, dict):
         return None

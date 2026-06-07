@@ -12,6 +12,7 @@ import { renderFundingEvents } from "./app/screens/events.js";
 import { renderTrades } from "./app/screens/trades.js";
 import { renderHistory } from "./app/screens/history.js";
 import { renderVenues } from "./app/screens/venues.js";
+import { renderAutoApproval } from "./app/screens/auto-approval.js";
 import {
     openCandidateDetail
 } from "./app/workflows/candidate-detail.js";
@@ -151,6 +152,10 @@ async function refreshCurrentScreen() {
                 venues: await api.listVenues(),
                 onOpenVenue: openVenue
             });
+        }
+        if (state.screen === "auto-approval") {
+            loadingTarget = nodes.autoApprovalContent;
+            await renderAutoApproval({ nodes, showError, showSuccess });
         }
     } catch (error) {
         showError(error.message);
