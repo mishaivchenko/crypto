@@ -70,7 +70,8 @@ public class AiSignalAdvisorService
         }
     }
 
-    @Transactional
+    // No @Transactional here — deepSeekClient.analyze() is a network call that can take seconds.
+    // Each collaborating service (candidateQueryService, adviceRepository.save) manages its own short transaction.
     public AiSignalAdvice analyze( Long candidateId )
     {
         SignalCandidate candidate = candidateQueryService.getCandidate( candidateId );
