@@ -20,6 +20,7 @@ def call(system_prompt: str, user_prompt: str, api_key: str) -> str:
         "model": _MODEL,
         "max_tokens": _MAX_TOKENS,
         "temperature": _TEMPERATURE,
+        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
