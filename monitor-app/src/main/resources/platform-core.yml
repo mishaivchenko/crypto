@@ -18,7 +18,7 @@ spring:
         url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000&journal_mode=WAL}
         driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.sqlite.JDBC}
         hikari:
-            maximum-pool-size: 1
+            maximum-pool-size: 2
             connection-init-sql: |
                 PRAGMA journal_mode=WAL;
                 PRAGMA busy_timeout=5000;
@@ -70,6 +70,9 @@ trading:
         mode: ${TRADING_VENUE_ACCESS_MODE:production}
     candidates:
         dedupe-window-minutes: ${TRADING_CANDIDATES_DEDUPE_WINDOW_MINUTES:15}
+    auto-approval:
+        enabled: ${TRADING_AUTO_APPROVAL_ENABLED:false}
+        max-notional-usd: ${TRADING_AUTO_APPROVAL_MAX_NOTIONAL_USD:10}
     candidate-source:
         enabled: ${TRADING_CANDIDATE_SOURCE_ENABLED:true}
         url: ${TRADING_CANDIDATE_SOURCE_URL:https://uainvest.com.ua/api/funding?sort_by=funding&sort_dir=asc&limit=30}

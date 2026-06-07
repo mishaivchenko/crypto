@@ -1,11 +1,13 @@
 package com.crypto.funding.application.candidate;
 
+import com.crypto.funding.application.autoapproval.CandidateReadyForAutoApprovalEvent;
 import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.application.venue.InstrumentRegistryService;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -19,20 +21,24 @@ public class SignalLiquidityService
 
     private final LiquidityAssessmentService liquidityAssessmentService;
     private final InstrumentRegistryService instrumentRegistryService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public SignalLiquidityService(
         LiquidityAssessmentService liquidityAssessmentService,
-        InstrumentRegistryService instrumentRegistryService
+        InstrumentRegistryService instrumentRegistryService,
+        ApplicationEventPublisher eventPublisher
     )
     {
         this.liquidityAssessmentService = liquidityAssessmentService;
         this.instrumentRegistryService = instrumentRegistryService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Async
     public void assessAsync( SignalCandidate candidate )
     {
         assess( candidate );
+        eventPublisher.publishEvent( new CandidateReadyForAutoApprovalEvent( candidate.id() ) );
     }
 
     public Optional<LiquidityAssessment> assess( SignalCandidate candidate )

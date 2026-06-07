@@ -1,5 +1,6 @@
 package com.crypto.funding.application.ai;
 
+import com.crypto.funding.application.autoapproval.CandidateReadyForAutoApprovalEvent;
 import com.crypto.funding.application.candidate.SignalCandidateQueryService;
 import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.config.DeepSeekProperties;
@@ -12,6 +13,7 @@ import com.crypto.funding.infrastructure.persistence.repository.AiSignalAdviceJp
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class AiSignalAdvisorService
     private final VenueRequestTimingService venueRequestTimingService;
     private final AiSignalAdviceJpaRepository adviceRepository;
     private final AiAdvisorPerformanceService performanceService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AiSignalAdvisorService(
         DeepSeekProperties deepSeekProperties,
@@ -41,7 +44,8 @@ public class AiSignalAdvisorService
         LiquidityAssessmentService liquidityAssessmentService,
         VenueRequestTimingService venueRequestTimingService,
         AiSignalAdviceJpaRepository adviceRepository,
-        AiAdvisorPerformanceService performanceService
+        AiAdvisorPerformanceService performanceService,
+        ApplicationEventPublisher eventPublisher
     )
     {
         this.deepSeekProperties = deepSeekProperties;
@@ -51,6 +55,7 @@ public class AiSignalAdvisorService
         this.venueRequestTimingService = venueRequestTimingService;
         this.adviceRepository = adviceRepository;
         this.performanceService = performanceService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Async
@@ -63,6 +68,7 @@ public class AiSignalAdvisorService
         try
         {
             analyze( candidateId );
+            eventPublisher.publishEvent( new CandidateReadyForAutoApprovalEvent( candidateId ) );
         }
         catch( Exception e )
         {
@@ -70,7 +76,8 @@ public class AiSignalAdvisorService
         }
     }
 
-    @Transactional
+    // No @Transactional here — deepSeekClient.analyze() is a network call that can take seconds.
+    // Each collaborating service (candidateQueryService, adviceRepository.save) manages its own short transaction.
     public AiSignalAdvice analyze( Long candidateId )
     {
         SignalCandidate candidate = candidateQueryService.getCandidate( candidateId );
