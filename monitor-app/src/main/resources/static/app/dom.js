@@ -14,7 +14,8 @@ export function createNodes(doc = document) {
             events: doc.getElementById("screen-events"),
             trades: doc.getElementById("screen-trades"),
             history: doc.getElementById("screen-history"),
-            venues: doc.getElementById("screen-venues")
+            venues: doc.getElementById("screen-venues"),
+            "auto-approval": doc.getElementById("screen-auto-approval")
         },
         dashboardSummary: doc.getElementById("dashboard-summary"),
         dashboardDevTools: doc.getElementById("dashboard-dev-tools"),
@@ -26,6 +27,7 @@ export function createNodes(doc = document) {
         historyList: doc.getElementById("history-list"),
         historyCount: doc.getElementById("history-count"),
         venuesList: doc.getElementById("venues-list"),
+        autoApprovalContent: doc.getElementById("auto-approval-content"),
         candidateFilters: doc.getElementById("candidate-filters"),
         eventFilters: doc.getElementById("event-filters"),
         historyFilters: doc.getElementById("history-filters"),
