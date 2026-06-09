@@ -211,6 +211,20 @@ jobs:
       - name: Ensure .env exists
         run: touch ${{ env.PROJECT_DIR }}/deploy/.env
 
+      - name: Ensure Docker is running
+        run: |
+          if ! docker info > /dev/null 2>&1; then
+            echo "Docker not running — starting Docker Desktop..."
+            open -a Docker
+            for i in $(seq 1 30); do
+              sleep 5
+              docker info > /dev/null 2>&1 && echo "Docker ready after ${i}x5s" && break
+              [ $i -eq 30 ] && echo "Docker did not start after 150s" && exit 1
+            done
+          else
+            echo "Docker already running"
+          fi
+
       - name: Build images locally
         run: |
           cd ${{ env.PROJECT_DIR }}
