@@ -43,6 +43,13 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
                 <button class="icon-button lab-button" type="button" title="${t("dashboard_dev_test_run")}" aria-label="${t("dashboard_dev_test_run")}" data-action="open-dev-test-run">LAB</button>
                 <button class="button secondary" type="button" data-action="run-engine-once">${t("dashboard_run_once")}</button>
             </div>
+            <details>
+                <summary class="dev-tools-summary">
+                    <h3>${t("auto_approval_title")}</h3>
+                    <p class="muted">${t("auto_approval_subtitle")}</p>
+                </summary>
+                <div id="dashboard-auto-approval"></div>
+            </details>
         `;
     }
 
@@ -111,6 +118,13 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
             <button class="icon-button lab-button" type="button" title="${t("dashboard_dev_test_run")}" aria-label="${t("dashboard_dev_test_run")}" data-action="open-dev-test-run">LAB</button>
             <button class="button secondary" type="button" data-action="run-engine-once">${t("dashboard_run_once")}</button>
         </div>
+        <details>
+            <summary class="dev-tools-summary">
+                <h3>${t("auto_approval_title")}</h3>
+                <p class="muted">${t("auto_approval_subtitle")}</p>
+            </summary>
+            <div id="dashboard-auto-approval"></div>
+        </details>
     `;
 }
 
@@ -175,7 +189,7 @@ export function criticalMetricsPanelMarkup(metrics, pnl) {
     `;
 }
 
-export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun }) {
+export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun, onRenderAutoApproval }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
     nodes.dashboardSummary.innerHTML = dashboardSummaryMarkup(overview);
     nodes.dashboardDevTools.innerHTML = dashboardDevToolsMarkup(state.engineRuntime, state.engineRuntimeError);
@@ -197,6 +211,7 @@ export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpd
         runtimeForm.addEventListener("submit", onUpdateEngineRuntime);
     }
     wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", onOpenVenue);
+    if (onRenderAutoApproval) onRenderAutoApproval();
 }
 
 export async function handleRunEngineOnce({ state, refreshCurrentScreen, showSuccess, showError }) {

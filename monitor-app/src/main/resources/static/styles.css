@@ -695,6 +695,41 @@ details[open] > .card-expand-toggle::before {
     cursor: not-allowed;
 }
 
+.chip-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.76rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.chip-toggle input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.chip-toggle:has(input:checked) {
+    background: rgba(106, 229, 141, 0.15);
+    border-color: rgba(106, 229, 141, 0.3);
+    color: #c6ffd8;
+}
+
+.chip-toggle:hover:not(:has(input:checked)) {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+
 /* AI reasoning inline disclosure */
 .chip-details {
     display: inline-flex;

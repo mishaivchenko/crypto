@@ -91,7 +91,8 @@ async function refreshCurrentScreen() {
                 onRunEngineOnce: () => handleRunEngineOnce({ state, refreshCurrentScreen, showSuccess, showError }),
                 onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
                 onOpenVenue: openVenue,
-                onOpenDevTestRun: openDevTestRun
+                onOpenDevTestRun: openDevTestRun,
+                onRenderAutoApproval: () => renderAutoApproval({ nodes, showError, showSuccess })
             });
             return;
         }
@@ -152,10 +153,6 @@ async function refreshCurrentScreen() {
                 venues: await api.listVenues(),
                 onOpenVenue: openVenue
             });
-        }
-        if (state.screen === "auto-approval") {
-            loadingTarget = nodes.autoApprovalContent;
-            await renderAutoApproval({ nodes, showError, showSuccess });
         }
     } catch (error) {
         showError(error.message);

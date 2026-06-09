@@ -1,4 +1,6 @@
 import { api } from "../../api.js";
+import { escapeHtml } from "../shared.js";
+import { t } from "../../i18n.js";
 
 const AI_RECOMMENDATIONS = ["GO", "WATCH", "PASS"];
 const LIQUIDITY_SCORES = ["EXCELLENT", "GOOD", "MEDIUM", "THIN", "UNTRADABLE"];
@@ -8,11 +10,11 @@ const ACTIONS = ["AUTO_EXECUTE", "AUTO_REJECT"];
 const MODES = ["BOTH", "TESTNET", "PRODUCTION"];
 
 function statusBadge(enabled) {
-    return `<span class="chip chip--${enabled ? "good" : "muted"}">${enabled ? "ON" : "OFF"}</span>`;
+    return `<span class="chip ${enabled ? "chip-good" : "chip-muted"}">${enabled ? "ON" : "OFF"}</span>`;
 }
 
 function actionBadge(action) {
-    return `<span class="chip chip--${action === "AUTO_EXECUTE" ? "good" : "warning"}">${action}</span>`;
+    return `<span class="chip ${action === "AUTO_EXECUTE" ? "chip-good" : "chip-warning"}">${action}</span>`;
 }
 
 function ruleRow(rule) {
@@ -28,107 +30,131 @@ function ruleRow(rule) {
     <div class="list-item" data-rule-id="${rule.id}">
         <div class="list-item-header">
             <div class="list-item-title">
-                <strong>${escHtml(rule.name)}</strong>
+                <strong>${escapeHtml(rule.name)}</strong>
                 ${statusBadge(rule.enabled)}
                 ${actionBadge(rule.action)}
-                <span class="chip chip--muted">priority ${rule.priority}</span>
-                <span class="chip chip--muted">${rule.mode}</span>
+                <span class="chip chip-muted">priority ${rule.priority}</span>
+                <span class="chip chip-muted">${rule.mode}</span>
             </div>
             <div class="list-item-actions">
-                <button class="btn btn-sm" data-action="toggle-rule" data-rule-id="${rule.id}" data-enabled="${rule.enabled}">
+                <button class="button secondary" data-action="toggle-rule" data-rule-id="${rule.id}" data-enabled="${rule.enabled}">
                     ${rule.enabled ? "Disable" : "Enable"}
                 </button>
-                <button class="btn btn-sm btn--secondary" data-action="edit-rule" data-rule-id="${rule.id}">Edit</button>
-                <button class="btn btn-sm btn--danger" data-action="delete-rule" data-rule-id="${rule.id}">Delete</button>
+                <button class="button secondary" data-action="edit-rule" data-rule-id="${rule.id}">Edit</button>
+                <button class="button danger" data-action="delete-rule" data-rule-id="${rule.id}">Delete</button>
             </div>
         </div>
         <div class="chip-row">
-            <span class="chip chip--muted">Rate: ${rateRange}</span>
-            <span class="chip chip--muted">Venues: ${escHtml(venues)}</span>
-            <span class="chip chip--muted">AI: ${escHtml(ai)}</span>
-            ${rule.minAiConfidence != null ? `<span class="chip chip--muted">Conf ≥${rule.minAiConfidence}</span>` : ""}
-            <span class="chip chip--muted">Liquidity: ${escHtml(liq)}</span>
-            <span class="chip chip--muted">Notional: $${rule.defaultNotionalUsd} ${rule.defaultSide}</span>
+            <span class="chip chip-muted">Rate: ${rateRange}</span>
+            <span class="chip chip-muted">Venues: ${escapeHtml(venues)}</span>
+            <span class="chip chip-muted">AI: ${escapeHtml(ai)}</span>
+            ${rule.minAiConfidence != null ? `<span class="chip chip-muted">Conf ≥${rule.minAiConfidence}</span>` : ""}
+            <span class="chip chip-muted">Liquidity: ${escapeHtml(liq)}</span>
+            <span class="chip chip-muted">Notional: $${rule.defaultNotionalUsd} ${rule.defaultSide}</span>
         </div>
-        ${rule.notes ? `<div class="list-item-note">${escHtml(rule.notes)}</div>` : ""}
+        ${rule.notes ? `<div class="list-item-note">${escapeHtml(rule.notes)}</div>` : ""}
     </div>`;
 }
 
-function multiCheckboxes(name, options, selected) {
+function chipToggles(name, options, selected) {
     return options.map(o => `
-        <label class="inline-label">
-            <input type="checkbox" name="${name}" value="${o}" ${selected?.includes(o) ? "checked" : ""}> ${o}
+        <label class="chip-toggle">
+            <input type="checkbox" name="${name}" value="${o}" ${selected?.includes(o) ? "checked" : ""}>${o}
         </label>`).join(" ");
 }
 
 function ruleForm(rule) {
     return `
-    <form id="rule-form" class="form-stack">
-        <div class="form-row">
-            <label>Name *</label>
-            <input type="text" name="name" value="${escHtml(rule?.name ?? "")}" required>
+    <form id="rule-form" class="drawer-form">
+        <p class="field"><span>${t("auto_approval_form_conditions")}</span></p>
+
+        <div class="drawer-form-row labeled-row">
+            <label class="field">
+                <span>${t("auto_approval_form_min_rate")}</span>
+                <input type="number" step="0.0001" name="minFundingRatePct" value="${rule?.minFundingRatePct ?? ""}">
+            </label>
+            <label class="field">
+                <span>${t("auto_approval_form_max_rate")}</span>
+                <input type="number" step="0.0001" name="maxFundingRatePct" value="${rule?.maxFundingRatePct ?? ""}">
+            </label>
         </div>
-        <div class="form-row">
-            <label>Mode</label>
-            <select name="mode">
-                ${MODES.map(m => `<option value="${m}" ${(rule?.mode ?? "BOTH") === m ? "selected" : ""}>${m}</option>`).join("")}
-            </select>
+
+        <div class="field">
+            <span>${t("auto_approval_form_venues")}</span>
+            <div class="chip-row">${chipToggles("allowedVenues", VENUES, rule?.allowedVenues)}</div>
         </div>
-        <div class="form-row">
-            <label>Min funding rate %</label>
-            <input type="number" step="0.0001" name="minFundingRatePct" value="${rule?.minFundingRatePct ?? ""}">
+
+        <div class="field">
+            <span>${t("auto_approval_form_ai_recs")}</span>
+            <div class="chip-row">${chipToggles("allowedAiRecommendations", AI_RECOMMENDATIONS, rule?.allowedAiRecommendations)}</div>
         </div>
-        <div class="form-row">
-            <label>Max funding rate %</label>
-            <input type="number" step="0.0001" name="maxFundingRatePct" value="${rule?.maxFundingRatePct ?? ""}">
-        </div>
-        <div class="form-row">
-            <label>Allowed venues (empty = any)</label>
-            <div>${multiCheckboxes("allowedVenues", VENUES, rule?.allowedVenues)}</div>
-        </div>
-        <div class="form-row">
-            <label>Allowed AI recommendations (empty = any)</label>
-            <div>${multiCheckboxes("allowedAiRecommendations", AI_RECOMMENDATIONS, rule?.allowedAiRecommendations)}</div>
-        </div>
-        <div class="form-row">
-            <label>Min AI confidence (0–1, empty = any)</label>
+
+        <label class="field">
+            <span>${t("auto_approval_form_ai_conf")}</span>
             <input type="number" step="0.01" min="0" max="1" name="minAiConfidence" value="${rule?.minAiConfidence ?? ""}">
+        </label>
+
+        <div class="field">
+            <span>${t("auto_approval_form_liquidity")}</span>
+            <div class="chip-row">${chipToggles("allowedLiquidityScores", LIQUIDITY_SCORES, rule?.allowedLiquidityScores)}</div>
         </div>
-        <div class="form-row">
-            <label>Allowed liquidity scores (empty = any)</label>
-            <div>${multiCheckboxes("allowedLiquidityScores", LIQUIDITY_SCORES, rule?.allowedLiquidityScores)}</div>
+
+        <p class="field"><span>${t("auto_approval_form_trade_settings")}</span></p>
+
+        <div class="drawer-form-row labeled-row">
+            <label class="field">
+                <span>${t("auto_approval_form_notional")}</span>
+                <input type="number" step="1" min="1" name="defaultNotionalUsd" value="${rule?.defaultNotionalUsd ?? 10}" required>
+            </label>
+            <label class="field">
+                <span>${t("auto_approval_form_side")}</span>
+                <select name="defaultSide">
+                    ${SIDES.map(s => `<option value="${s}" ${(rule?.defaultSide ?? "SHORT") === s ? "selected" : ""}>${s}</option>`).join("")}
+                </select>
+            </label>
         </div>
-        <div class="form-row">
-            <label>Default notional USD *</label>
-            <input type="number" step="1" min="1" name="defaultNotionalUsd" value="${rule?.defaultNotionalUsd ?? 10}" required>
-        </div>
-        <div class="form-row">
-            <label>Default side *</label>
-            <select name="defaultSide">
-                ${SIDES.map(s => `<option value="${s}" ${(rule?.defaultSide ?? "SHORT") === s ? "selected" : ""}>${s}</option>`).join("")}
-            </select>
-        </div>
-        <div class="form-row">
-            <label>Action *</label>
+
+        <label class="field">
+            <span>${t("auto_approval_form_action")}</span>
             <select name="action">
                 ${ACTIONS.map(a => `<option value="${a}" ${(rule?.action ?? "AUTO_EXECUTE") === a ? "selected" : ""}>${a}</option>`).join("")}
             </select>
+        </label>
+
+        <p class="field"><span>${t("auto_approval_form_metadata")}</span></p>
+
+        <div class="drawer-form-row labeled-row">
+            <label class="field">
+                <span>${t("auto_approval_form_name")}</span>
+                <input type="text" name="name" value="${escapeHtml(rule?.name ?? "")}" required>
+            </label>
+            <label class="field">
+                <span>${t("auto_approval_form_mode")}</span>
+                <select name="mode">
+                    ${MODES.map(m => `<option value="${m}" ${(rule?.mode ?? "BOTH") === m ? "selected" : ""}>${m}</option>`).join("")}
+                </select>
+            </label>
         </div>
-        <div class="form-row">
-            <label>Priority (lower = higher priority)</label>
-            <input type="number" name="priority" value="${rule?.priority ?? 100}">
+
+        <div class="drawer-form-row labeled-row">
+            <label class="field">
+                <span>${t("auto_approval_form_priority")}</span>
+                <input type="number" name="priority" value="${rule?.priority ?? 100}">
+            </label>
+            <label class="toggle-row">
+                <input type="checkbox" name="enabled" ${(rule?.enabled ?? true) ? "checked" : ""}>
+                <span>${t("auto_approval_form_enabled")}</span>
+            </label>
         </div>
-        <div class="form-row">
-            <label>Enabled</label>
-            <input type="checkbox" name="enabled" ${(rule?.enabled ?? true) ? "checked" : ""}>
-        </div>
-        <div class="form-row">
-            <label>Notes</label>
-            <textarea name="notes" rows="2">${escHtml(rule?.notes ?? "")}</textarea>
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="btn">${rule ? "Save" : "Create Rule"}</button>
-            <button type="button" id="cancel-form-btn" class="btn btn--secondary">Cancel</button>
+
+        <label class="field">
+            <span>${t("auto_approval_form_notes")}</span>
+            <textarea name="notes" rows="2">${escapeHtml(rule?.notes ?? "")}</textarea>
+        </label>
+
+        <div class="actions">
+            <button type="submit" class="button">${rule ? t("auto_approval_form_save") : t("auto_approval_form_create")}</button>
+            <button type="button" id="cancel-form-btn" class="button secondary">${t("auto_approval_form_cancel")}</button>
         </div>
     </form>`;
 }
@@ -156,7 +182,8 @@ function collectForm(form) {
 }
 
 export async function renderAutoApproval({ nodes, showError, showSuccess }) {
-    const container = nodes.autoApprovalContent;
+    const container = document.getElementById("dashboard-auto-approval");
+    if (!container) return;
     container.innerHTML = `<div class="loading-state">Loading…</div>`;
 
     let status, rules;
@@ -166,39 +193,39 @@ export async function renderAutoApproval({ nodes, showError, showSuccess }) {
             api.listAutoApprovalRules()
         ]);
     } catch (e) {
-        container.innerHTML = `<div class="empty-state"><p>Failed to load: ${escHtml(e.message)}</p></div>`;
+        container.innerHTML = `<div class="empty-state"><p>Failed to load: ${escapeHtml(e.message)}</p></div>`;
         return;
     }
 
     function render(currentRules, currentStatus, formHtml) {
         container.innerHTML = `
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Global Toggle</h3>
+        <div class="action-card dev-tool-card">
+            <div class="meta-grid">
+                <div class="meta-row">
+                    <span class="meta-label">Pipeline</span>
+                    <span class="meta-value">${statusBadge(currentStatus.enabled)}</span>
+                    <span class="meta-detail">Active rules: <strong>${currentStatus.activeRulesCount}</strong></span>
+                </div>
             </div>
-            <div class="panel-body">
-                <p class="muted">Pipeline status: ${statusBadge(currentStatus.enabled)}
-                   &nbsp;Active rules: <strong>${currentStatus.activeRulesCount}</strong></p>
+            <div class="actions" style="margin-top:8px">
                 ${currentStatus.enabled
-                    ? `<button class="btn btn--warning" id="global-disable-btn">Disable Auto-Approval</button>`
-                    : `<button class="btn" id="global-enable-btn">Enable Auto-Approval</button>`}
-                ${currentStatus.enabled
-                    ? `<p class="hint">⚠ Pipeline is live — NORMALIZED candidates are processed automatically.</p>`
-                    : ""}
+                    ? `<button class="button secondary" id="global-disable-btn">${t("auto_approval_disable")}</button>`
+                    : `<button class="button" id="global-enable-btn">${t("auto_approval_enable")}</button>`}
             </div>
+            ${currentStatus.enabled
+                ? `<p class="helper-text" style="margin-top:6px">${t("auto_approval_live_warning")}</p>`
+                : ""}
         </div>
 
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Rules <span class="chip chip--muted">${currentRules.length}</span></h3>
-                <button class="btn btn-sm" id="add-rule-btn">+ Add Rule</button>
-            </div>
-            <div class="panel-body">
-                ${formHtml ? `<div id="rule-form-container">${formHtml}</div>` : ""}
-                ${currentRules.length === 0
-                    ? `<p class="muted">No rules yet. Add a rule to start automating approvals.</p>`
-                    : currentRules.map(ruleRow).join("")}
-            </div>
+        <div class="panel-header" style="margin-top:12px">
+            <h4>${t("auto_approval_rules_header")} <span class="chip chip-muted">${currentRules.length}</span></h4>
+            <button class="button secondary" id="add-rule-btn">${t("auto_approval_add_rule")}</button>
+        </div>
+        <div id="rule-form-container">${formHtml ?? ""}</div>
+        <div id="rules-list">
+            ${currentRules.length === 0
+                ? `<p class="muted">${t("auto_approval_no_rules")}</p>`
+                : currentRules.map(ruleRow).join("")}
         </div>`;
 
         wireEvents(currentStatus);
@@ -217,14 +244,15 @@ export async function renderAutoApproval({ nodes, showError, showSuccess }) {
 
     function wireEvents(currentStatus) {
         container.querySelector("#global-enable-btn")?.addEventListener("click", async () => {
-            try { await api.enableAutoApproval(); showSuccess("Auto-approval enabled"); reload(); } catch (e) { showError(e.message); }
+            try { await api.enableAutoApproval(); showSuccess(t("auto_approval_enabled_msg")); reload(); } catch (e) { showError(e.message); }
         });
         container.querySelector("#global-disable-btn")?.addEventListener("click", async () => {
-            try { await api.disableAutoApproval(); showSuccess("Auto-approval disabled"); reload(); } catch (e) { showError(e.message); }
+            try { await api.disableAutoApproval(); showSuccess(t("auto_approval_disabled_msg")); reload(); } catch (e) { showError(e.message); }
         });
 
         container.querySelector("#add-rule-btn")?.addEventListener("click", () => {
-            render(rules, currentStatus, ruleForm(null));
+            container.querySelector("#rule-form-container").innerHTML = ruleForm(null);
+            container.querySelector("#rules-list").innerHTML = "";
             wireFormEvents(null);
         });
 
@@ -265,10 +293,10 @@ export async function renderAutoApproval({ nodes, showError, showSuccess }) {
             try {
                 if (editId != null) {
                     await api.updateAutoApprovalRule(editId, body);
-                    showSuccess("Rule updated");
+                    showSuccess(t("auto_approval_rule_updated"));
                 } else {
                     await api.createAutoApprovalRule(body);
-                    showSuccess("Rule created");
+                    showSuccess(t("auto_approval_rule_created"));
                 }
                 reload();
             } catch (err) { showError(err.message); }
@@ -276,9 +304,4 @@ export async function renderAutoApproval({ nodes, showError, showSuccess }) {
     }
 
     render(rules, status, null);
-}
-
-function escHtml(str) {
-    if (str == null) return "";
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
