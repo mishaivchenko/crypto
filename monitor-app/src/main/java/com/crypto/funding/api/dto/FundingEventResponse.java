@@ -18,7 +18,8 @@ public record FundingEventResponse(
     Long armedTradeId,
     Instant discoveredAt,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    Long baselineLiquidityAssessmentId
 )
 {
 }

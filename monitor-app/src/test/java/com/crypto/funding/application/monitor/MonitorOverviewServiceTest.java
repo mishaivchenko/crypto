@@ -8,8 +8,10 @@ import com.crypto.funding.domain.event.FundingEventStatus;
 import com.crypto.funding.infrastructure.persistence.model.ArmedTradeEntity;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
 import com.crypto.funding.infrastructure.persistence.model.SignalCandidateEntity;
+import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.LiquidityAssessmentJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ class MonitorOverviewServiceTest
         SignalCandidateJpaRepository candidateRepository = mock( SignalCandidateJpaRepository.class );
         FundingEventJpaRepository fundingEventRepository = mock( FundingEventJpaRepository.class );
         ArmedTradeJpaRepository armedTradeRepository = mock( ArmedTradeJpaRepository.class );
+        LiquidityAssessmentJpaRepository liquidityAssessmentRepository = mock( LiquidityAssessmentJpaRepository.class );
         VenueDiagnosticsService venueDiagnosticsService = mock( VenueDiagnosticsService.class );
         FundingEventLifecycleService fundingEventLifecycleService = mock( FundingEventLifecycleService.class );
         VenueProfileService venueProfileService = mock( VenueProfileService.class );
@@ -56,6 +59,9 @@ class MonitorOverviewServiceTest
         ReflectionTestUtils.setField( discovered, "id", 1L );
         ReflectionTestUtils.setField( armed, "id", 2L );
         when( armedTradeRepository.findAll() ).thenReturn( List.of( tradeOne, tradeTwo, staleTrade ) );
+        when( armedTradeRepository.countArmedTradesByVenue( ArmedTradeState.ARMED ) ).thenReturn( List.of() );
+        when( liquidityAssessmentRepository.countEnrichedArmedTradesByVenue( ArmedTradeState.ARMED ) ).thenReturn( List.of() );
+        when( armedTradeRepository.findAllByStateIn( org.mockito.ArgumentMatchers.anySet() ) ).thenReturn( List.of() );
 
         when( venueDiagnosticsService.listVenues() ).thenReturn( List.of(
             new VenueDiagnosticsService.VenueSummary(
@@ -113,6 +119,7 @@ class MonitorOverviewServiceTest
             candidateRepository,
             fundingEventRepository,
             armedTradeRepository,
+            liquidityAssessmentRepository,
             venueDiagnosticsService,
             fundingEventLifecycleService,
             venueProfileService

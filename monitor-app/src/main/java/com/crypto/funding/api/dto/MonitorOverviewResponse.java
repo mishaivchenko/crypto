@@ -13,7 +13,8 @@ public record MonitorOverviewResponse(
     long armedTrades,
     long activeVenues,
     List<VenueOverviewItemResponse> venues,
-    Instant generatedAt
+    Instant generatedAt,
+    EnrichmentFreshnessSnapshot enrichmentFreshness
 )
 {
 }

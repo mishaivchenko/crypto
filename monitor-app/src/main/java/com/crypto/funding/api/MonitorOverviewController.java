@@ -48,9 +48,11 @@ public class MonitorOverviewController
                 venue.lastSyncedAt(),
                 venue.lastCheckedAt(),
                 venue.averageRequestTimeMs(),
-                venue.requests()
+                venue.requests(),
+                venue.enrichmentCoveragePct()
             ) ).toList(),
-            Instant.now()
+            Instant.now(),
+            overview.enrichmentFreshness()
         );
     }
 }
