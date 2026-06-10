@@ -20,15 +20,15 @@ public interface ArmedTradeJpaRepository extends JpaRepository<ArmedTradeEntity,
     List<ArmedTradeEntity> findAllByStateIn( Set<ArmedTradeState> states );
 
     /**
-     * Returns the count of trades with the given state, grouped by venue.
+     * Returns the count of trades whose state is in the given set, grouped by venue.
      * Each element is an Object[2]: [venue (String), count (Long)].
      */
     @Query(
         "SELECT fe.venue, COUNT(at) " +
         "FROM ArmedTradeEntity at " +
         "JOIN FundingEventEntity fe ON fe.id = at.fundingEventId " +
-        "WHERE at.state = :state " +
+        "WHERE at.state IN :states " +
         "GROUP BY fe.venue"
     )
-    List<Object[]> countArmedTradesByVenue( @Param("state") ArmedTradeState state );
+    List<Object[]> countArmedTradesByVenue( @Param("states") Set<ArmedTradeState> states );
 }

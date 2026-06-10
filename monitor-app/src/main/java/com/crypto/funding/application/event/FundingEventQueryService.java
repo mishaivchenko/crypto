@@ -7,6 +7,7 @@ import com.crypto.funding.infrastructure.persistence.mapper.FundingEventMapper;
 import com.crypto.funding.infrastructure.persistence.model.FundingEventEntity;
 import com.crypto.funding.infrastructure.persistence.repository.ArmedTradeJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaRepository;
+import com.crypto.funding.infrastructure.persistence.repository.LiquidityAssessmentJpaRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,16 +24,19 @@ public class FundingEventQueryService
 {
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeJpaRepository armedTradeRepository;
+    private final LiquidityAssessmentJpaRepository liquidityAssessmentRepository;
     private final FundingEventLifecycleService fundingEventLifecycleService;
 
     public FundingEventQueryService(
         FundingEventJpaRepository fundingEventRepository,
         ArmedTradeJpaRepository armedTradeRepository,
+        LiquidityAssessmentJpaRepository liquidityAssessmentRepository,
         FundingEventLifecycleService fundingEventLifecycleService
     )
     {
         this.fundingEventRepository = fundingEventRepository;
         this.armedTradeRepository = armedTradeRepository;
+        this.liquidityAssessmentRepository = liquidityAssessmentRepository;
         this.fundingEventLifecycleService = fundingEventLifecycleService;
     }
 
@@ -58,6 +62,18 @@ public class FundingEventQueryService
         FundingEventEntity entity = fundingEventRepository.findById( id )
                                                           .orElseThrow( () -> new ResourceNotFoundException( "Событие фандинга не найдено: " + id ) );
         return FundingEventMapper.toDomain( entity, resolveArmedTradeId( id ) );
+    }
+
+    public Long resolveBaselineLiquidityAssessmentId( Long signalCandidateId )
+    {
+        if( signalCandidateId == null )
+        {
+            return null;
+        }
+        return liquidityAssessmentRepository
+            .findFirstBySignalCandidateIdOrderBySampledAtAsc( signalCandidateId )
+            .map( a -> a.getId() )
+            .orElse( null );
     }
 
     private Long resolveArmedTradeId( Long fundingEventId )

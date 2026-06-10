@@ -13,7 +13,6 @@ import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.TradeJournalEntry;
 import com.crypto.funding.domain.trade.TradeJournalEntityType;
-import com.crypto.funding.infrastructure.persistence.repository.LiquidityAssessmentJpaRepository;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,21 +34,18 @@ public class FundingEventController
     private final FundingEventArmService fundingEventArmService;
     private final TradeJournalService tradeJournalService;
     private final InstrumentRegistryService instrumentRegistryService;
-    private final LiquidityAssessmentJpaRepository liquidityAssessmentRepository;
 
     public FundingEventController(
         FundingEventQueryService fundingEventQueryService,
         FundingEventArmService fundingEventArmService,
         TradeJournalService tradeJournalService,
-        InstrumentRegistryService instrumentRegistryService,
-        LiquidityAssessmentJpaRepository liquidityAssessmentRepository
+        InstrumentRegistryService instrumentRegistryService
     )
     {
         this.fundingEventQueryService = fundingEventQueryService;
         this.fundingEventArmService = fundingEventArmService;
         this.tradeJournalService = tradeJournalService;
         this.instrumentRegistryService = instrumentRegistryService;
-        this.liquidityAssessmentRepository = liquidityAssessmentRepository;
     }
 
     @GetMapping
@@ -141,14 +137,7 @@ public class FundingEventController
 
     private FundingEventResponse toResponse( FundingEvent event )
     {
-        Long baselineLiquidityAssessmentId = null;
-        if( event.signalCandidateId() != null )
-        {
-            baselineLiquidityAssessmentId = liquidityAssessmentRepository
-                .findFirstBySignalCandidateIdOrderBySampledAtAsc( event.signalCandidateId() )
-                .map( a -> a.getId() )
-                .orElse( null );
-        }
+        Long baselineLiquidityAssessmentId = fundingEventQueryService.resolveBaselineLiquidityAssessmentId( event.signalCandidateId() );
         return new FundingEventResponse(
             event.id(),
             event.venue(),

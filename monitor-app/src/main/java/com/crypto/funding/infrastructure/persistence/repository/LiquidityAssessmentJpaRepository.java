@@ -24,12 +24,16 @@ public interface LiquidityAssessmentJpaRepository extends JpaRepository<Liquidit
     @Query("SELECT DISTINCT a.tradeId FROM LiquidityAssessmentEntity a WHERE a.tradeId IN :tradeIds")
     Set<Long> findCoveredTradeIds( @Param("tradeIds") Collection<Long> tradeIds );
 
-    @Query("SELECT MAX(a.sampledAt) FROM LiquidityAssessmentEntity a WHERE a.tradeId = :tradeId")
-    Optional<Instant> findLatestSampledAtByTradeId( @Param("tradeId") Long tradeId );
+    /**
+     * Returns the latest sampledAt per covered trade in one query (one row per tradeId).
+     * Use this to compute avg freshness in Java without N+1 selects.
+     */
+    @Query("SELECT MAX(a.sampledAt) FROM LiquidityAssessmentEntity a WHERE a.tradeId IN :tradeIds GROUP BY a.tradeId")
+    List<Instant> findLatestSampledAtPerTrade( @Param("tradeIds") Collection<Long> tradeIds );
 
     /**
-     * Returns the count of distinct ARMED trades that have at least one liquidity assessment, grouped by venue.
-     * Only trades whose state matches the given state are considered.
+     * Returns the count of distinct active trades that have at least one liquidity assessment, grouped by venue.
+     * Only trades whose state is in the given set are considered.
      * Each element is an Object[2]: [venue (String), enrichedCount (Long)].
      */
     @Query(
@@ -38,9 +42,9 @@ public interface LiquidityAssessmentJpaRepository extends JpaRepository<Liquidit
         "WHERE la.tradeId IS NOT NULL " +
         "  AND EXISTS (" +
         "      SELECT 1 FROM ArmedTradeEntity at " +
-        "      WHERE at.id = la.tradeId AND at.state = :state" +
+        "      WHERE at.id = la.tradeId AND at.state IN :states" +
         "  ) " +
         "GROUP BY la.venue"
     )
-    List<Object[]> countEnrichedArmedTradesByVenue( @Param("state") com.crypto.funding.domain.trade.ArmedTradeState state );
+    List<Object[]> countEnrichedArmedTradesByVenue( @Param("states") Set<com.crypto.funding.domain.trade.ArmedTradeState> states );
 }

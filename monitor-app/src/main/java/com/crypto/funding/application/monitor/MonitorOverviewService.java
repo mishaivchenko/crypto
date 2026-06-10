@@ -144,13 +144,13 @@ public class MonitorOverviewService
                                                                                                    }
                                                                                                ) );
 
-        Map<String, Long> totalArmedByVenue = armedTradeRepository.countArmedTradesByVenue( ArmedTradeState.ARMED )
+        Map<String, Long> totalArmedByVenue = armedTradeRepository.countArmedTradesByVenue( ACTIVE_TRADE_STATES )
                                                                    .stream()
                                                                    .collect( Collectors.toMap(
                                                                        row -> ( (String) row[0] ).trim().toLowerCase( Locale.ROOT ),
                                                                        row -> (Long) row[1]
                                                                    ) );
-        Map<String, Long> enrichedArmedByVenue = liquidityAssessmentRepository.countEnrichedArmedTradesByVenue( ArmedTradeState.ARMED )
+        Map<String, Long> enrichedArmedByVenue = liquidityAssessmentRepository.countEnrichedArmedTradesByVenue( ACTIVE_TRADE_STATES )
                                                                                .stream()
                                                                                .collect( Collectors.toMap(
                                                                                    row -> ( (String) row[0] ).trim().toLowerCase( Locale.ROOT ),
@@ -230,13 +230,11 @@ public class MonitorOverviewService
         }
 
         Instant now = Instant.now();
-        double avgSeconds = coveredTradeIds.stream()
-                                           .mapToLong( tradeId -> liquidityAssessmentRepository
-                                               .findLatestSampledAtByTradeId( tradeId )
-                                               .map( sampledAt -> now.getEpochSecond() - sampledAt.getEpochSecond() )
-                                               .orElse( 0L ) )
-                                           .average()
-                                           .orElse( 0.0 );
+        List<Instant> latestTimestamps = liquidityAssessmentRepository.findLatestSampledAtPerTrade( coveredTradeIds );
+        double avgSeconds = latestTimestamps.stream()
+                                            .mapToLong( sampledAt -> now.getEpochSecond() - sampledAt.getEpochSecond() )
+                                            .average()
+                                            .orElse( 0.0 );
 
         return new EnrichmentFreshnessSnapshot( avgSeconds, uncoveredCount );
     }
