@@ -1955,3 +1955,46 @@ details[open] > .card-expand-toggle::before {
 .freshness-ok      { color: var(--freshness-ok); }
 .freshness-stale   { color: var(--freshness-stale); }
 .freshness-missing { color: var(--freshness-missing); }
+
+/* T-26: Venues Grid */
+.venues-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr 1fr 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.venues-grid__header {
+  display: contents;
+}
+.venues-grid__header > span {
+  background: var(--surface-2, #1a1a2e);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: default;
+  border-bottom: 1px solid var(--border);
+}
+.venues-grid__header > span.sortable {
+  cursor: pointer;
+}
+.venues-grid__header > span.sortable:hover {
+  color: var(--text);
+}
+.venues-grid__row {
+  display: contents;
+  cursor: pointer;
+}
+.venues-grid__row > span {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.venues-grid__row:hover > span {
+  background: var(--hover-bg, rgba(255,255,255,0.04));
+}
