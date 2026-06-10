@@ -2,6 +2,7 @@ import { api } from "../../api.js";
 import { deriveHistoryStage, deriveTradeHealth, tradeHistoryDetailMarkup } from "../../history.js";
 import { escapeHtml, formatBadge, formatDecimal, openModal, optionalRequest, pipelineStageMarkup, section, venueIcon } from "../shared.js";
 import { t } from "../../i18n.js";
+import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
 
 const CANCELLABLE_STATES = new Set(["ARMED", "ENTRY_PENDING", "ENTRY_ATTEMPTED", "OPEN", "EXIT_PENDING"]);
 
@@ -21,7 +22,75 @@ export function buildHistoryTradeDrawerContent({ trade, event, candidate, journa
         </div>
     `;
 
-    return pipelineStageMarkup("executed") + summaryChips + tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts, position, outcome });
+    const enrichmentLayers = [];
+
+    // 1. Liquidity snapshot at armedAt
+    if (trade.liquidityAssessment) {
+        const liq = trade.liquidityAssessment;
+        const liqStatus = liq.score === "EXCELLENT" || liq.score === "GOOD" ? "ok"
+            : liq.score === "THIN" ? "warn"
+            : liq.score === "UNTRADABLE" ? "blocked" : "missing";
+        enrichmentLayers.push({
+            name: "Liquidity Snapshot",
+            status: liqStatus,
+            timestamp: liq.sampledAt ?? null,
+            decorator: "ORDER_BOOK",
+            details: `Score: ${liq.score ?? "—"} · Spread: ${liq.spreadBps != null ? liq.spreadBps + " bps" : "—"}`
+        });
+    }
+
+    // 2. Latency chain
+    if (trade.warmupDoneAt || trade.effectiveEntryLatencyMs != null) {
+        const latMs = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
+        const latStatus = !latMs ? "missing" : latMs < 400 ? "ok" : latMs < 600 ? "warn" : "blocked";
+        enrichmentLayers.push({
+            name: "Latency Chain",
+            status: latStatus,
+            timestamp: trade.warmupDoneAt ?? null,
+            decorator: "WARMUP_PROBE",
+            details: `p50: ${trade.warmupP50Ms ?? "—"}мс · Effective: ${latMs ?? "—"}мс`
+        });
+    }
+
+    // 3. AI Advice
+    if (candidate?.aiAdvice) {
+        const ai = candidate.aiAdvice;
+        const aiStatus = ai.recommendation === "GO" ? "ok"
+            : ai.recommendation === "WATCH" ? "warn"
+            : ai.recommendation === "PASS" ? "blocked" : "missing";
+        enrichmentLayers.push({
+            name: "AI Advice",
+            status: aiStatus,
+            timestamp: ai.analyzedAt ?? null,
+            decorator: "AI_ADVISOR",
+            details: `${ai.recommendation} · ${Math.round(ai.confidence * 100)}%`
+        });
+    }
+
+    // 4. Execution (first attempt)
+    const firstAttempt = attempts?.[0] ?? null;
+    if (firstAttempt) {
+        const execStatus = firstAttempt.status === "FILLED" ? "ok"
+            : firstAttempt.status === "FAILED" ? "blocked" : "warn";
+        enrichmentLayers.push({
+            name: "Исполнение",
+            status: execStatus,
+            timestamp: firstAttempt.triggerAt ?? null,
+            decorator: "ENGINE",
+            details: `${firstAttempt.status} · ${firstAttempt.requestDurationMs != null ? firstAttempt.requestDurationMs + "мс" : "—"}`
+        });
+    }
+
+    const timelineHtml = enrichmentLayers.length > 0
+        ? `<details class="enrichment-log-section" data-enrichment-section="true" open>
+             <summary style="cursor:pointer;font-size:13px;font-weight:600;padding:4px 0">
+               На момент запуска — состояние обогащения
+             </summary>
+             ${renderEnrichmentTimeline(enrichmentLayers)}
+           </details>`
+        : "";
+
+    return pipelineStageMarkup("executed") + summaryChips + tradeHistoryDetailMarkup({ trade, event, candidate, journal, attempts, position, outcome }) + timelineHtml;
 }
 
 
