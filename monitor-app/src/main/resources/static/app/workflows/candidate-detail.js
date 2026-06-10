@@ -17,6 +17,7 @@ import {
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
+import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
 
 function recommendationRows(candidate) {
     return [
@@ -187,6 +188,74 @@ function buildAiAdvisorSection(candidate, aiEnabled) {
     `);
 }
 
+function buildEnrichmentTimelineSection(candidate, liquidity) {
+    const layers = [];
+
+    // Layer 1 — Base Signal
+    layers.push({
+        _order: 0,
+        name: t('layer.base') || 'Базовый сигнал',
+        timestamp: candidate.detectedAt ?? null,
+        status: candidate.status === 'NORMALIZED' ? 'ok'
+              : candidate.status === 'FAILED'     ? 'blocked'
+              : 'warn',
+        decorator: 'FUNDING_API',
+        details: `Источник: ${candidate.sourceVenue ?? candidate.sourceType} · ${candidate.rawSymbol}`
+    });
+
+    // Layer 2 — Normalization
+    const normHasTimestamp = candidate.status === 'NORMALIZED' || candidate.status === 'EVENT_CREATED';
+    layers.push({
+        _order: 1,
+        name: 'Нормализация',
+        timestamp: normHasTimestamp ? (candidate.updatedAt ?? null) : null,
+        status: (candidate.status === 'NORMALIZED' || candidate.status === 'EVENT_CREATED') ? 'ok'
+              : candidate.status === 'FAILED' ? 'blocked'
+              : 'missing',
+        decorator: 'NormalizationService',
+        details: candidate.normalizationFailureReason ?? ''
+    });
+
+    // Layer 3 — Liquidity
+    layers.push({
+        _order: 2,
+        name: t('layer.liquidity') || 'Ликвидность',
+        timestamp: liquidity?.sampledAt ?? null,
+        status: !liquidity ? 'missing'
+              : (liquidity.score === 'EXCELLENT' || liquidity.score === 'GOOD' || liquidity.score === 'MEDIUM') ? 'ok'
+              : liquidity.score === 'THIN' ? 'warn'
+              : 'blocked',
+        decorator: 'LiquidityAssessmentService',
+        details: liquidity ? `Score: ${liquidity.score}` : ''
+    });
+
+    // Layer 4 — AI Advice
+    layers.push({
+        _order: 3,
+        name: t('layer.ai') || 'ИИ-советник',
+        timestamp: candidate.aiAdvice?.analyzedAt ?? null,
+        status: !candidate.aiAdvice ? 'missing'
+              : candidate.aiAdvice.recommendation === 'GO'   ? 'ok'
+              : candidate.aiAdvice.recommendation === 'WATCH' ? 'warn'
+              : 'blocked',
+        decorator: candidate.aiAdvice?.modelUsed ?? 'AiSignalAdvisorService',
+        details: candidate.aiAdvice
+            ? `${candidate.aiAdvice.recommendation} · ${Math.round(candidate.aiAdvice.confidence * 100)}%`
+            : ''
+    });
+
+    // Sort by timestamp (nulls last), preserving logical order for equal/null timestamps
+    layers.sort(function(a, b) {
+        if (a.timestamp === null && b.timestamp === null) return a._order - b._order;
+        if (a.timestamp === null) return 1;
+        if (b.timestamp === null) return -1;
+        const diff = new Date(a.timestamp) - new Date(b.timestamp);
+        return diff !== 0 ? diff : a._order - b._order;
+    });
+
+    return section(t('action.view_enrichment_history') || 'История обогащения', renderEnrichmentTimeline(layers));
+}
+
 export function buildCandidateDrawerContent(candidate, aiEnabled, liquidity) {
     return `
         ${pipelineStageMarkup("signal")}
@@ -211,6 +280,7 @@ export function buildCandidateDrawerContent(candidate, aiEnabled, liquidity) {
         `) : ""}
         ${buildCandidateLiquiditySection(liquidity, candidate)}
         ${buildAiAdvisorSection(candidate, aiEnabled)}
+        ${buildEnrichmentTimelineSection(candidate, liquidity)}
         ${buildApproveSection(candidate)}
         ${buildRejectSection(candidate)}
         ${candidate.status !== "DELETED" ? buildDeleteCandidateSection(candidate) : ""}
