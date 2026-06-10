@@ -19,7 +19,8 @@ public record VenueOverviewItemResponse(
     Instant lastSyncedAt,
     Instant lastCheckedAt,
     Long averageRequestTimeMs,
-    Long requests
+    Long requests,
+    Double enrichmentCoveragePct
 )
 {
 }

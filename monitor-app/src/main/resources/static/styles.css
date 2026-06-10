@@ -1903,3 +1903,49 @@ details[open] > .card-expand-toggle::before {
     padding: 4px 0;
     margin: 0;
 }
+
+/* === Enrichment Layer Token System (T-01) === */
+:root {
+  --layer-base-bg: #f0f4ff;
+  --layer-base-border: #4a6fa5;
+  --layer-liquidity-bg: #f0fff4;
+  --layer-liquidity-border: #38a169;
+  --layer-latency-bg: #fffff0;
+  --layer-latency-border: #d69e2e;
+  --layer-health-bg: #fff5f5;
+  --layer-health-border: #e53e3e;
+  --layer-ai-bg: #faf5ff;
+  --layer-ai-border: #805ad5;
+  --layer-execution-bg: #e6fffa;
+  --layer-execution-border: #2c7a7b;
+  --freshness-ok: #38a169;
+  --freshness-stale: #d69e2e;
+  --freshness-missing: #e53e3e;
+}
+
+.layer-block {
+  padding: 8px 12px;
+  border-left: 3px solid var(--layer-base-border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: var(--layer-base-bg);
+}
+.layer-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+.layer-block--base      { background: var(--layer-base-bg);      border-left-color: var(--layer-base-border); }
+.layer-block--liquidity { background: var(--layer-liquidity-bg); border-left-color: var(--layer-liquidity-border); }
+.layer-block--latency   { background: var(--layer-latency-bg);   border-left-color: var(--layer-latency-border); }
+.layer-block--health    { background: var(--layer-health-bg);    border-left-color: var(--layer-health-border); }
+.layer-block--ai        { background: var(--layer-ai-bg);        border-left-color: var(--layer-ai-border); }
+.layer-block--execution { background: var(--layer-execution-bg); border-left-color: var(--layer-execution-border); }
+.freshness-ok      { color: var(--freshness-ok); }
+.freshness-stale   { color: var(--freshness-stale); }
+.freshness-missing { color: var(--freshness-missing); }
