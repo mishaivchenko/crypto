@@ -4,10 +4,34 @@ import { buildHistoryTradeDrawerContent } from "../workflows/history-detail.js";
 import { api } from "../../api.js";
 import { t } from "../../i18n.js";
 
+function enrichmentHealthChip(trade) {
+    const latMs = trade.effectiveEntryLatencyMs;
+    const liqScore = trade.liquidityAssessment?.score ?? trade.liquidityScore ?? null;
+    const highLatency = latMs != null && latMs > 600;
+    const thinLiquidity = liqScore === "THIN";
+
+    if (highLatency) {
+        return `<span class="chip chip-bad" data-enrich-chip="${escapeHtml(String(trade.id))}">Latency: ${latMs}мс</span>`;
+    }
+    if (thinLiquidity) {
+        return `<span class="chip chip-warning" data-enrich-chip="${escapeHtml(String(trade.id))}">Liquidity: THIN</span>`;
+    }
+    return `<span class="chip chip-good" data-enrich-chip="${escapeHtml(String(trade.id))}">Enrichment OK</span>`;
+}
+
+function historyRowWithEnrichment(trade, attempts, outcome) {
+    const baseHtml = historyTradeRow(trade, attempts, outcome);
+    const chip = enrichmentHealthChip(trade);
+    return baseHtml.replace(
+        /(<details class="card-expansion" data-lazy-history=)/,
+        `<div class="chip-row" style="margin: 2px 0 4px">${chip}</div>\n$1`
+    );
+}
+
 export function historyListMarkup({ trades = [], attemptsByTrade = {}, outcomesByTrade = {}, filters = {} }) {
     const filtered = filterHistoryTrades(trades, filters, attemptsByTrade);
     const listMarkup = filtered.length
-        ? filtered.map((trade) => historyTradeRow(trade, attemptsByTrade[trade.id] ?? [], outcomesByTrade[trade.id] ?? null)).join("")
+        ? filtered.map((trade) => historyRowWithEnrichment(trade, attemptsByTrade[trade.id] ?? [], outcomesByTrade[trade.id] ?? null)).join("")
         : emptyState(t("empty_history"), t("empty_history_detail"));
 
     return {
@@ -24,7 +48,18 @@ export function renderHistory({ nodes, trades, attemptsByTrade = {}, outcomesByT
     if (!nodes.historyList._expansionWired) {
         nodes.historyList._expansionWired = true;
         wireHistoryExpansion(nodes.historyList, { attemptsByTrade, showError, onRefresh });
+        wireEnrichmentChipClick(nodes.historyList);
     }
+}
+
+function wireEnrichmentChipClick(container) {
+    container.addEventListener("click", (e) => {
+        const chip = e.target.closest("[data-enrich-chip]");
+        if (!chip) return;
+        const tradeId = chip.dataset.enrichChip;
+        const details = container.querySelector(`[data-lazy-history="${CSS.escape(tradeId)}"]`);
+        if (details && !details.open) details.open = true;
+    });
 }
 
 function wireHistoryExpansion(container, { attemptsByTrade, showError, onRefresh }) {
