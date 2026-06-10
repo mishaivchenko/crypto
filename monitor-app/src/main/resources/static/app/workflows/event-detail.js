@@ -21,6 +21,8 @@ import {
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
+import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
+import { renderEnrichmentDelta } from "../components/enrichment-delta.js";
 
 function infoTip(text) {
     return `<details class="info-tip"><summary class="info-tip-trigger">ⓘ</summary><div class="info-tip-body">${escapeHtml(text)}</div></details>`;
@@ -167,6 +169,49 @@ function buildOutcomeSection(outcome) {
     `);
 }
 
+function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = null } = {}) {
+    const liquidityStatus = !tradeLiquidity ? null
+        : (tradeLiquidity.score === "EXCELLENT" || tradeLiquidity.score === "GOOD" || tradeLiquidity.score === "MEDIUM") ? "ok"
+        : tradeLiquidity.score === "THIN" ? "warn"
+        : "blocked";
+
+    const armedStatus = !trade ? null
+        : trade.state === "ARMED" ? "ok" : "warn";
+
+    const layers = [
+        {
+            name: t("enrichment_step_base") || "Base Discovery",
+            status: "ok",
+            timestamp: event.discoveredAt,
+            decorator: "DISCOVERY",
+            details: ""
+        },
+        ...(tradeLiquidity ? [{
+            name: t("enrichment_step_liquidity") || "Liquidity Assessed",
+            status: liquidityStatus,
+            timestamp: tradeLiquidity.sampledAt,
+            decorator: "ORDER_BOOK",
+            details: tradeLiquidity.score ? escapeHtml(tradeLiquidity.score) : ""
+        }] : []),
+        ...(trade ? [{
+            name: t("enrichment_step_armed") || "Armed",
+            status: armedStatus,
+            timestamp: trade.armedAt,
+            decorator: trade.armSource === "AUTO" ? "AUTO" : "OPERATOR",
+            details: trade.armSource ? escapeHtml(trade.armSource) : ""
+        }] : []),
+        {
+            name: t("enrichment_step_execution") || "Исполнение",
+            status: "missing",
+            timestamp: null,
+            decorator: "ENGINE",
+            details: t("enrichment_step_execution_pending") || "Ожидается"
+        }
+    ];
+
+    return renderEnrichmentTimeline(layers);
+}
+
 export function buildArmForm(event, suggestedNotional = 25) {
     const defaultEntry = toLocalInputValueSeconds(event.fundingTime);
     const defaultExit = toLocalInputValueSeconds(offsetIso(event.fundingTime, 90));
@@ -250,12 +295,19 @@ export function buildEventExpansionContent({ event, candidate = null, liquidity 
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
 
+    const baselineLiquidity = event.baselineLiquiditySnapshot ?? null;
+    const liquidityDelta = tradeLiquidity && baselineLiquidity
+        ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
+        : "";
+
     return `
+        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade })}
         ${signalAnalysisChips(candidate, liquidity)}
         ${canArm ? buildArmForm(event, suggestedNotional) : ""}
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}
+        ${liquidityDelta ? `<div class="enrichment-delta-row">${liquidityDelta}</div>` : ""}
         ${buildAttemptsSection(attempts)}
         ${buildPositionSection(position)}
         ${buildOutcomeSection(outcome)}
@@ -269,8 +321,14 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
         : 25;
     const canArm = event.status === "DISCOVERED";
 
+    const baselineLiquidity = event.baselineLiquiditySnapshot ?? null;
+    const liquidityDelta = tradeLiquidity && baselineLiquidity
+        ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
+        : "";
+
     return `
         ${pipelineStageMarkup("event")}
+        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade })}
         ${section(t("event_snapshot"), `
             <div class="meta-grid">
                 ${metaRow(t("event_status"), formatBadge("event", event.status))}
@@ -289,6 +347,7 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}
+        ${liquidityDelta ? `<div class="enrichment-delta-row">${liquidityDelta}</div>` : ""}
         ${buildAttemptsSection(attempts)}
         ${buildPositionSection(position)}
         ${buildOutcomeSection(outcome)}

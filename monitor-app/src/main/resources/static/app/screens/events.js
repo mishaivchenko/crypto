@@ -1,12 +1,101 @@
 import { api } from "../../api.js";
-import { emptyState, eventCard, escapeHtml } from "../shared.js";
+import { emptyState, eventCard, escapeHtml, formatBadge, formatDecimal, formatFundingCountdown, formatInstant, venueIcon } from "../shared.js";
 import { buildEventExpansionContent } from "../workflows/event-detail.js";
 import { t } from "../../i18n.js";
+import { renderLayerBlock } from "../components/layer-block.js";
+import { renderEnrichmentTimestamp } from "../components/enrichment-timestamp.js";
+
+function _eventBaseLayerStatus(event) {
+    if (event.status === "ARMED") return "ok";
+    if (event.status === "DISCOVERED") return "warn";
+    return "blocked";
+}
+
+function _eventLiquidityLayerStatus(tradeLiquidity) {
+    if (!tradeLiquidity) return "missing";
+    const s = tradeLiquidity.score;
+    if (s === "EXCELLENT" || s === "GOOD" || s === "MEDIUM") return "ok";
+    if (s === "THIN") return "warn";
+    return "blocked";
+}
+
+function buildEventCardLayerBlocks(event, { trade = null } = {}) {
+    const ratePct = event.fundingRatePct != null ? Number(event.fundingRatePct) : null;
+    const rateTone = ratePct == null ? "neutral" : ratePct < 0 ? "bad" : ratePct > 0.005 ? "good" : "neutral";
+    const rateChip = ratePct != null
+        ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
+        : "";
+    const countdown = formatFundingCountdown(event.fundingTime);
+
+    const baseContent = `
+        <div class="chip-row" style="margin-bottom:4px">
+            ${rateChip}
+            <span class="chip chip-muted" title="${t("event_funding_time")}">${formatInstant(event.fundingTime)}</span>
+            <span class="chip chip-muted">${countdown}</span>
+        </div>
+        ${renderEnrichmentTimestamp(event.discoveredAt, "DISCOVERY")}
+    `;
+
+    const baseBlock = renderLayerBlock({
+        layerType: "base",
+        layerName: t("layer.base") || "Base",
+        decoratorName: "FUNDING_API",
+        timestamp: event.discoveredAt,
+        source: "DISCOVERY",
+        status: _eventBaseLayerStatus(event),
+        collapsed: false,
+        content: baseContent
+    });
+
+    return baseBlock;
+}
+
+function eventCardLayered(event, { trade = null, outcome = null } = {}) {
+    const expandLabel = event.status === "DISCOVERED" ? t("card_expand_arm") : t("card_expand_details");
+    const baseLayerBlock = buildEventCardLayerBlocks(event, { trade });
+
+    let tradeChips = "";
+    if (trade) {
+        const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
+        tradeChips = `
+            ${formatBadge("trade", trade.state)}
+            <span class="chip chip-muted" title="${t("trade_notional")}">${formatDecimal(trade.notionalUsd, 2)} USD</span>
+            ${effLat != null ? `<span class="chip chip-muted" title="${t("trade_effective_trigger")}">${effLat}ms</span>` : ""}
+        `;
+    }
+
+    const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+    const pnlChip = net != null
+        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+        : "";
+
+    return `
+        <article class="list-item event-card" data-event-id="${event.id}">
+            <header>
+                <div>
+                    <h3 class="item-title">${venueIcon(event.venue)}${escapeHtml(event.symbol)}</h3>
+                    <p class="muted">${escapeHtml(event.venue)}</p>
+                </div>
+                <div class="actions">
+                    ${formatBadge("event", event.status)}
+                </div>
+            </header>
+            ${baseLayerBlock}
+            ${tradeChips || pnlChip ? `<div class="chip-row">${tradeChips}${pnlChip}</div>` : ""}
+            <details class="card-expansion" data-lazy-event="${event.id}">
+                <summary class="card-expand-toggle">${expandLabel}</summary>
+                <div class="card-full-content">
+                    <p class="card-loading">…</p>
+                </div>
+            </details>
+        </article>
+    `;
+}
 
 export function eventsListMarkup(page = {}, { tradeMap = {}, outcomeMap = {} } = {}) {
     const events = page?.content ?? [];
     return events.length
-        ? events.map((e) => eventCard(e, {
+        ? events.map((e) => eventCardLayered(e, {
             trade: e.armedTradeId ? (tradeMap[e.armedTradeId] ?? null) : null,
             outcome: e.armedTradeId ? (outcomeMap[e.armedTradeId] ?? null) : null
           })).join("")
