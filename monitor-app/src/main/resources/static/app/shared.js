@@ -17,6 +17,7 @@ import {
     section
 } from "../ui.js";
 import { t } from "../i18n.js";
+import { renderLayerBlock } from "./components/layer-block.js";
 
 export {
     emptyState,
@@ -196,7 +197,16 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
         const aiTone = ai.recommendation === "GO" ? "good" : ai.recommendation === "PASS" ? "bad" : "warning";
         const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
             : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
-        const assessBtn = `<button class="chip chip-btn" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}">${t("liquidity_assess_button")}</button>`;
+
+        // T-10: layer-aware approve logic
+        const liqBlocked = liquidity && liquidity.score === "UNTRADABLE";
+        const aiMissing = !ai;
+        const approveDisabled = !hasRequired || liqBlocked || aiMissing;
+        const approveTooltip = liqBlocked
+            ? t("layer.status.blocked") + ": Liquidity Layer (UNTRADABLE)"
+            : aiMissing
+                ? t("layer.status.missing") + ": AI Layer — " + t("ai_analyze_button")
+                : "";
 
         const actionsBlock = closed ? "" : `
             <div class="card-quick-actions">
@@ -207,7 +217,8 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                     data-symbol="${escapeHtml(symbol)}"
                     data-funding-time="${escapeHtml(fundingTime ?? "")}"
                     data-funding-rate="${escapeHtml(String(fundingRatePct ?? ""))}"
-                    ${hasRequired ? "" : "disabled"}>✓ ${t("signal_approve_button")}</button>
+                    ${approveDisabled ? "disabled" : ""}
+                    ${approveTooltip ? `title="${escapeHtml(approveTooltip)}"` : ""}>✓ ${t("signal_approve_button")}</button>
                 <button class="button reject" type="button"
                     data-action="quick-reject-candidate"
                     data-id="${candidate.id}">✗ ${t("signal_reject_button")}</button>
@@ -216,8 +227,9 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                     : `<p class="signal-approve-warning">⚠ ${t("signal_approve_missing_data")}</p>`}
             </div>`;
 
+        // T-09: AI layer block
         const reasoning = ai.reasoning ?? "";
-        const aiRow = `
+        const aiLayerContent = `
             <div class="chip-row">
                 <span class="chip chip-${aiTone}">${escapeHtml(t(`ai_recommendation_${ai.recommendation}`) ?? ai.recommendation)}</span>
                 <span class="chip chip-neutral">${Math.round(ai.confidence * 100)}%</span>
@@ -225,20 +237,51 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                 <button class="chip chip-btn" type="button" data-action="analyze-candidate" data-id="${candidate.id}">${t("ai_reanalyze")}</button>
             </div>`;
 
-        const liqRow = `
+        const aiStatus = ai.recommendation === "GO" ? "ok"
+            : ai.recommendation === "WATCH" ? "warn"
+            : ai.recommendation === "PASS" ? "blocked"
+            : "missing";
+
+        const aiLayerBlock = renderLayerBlock({
+            layerType: "ai",
+            layerName: t("layer.ai"),
+            decoratorName: ai.modelUsed ?? "AiSignalAdvisorService",
+            timestamp: ai.analyzedAt,
+            source: ai.modelUsed,
+            status: aiStatus,
+            collapsed: true,
+            content: aiLayerContent
+        });
+
+        // T-08: Liquidity layer block
+        const liqLayerContent = `
             <div class="chip-row">
                 <span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
-                ${liquidity.bestBid != null ? `<span class="chip chip-muted" title="Bid / Ask">${formatDecimal(liquidity.bestBid, 4)} / ${liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—"}</span>` : ""}
                 ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}" title="Spread">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
-                ${liquidity.entryBidDepthNotional != null ? `<span class="chip chip-muted" title="Entry / Exit depth">${formatDecimal(liquidity.entryBidDepthNotional, 0)} / ${liquidity.exitAskDepthNotional != null ? formatDecimal(liquidity.exitAskDepthNotional, 0) : "—"} USD</span>` : ""}
-                ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted" title="Max order">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
-                ${assessBtn}
+                ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted" title="Round-trip safe notional">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
+                <button class="chip chip-btn" type="button" data-action="assess-card-liquidity" data-id="${candidate.id}">${t("liquidity_assess_button")}</button>
             </div>`;
+
+        const liqStatus = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" || liquidity.score === "MEDIUM" ? "ok"
+            : liquidity.score === "THIN" ? "warn"
+            : liquidity.score === "UNTRADABLE" ? "blocked"
+            : "missing";
+
+        const liqLayerBlock = renderLayerBlock({
+            layerType: "liquidity",
+            layerName: t("layer.liquidity"),
+            decoratorName: "LiquidityAssessmentService",
+            timestamp: liquidity.sampledAt,
+            source: "ORDER_BOOK",
+            status: liqStatus,
+            collapsed: true,
+            content: liqLayerContent
+        });
 
         fullContent = `
             <div class="card-full-content">
-                ${aiRow}
-                ${liqRow}
+                ${aiLayerBlock}
+                ${liqLayerBlock}
                 ${actionsBlock}
             </div>`;
     }
@@ -253,23 +296,41 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
         ? `<span class="chip chip-muted">${formatFundingCountdown(cardFundingTime)}</span>`
         : "";
 
+    const baseStatus = candidate.status === "NORMALIZED" ? "ok"
+        : candidate.status === "NEW" ? "warn"
+        : candidate.status === "FAILED" ? "blocked"
+        : "missing";
+
+    const baseLayerContent = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <div>
+                <h3 class="item-title">${venueIcon(candidate.sourceVenue)}${escapeHtml(candidate.normalizedSymbol ?? candidate.rawSymbol)}</h3>
+                <p class="muted">${t("label_source")} ${escapeHtml(candidate.sourceVenue ?? sourceLabel(candidate.sourceType))} · ${t("label_raw")} ${escapeHtml(candidate.rawSymbol)}</p>
+            </div>
+            <div class="actions">
+                ${formatBadge("candidate", candidate.status)}
+                ${formatAiBadge(ai)}
+            </div>
+        </div>
+        <div class="chip-row">
+            ${cardRateChip}
+            ${cardCountdownChip}
+        </div>`;
+
+    const baseLayerBlock = renderLayerBlock({
+        layerType: "base",
+        layerName: t("layer.base"),
+        decoratorName: "FUNDING_API",
+        timestamp: candidate.detectedAt,
+        source: "FUNDING_API",
+        status: baseStatus,
+        collapsed: false,
+        content: baseLayerContent
+    });
+
     return `
         <article class="list-item signal-card" data-candidate-id="${candidate.id}">
-            <header>
-                <div>
-                    <h3 class="item-title">${venueIcon(candidate.sourceVenue)}${escapeHtml(candidate.normalizedSymbol ?? candidate.rawSymbol)}</h3>
-                    <p class="muted">${t("label_source")} ${escapeHtml(candidate.sourceVenue ?? sourceLabel(candidate.sourceType))} · ${t("label_raw")} ${escapeHtml(candidate.rawSymbol)}</p>
-                </div>
-                <div class="actions">
-                    ${formatBadge("candidate", candidate.status)}
-                    ${formatAiBadge(ai)}
-                </div>
-            </header>
-            <div class="chip-row">
-                ${cardRateChip}
-                ${cardCountdownChip}
-                <span class="chip chip-muted">${formatInstant(candidate.detectedAt)} · ${formatRelative(candidate.detectedAt)}</span>
-            </div>
+            ${baseLayerBlock}
             <div class="item-row">
                 <span class="muted">${escapeHtml(candidateStateLine(candidate))}</span>
             </div>
