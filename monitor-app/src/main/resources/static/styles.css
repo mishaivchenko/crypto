@@ -1906,39 +1906,45 @@ details[open] > .card-expand-toggle::before {
 
 /* === Enrichment Layer Token System (T-01) === */
 :root {
-  --layer-base-bg: #f0f4ff;
-  --layer-base-border: #4a6fa5;
-  --layer-liquidity-bg: #f0fff4;
-  --layer-liquidity-border: #38a169;
-  --layer-latency-bg: #fffff0;
-  --layer-latency-border: #d69e2e;
-  --layer-health-bg: #fff5f5;
-  --layer-health-border: #e53e3e;
-  --layer-ai-bg: #faf5ff;
-  --layer-ai-border: #805ad5;
-  --layer-execution-bg: #e6fffa;
-  --layer-execution-border: #2c7a7b;
-  --freshness-ok: #38a169;
-  --freshness-stale: #d69e2e;
-  --freshness-missing: #e53e3e;
+  /* Dark-theme layer backgrounds — subtle tint over --bg-2 (#10151d) */
+  --layer-base-bg: rgba(74, 111, 165, 0.10);
+  --layer-base-border: #4a7fc1;
+  --layer-liquidity-bg: rgba(56, 161, 105, 0.10);
+  --layer-liquidity-border: #4eba84;
+  --layer-latency-bg: rgba(214, 158, 46, 0.10);
+  --layer-latency-border: #d4a24a;
+  --layer-health-bg: rgba(229, 62, 62, 0.10);
+  --layer-health-border: #e05a5a;
+  --layer-ai-bg: rgba(128, 90, 213, 0.10);
+  --layer-ai-border: #9b72e8;
+  --layer-execution-bg: rgba(44, 122, 123, 0.10);
+  --layer-execution-border: #3a9fa0;
+  /* Freshness — bright enough for dark bg */
+  --freshness-ok: #4eba84;
+  --freshness-stale: #d4a24a;
+  --freshness-missing: #e05a5a;
 }
 
 .layer-block {
   padding: 8px 12px;
   border-left: 3px solid var(--layer-base-border);
   border-radius: 4px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   background: var(--layer-base-bg);
 }
+.layer-block__header { gap: 6px; }
+.layer-block__body { margin-top: 6px; }
 .layer-label {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
+  color: var(--muted);
   display: inline-block;
   padding: 2px 6px;
   border-radius: 3px;
-  margin-right: 6px;
+  margin-right: 4px;
+  background: rgba(255,255,255,0.06);
 }
 .layer-block--base      { background: var(--layer-base-bg);      border-left-color: var(--layer-base-border); }
 .layer-block--liquidity { background: var(--layer-liquidity-bg); border-left-color: var(--layer-liquidity-border); }
