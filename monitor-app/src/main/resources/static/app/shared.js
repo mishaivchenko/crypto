@@ -416,13 +416,15 @@ export function formatPnlBadge(outcome) {
 
 // T-15: Enrichment Summary Strip — compact layer status row under trade card header
 function tradeEnrichmentStrip(trade) {
-    const liqTs = trade.liquidityAssessment?.sampledAt ?? null;
+    // ArmedTradeResponse exposes top-level liquidityScore (not a nested object)
+    const liqScore = trade.liquidityScore ?? null;
+    const liqTs = trade.liquidityAssessmentSampledAt ?? null;
     const warmupTs = trade.warmupDoneAt ?? null;
     const measuredLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs ?? null;
 
-    const liqStatus = !liqTs ? "missing"
-        : trade.liquidityAssessment?.score === "UNTRADABLE" ? "blocked"
-        : trade.liquidityAssessment?.score === "THIN" ? "warn"
+    const liqStatus = liqScore == null ? "missing"
+        : liqScore === "UNTRADABLE" ? "blocked"
+        : liqScore === "THIN" ? "warn"
         : "ok";
     const latStatus = measuredLat == null ? "missing"
         : measuredLat > 600 ? "blocked"

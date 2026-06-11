@@ -326,8 +326,8 @@ export function buildTradeExpansionContent({ trade, attempts = [], liquidity = n
     `;
 }
 
-// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate)
-function buildTradeEnrichmentTimelineLayers(trade, candidate) {
+// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate + attempts)
+function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
     const layers = [];
 
     // Step 1: Base Signal
@@ -392,7 +392,7 @@ function buildTradeEnrichmentTimelineLayers(trade, candidate) {
 }
 
 export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null, candidate = null }) {
-    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate);
+    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate, attempts);
     return `
         ${pipelineStageMarkup("trade")}
         <div class="trade-enrichment-timeline-section" style="margin-bottom:12px">
@@ -593,6 +593,23 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
                     showError(err.message);
                     closeBtn.disabled = false;
                     closeBtn.textContent = t("trade_close_button");
+                }
+            });
+        }
+
+        const armEngineBtn = nodes.modalContent.querySelector("[data-arm-engine]");
+        if (armEngineBtn) {
+            armEngineBtn.addEventListener("click", async () => {
+                armEngineBtn.disabled = true;
+                armEngineBtn.textContent = "…";
+                try {
+                    await api.runEngineOnce(true);
+                    if (onRefresh) onRefresh();
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    armEngineBtn.disabled = false;
+                    armEngineBtn.textContent = t("trade_arm_engine") || "Запустить Engine";
                 }
             });
         }

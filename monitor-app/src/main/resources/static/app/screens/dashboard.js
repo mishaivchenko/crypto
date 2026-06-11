@@ -18,9 +18,8 @@ import { t } from "../../i18n.js";
 import { renderPipelineViz, wirePipelineVizClicks } from "../components/pipeline-viz.js";
 
 // T-24: Dashboard — PipelineViz replaces flat summary cards
-export function dashboardPipelineVizMarkup(overview) {
-    // Derive a rough "closed/executed" count from overview
-    const executedCount = overview.closedTrades ?? overview.executedTrades ?? 0;
+export function dashboardPipelineVizMarkup(overview, pnlAggregate) {
+    const executedCount = pnlAggregate?.closedTrades ?? 0;
 
     const stages = [
         {
@@ -65,7 +64,7 @@ export function dashboardFreshnessCardMarkup(overview) {
     const freshness = overview.enrichmentFreshness;
     if (!freshness) return "";
 
-    const avgSec = freshness.avgAgeSeconds ?? null;
+    const avgSec = freshness.avgSecondsSinceLastAssessment ?? null;
     let tone, valueLabel;
     if (avgSec == null) {
         tone = "neutral";
@@ -86,10 +85,7 @@ export function dashboardFreshnessCardMarkup(overview) {
         valueLabel = `${m}м`;
     }
 
-    const missingCount = freshness.entitiesMissingLiquidity ?? 0;
-    const missingHtml = missingCount > 0
-        ? `<p class="muted" style="color:#e53e3e;font-size:11px">${missingCount} без ликвидности</p>`
-        : "";
+    const missingCount = freshness.uncoveredEntityCount ?? 0;
 
     return summaryCard("Свежесть обогащения", valueLabel, missingCount > 0 ? `${missingCount} без ликвидности` : "Все слои актуальны", tone, true);
 }
@@ -344,7 +340,7 @@ export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpd
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
 
     // T-24: PipelineViz replaces flat summary cards + keep access-mode card
-    const { stages, html: pipelineHtml } = dashboardPipelineVizMarkup(overview);
+    const { stages, html: pipelineHtml } = dashboardPipelineVizMarkup(overview, state.pnlAggregate);
     const accessModeCard = summaryCard(
         t("topbar_access_mode"),
         String(overview.globalAccessMode ?? "testnet").toUpperCase(),

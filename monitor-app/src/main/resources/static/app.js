@@ -101,6 +101,7 @@ async function refreshCurrentScreen() {
             loadingTarget = nodes.candidatesList;
             setLoading(loadingTarget, t("loading_candidates"));
             const page = await api.listCandidates(state.candidateFilters);
+            state.lastCandidates = page.content ?? page ?? [];
             await renderCandidates({ nodes, page, showError, onRefresh: refreshCurrentScreen });
             return;
         }
@@ -118,9 +119,11 @@ async function refreshCurrentScreen() {
         if (state.screen === "trades") {
             loadingTarget = nodes.tradesList;
             setLoading(loadingTarget, t("loading_trades"));
+            const trades = await api.listArmedTrades();
+            state.lastTrades = trades;
             renderTrades({
                 nodes,
-                trades: await api.listArmedTrades(),
+                trades,
                 showError,
                 onRefresh: refreshCurrentScreen
             });
