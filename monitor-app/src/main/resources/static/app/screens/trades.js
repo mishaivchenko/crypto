@@ -58,6 +58,7 @@ function wireTradeCardExpansion(container, { showError, onRefresh }) {
             wireEditForm(contentEl, { showError, onRefresh });
             wireCancelClose(contentEl, { showError, onRefresh });
             wireAssessLiquidity(contentEl, { showError, onRefresh });
+            wireArmEngine(contentEl, { showError, onRefresh });
             wireDeleteSource(contentEl, { showError, onRefresh });
         } catch (err) {
             contentEl.innerHTML = `<p class="card-loading">${escapeHtml(err.message)}</p>`;
@@ -155,6 +156,24 @@ function wireAssessLiquidity(container, { showError, onRefresh }) {
                 refreshBtn.disabled = false;
                 showError(err.message);
             }
+        }
+    });
+}
+
+function wireArmEngine(container, { showError, onRefresh }) {
+    const btn = container.querySelector("[data-arm-engine]");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = "…";
+        try {
+            await api.runEngineOnce(true);
+            if (onRefresh) await onRefresh();
+        } catch (err) {
+            btn.disabled = false;
+            btn.textContent = orig;
+            showError(err.message);
         }
     });
 }

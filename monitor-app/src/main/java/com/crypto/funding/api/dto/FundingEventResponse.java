@@ -19,7 +19,7 @@ public record FundingEventResponse(
     Instant discoveredAt,
     Instant createdAt,
     Instant updatedAt,
-    Long baselineLiquidityAssessmentId
+    String baselineLiquidityAssessmentId
 )
 {
 }

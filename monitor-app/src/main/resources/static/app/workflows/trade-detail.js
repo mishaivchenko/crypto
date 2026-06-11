@@ -326,8 +326,8 @@ export function buildTradeExpansionContent({ trade, attempts = [], liquidity = n
     `;
 }
 
-// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate + attempts)
-function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
+// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate + attempts + liquidity)
+function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts, liquidity) {
     const layers = [];
 
     // Step 1: Base Signal
@@ -339,18 +339,18 @@ function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
         details: candidate ? `Signal #${candidate.id}` : "Источник сигнала не загружен"
     });
 
-    // Step 2: +Liquidity
-    const liqTs = trade.liquidityAssessment?.sampledAt ?? null;
+    // Step 2: +Liquidity — uses the separately-loaded liquidity object, not a nested trade field
+    const liqTs = liquidity?.sampledAt ?? null;
     const liqStatus = !liqTs ? "missing"
-        : trade.liquidityAssessment?.score === "UNTRADABLE" ? "blocked"
-        : trade.liquidityAssessment?.score === "THIN" ? "warn"
+        : liquidity?.score === "UNTRADABLE" ? "blocked"
+        : liquidity?.score === "THIN" ? "warn"
         : "ok";
     layers.push({
         name: "+Liquidity",
         status: liqStatus,
         timestamp: liqTs,
         decorator: "ORDER_BOOK",
-        details: liqTs ? `Score: ${escapeHtml(trade.liquidityAssessment?.score ?? "—")}` : "Нет данных ликвидности"
+        details: liqTs ? `Score: ${escapeHtml(liquidity?.score ?? "—")}` : "Нет данных ликвидности"
     });
 
     // Step 3: +Latency Chain
@@ -391,53 +391,350 @@ function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
     return layers;
 }
 
-export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null, candidate = null }) {
-    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate, attempts);
-    return `
-        ${pipelineStageMarkup("trade")}
-        <div class="trade-enrichment-timeline-section" style="margin-bottom:12px">
-            <div class="meta-label" style="margin-bottom:4px;font-size:11px;color:#888">Enrichment Timeline</div>
-            ${renderEnrichmentTimeline(timelineLayers)}
+// T-19/T-20: Build Base Layer block
+function buildBaseLayerBlock(trade, candidate) {
+    const baseTs = candidate?.detectedAt ?? null;
+    const baseStatus = candidate ? "ok" : "missing";
+    const rawRate = candidate?.fundingRate != null ? `${formatDecimal(candidate.fundingRate * 100, 4)}%` : "—";
+    const content = `
+        <div class="kv-row">
+            ${metaRow(t("trade_instrument"), escapeHtml(trade.symbol ?? "—"))}
+            ${metaRow(t("trade_venue"), escapeHtml(trade.venue ?? "—"))}
+            ${metaRow(t("trade_funding_event"), `#${trade.fundingEventId}`)}
+            ${metaRow(t("trade_funding_time"), formatInstant(trade.fundingTime), formatFundingCountdown(trade.fundingTime))}
+            ${metaRow(t("trade_source_signal"), trade.signalCandidateId ? `#${trade.signalCandidateId}` : t("label_manual"))}
         </div>
-        ${buildLiquiditySection(liquidity, trade)}
-        ${section(t("trade_parameters"), `
-            <div class="chip-row" style="margin-bottom:8px">
-                ${formatBadge("trade", trade.state)}
-                <span class="chip chip-muted">${formatDecimal(trade.notionalUsd, 2)} USD</span>
-                <span class="chip chip-muted">${escapeHtml(sideLabel(trade.intendedSide))}</span>
-                ${trade.mode ? `<span class="chip ${trade.mode === "testnet" ? "chip-warning" : "chip-muted"}">${escapeHtml(modeLabel(trade.mode))}</span>` : ""}
+        <div class="chip-row" style="margin-top:6px">
+            ${formatBadge("trade", trade.state)}
+            <span class="chip chip-muted">${formatDecimal(trade.notionalUsd, 2)} USD</span>
+            <span class="chip chip-muted">${escapeHtml(sideLabel(trade.intendedSide))}</span>
+            ${trade.mode ? `<span class="chip ${trade.mode === "testnet" ? "chip-warning" : "chip-muted"}">${escapeHtml(modeLabel(trade.mode))}</span>` : ""}
+            ${rawRate !== "—" ? `<span class="chip chip-muted">${t("trade_raw_rate") || "Rate"}: ${rawRate}</span>` : ""}
+        </div>
+    `;
+    return renderLayerBlock({
+        layerType: "base",
+        layerName: t("layer.base"),
+        decoratorName: "FundingApiCandidateSourceService",
+        timestamp: baseTs,
+        source: "RSS/API",
+        status: baseStatus,
+        collapsed: false,
+        content
+    });
+}
+
+// T-19/T-20: Build Liquidity Layer block
+function buildLiquidityLayerBlock(liquidity, trade) {
+    const effectiveSymbol = trade.venueSymbol ?? trade.symbol;
+    const assessBtn = (trade.venue && effectiveSymbol)
+        ? `<button class="chip chip-btn" type="button" data-assess-liquidity="${trade.id}" data-venue="${escapeHtml(trade.venue)}" data-symbol="${escapeHtml(effectiveSymbol)}">${t("liquidity_assess_button")}</button>`
+        : "";
+    const refreshBtn = (trade.venue && effectiveSymbol)
+        ? `<button class="chip chip-btn" type="button" data-refresh-liquidity="${trade.id}" data-venue="${escapeHtml(trade.venue)}" data-symbol="${escapeHtml(effectiveSymbol)}">${t("liquidity_refresh_button")}</button>`
+        : "";
+
+    const liqTs = liquidity?.sampledAt ?? null;
+    const liqStatus = !liquidity ? "missing"
+        : liquidity.score === "UNTRADABLE" ? "blocked"
+        : liquidity.score === "THIN" ? "warn"
+        : "ok";
+
+    let content;
+    if (!liquidity) {
+        content = `<p class="muted">${t("liquidity_no_assessment")}</p><div class="chip-row" style="margin-top:8px">${assessBtn}</div>`;
+    } else {
+        const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
+            : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
+        const warning = liquidity.score === "UNTRADABLE"
+            ? `<div class="banner">${t("liquidity_warning_untradable")}</div>`
+            : liquidity.score === "THIN"
+                ? `<div class="banner" style="border-color:rgba(255,190,60,0.22);background:linear-gradient(180deg,rgba(58,44,10,0.96),rgba(36,27,6,0.94))">${t("liquidity_warning_thin")}</div>`
+                : "";
+        content = `
+            ${warning}
+            <p class="liquidity-summary">
+                <span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
+                ${liquidity.bestBid != null ? `<span>${formatDecimal(liquidity.bestBid, 4)} / ${liquidity.bestAsk != null ? formatDecimal(liquidity.bestAsk, 4) : "—"}</span>` : ""}
+                ${liquidity.spreadBps != null ? `<span class="chip ${liquidity.spreadBps > 20 ? "chip-bad" : "chip-muted"}">${formatDecimal(liquidity.spreadBps, 1)} bps</span>` : ""}
+                ${liquidity.recommendedMaxOrderNotional != null ? `<span class="chip chip-muted">&le;${formatDecimal(liquidity.recommendedMaxOrderNotional, 0)} USD</span>` : ""}
+                ${refreshBtn}
+            </p>
+            <div class="kv-row">
+                ${kvItem(`${t("liquidity_entry_bid_depth")} ${infoTip(t("tip_bid_depth"))}`, liquidity.entryBidDepthNotional != null ? `${formatDecimal(liquidity.entryBidDepthNotional, 2)} USD` : "—")}
+                ${kvItem(`${t("liquidity_exit_ask_depth")} ${infoTip(t("tip_ask_depth"))}`, liquidity.exitAskDepthNotional != null ? `${formatDecimal(liquidity.exitAskDepthNotional, 2)} USD` : "—")}
+                ${kvItem(`${t("liquidity_round_trip_safe")} ${infoTip(t("tip_round_trip"))}`, liquidity.roundTripSafeNotional != null ? `${formatDecimal(liquidity.roundTripSafeNotional, 2)} USD` : "—")}
+                ${kvItem(t("liquidity_sampled_at"), formatInstant(liquidity.sampledAt))}
             </div>
-            <div class="meta-grid">
-                ${metaRow(t("trade_funding_event"), `#${trade.fundingEventId}`)}
-                ${metaRow(t("trade_source_signal"), trade.signalCandidateId ? `#${trade.signalCandidateId}` : t("label_manual"))}
-                ${metaRow(t("trade_venue"), escapeHtml(trade.venue ?? "—"))}
-                ${metaRow(t("trade_instrument"), escapeHtml(trade.symbol ?? "—"))}
-                ${metaRow(t("trade_funding_time"), formatInstant(trade.fundingTime), formatFundingCountdown(trade.fundingTime))}
-                ${metaRow(t("trade_planned_entry"), formatInstant(trade.plannedEntryAt))}
-                ${metaRow(t("trade_planned_exit"), formatInstant(trade.plannedExitAt))}
-                ${metaRow(t("trade_entry_attempts"), formatNumber(trade.entryAttemptCount ?? 1), `${t("trade_spacing")} ${formatDurationMs(trade.entrySpacingMs ?? 0)}`)}
-                ${trade.stopLossUsd != null ? metaRow(t("trade_stop_loss"), `${formatDecimal(trade.stopLossUsd, 2)} USD`) : ""}
-                ${trade.takeProfitUsd != null ? metaRow(t("trade_take_profit"), `${formatDecimal(trade.takeProfitUsd, 2)} USD`) : ""}
-                ${metaRow(t("trade_note"), escapeHtml(trade.notes ?? "—"))}
+        `;
+    }
+
+    return renderLayerBlock({
+        layerType: "liquidity",
+        layerName: t("layer.liquidity"),
+        decoratorName: "LiquidityAssessmentService",
+        timestamp: liqTs,
+        source: "ORDER_BOOK_PROBE",
+        status: liqStatus,
+        collapsed: false,
+        content
+    });
+}
+
+// T-19/T-20: Build Latency Chain Layer block (replaces buildLatencyLayerBlock)
+function buildLatencyChainLayerBlock(trade) {
+    const p50 = trade.warmupP50Ms ?? trade.measuredEntryLatencyMs;
+    const manualAdj = trade.manualLatencyAdjustmentMs ?? 0;
+    const effectiveLead = trade.effectiveEntryLatencyMs ?? 0;
+    const p50Label = p50 != null ? `${p50}ms` : "—";
+    const adjLabel = formatSignedMs(manualAdj);
+
+    const latStatus = !p50 ? "missing"
+        : effectiveLead > 600 || !trade.warmupDoneAt ? "blocked"
+        : effectiveLead > 400 ? "warn"
+        : "ok";
+
+    const warmupP50Row = trade.warmupP50Ms != null
+        ? `<div style="display:flex;gap:16px;font-size:11px;margin-top:4px">
+             <span>p50: <strong>${trade.warmupP50Ms}ms</strong></span>
+             ${trade.warmupP95Ms != null ? `<span>p95: <strong>${trade.warmupP95Ms}ms</strong></span>` : ""}
+             ${trade.warmupFallbackUsed ? `<span class="chip chip-warning" style="font-size:10px">Fallback</span>` : ""}
+           </div>`
+        : "";
+
+    const content = `
+        <div class="latency-summary" style="margin-bottom:6px">
+            <span class="formula-item">${escapeHtml(p50Label)} p50 ${infoTip(t("tip_latency_p50"))}</span>
+            <span class="formula-op">+</span>
+            <span class="formula-item">${escapeHtml(adjLabel)} adj ${infoTip(t("tip_latency_adj"))}</span>
+            <span class="formula-op">=</span>
+            <strong class="formula-item formula-result">${effectiveLead}ms ${t("trade_effective_trigger")} ${infoTip(t("tip_latency_effective"))}</strong>
+        </div>
+        ${warmupP50Row}
+        <div class="kv-row" style="margin-top:6px">
+            ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+            ${metaRow(t("trade_armed_at"), formatInstant(trade.armedAt))}
+            ${metaRow(t("trade_entry_lead"), formatDurationMs(trade.entryLeadMs))}
+            ${metaRow(t("trade_exit_lead"), formatDurationMs(trade.exitLeadMs))}
+            ${trade.warmupDoneAt ? metaRow("Warmup done", formatInstant(trade.warmupDoneAt)) : ""}
+            ${trade.armSource ? metaRow(t("trade_arm_source"), escapeHtml(trade.armSource)) : ""}
+        </div>
+        ${!trade.warmupDoneAt ? `<p class="muted" style="font-size:11px;margin-top:4px">${t("warmup_not_done") || "Warmup не завершён"}</p>` : ""}
+        ${trade.warmupFallbackUsed ? `<p class="warmup-warning" style="margin-top:4px">${t("warmup_fallback_warning")}</p>` : ""}
+    `;
+
+    return renderLayerBlock({
+        layerType: "latency",
+        layerName: t("layer.latency"),
+        decoratorName: "VenueLatencyService",
+        timestamp: trade.warmupDoneAt,
+        source: "WARMUP_PROBE",
+        status: latStatus,
+        collapsed: false,
+        content
+    });
+}
+
+// T-19/T-20: Build Health Layer block
+function buildHealthLayerBlock(trade, liquidity) {
+    const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs ?? null;
+    const liqBlocked = liquidity && (liquidity.score === "UNTRADABLE" || liquidity.score === "THIN");
+    const latWarn = effLat != null && effLat > 400;
+    const latBlocked = effLat != null && effLat > 600;
+
+    let healthStatus = "ok";
+    const recommendations = [];
+
+    if (!liquidity) {
+        healthStatus = "missing";
+        recommendations.push(t("health_no_liquidity") || "Нет данных ликвидности — оценка не доступна");
+    } else if (liqBlocked) {
+        healthStatus = "blocked";
+        recommendations.push(`${t("health_liquidity_blocked") || "Ликвидность"}: ${escapeHtml(liquidity.score)}`);
+    }
+
+    if (latBlocked) {
+        healthStatus = "blocked";
+        recommendations.push(`${t("health_latency_blocked") || "Высокая задержка"}: ${effLat}мс > 600мс`);
+    } else if (latWarn) {
+        if (healthStatus === "ok") healthStatus = "warn";
+        recommendations.push(`${t("health_latency_warn") || "Повышенная задержка"}: ${effLat}мс > 400мс`);
+    }
+
+    if (!trade.warmupDoneAt) {
+        if (healthStatus === "ok") healthStatus = "warn";
+        recommendations.push(t("health_warmup_missing") || "Warmup не завершён");
+    }
+
+    const recHtml = recommendations.length
+        ? `<ul style="margin:4px 0 0;padding-left:16px;font-size:12px">${recommendations.map(r => `<li>${r}</li>`).join("")}</ul>`
+        : `<p class="muted" style="font-size:12px;margin:4px 0 0">${t("health_all_ok") || "Все показатели в норме"}</p>`;
+
+    const content = `
+        <div style="margin-bottom:4px">
+            <span class="chip ${healthStatus === "ok" ? "chip-good" : healthStatus === "blocked" ? "chip-bad" : "chip-warning"}" style="font-size:12px">
+                ${healthStatus === "ok" ? "✓" : healthStatus === "blocked" ? "✕" : "⚠"} ${t(`layer.status.${healthStatus}`) || healthStatus}
+            </span>
+        </div>
+        ${recHtml}
+    `;
+
+    return renderLayerBlock({
+        layerType: "health",
+        layerName: t("layer.health"),
+        decoratorName: "Engine",
+        timestamp: trade.armedAt,
+        source: "AUTO_COMPUTED",
+        status: healthStatus,
+        collapsed: false,
+        content
+    });
+}
+
+// T-19/T-20: Build Execution Layer block (only when attempts present)
+function buildExecutionLayerBlock(attempts, position, outcome) {
+    if (!attempts || attempts.length === 0) return "";
+
+    const firstAttempt = attempts[0];
+    const execStatus = firstAttempt.status === "FILLED" ? "ok"
+        : firstAttempt.status === "FAILED" ? "blocked"
+        : "warn";
+
+    const attemptsHtml = attempts.map((attempt) => `
+        <div class="meta-row">
+            <span class="meta-label">#${escapeHtml(String(attempt.attemptNumber ?? "—"))} · ${escapeHtml(attempt.status)}</span>
+            <strong class="meta-value">${escapeHtml(attempt.symbol ?? "—")} ${escapeHtml(attempt.side ?? "—")}</strong>
+            <span class="meta-helper">
+                ${attempt.averageFillPrice != null ? `${t("event_fill_price")} ${formatDecimal(attempt.averageFillPrice, 4)} · ` : ""}
+                ${attempt.feeUsd != null ? `${t("event_fees")} ${formatDecimal(attempt.feeUsd, 4)} USD · ` : ""}
+                ${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)} · ${t("trade_recorded")} ${formatInstant(attempt.createdAt)}
+            </span>
+        </div>
+    `).join("");
+
+    const posHtml = position ? `
+        <div class="kv-row" style="margin-top:8px">
+            ${metaRow(t("event_entry_price"), position.entryPrice != null ? formatDecimal(position.entryPrice, 4) : "—")}
+            ${metaRow(t("event_exit_price"), position.exitPrice != null ? formatDecimal(position.exitPrice, 4) : "—")}
+            ${metaRow(t("history_quantity"), position.quantity != null ? formatDecimal(position.quantity, 6) : "—")}
+            ${metaRow(t("history_opened_at"), formatInstant(position.openedAt))}
+            ${position.closedAt ? metaRow(t("history_closed_at"), formatInstant(position.closedAt)) : ""}
+        </div>
+    ` : "";
+
+    const outcomeHtml = outcome ? (() => {
+        const net = outcome.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
+        const netTone = net == null ? "muted" : net >= 0 ? "good" : "bad";
+        return `
+            <div class="chip-row" style="margin-top:8px;margin-bottom:4px">
+                ${net != null ? `<span class="chip chip-${netTone}">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>` : ""}
+                ${outcome.outcomeCode ? `<span class="chip chip-muted">${escapeHtml(outcome.outcomeCode)}</span>` : ""}
             </div>
-        `)}
-        ${buildLatencyChainSection(trade)}
-        ${section(t("trade_exec_attempts"), attempts.length ? attempts.map((attempt) => `
-            <div class="meta-row">
-                <span class="meta-label">#${escapeHtml(String(attempt.attemptNumber ?? "—"))} · ${escapeHtml(attempt.status)}</span>
-                <strong class="meta-value">${escapeHtml(attempt.symbol ?? "—")} ${escapeHtml(attempt.side ?? "—")}</strong>
-                <span class="meta-helper">
-                    ${attempt.averageFillPrice != null ? `${t("event_fill_price")} ${formatDecimal(attempt.averageFillPrice, 4)} · ` : ""}
-                    ${attempt.feeUsd != null ? `${t("event_fees")} ${formatDecimal(attempt.feeUsd, 4)} USD · ` : ""}
-                    ${escapeHtml(attempt.failureReason ?? t("trade_no_error"))} · ${t("trade_trigger")} ${formatInstant(attempt.triggerAt)} · ${t("trade_recorded")} ${formatInstant(attempt.createdAt)}
-                </span>
+            <div class="kv-row">
+                ${metaRow(t("event_gross_pnl"), outcome.grossPnlUsd != null ? `${formatDecimal(outcome.grossPnlUsd, 4)} USD` : "—")}
+                ${metaRow(t("event_net_pnl"), net != null ? `${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD` : "—")}
+                ${metaRow(t("event_fees"), outcome.feesUsd != null ? `${formatDecimal(outcome.feesUsd, 4)} USD` : "—")}
+                ${metaRow(t("history_evaluated_at"), formatInstant(outcome.evaluatedAt))}
             </div>
-        `).join("") : emptyState(t("empty_attempts"), t("empty_attempts_detail")))}
-        ${warmupSection(trade)}
-        ${buildPositionSection(position)}
-        ${buildOutcomeSection(outcome)}
-        ${buildCancelSection(trade)}
-        ${trade.state === "ARMED" ? section(t("trade_edit_title"), `
+        `;
+    })() : "";
+
+    return renderLayerBlock({
+        layerType: "execution",
+        layerName: t("layer.execution"),
+        decoratorName: "EngineExecutionService",
+        timestamp: firstAttempt.triggerAt,
+        source: "LIVE_ORDER",
+        status: execStatus,
+        collapsed: false,
+        content: attemptsHtml + posHtml + outcomeHtml
+    });
+}
+
+// T-21: Build final verdict block
+function buildFinalVerdictBlock(trade, liquidity, attempts) {
+    const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs ?? null;
+
+    const blockers = [];
+    const warnings = [];
+
+    // Liquidity layer
+    if (!liquidity) {
+        warnings.push(`? ${t("layer.liquidity")}: ${t("layer.status.missing")}`);
+    } else if (liquidity.score === "UNTRADABLE") {
+        blockers.push(`❌ ${t("layer.liquidity")}: UNTRADABLE`);
+    } else if (liquidity.score === "THIN") {
+        warnings.push(`⚠️ ${t("layer.liquidity")}: THIN`);
+    }
+
+    // Latency layer
+    if (!trade.warmupDoneAt && !effLat) {
+        warnings.push(`? ${t("layer.latency")}: ${t("layer.status.missing")}`);
+    } else if (effLat != null && effLat > 600) {
+        blockers.push(`❌ ${t("layer.latency")}: ${effLat}мс (> 600мс)`);
+    } else if (effLat != null && effLat > 400) {
+        warnings.push(`⚠️ ${t("layer.latency")}: ${effLat}мс (> 400мс)`);
+    }
+
+    // Warmup
+    if (!trade.warmupDoneAt && effLat == null) {
+        warnings.push(`? ${t("layer.latency")}: Warmup не завершён`);
+    }
+
+    // Determine overall state
+    let verdictColor, verdictIcon, verdictTitle;
+    if (blockers.length > 0) {
+        verdictColor = "var(--freshness-missing)";
+        verdictIcon = "✕";
+        verdictTitle = `${t("verdict.blocked") || "Не готов"} — ${blockers.length} ${t("verdict_blockers_count") || "слоёв блокируют"}`;
+    } else if (warnings.length > 0) {
+        verdictColor = "var(--freshness-stale)";
+        verdictIcon = "⚠";
+        verdictTitle = `${t("verdict.warnings") || "Предупреждения"} (${warnings.length})`;
+    } else {
+        verdictColor = "var(--freshness-ok)";
+        verdictIcon = "✓";
+        verdictTitle = t("verdict.ready") || "Готов к вводу";
+    }
+
+    const issuesList = [...blockers, ...warnings];
+    const issuesHtml = issuesList.length
+        ? `<ul style="margin:6px 0 0;padding-left:16px;font-size:12px;color:#bbb">${issuesList.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`
+        : "";
+
+    // Aggregate freshness: oldest of all layer timestamps
+    const timestamps = [
+        liquidity?.sampledAt,
+        trade.warmupDoneAt,
+        trade.armedAt
+    ].filter(Boolean);
+
+    let freshnessHtml = "";
+    if (timestamps.length > 0) {
+        const oldestTs = timestamps.reduce((a, b) => a < b ? a : b);
+        const diffMs = Date.now() - +new Date(oldestTs);
+        const diffMin = Math.floor(diffMs / 60000);
+        const diffSec = Math.floor(diffMs / 1000);
+        const relLabel = diffSec < 60
+            ? (diffSec < 5 ? (t("freshness.just_now") || "только что") : `${diffSec}с назад`)
+            : `${diffMin}м назад`;
+        const freshnessClass = diffSec < 120 ? "freshness-ok" : diffSec < 600 ? "freshness-stale" : "freshness-missing";
+        freshnessHtml = `<div style="margin-top:6px;font-size:11px;color:#888">${t("verdict_last_enrichment") || "Последнее обогащение"}: <span class="${freshnessClass}">${escapeHtml(relLabel)}</span></div>`;
+    }
+
+    return `
+        <div class="verdict-block" style="border:1px solid ${verdictColor};border-radius:6px;padding:10px 12px;margin:12px 0 8px;background:rgba(0,0,0,0.18)">
+            <div style="font-size:14px;font-weight:700;color:${verdictColor}">${verdictIcon} ${escapeHtml(verdictTitle)}</div>
+            ${issuesHtml}
+            ${freshnessHtml}
+        </div>
+    `;
+}
+
+export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null, candidate = null }) {
+    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate, attempts, liquidity);
+    const editForm = trade.state === "ARMED" ? `
+        ${section(t("trade_edit_title"), `
             <details class="technical-details">
                 <summary>${t("trade_edit_summary")}</summary>
                 <form class="drawer-form" data-action="edit-trade" data-id="${trade.id}">
@@ -497,7 +794,24 @@ export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, p
                     </div>
                 </form>
             </details>
-        `) : ""}
+        `)}
+    ` : "";
+
+    return `
+        ${pipelineStageMarkup("trade")}
+        <div class="trade-enrichment-timeline-section" style="margin-bottom:12px">
+            <div class="meta-label" style="margin-bottom:4px;font-size:11px;color:#888">Enrichment Timeline</div>
+            ${renderEnrichmentTimeline(timelineLayers)}
+        </div>
+        ${buildBaseLayerBlock(trade, candidate)}
+        ${buildLiquidityLayerBlock(liquidity, trade)}
+        ${buildLatencyChainLayerBlock(trade)}
+        ${buildHealthLayerBlock(trade, liquidity)}
+        ${buildExecutionLayerBlock(attempts, position, outcome)}
+        ${buildFinalVerdictBlock(trade, liquidity, attempts)}
+        ${buildLayerAwareActionBar(trade, liquidity)}
+        ${editForm}
+        ${buildCancelSection(trade)}
         ${trade.signalCandidateId ? buildDeleteCandidateSection({ id: trade.signalCandidateId }, t("event_delete_source")) : ""}
         ${section("Journal", journalMarkup(journal))}
     `;
