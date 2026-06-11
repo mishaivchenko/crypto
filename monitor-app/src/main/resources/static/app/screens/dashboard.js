@@ -94,24 +94,8 @@ export function dashboardFreshnessCardMarkup(overview) {
 export function dashboardEnrichmentAlertsMarkup(candidates, trades, overview) {
     const alerts = [];
 
-    // Alert 1: stale liquidity on candidates (> 10 min)
-    if (candidates && candidates.length > 0) {
-        const nowMs = Date.now();
-        const staleCount = candidates.filter((c) => {
-            const ts = c.liquidityAssessment?.sampledAt ?? c.sampledAt ?? null;
-            if (!ts) return false;
-            return nowMs - new Date(ts).getTime() > 10 * 60 * 1000;
-        }).length;
-        if (staleCount > 0) {
-            alerts.push({
-                text: `${staleCount} сигналов с устаревшей ликвидностью (> 10 мин)`,
-                screen: "candidates",
-                tone: "bad"
-            });
-        }
-    }
-
-    // Alert 2: trades with Latency Chain > 600ms
+    // Alert 1: trades with Latency Chain > 600ms
+    // (stale-liquidity alert on candidates omitted — CandidateListItemResponse has no liquidity/sampledAt fields)
     if (trades && trades.length > 0) {
         const highLatCount = trades.filter((tr) => {
             const eff = tr.effectiveEntryLatencyMs ?? tr.measuredEntryLatencyMs ?? null;

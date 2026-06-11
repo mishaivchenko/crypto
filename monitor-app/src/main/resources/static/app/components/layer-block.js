@@ -3,16 +3,41 @@ import { renderLayerStatusBadge } from './layer-status-badge.js';
 
 var _blockCounter = 0;
 
-export function renderLayerBlock({ layerType, layerName, decoratorName, timestamp, source, status, content, collapsed }) {
+// Module-level collapsed store: key is "screen:layerType" -> boolean
+const _store = {};
+
+// Expose setter as a window global so inline onclick strings can call it.
+// Guard prevents overwrite on duplicate module load (HMR / double script tag) —
+// first-loaded module's _store stays authoritative (ES modules are singletons in normal use).
+if (typeof window !== 'undefined' && !window.__setLayerCollapsed) {
+    window.__setLayerCollapsed = (key, val) => { _store[key] = val; };
+}
+
+export function getLayerCollapsed(screen, layerType, defaultVal) {
+    const key = screen + ':' + layerType;
+    return key in _store ? _store[key] : (defaultVal !== undefined ? defaultVal : false);
+}
+
+export function clearLayerCollapsed() {
+    Object.keys(_store).forEach(k => delete _store[k]);
+}
+
+export function renderLayerBlock({ layerType, layerName, decoratorName, timestamp, source, status, content, collapsed, screen }) {
   if (collapsed === undefined) collapsed = false;
   const id = 'lb-' + (++_blockCounter);
-  const bodyStyle = collapsed ? 'display:none' : '';
+
+  const layerKey = (screen && layerType) ? (screen + ':' + layerType) : null;
+  const isCollapsed = layerKey && (layerKey in _store) ? _store[layerKey] : (collapsed === true);
+  const bodyStyle = isCollapsed ? 'display:none' : '';
 
   const subheaderHtml = decoratorName
     ? '<div class="layer-block__subheader" style="margin-top:2px"><span class="layer-label" style="opacity:0.7;font-size:9px">' + _esc(decoratorName) + '</span></div>'
     : '';
 
-  const headerOnclick = "var b=this.closest('.layer-block').querySelector('.layer-block__body');b.style.display=b.style.display===''?'none':'';";
+  const safeKey = layerKey ? layerKey.replace(/'/g, '').replace(/"/g, '') : null;
+  const headerOnclick = safeKey
+    ? 'var b=this.closest(\'.layer-block\').querySelector(\'.layer-block__body\');var show=b.style.display===\'none\';b.style.display=show?\'\':\'none\';window.__setLayerCollapsed&&window.__setLayerCollapsed(\'' + safeKey + '\',!show);'
+    : 'var b=this.closest(\'.layer-block\').querySelector(\'.layer-block__body\');b.style.display=b.style.display===\'\'?\'none\':\'\';';
 
   return '<div class="layer-block layer-block--' + _esc(layerType || 'base') + '" id="' + id + '">'
     + '<div class="layer-block__header" style="cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="' + headerOnclick + '">'
