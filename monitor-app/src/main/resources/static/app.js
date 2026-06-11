@@ -88,10 +88,7 @@ async function refreshCurrentScreen() {
                 nodes,
                 overview,
                 state,
-                onRunEngineOnce: () => handleRunEngineOnce({ state, refreshCurrentScreen, showSuccess, showError }),
-                onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
                 onOpenVenue: openVenue,
-                onOpenDevTestRun: openDevTestRun,
                 onNavigate: switchScreen
             });
             return;

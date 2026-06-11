@@ -306,7 +306,7 @@ export function criticalMetricsPanelMarkup(metrics, pnl) {
     `;
 }
 
-export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun, onNavigate }) {
+export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigate }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
 
     // T-24: PipelineViz replaces flat summary cards + keep access-mode card
@@ -360,24 +360,11 @@ export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpd
         });
     });
 
-    nodes.dashboardDevTools.innerHTML = dashboardDevToolsMarkup(state.engineRuntime, state.engineRuntimeError);
     nodes.dashboardMetrics.innerHTML = criticalMetricsPanelMarkup(state.engineMetrics, state.pnlAggregate);
     nodes.dashboardVenues.innerHTML = overview.venues.length
         ? overview.venues.map((venue) => venueCard(venue)).join("")
         : emptyState(t("empty_venue_diagnostics"), t("empty_venue_diagnostics_detail"));
 
-    const runOnceButton = nodes.dashboardDevTools.querySelector("[data-action='run-engine-once']");
-    if (runOnceButton) {
-        runOnceButton.addEventListener("click", onRunEngineOnce);
-    }
-    const devTestRunButton = nodes.dashboardDevTools.querySelector("[data-action='open-dev-test-run']");
-    if (devTestRunButton) {
-        devTestRunButton.addEventListener("click", onOpenDevTestRun);
-    }
-    const runtimeForm = nodes.dashboardDevTools.querySelector("[data-action='update-engine-runtime']");
-    if (runtimeForm) {
-        runtimeForm.addEventListener("submit", onUpdateEngineRuntime);
-    }
     wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", onOpenVenue);
 }
 
