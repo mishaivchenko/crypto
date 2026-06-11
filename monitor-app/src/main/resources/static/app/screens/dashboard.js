@@ -337,7 +337,7 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
                 ${freshnessCard}
             </div>
         </div>
-        ${alertsHtml ? `<div class="snapshot-alerts" style="margin-top:8px">${alertsHtml}</div>` : ""}
+        <div class="snapshot-alerts" style="margin-top:8px">${alertsHtml}</div>
     `;
 
     // Wire PipelineViz navigation clicks (T-24)
