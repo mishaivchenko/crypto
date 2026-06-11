@@ -74,7 +74,7 @@ function ruleRow(rule) {
                 </div>
             </div>
             <div style="padding:6px 8px;margin:4px 0;border-radius:4px">
-                <strong style="font-size:0.75rem;display:block;margin-bottom:4px">Action</strong>
+                <strong style="font-size:0.75rem;display:block;margin-bottom:4px">${t("auto_approval_section_action")}</strong>
                 <div class="chip-row" style="margin:0">
                     ${actionBadge(rule.action)}
                     <span class="chip chip-muted">$${rule.defaultNotionalUsd}</span>
@@ -143,7 +143,7 @@ function ruleForm(rule) {
         </div>
 
         <div style="padding:6px 10px 10px;margin:8px 0;border-radius:4px;border:1px solid var(--border-color,#333)">
-            <p class="field" style="margin:0 0 6px"><strong style="font-size:0.8rem">Action</strong></p>
+            <p class="field" style="margin:0 0 6px"><strong style="font-size:0.8rem">${t("auto_approval_section_action")}</strong></p>
             <label class="field">
                 <span>${t("auto_approval_form_action")}</span>
                 <select name="action">
