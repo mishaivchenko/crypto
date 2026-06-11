@@ -326,8 +326,8 @@ export function buildTradeExpansionContent({ trade, attempts = [], liquidity = n
     `;
 }
 
-// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate + attempts)
-function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
+// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate + attempts + liquidity)
+function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts, liquidity) {
     const layers = [];
 
     // Step 1: Base Signal
@@ -339,18 +339,18 @@ function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
         details: candidate ? `Signal #${candidate.id}` : "Источник сигнала не загружен"
     });
 
-    // Step 2: +Liquidity
-    const liqTs = trade.liquidityAssessment?.sampledAt ?? null;
+    // Step 2: +Liquidity — uses the separately-loaded liquidity object, not a nested trade field
+    const liqTs = liquidity?.sampledAt ?? null;
     const liqStatus = !liqTs ? "missing"
-        : trade.liquidityAssessment?.score === "UNTRADABLE" ? "blocked"
-        : trade.liquidityAssessment?.score === "THIN" ? "warn"
+        : liquidity?.score === "UNTRADABLE" ? "blocked"
+        : liquidity?.score === "THIN" ? "warn"
         : "ok";
     layers.push({
         name: "+Liquidity",
         status: liqStatus,
         timestamp: liqTs,
         decorator: "ORDER_BOOK",
-        details: liqTs ? `Score: ${escapeHtml(trade.liquidityAssessment?.score ?? "—")}` : "Нет данных ликвидности"
+        details: liqTs ? `Score: ${escapeHtml(liquidity?.score ?? "—")}` : "Нет данных ликвидности"
     });
 
     // Step 3: +Latency Chain
@@ -732,7 +732,7 @@ function buildFinalVerdictBlock(trade, liquidity, attempts) {
 }
 
 export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null, candidate = null }) {
-    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate, attempts);
+    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate, attempts, liquidity);
     const editForm = trade.state === "ARMED" ? `
         ${section(t("trade_edit_title"), `
             <details class="technical-details">

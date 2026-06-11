@@ -137,7 +137,7 @@ public class FundingEventController
 
     private FundingEventResponse toResponse( FundingEvent event )
     {
-        Long baselineLiquidityAssessmentId = fundingEventQueryService.resolveBaselineLiquidityAssessmentId( event.signalCandidateId() );
+        String baselineLiquidityAssessmentId = fundingEventQueryService.resolveBaselineLiquidityAssessmentId( event.signalCandidateId() );
         return new FundingEventResponse(
             event.id(),
             event.venue(),

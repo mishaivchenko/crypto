@@ -64,7 +64,7 @@ public class FundingEventQueryService
         return FundingEventMapper.toDomain( entity, resolveArmedTradeId( id ) );
     }
 
-    public Long resolveBaselineLiquidityAssessmentId( Long signalCandidateId )
+    public String resolveBaselineLiquidityAssessmentId( Long signalCandidateId )
     {
         if( signalCandidateId == null )
         {
@@ -72,7 +72,7 @@ public class FundingEventQueryService
         }
         return liquidityAssessmentRepository
             .findFirstBySignalCandidateIdOrderBySampledAtAsc( signalCandidateId )
-            .map( a -> a.getId() )
+            .map( a -> a.getAssessmentId() )
             .orElse( null );
     }
 

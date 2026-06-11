@@ -115,8 +115,8 @@ test("trade and history drawers keep source-to-outcome narrative", () => {
         attempts: []
     });
 
-    assert.match(tradeMarkup, /Trade parameters/);
-    assert.match(tradeMarkup, /Execution attempts/);
+    assert.match(tradeMarkup, /Base Signal/);
+    assert.match(tradeMarkup, /Latency Chain/);
     assert.match(historyMarkup, /1\. Source/);
     assert.match(historyMarkup, /empty-state compact/);
 });
