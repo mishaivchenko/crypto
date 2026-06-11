@@ -7,7 +7,7 @@ import urllib.request
 
 _DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 _MODEL = "deepseek-chat"
-_MAX_TOKENS = 4000   # PR review needs headroom for full JSON with multiple concern arrays
+_MAX_TOKENS = 8000   # PR review needs headroom for full JSON with multiple concern arrays
 _TEMPERATURE = 0.1
 
 

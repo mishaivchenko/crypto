@@ -13,6 +13,15 @@ _REQUIRED_FIELDS = frozenset({
     "architectureConcerns", "correctnessConcerns", "concurrencyConcerns",
     "tradingRiskConcerns", "observabilityConcerns", "testConcerns",
 })
+# Fields required only when the response is complete (not repaired/truncated)
+_REQUIRED_FIELDS_STRICT = _REQUIRED_FIELDS
+# Minimal fields required even from a truncated/repaired response
+_REQUIRED_FIELDS_MINIMAL = frozenset({"reviewDecision", "confidence", "summary", "riskLevel"})
+# Concern fields that default to [] when missing in a repaired response
+_CONCERN_FIELDS = frozenset({
+    "architectureConcerns", "correctnessConcerns", "concurrencyConcerns",
+    "tradingRiskConcerns", "observabilityConcerns", "testConcerns",
+})
 
 
 def _parse_concerns(raw: object) -> tuple[Concern, ...]:
@@ -40,6 +49,49 @@ def _parse_concerns(raw: object) -> tuple[Concern, ...]:
     return tuple(result)
 
 
+def _repair_truncated_json(text: str) -> str | None:
+    """Try to close a truncated JSON object by balancing braces/brackets.
+
+    When the model hits max_tokens the JSON stops mid-stream.  We find the
+    outermost ``{`` and walk forward, tracking nesting depth, then append the
+    closing tokens needed to produce valid JSON.  The repaired object will have
+    truncated strings/arrays but will at least parse, allowing the required
+    top-level fields to be read.
+    """
+    start = text.find("{")
+    if start == -1:
+        return None
+
+    # Walk from `start` counting unmatched openers.
+    stack: list[str] = []
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:]):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]":
+            if stack and stack[-1] == ch:
+                stack.pop()
+
+    if not stack:
+        return None  # balanced — no repair needed, normal decode should work
+
+    # Close any open string, then append closing tokens in reverse order.
+    suffix = ('"' if in_string else "") + "".join(reversed(stack))
+    return text[start:] + suffix
+
+
 def parse(raw: str) -> ReviewResult | None:
     """Parse raw DeepSeek response into a ReviewResult. Returns None on any parse failure."""
     if not raw:
@@ -53,26 +105,50 @@ def parse(raw: str) -> ReviewResult | None:
             lines = lines[:-1]
         text = "\n".join(lines).strip()
 
+    repaired = False
     try:
         data = json.loads(text)
     except (json.JSONDecodeError, ValueError):
-        # Fallback: extract the first {...} block if the model prepended/appended prose
+        # Fallback 1: extract the first {...} block if the model prepended/appended prose
         start = text.find("{")
         end = text.rfind("}")
+        parsed = False
         if start != -1 and end > start:
             try:
                 data = json.loads(text[start:end + 1])
+                parsed = True
             except (json.JSONDecodeError, ValueError):
-                print(f"[parser] JSON decode failed (incl. fallback). First 200 chars: {text[:200]!r}")
-                return None
-        else:
-            print(f"[parser] JSON decode failed — no {{...}} found. First 200 chars: {text[:200]!r}")
+                pass
+
+        if not parsed:
+            # Fallback 2: truncated response (max_tokens cut mid-stream) — repair by closing
+            # open braces/brackets so json.loads can at least read top-level fields.
+            fixed = _repair_truncated_json(text)
+            if fixed:
+                try:
+                    data = json.loads(fixed)
+                    parsed = True
+                    repaired = True
+                    print("[parser] Repaired truncated JSON response")
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+        if not parsed:
+            print(f"[parser] JSON decode failed (incl. repair). First 200 chars: {text[:200]!r}")
             return None
 
     if not isinstance(data, dict):
         return None
 
-    missing = _REQUIRED_FIELDS - data.keys()
+    # Repaired responses may be missing concern arrays that were truncated — fill with []
+    if repaired:
+        for field in _CONCERN_FIELDS:
+            data.setdefault(field, [])
+        required = _REQUIRED_FIELDS_MINIMAL
+    else:
+        required = _REQUIRED_FIELDS_STRICT
+
+    missing = required - data.keys()
     if missing:
         print(f"[parser] Missing required fields: {missing}")
         return None

@@ -107,5 +107,26 @@ class TestPrReviewParserDecisions(unittest.TestCase):
         self.assertEqual(result.review_decision, "REQUEST_CHANGES")
 
 
+class TestPrReviewParserRepair(unittest.TestCase):
+    """Tests for truncated-JSON repair (max_tokens cut the response mid-stream)."""
+
+    def test_repairs_truncated_response(self):
+        # Simulate the model being cut off in the middle of a concern array
+        full = _valid_payload(correctnessConcerns=[
+            {"severity": "HIGH", "file": "Foo.java", "lineHint": 10,
+             "category": "BUG", "message": "NPE risk", "recommendation": "fix"}
+        ])
+        truncated = full[:len(full) // 2]  # cut in half
+        result = parse(truncated)
+        # Must not return None — required top-level fields appear early in the JSON
+        self.assertIsNotNone(result)
+
+    def test_full_response_unaffected_by_repair_path(self):
+        # A valid response must still parse correctly (repair path not triggered)
+        result = parse(_valid_payload())
+        self.assertIsNotNone(result)
+        self.assertEqual(result.review_decision, "COMMENT")
+
+
 if __name__ == "__main__":
     unittest.main()
