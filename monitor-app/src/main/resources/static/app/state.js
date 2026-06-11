@@ -6,6 +6,10 @@ export function createAppState() {
         historyFilters: {},
         lastEngineRun: null,
         engineRuntime: null,
-        engineRuntimeError: null
+        engineRuntimeError: null,
+        lastCandidates: null,
+        lastTrades: null,
+        engineMetrics: null,
+        pnlAggregate: null
     };
 }

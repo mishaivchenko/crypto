@@ -92,7 +92,8 @@ async function refreshCurrentScreen() {
                 onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
                 onOpenVenue: openVenue,
                 onOpenDevTestRun: openDevTestRun,
-                onRenderAutoApproval: () => renderAutoApproval({ nodes, showError, showSuccess })
+                onRenderAutoApproval: () => renderAutoApproval({ nodes, showError, showSuccess }),
+                onNavigate: switchScreen
             });
             return;
         }
@@ -100,6 +101,7 @@ async function refreshCurrentScreen() {
             loadingTarget = nodes.candidatesList;
             setLoading(loadingTarget, t("loading_candidates"));
             const page = await api.listCandidates(state.candidateFilters);
+            state.lastCandidates = page?.content ?? [];
             await renderCandidates({ nodes, page, showError, onRefresh: refreshCurrentScreen });
             return;
         }
@@ -117,9 +119,11 @@ async function refreshCurrentScreen() {
         if (state.screen === "trades") {
             loadingTarget = nodes.tradesList;
             setLoading(loadingTarget, t("loading_trades"));
+            const trades = await api.listArmedTrades();
+            state.lastTrades = trades;
             renderTrades({
                 nodes,
-                trades: await api.listArmedTrades(),
+                trades,
                 showError,
                 onRefresh: refreshCurrentScreen
             });

@@ -18,6 +18,7 @@ import {
 } from "../ui.js";
 import { t } from "../i18n.js";
 import { renderLayerBlock } from "./components/layer-block.js";
+import { renderEnrichmentTimestamp } from "./components/enrichment-timestamp.js";
 
 export {
     emptyState,
@@ -413,6 +414,42 @@ export function formatPnlBadge(outcome) {
     return formatBadge("outcome", `${sign}${formatDecimal(net, 4)} USD${fees}`, tone);
 }
 
+// T-15: Enrichment Summary Strip — compact layer status row under trade card header
+function tradeEnrichmentStrip(trade) {
+    // ArmedTradeResponse exposes top-level liquidityScore (not a nested object)
+    const liqScore = trade.liquidityScore ?? null;
+    const liqTs = trade.liquidityAssessmentSampledAt ?? null;
+    const warmupTs = trade.warmupDoneAt ?? null;
+    const measuredLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs ?? null;
+
+    const liqStatus = liqScore == null ? "missing"
+        : liqScore === "UNTRADABLE" ? "blocked"
+        : liqScore === "THIN" ? "warn"
+        : "ok";
+    const latStatus = measuredLat == null ? "missing"
+        : measuredLat > 600 ? "blocked"
+        : measuredLat > 400 ? "warn"
+        : "ok";
+    const warmupStatus = !warmupTs ? "missing"
+        : trade.warmupFallbackUsed ? "warn"
+        : "ok";
+
+    const STATUS_DOT = { ok: "●", warn: "▲", blocked: "✕", missing: "?" };
+    const STATUS_COLOR = { ok: "var(--freshness-ok, #38a169)", warn: "var(--freshness-stale, #d69e2e)", blocked: "var(--freshness-missing, #e53e3e)", missing: "#888" };
+
+    const dot = (s) => `<span style="color:${STATUS_COLOR[s]};font-size:10px">${STATUS_DOT[s]}</span>`;
+
+    const oldestTs = [liqTs, warmupTs].filter(Boolean).sort()[0] ?? null;
+    const freshnessHtml = oldestTs ? renderEnrichmentTimestamp(oldestTs, null) : `<span style="color:#888;font-size:11px">—</span>`;
+
+    return `<div class="trade-enrichment-strip" style="display:flex;align-items:center;gap:10px;padding:4px 0 2px;font-size:11px;color:#888;cursor:pointer;" data-open-enrichment-timeline="${escapeHtml(String(trade.id))}">
+        <span>${dot(liqStatus)} Liquidity</span>
+        <span>${dot(latStatus)} Latency</span>
+        <span>${dot(warmupStatus)} Warmup</span>
+        <span style="margin-left:auto">${freshnessHtml}</span>
+    </div>`;
+}
+
 export function tradeCard(trade, outcome = null) {
     const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
     const pnlChip = net != null
@@ -442,6 +479,7 @@ export function tradeCard(trade, outcome = null) {
                     ${formatPnlBadge(outcome)}
                 </div>
             </header>
+            ${tradeEnrichmentStrip(trade)}
             <div class="chip-row">
                 ${rateChip}
                 ${countdownChip}

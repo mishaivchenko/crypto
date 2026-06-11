@@ -22,6 +22,8 @@ import {
 } from "../shared.js";
 import { t } from "../../i18n.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
+import { renderLayerBlock } from "../components/layer-block.js";
+import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
 
 function infoTip(text) {
     return `<details class="info-tip"><summary class="info-tip-trigger">ⓘ</summary><div class="info-tip-body">${escapeHtml(text)}</div></details>`;
@@ -151,10 +153,99 @@ export function buildCancelSection(trade) {
     </div>`;
 }
 
+// T-16: Latency Chain LayerBlock for expanded trade card
+function buildLatencyLayerBlock(trade) {
+    const p50 = trade.warmupP50Ms ?? trade.measuredEntryLatencyMs;
+    const manualAdj = trade.manualLatencyAdjustmentMs ?? 0;
+    const effectiveLead = trade.effectiveEntryLatencyMs ?? 0;
+    const p50Label = p50 != null ? `${p50}ms` : "—";
+    const adjLabel = formatSignedMs(manualAdj);
+
+    const latStatus = !p50 ? "missing"
+        : effectiveLead > 600 || !trade.warmupDoneAt ? "blocked"
+        : effectiveLead > 400 ? "warn"
+        : "ok";
+
+    const warmupP50Row = trade.warmupP50Ms != null
+        ? `<div style="display:flex;gap:16px;font-size:11px;margin-top:4px">
+             <span>p50: <strong>${trade.warmupP50Ms}ms</strong></span>
+             ${trade.warmupP95Ms != null ? `<span>p95: <strong>${trade.warmupP95Ms}ms</strong></span>` : ""}
+             ${trade.warmupFallbackUsed ? `<span class="chip chip-warning" style="font-size:10px">Fallback</span>` : ""}
+           </div>`
+        : "";
+
+    const latContent = `
+        <div class="latency-summary" style="margin-bottom:6px">
+            <span class="formula-item">${escapeHtml(p50Label)} p50</span>
+            <span class="formula-op">+</span>
+            <span class="formula-item">${escapeHtml(adjLabel)} adj</span>
+            <span class="formula-op">=</span>
+            <strong class="formula-item formula-result">${effectiveLead}ms ${t("trade_effective_trigger")}</strong>
+        </div>
+        ${warmupP50Row}
+        <div class="kv-row" style="margin-top:6px">
+            ${metaRow(t("trade_measured_latency"), formatDurationMs(trade.measuredEntryLatencyMs))}
+            ${trade.warmupDoneAt ? metaRow("Warmup done", formatInstant(trade.warmupDoneAt)) : ""}
+        </div>
+        ${!trade.warmupDoneAt ? `<p class="muted" style="font-size:11px;margin-top:4px">Warmup не завершён</p>` : ""}
+    `;
+
+    return renderLayerBlock({
+        layerType: "latency",
+        layerName: t("event_latency_chain"),
+        decoratorName: "WARMUP_PROBE",
+        timestamp: trade.warmupDoneAt,
+        source: "WARMUP_PROBE",
+        status: latStatus,
+        collapsed: true,
+        content: latContent
+    });
+}
+
+// T-17: Layer-aware action bar for expanded trade card
+function buildLayerAwareActionBar(trade, liquidity) {
+    if (trade.state !== "ARMED") return "";
+
+    const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs ?? null;
+    const liqBlocked = liquidity && (liquidity.score === "UNTRADABLE" || liquidity.score === "THIN");
+    const latBlocked = effLat != null && effLat > 600;
+    const engineDisabled = liqBlocked || latBlocked;
+
+    let engineTooltip = "";
+    if (liqBlocked) {
+        engineTooltip = `Liquidity Layer: ${escapeHtml(liquidity.score)}`;
+    } else if (latBlocked) {
+        engineTooltip = `Latency Layer: ${effLat}ms > 600ms`;
+    }
+
+    const venue = trade.venueSymbol ?? trade.symbol ?? "";
+
+    return `
+        <div class="action-row layer-aware-action-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
+            <button class="button" type="button" data-arm-engine="${trade.id}"
+                ${engineDisabled ? "disabled" : ""}
+                ${engineTooltip ? `title="${escapeHtml(engineTooltip)}"` : ""}>
+                ${t("trade_arm_engine") || "Запустить Engine"}
+            </button>
+            <button class="chip chip-btn" type="button"
+                data-refresh-liquidity="${trade.id}"
+                data-venue="${escapeHtml(trade.venue ?? "")}"
+                data-symbol="${escapeHtml(venue)}"
+                title="Latency пересчитывается только при пересоздании сделки">
+                ${t("trade_recalculate_enrichment") || "Пересчитать обогащение"}
+            </button>
+            <button class="btn-danger-small" type="button" data-cancel-trade="${trade.id}">
+                ✕ ${t("trade_cancel_button")}
+            </button>
+        </div>
+    `;
+}
+
 export function buildTradeExpansionContent({ trade, attempts = [], liquidity = null, position = null, outcome = null }) {
     return `
         ${buildLiquiditySection(liquidity, trade)}
-        ${buildLatencyChainSection(trade)}
+        ${buildLatencyLayerBlock(trade)}
+        ${buildLayerAwareActionBar(trade, liquidity)}
         ${attempts.length ? section(t("trade_exec_attempts"), attempts.map((attempt) => `
             <div class="meta-row">
                 <span class="meta-label">#${escapeHtml(String(attempt.attemptNumber ?? "—"))} · ${escapeHtml(attempt.status)}</span>
@@ -235,9 +326,79 @@ export function buildTradeExpansionContent({ trade, attempts = [], liquidity = n
     `;
 }
 
-export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null }) {
+// T-18: Build EnrichmentTimeline layers from trade data (+ optional candidate + attempts)
+function buildTradeEnrichmentTimelineLayers(trade, candidate, attempts) {
+    const layers = [];
+
+    // Step 1: Base Signal
+    layers.push({
+        name: "Base Signal",
+        status: candidate ? "ok" : "missing",
+        timestamp: candidate?.detectedAt ?? null,
+        decorator: "FUNDING_API",
+        details: candidate ? `Signal #${candidate.id}` : "Источник сигнала не загружен"
+    });
+
+    // Step 2: +Liquidity
+    const liqTs = trade.liquidityAssessment?.sampledAt ?? null;
+    const liqStatus = !liqTs ? "missing"
+        : trade.liquidityAssessment?.score === "UNTRADABLE" ? "blocked"
+        : trade.liquidityAssessment?.score === "THIN" ? "warn"
+        : "ok";
+    layers.push({
+        name: "+Liquidity",
+        status: liqStatus,
+        timestamp: liqTs,
+        decorator: "ORDER_BOOK",
+        details: liqTs ? `Score: ${escapeHtml(trade.liquidityAssessment?.score ?? "—")}` : "Нет данных ликвидности"
+    });
+
+    // Step 3: +Latency Chain
+    const warmupTs = trade.warmupDoneAt ?? null;
+    const warmupStatus = !warmupTs ? "missing" : trade.warmupFallbackUsed ? "warn" : "ok";
+    layers.push({
+        name: "+Latency Chain",
+        status: warmupStatus,
+        timestamp: warmupTs,
+        decorator: "WARMUP_PROBE",
+        details: warmupTs ? `Effective: ${trade.effectiveEntryLatencyMs ?? "—"}ms` : "Warmup не завершён"
+    });
+
+    // Step 4: Armed
+    layers.push({
+        name: "Armed",
+        status: trade.armedAt ? "ok" : "missing",
+        timestamp: trade.armedAt ?? null,
+        decorator: trade.armSource ?? "OPERATOR",
+        details: trade.armSource ? `Source: ${escapeHtml(trade.armSource)}` : ""
+    });
+
+    // Step 5: Execution (optional)
+    if (attempts && attempts.length > 0) {
+        const firstAttempt = attempts[0];
+        const execStatus = firstAttempt.status === "FILLED" ? "ok"
+            : firstAttempt.status === "FAILED" ? "blocked"
+            : "warn";
+        layers.push({
+            name: "Execution",
+            status: execStatus,
+            timestamp: firstAttempt.triggerAt ?? null,
+            decorator: "ENGINE",
+            details: `${escapeHtml(firstAttempt.status)} · ${escapeHtml(firstAttempt.failureReason ?? "")}`
+        });
+    }
+
+    return layers;
+}
+
+export function buildTradeDrawerContent({ trade, journal, attempts, liquidity, position = null, outcome = null, candidate = null }) {
+    const timelineLayers = buildTradeEnrichmentTimelineLayers(trade, candidate, attempts);
     return `
         ${pipelineStageMarkup("trade")}
+        <div class="trade-enrichment-timeline-section" style="margin-bottom:12px">
+            <div class="meta-label" style="margin-bottom:4px;font-size:11px;color:#888">Enrichment Timeline</div>
+            ${renderEnrichmentTimeline(timelineLayers)}
+        </div>
         ${buildLiquiditySection(liquidity, trade)}
         ${section(t("trade_parameters"), `
             <div class="chip-row" style="margin-bottom:8px">
@@ -353,11 +514,17 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
             api.getTradeOutcome(id).catch(() => null)
         ]);
 
+        // T-18: optionally load candidate for timeline step 1
+        let candidate = null;
+        if (trade.signalCandidateId) {
+            candidate = await api.getCandidate(trade.signalCandidateId).catch(() => null);
+        }
+
         nodes.modalType.textContent = t("trade_modal_type");
         nodes.modalTitle.innerHTML = trade.symbol
             ? `${venueIcon(trade.venue)}${escapeHtml(trade.symbol)} · ${escapeHtml(trade.venue)}`
             : escapeHtml(`${t("card_trade_prefix")}${trade.id}`);
-        nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts, liquidity, position, outcome });
+        nodes.modalContent.innerHTML = buildTradeDrawerContent({ trade, journal, attempts, liquidity, position, outcome, candidate });
         openModal(nodes);
 
         const assessLiqBtn = nodes.modalContent.querySelector("[data-assess-liquidity]");
@@ -426,6 +593,23 @@ export async function openTradeDetail({ id, nodes, showError, onRefresh }) {
                     showError(err.message);
                     closeBtn.disabled = false;
                     closeBtn.textContent = t("trade_close_button");
+                }
+            });
+        }
+
+        const armEngineBtn = nodes.modalContent.querySelector("[data-arm-engine]");
+        if (armEngineBtn) {
+            armEngineBtn.addEventListener("click", async () => {
+                armEngineBtn.disabled = true;
+                armEngineBtn.textContent = "…";
+                try {
+                    await api.runEngineOnce(true);
+                    if (onRefresh) onRefresh();
+                    await openTradeDetail({ id, nodes, showError, onRefresh });
+                } catch (err) {
+                    showError(err.message);
+                    armEngineBtn.disabled = false;
+                    armEngineBtn.textContent = t("trade_arm_engine") || "Запустить Engine";
                 }
             });
         }
