@@ -6,8 +6,10 @@ var _blockCounter = 0;
 // Module-level collapsed store: key is "screen:layerType" -> boolean
 const _store = {};
 
-// Expose setter as a window global so inline onclick strings can call it
-if (typeof window !== 'undefined') {
+// Expose setter as a window global so inline onclick strings can call it.
+// Guard prevents overwrite on duplicate module load (HMR / double script tag) —
+// first-loaded module's _store stays authoritative (ES modules are singletons in normal use).
+if (typeof window !== 'undefined' && !window.__setLayerCollapsed) {
     window.__setLayerCollapsed = (key, val) => { _store[key] = val; };
 }
 
@@ -32,8 +34,9 @@ export function renderLayerBlock({ layerType, layerName, decoratorName, timestam
     ? '<div class="layer-block__subheader" style="margin-top:2px"><span class="layer-label" style="opacity:0.7;font-size:9px">' + _esc(decoratorName) + '</span></div>'
     : '';
 
-  const headerOnclick = layerKey
-    ? 'var b=this.closest(\'.layer-block\').querySelector(\'.layer-block__body\');var show=b.style.display===\'none\';b.style.display=show?\'\':\'none\';window.__setLayerCollapsed&&window.__setLayerCollapsed(\'' + layerKey + '\',!show);'
+  const safeKey = layerKey ? layerKey.replace(/'/g, '').replace(/"/g, '') : null;
+  const headerOnclick = safeKey
+    ? 'var b=this.closest(\'.layer-block\').querySelector(\'.layer-block__body\');var show=b.style.display===\'none\';b.style.display=show?\'\':\'none\';window.__setLayerCollapsed&&window.__setLayerCollapsed(\'' + safeKey + '\',!show);'
     : 'var b=this.closest(\'.layer-block\').querySelector(\'.layer-block__body\');b.style.display=b.style.display===\'\'?\'none\':\'\';';
 
   return '<div class="layer-block layer-block--' + _esc(layerType || 'base') + '" id="' + id + '">'
