@@ -1,7 +1,7 @@
 # UI Unification — Enrichment Pipeline & Form Compaction
 
-**Date:** 2026-06-11  
-**Branch:** feat/enrichment-sprint1  
+**Date:** 2026-06-11
+**Branch:** feat/enrichment-sprint1
 **Scope:** Visual & architectural unification of the monitor-app vanilla-JS UI
 
 ---
@@ -112,7 +112,7 @@ renderLayerPipeline(layers, { screen })
 ## Out of Scope
 
 - Venues Grid styling — separate task
-- Dashboard Pipeline Viz — separate task  
+- Dashboard Pipeline Viz — separate task
 - Any backend changes
 - New API endpoints for refresh (uses existing actions)
 
