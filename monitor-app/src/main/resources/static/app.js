@@ -252,7 +252,7 @@ function applyStaticTranslations() {
     if (drawerPlaceholder) drawerPlaceholder.textContent = t("inspector_placeholder");
 
     const venuePulseHeader = document.querySelector("#screen-dashboard .panel-header h3");
-    if (venuePulseHeader && !venuePulseHeader.closest("#dashboard-dev-tools") && !venuePulseHeader.closest("#dashboard-metrics")) {
+    if (venuePulseHeader && !venuePulseHeader.closest("#dashboard-metrics")) {
         venuePulseHeader.textContent = t("venue_pulse");
     }
 
