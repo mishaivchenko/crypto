@@ -2,7 +2,7 @@ import { api } from "../../api.js";
 import { emptyState, eventCard, escapeHtml, formatBadge, formatDecimal, formatFundingCountdown, formatInstant, venueIcon } from "../shared.js";
 import { buildEventExpansionContent } from "../workflows/event-detail.js";
 import { t } from "../../i18n.js";
-import { renderLayerBlock } from "../components/layer-block.js";
+import { renderLayerPipeline } from "../components/layer-pipeline.js";
 import { renderEnrichmentTimestamp } from "../components/enrichment-timestamp.js";
 
 function _eventBaseLayerStatus(event) {
@@ -36,7 +36,7 @@ function buildEventCardLayerBlocks(event, { trade = null } = {}) {
         ${renderEnrichmentTimestamp(event.discoveredAt, "DISCOVERY")}
     `;
 
-    const baseBlock = renderLayerBlock({
+    return renderLayerPipeline([{
         layerType: "base",
         layerName: t("layer.base") || "Base",
         decoratorName: "FUNDING_API",
@@ -45,9 +45,7 @@ function buildEventCardLayerBlocks(event, { trade = null } = {}) {
         status: _eventBaseLayerStatus(event),
         collapsed: false,
         content: baseContent
-    });
-
-    return baseBlock;
+    }], { screen: 'events' });
 }
 
 function eventCardLayered(event, { trade = null, outcome = null } = {}) {

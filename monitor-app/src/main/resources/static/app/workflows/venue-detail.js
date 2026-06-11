@@ -15,7 +15,7 @@ import {
     venueIcon
 } from "../shared.js";
 import { t } from "../../i18n.js";
-import { renderLayerBlock } from "../components/layer-block.js";
+import { renderLayerPipeline } from "../components/layer-pipeline.js";
 import { renderEnrichmentTimestamp } from "../components/enrichment-timestamp.js";
 
 // Kept for inline edit form reuse inside T-28 block 3
@@ -70,17 +70,6 @@ function latencyLayerBlocks(venue, timings, venueTrades) {
             <span id="venue-probe-inline" style="margin-left:8px;font-size:0.85em;color:var(--text-muted)"></span>
         </div>`;
 
-    const latencyChainBlock = renderLayerBlock({
-        layerType: "latency",
-        layerName: t("venue_latency_section"),
-        decoratorName: "LatencyCalibrationService",
-        timestamp: submitTiming?.lastOccurredAt ?? null,
-        source: "order-submit",
-        status: latencyStatus,
-        collapsed: false,
-        content: latencyChainContent
-    });
-
     // --- Block 2: Warmup History ---
     let warmupStatus;
     let warmupContent;
@@ -100,35 +89,43 @@ function latencyLayerBlocks(venue, timings, venueTrades) {
         warmupContent = `<div class="meta-grid">${rows}</div>`;
     }
 
-    const warmupBlock = renderLayerBlock({
-        layerType: "latency",
-        layerName: "Warmup History",
-        decoratorName: "WarmupProbeService",
-        timestamp: venueTrades?.[0]?.warmupDoneAt ?? null,
-        source: null,
-        status: warmupStatus,
-        collapsed: true,
-        content: warmupContent
-    });
-
     // --- Block 3: Default Adjustment ---
     const adjustMs = venue.defaultManualLatencyAdjustmentMs ?? 0;
     const adjustStatus = adjustMs === 0 ? "ok" : "warn";
-
     const adjustContent = latencyAdjustForm(venue);
 
-    const adjustBlock = renderLayerBlock({
-        layerType: "latency",
-        layerName: t("venue_default_latency_override"),
-        decoratorName: "ManualAdjustment",
-        timestamp: null,
-        source: null,
-        status: adjustStatus,
-        collapsed: true,
-        content: adjustContent
-    });
-
-    return latencyChainBlock + warmupBlock + adjustBlock;
+    return renderLayerPipeline([
+        {
+            layerType: "latency",
+            layerName: t("venue_latency_section"),
+            decoratorName: "LatencyCalibrationService",
+            timestamp: submitTiming?.lastOccurredAt ?? null,
+            source: "order-submit",
+            status: latencyStatus,
+            collapsed: false,
+            content: latencyChainContent
+        },
+        {
+            layerType: "latency",
+            layerName: "Warmup History",
+            decoratorName: "WarmupProbeService",
+            timestamp: venueTrades?.[0]?.warmupDoneAt ?? null,
+            source: null,
+            status: warmupStatus,
+            collapsed: true,
+            content: warmupContent
+        },
+        {
+            layerType: "latency",
+            layerName: t("venue_default_latency_override"),
+            decoratorName: "ManualAdjustment",
+            timestamp: null,
+            source: null,
+            status: adjustStatus,
+            collapsed: true,
+            content: adjustContent
+        }
+    ], { screen: 'venue-detail' });
 }
 
 const PASSPHRASE_VENUES = new Set(["okx", "bitget", "kucoin"]);

@@ -21,8 +21,6 @@ import {
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
-import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
-import { renderEnrichmentDelta } from "../components/enrichment-delta.js";
 
 function infoTip(text) {
     return `<details class="info-tip"><summary class="info-tip-trigger">ⓘ</summary><div class="info-tip-body">${escapeHtml(text)}</div></details>`;
@@ -169,156 +167,85 @@ function buildOutcomeSection(outcome) {
     `);
 }
 
-function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = null, attempts = [] } = {}) {
-    const liquidityStatus = !tradeLiquidity ? null
-        : (tradeLiquidity.score === "EXCELLENT" || tradeLiquidity.score === "GOOD" || tradeLiquidity.score === "MEDIUM") ? "ok"
-        : tradeLiquidity.score === "THIN" ? "warn"
-        : "blocked";
-
-    const armedStatus = !trade ? null
-        : trade.state === "ARMED" ? "ok" : "warn";
-
-    const layers = [
-        {
-            name: t("enrichment_step_base") || "Base Discovery",
-            status: "ok",
-            timestamp: event.discoveredAt,
-            decorator: "DISCOVERY",
-            details: ""
-        },
-        ...(tradeLiquidity ? [{
-            name: t("enrichment_step_liquidity") || "Liquidity Assessed",
-            status: liquidityStatus,
-            timestamp: tradeLiquidity.sampledAt,
-            decorator: "ORDER_BOOK",
-            details: tradeLiquidity.score ? escapeHtml(tradeLiquidity.score) : ""
-        }] : []),
-        ...(trade ? [{
-            name: t("enrichment_step_armed") || "Armed",
-            status: armedStatus,
-            timestamp: trade.armedAt,
-            decorator: trade.armSource === "AUTO" ? "AUTO" : "OPERATOR",
-            details: trade.armSource ? escapeHtml(trade.armSource) : ""
-        }] : []),
-        ...(attempts && attempts.length ? (() => {
-            const first = attempts[0];
-            const _TERMINAL_FAILED = new Set(["FAILED", "REJECTED", "CANCELLED", "EXPIRED"]);
-            const execStatus = first.status === "FILLED" ? "ok"
-                : _TERMINAL_FAILED.has(first.status) ? "blocked" : "warn";
-            return [{
-                name: t("enrichment_step_execution") || "Исполнение",
-                status: execStatus,
-                timestamp: first.triggerAt ?? null,
-                decorator: "ENGINE",
-                details: escapeHtml(first.status ?? "")
-            }];
-        })() : [{
-            name: t("enrichment_step_execution") || "Исполнение",
-            status: "missing",
-            timestamp: null,
-            decorator: "ENGINE",
-            details: t("enrichment_step_execution_pending") || "Ожидается"
-        }])
-    ];
-
-    return renderEnrichmentTimeline(layers);
-}
-
 export function buildArmForm(event, suggestedNotional = 25) {
     const defaultEntry = toLocalInputValueSeconds(event.fundingTime);
     const defaultExit = toLocalInputValueSeconds(offsetIso(event.fundingTime, 90));
     return `
         <div class="action-card primary">
-            <p class="helper-text">${t("event_arm_helper")}</p>
-            ${event.fundingRatePct != null ? `<div class="chip-row" style="margin-bottom:8px"><span class="chip chip-muted" title="${t("card_rate")}">${t("event_funding_rate")} ${Number(event.fundingRatePct) >= 0 ? "+" : ""}${formatDecimal(event.fundingRatePct, 6)}%</span></div>` : ""}
-            <form class="drawer-form" data-action="arm-event" data-id="${event.id}">
-                <fieldset class="form-group">
-                    <legend>${t("event_entry_window")}</legend>
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>${t("event_notional_usd")}</span>
-                            <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="${suggestedNotional}">
-                        </label>
-                        <label class="field">
-                            <span>${t("event_side")}</span>
-                            <input name="intendedSide" type="text" value="SHORT" readonly>
-                            <small>${t("event_short_only")}</small>
-                        </label>
-                    </div>
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>${t("event_planned_entry")}</span>
-                            <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(defaultEntry)}">
-                        </label>
-                        <label class="field">
-                            <span>${t("event_entry_attempts")}</span>
-                            <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
-                        </label>
-                    </div>
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>${t("event_spacing_ms")}</span>
-                            <input name="entrySpacingMs" type="number" min="0" step="1" value="30">
-                        </label>
-                        <label class="field">
-                            <span>${t("event_manual_latency")}</span>
-                            <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
-                            <small>${t("event_engine_triggers_earlier")}</small>
-                        </label>
-                    </div>
-                </fieldset>
-                <fieldset class="form-group">
-                    <legend>${t("event_exit_window")}</legend>
-                    <label class="field">
-                        <span>${t("event_planned_exit")}</span>
-                        <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(defaultExit)}">
-                    </label>
-                </fieldset>
-                <fieldset class="form-group">
-                    <legend>${t("event_risk_management")}</legend>
-                    <div class="drawer-form-row labeled-row">
-                        <label class="field">
-                            <span>${t("event_stop_loss")}</span>
-                            <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="${t("event_stop_loss_placeholder")}">
-                            <small>${t("event_stop_loss_note")}</small>
-                        </label>
-                        <label class="field">
-                            <span>${t("event_take_profit")}</span>
-                            <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="${t("event_take_profit_placeholder")}">
-                            <small>${t("event_take_profit_note")}</small>
-                        </label>
-                    </div>
-                </fieldset>
-                <label class="field">
-                    <span>${t("event_prep_note")}</span>
-                    <textarea name="notes" placeholder="${t("event_prep_note_placeholder")}"></textarea>
-                </label>
-                <div class="actions">
-                    <button class="button" type="submit">${t("event_create_trade")}</button>
-                </div>
-            </form>
+          <p class="helper-text">${t("event_arm_helper")}</p>
+          <form class="compact-form" data-action="arm-event" data-id="${event.id}">
+            <div class="compact-form-context-chip">
+              <span>${t("event_funding_rate")}</span>
+              ${event.fundingRatePct != null
+                ? `<strong>${Number(event.fundingRatePct) >= 0 ? "+" : ""}${formatDecimal(event.fundingRatePct, 6)}%</strong>`
+                : ""}
+              <span class="chip chip-info" style="margin-left:auto;font-size:10px;">${t("event_short_only")}</span>
+            </div>
+            <input name="intendedSide" type="hidden" value="SHORT">
+            <div class="compact-form-row-3">
+              <label class="field" style="grid-column:1/3">
+                <span>${t("event_notional_usd")}</span>
+                <input name="notionalUsd" type="number" step="0.01" placeholder="25" value="${suggestedNotional}">
+              </label>
+              <label class="field">
+                <span>${t("event_entry_attempts")}</span>
+                <input name="entryAttemptCount" type="number" min="1" max="25" step="1" value="3">
+              </label>
+            </div>
+            <div class="compact-form-row-3">
+              <label class="field" style="grid-column:1/3">
+                <span>${t("event_planned_entry")}</span>
+                <input name="plannedEntryAt" type="datetime-local" step="1" value="${escapeHtml(defaultEntry)}">
+              </label>
+              <label class="field">
+                <span>${t("event_spacing_ms")}</span>
+                <input name="entrySpacingMs" type="number" min="0" step="1" value="30">
+              </label>
+            </div>
+            <div class="compact-form-row">
+              <label class="field">
+                <span>${t("event_planned_exit")}</span>
+                <input name="plannedExitAt" type="datetime-local" step="1" value="${escapeHtml(defaultExit)}">
+              </label>
+              <label class="field">
+                <span>${t("event_manual_latency")}</span>
+                <input name="manualLatencyAdjustmentMs" type="number" min="-60000" max="60000" step="1" value="0">
+              </label>
+            </div>
+            <div class="compact-form-row">
+              <label class="field">
+                <span>${t("event_stop_loss")} <small style="font-size:9px;opacity:0.6;">(${t("label_optional") || "optional"})</small></span>
+                <input name="stopLossUsd" type="number" step="0.01" min="0" placeholder="${t("event_stop_loss_placeholder")}">
+              </label>
+              <label class="field">
+                <span>${t("event_take_profit")} <small style="font-size:9px;opacity:0.6;">(${t("label_optional") || "optional"})</small></span>
+                <input name="takeProfitUsd" type="number" step="0.01" min="0" placeholder="${t("event_take_profit_placeholder")}">
+              </label>
+            </div>
+            <details>
+              <summary>${t("event_prep_note") || "Preparation note"} (${t("label_optional") || "optional"})</summary>
+              <textarea name="notes" placeholder="${t("event_prep_note_placeholder")}"></textarea>
+            </details>
+            <div class="actions">
+              <button class="button" type="submit">${t("event_create_trade")}</button>
+            </div>
+          </form>
         </div>
     `;
 }
 
-export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null }) {
+export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
     const canArm = event.status === "DISCOVERED";
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
 
-    const liquidityDelta = tradeLiquidity && baselineLiquidity
-        ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
-        : "";
-
     return `
-        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade, attempts })}
         ${signalAnalysisChips(candidate, liquidity)}
         ${canArm ? buildArmForm(event, suggestedNotional) : ""}
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}
-        ${liquidityDelta ? `<div class="enrichment-delta-row">${liquidityDelta}</div>` : ""}
         ${buildAttemptsSection(attempts)}
         ${buildPositionSection(position)}
         ${buildOutcomeSection(outcome)}
@@ -326,19 +253,14 @@ export function buildEventExpansionContent({ event, candidate = null, liquidity 
     `;
 }
 
-export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null }) {
+export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
     const canArm = event.status === "DISCOVERED";
 
-    const liquidityDelta = tradeLiquidity && baselineLiquidity
-        ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
-        : "";
-
     return `
         ${pipelineStageMarkup("event")}
-        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade, attempts })}
         ${section(t("event_snapshot"), `
             <div class="meta-grid">
                 ${metaRow(t("event_status"), formatBadge("event", event.status))}
@@ -357,7 +279,6 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}
-        ${liquidityDelta ? `<div class="enrichment-delta-row">${liquidityDelta}</div>` : ""}
         ${buildAttemptsSection(attempts)}
         ${buildPositionSection(position)}
         ${buildOutcomeSection(outcome)}
@@ -381,7 +302,7 @@ export async function openEventDetail({ id, nodes, showError }) {
             ]);
         }
 
-        let trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null;
+        let trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null;
         if (event.armedTradeId) {
             [trade, attempts, tradeLiquidity, outcome, position] = await Promise.all([
                 api.getArmedTrade(event.armedTradeId).catch(() => null),
@@ -391,14 +312,10 @@ export async function openEventDetail({ id, nodes, showError }) {
                 api.getTradePosition(event.armedTradeId).catch(() => null)
             ]);
         }
-        // Load the baseline snapshot by its authoritative id from the event response
-        if (event.baselineLiquidityAssessmentId) {
-            baselineLiquidity = await api.getLiquidityAssessment(event.baselineLiquidityAssessmentId).catch(() => null);
-        }
 
         nodes.modalType.textContent = t("event_modal_type");
         nodes.modalTitle.innerHTML = `${venueIcon(event.venue)}${escapeHtml(event.symbol)} · ${escapeHtml(event.venue)}`;
-        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, baselineLiquidity, outcome, position });
+        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, outcome, position });
         openModal(nodes);
     } catch (error) {
         showError(error.message);
