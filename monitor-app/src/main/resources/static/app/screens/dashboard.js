@@ -322,12 +322,22 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
     // T-23: Freshness KPI card
     const freshnessCard = dashboardFreshnessCardMarkup(overview);
 
+    // T-25: Critical Enrichment Alerts — computed before innerHTML assignment
+    const alertsHtml = dashboardEnrichmentAlertsMarkup(
+        state.lastCandidates ?? null,
+        state.lastTrades ?? null,
+        overview
+    );
+
     nodes.dashboardSummary.innerHTML = `
-        <div class="pipeline-viz-wrapper" style="margin-bottom:12px">${pipelineHtml}</div>
-        <div class="summary-cards-row" style="display:flex;gap:12px;flex-wrap:wrap">
-            ${accessModeCard}
-            ${freshnessCard}
+        <div class="snapshot-row" style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">${pipelineHtml}</div>
+            <div class="snapshot-status-cards" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                ${accessModeCard}
+                ${freshnessCard}
+            </div>
         </div>
+        ${alertsHtml ? `<div class="snapshot-alerts" style="margin-top:8px">${alertsHtml}</div>` : ""}
     `;
 
     // Wire PipelineViz navigation clicks (T-24)
@@ -337,23 +347,7 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
         wirePipelineVizClicks(pipelineEl, stagesWithNav);
     }
 
-    // T-25: Critical Enrichment Alerts — rendered after PipelineViz
-    const alertsHtml = dashboardEnrichmentAlertsMarkup(
-        state.lastCandidates ?? null,
-        state.lastTrades ?? null,
-        overview
-    );
-    const alertsWrapper = nodes.dashboardSummary.querySelector(".enrichment-alerts-wrapper");
-    if (!alertsWrapper) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "enrichment-alerts-wrapper";
-        wrapper.style.cssText = "margin-top:12px";
-        wrapper.innerHTML = alertsHtml;
-        nodes.dashboardSummary.appendChild(wrapper);
-    } else {
-        alertsWrapper.innerHTML = alertsHtml;
-    }
-    // Wire alert clicks
+    // Wire alert clicks (alerts now inside innerHTML)
     nodes.dashboardSummary.querySelectorAll("[data-alert-screen]").forEach((el) => {
         el.addEventListener("click", () => {
             if (onNavigate) onNavigate(el.dataset.alertScreen);
