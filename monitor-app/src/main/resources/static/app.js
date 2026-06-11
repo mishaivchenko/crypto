@@ -101,7 +101,7 @@ async function refreshCurrentScreen() {
             loadingTarget = nodes.candidatesList;
             setLoading(loadingTarget, t("loading_candidates"));
             const page = await api.listCandidates(state.candidateFilters);
-            state.lastCandidates = page.content ?? page ?? [];
+            state.lastCandidates = page?.content ?? [];
             await renderCandidates({ nodes, page, showError, onRefresh: refreshCurrentScreen });
             return;
         }
