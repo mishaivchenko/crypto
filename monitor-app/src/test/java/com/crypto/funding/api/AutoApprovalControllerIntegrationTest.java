@@ -1,5 +1,7 @@
 package com.crypto.funding.api;
 
+import com.crypto.funding.application.candidate.SignalCandidateQueryService;
+import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,9 @@ class AutoApprovalControllerIntegrationTest
 {
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private SignalCandidateQueryService candidateQueryService;
 
     @BeforeEach
     void cleanRules() throws Exception
@@ -186,6 +191,22 @@ class AutoApprovalControllerIntegrationTest
 
         mockMvc.perform( get( "/api/v1/auto-approval/status" ) )
                .andExpect( jsonPath( "$.activeRulesCount" ).value( 1 ) );
+    }
+
+    @Test
+    void findAllIdsByStatusReturnsEmptyWhenNoMatches()
+    {
+        var ids = candidateQueryService.findAllIdsByStatus( SignalCandidateStatus.NORMALIZED );
+        org.assertj.core.api.Assertions.assertThat( ids ).isEmpty();
+    }
+
+    @Test
+    void enableTriggersSweepWithoutError() throws Exception
+    {
+        // No NORMALIZED candidates in DB — sweep should silently no-op
+        mockMvc.perform( post( "/api/v1/auto-approval/enable" ) )
+               .andExpect( status().isOk() )
+               .andExpect( jsonPath( "$.enabled" ).value( true ) );
     }
 
     @Test

@@ -108,6 +108,41 @@ class AutoApprovalPipelineServiceTest
     }
 
     @Test
+    void sweepNormalizedDoesNothingWhenDisabled()
+    {
+        properties.setEnabled( false );
+        service.sweepNormalized();
+        verify( candidateQueryService, never() ).findAllIdsByStatus( any() );
+    }
+
+    @Test
+    void sweepNormalizedProcessesAllNormalizedCandidates()
+    {
+        when( candidateQueryService.findAllIdsByStatus( SignalCandidateStatus.NORMALIZED ) )
+            .thenReturn( List.of( 1L, 2L, 3L ) );
+        when( candidateQueryService.getCandidate( any() ) ).thenReturn( candidate( SignalCandidateStatus.NORMALIZED ) );
+        when( ruleService.listActive() ).thenReturn( List.of() );
+
+        service.sweepNormalized();
+
+        verify( candidateQueryService ).findAllIdsByStatus( SignalCandidateStatus.NORMALIZED );
+        verify( candidateQueryService ).getCandidate( 1L );
+        verify( candidateQueryService ).getCandidate( 2L );
+        verify( candidateQueryService ).getCandidate( 3L );
+    }
+
+    @Test
+    void sweepNormalizedDoesNothingWhenNoCandidates()
+    {
+        when( candidateQueryService.findAllIdsByStatus( SignalCandidateStatus.NORMALIZED ) )
+            .thenReturn( List.of() );
+
+        service.sweepNormalized();
+
+        verify( executor, never() ).approveAndArm( any(), any(), any(), any(), any(), any(), any() );
+    }
+
+    @Test
     void doesNothingWhenVenueIsDisabled()
     {
         riskProperties.setDisabledVenues( "gate" );
