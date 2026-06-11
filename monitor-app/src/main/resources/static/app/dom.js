@@ -15,6 +15,7 @@ export function createNodes(doc = document) {
             trades: doc.getElementById("screen-trades"),
             history: doc.getElementById("screen-history"),
             venues: doc.getElementById("screen-venues"),
+            settings: doc.getElementById("screen-settings"),
         },
         dashboardSummary: doc.getElementById("dashboard-summary"),
         dashboardDevTools: doc.getElementById("dashboard-dev-tools"),

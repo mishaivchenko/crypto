@@ -12,7 +12,7 @@ import { renderFundingEvents } from "./app/screens/events.js";
 import { renderTrades } from "./app/screens/trades.js";
 import { renderHistory } from "./app/screens/history.js";
 import { renderVenues } from "./app/screens/venues.js";
-import { renderAutoApproval } from "./app/screens/auto-approval.js";
+import { renderSettings } from "./app/screens/settings.js";
 import {
     openCandidateDetail
 } from "./app/workflows/candidate-detail.js";
@@ -92,7 +92,6 @@ async function refreshCurrentScreen() {
                 onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
                 onOpenVenue: openVenue,
                 onOpenDevTestRun: openDevTestRun,
-                onRenderAutoApproval: () => renderAutoApproval({ nodes, showError, showSuccess }),
                 onNavigate: switchScreen
             });
             return;
@@ -178,6 +177,24 @@ async function refreshCurrentScreen() {
                 onOpenVenue: openVenue
             });
         }
+        if (state.screen === "settings") {
+            const runtimeResult = await api.getEngineRuntime()
+                .then((runtime) => ({ runtime, error: null }))
+                .catch((error) => ({ runtime: null, error: error.message }));
+            state.engineRuntime = runtimeResult.runtime;
+            state.engineRuntimeError = runtimeResult.error;
+            renderSettings({
+                nodes,
+                state,
+                showError,
+                showSuccess,
+                onRunEngineOnce: () => handleRunEngineOnce({ state, refreshCurrentScreen, showSuccess, showError }),
+                onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
+                onOpenDevTestRun: openDevTestRun,
+                switchLang,
+                loadGlobalMode
+            });
+        }
     } catch (error) {
         showError(error.message);
         if (loadingTarget) {
@@ -196,7 +213,8 @@ function applyStaticTranslations() {
             events: "nav_funding_events",
             trades: "nav_prepared_trades",
             history: "nav_trade_history",
-            venues: "nav_venue_access"
+            venues: "nav_venue_access",
+            settings: "nav_settings"
         };
         const key = mapped[btn.dataset.screen] ?? screenKey;
         btn.textContent = t(key);
@@ -399,7 +417,6 @@ nodes.operatorTokenForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     api.setOperatorToken(nodes.operatorTokenInput.value);
     await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
-    closeSettings();
     showSuccess(t("app_token_saved"));
 });
 
@@ -408,7 +425,6 @@ nodes.globalModeForm.addEventListener("submit", async (event) => {
     try {
         await api.setGlobalVenueMode(nodes.globalModeSelect.value);
         await Promise.all([refreshCurrentScreen(), loadGlobalMode()]);
-        closeSettings();
         showSuccess(t("app_mode_updated"));
     } catch (error) {
         showError(error.message);
