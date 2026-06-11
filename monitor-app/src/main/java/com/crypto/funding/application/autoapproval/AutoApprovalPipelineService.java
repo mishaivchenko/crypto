@@ -73,6 +73,21 @@ public class AutoApprovalPipelineService
     }
 
     @Async
+    public void sweepNormalized()
+    {
+        if( !properties.isEnabled() )
+        {
+            return;
+        }
+        List<Long> ids = candidateQueryService.findAllIdsByStatus( SignalCandidateStatus.NORMALIZED );
+        log.info( "Auto-approval sweep: processing {} NORMALIZED candidates", ids.size() );
+        for( Long id : ids )
+        {
+            tryAutoProcess( id );
+        }
+    }
+
+    @Async
     public void tryAutoProcess( Long candidateId )
     {
         if( !properties.isEnabled() )
