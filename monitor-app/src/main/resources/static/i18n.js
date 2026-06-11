@@ -9,6 +9,7 @@ const translations = {
         nav_prepared_trades: "Prepared Trades",
         nav_trade_history: "Trade History",
         nav_venue_access: "Venue Access",
+        nav_settings: "Settings",
 
         // Topbar
         topbar_operator_token: "Operator token",
@@ -28,6 +29,7 @@ const translations = {
         section_trades_h2: "Trades",
         section_history_h2: "Trade History",
         section_venues_h2: "Venues",
+        section_settings_h2: "Settings",
         venue_pulse: "Venue pulse",
 
         // Filters
@@ -755,6 +757,7 @@ const translations = {
         nav_prepared_trades: "Подготовленные сделки",
         nav_trade_history: "История сделок",
         nav_venue_access: "Площадки",
+        nav_settings: "Настройки",
 
         // Topbar
         topbar_operator_token: "Operator token",
@@ -774,6 +777,7 @@ const translations = {
         section_trades_h2: "Подготовка",
         section_history_h2: "История сделок",
         section_venues_h2: "Площадки",
+        section_settings_h2: "Настройки",
         venue_pulse: "Пульс площадок",
 
         // Filters

@@ -87,13 +87,7 @@ export function renderLayerPipeline(layers, { screen } = {}) {
       "window.__setLayerCollapsed&&window.__setLayerCollapsed('" + escapedScreen + "','" + escapedLayerType + "',!open);"
     ].join('');
 
-    // Refresh button (not shown on 'base' layer)
-    var refreshBtn = layerType !== 'base'
-      ? '<button class="layer-refresh-btn layer-refresh-btn--' + escapedLayerType + '"'
-        + ' data-action="refresh-layer"'
-        + ' data-layer="' + escapedLayerType + '"'
-        + ' data-pipeline-id="' + _esc(pipelineId) + '">↻</button>'
-      : '';
+    var refreshBtn = '';
 
     return '<div class="layer-pipeline__row">'
       + '<div class="layer-pipeline__dot layer-pipeline__dot--' + escapedLayerType + '"></div>'

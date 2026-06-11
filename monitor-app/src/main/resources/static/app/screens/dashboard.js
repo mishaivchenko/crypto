@@ -47,7 +47,7 @@ export function dashboardPipelineVizMarkup(overview, pnlAggregate) {
             screenKey: "trades"
         },
         {
-            label: t("nav_history") || "Исполнено",
+            label: t("nav_trade_history"),
             count: executedCount,
             lastDecorator: "+Orders",
             decoratorType: "execution",

@@ -220,21 +220,13 @@ export async function renderSettings({
     const globalModeForm = container.querySelector("#settings-global-mode-form");
     const globalModeSelect = container.querySelector("#settings-global-mode-select");
 
-    // Sync current mode into the select
+    // Sync current mode directly from API
     if (globalModeSelect) {
-        if (state.overview) {
-            globalModeSelect.value = String(state.overview.globalAccessMode ?? "TESTNET").toUpperCase();
-        }
-        if (loadGlobalMode) {
-            loadGlobalMode().then((modeData) => {
-                if (modeData && globalModeSelect) {
-                    const modeValue = typeof modeData === "string" ? modeData : (modeData.mode ?? "TESTNET");
-                    globalModeSelect.value = String(modeValue).toUpperCase();
-                }
-            }).catch(() => {
-                // non-fatal
-            });
-        }
+        api.getGlobalVenueMode().then((globalMode) => {
+            globalModeSelect.value = String(globalMode.mode ?? "TESTNET").toUpperCase();
+        }).catch(() => {
+            // non-fatal — leave at default TESTNET
+        });
     }
 
     if (globalModeForm) {

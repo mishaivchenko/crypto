@@ -200,7 +200,7 @@ function buildEnrichmentTimelineSection(candidate, liquidity) {
               : candidate.status === 'FAILED'     ? 'blocked'
               : 'warn',
         decorator: 'FUNDING_API',
-        details: `Источник: ${candidate.sourceVenue ?? candidate.sourceType} · ${candidate.rawSymbol}`
+        details: `Источник: ${escapeHtml(candidate.sourceVenue ?? candidate.sourceType)} · ${escapeHtml(candidate.rawSymbol)}`
     });
 
     // Layer 2 — Normalization
@@ -213,7 +213,7 @@ function buildEnrichmentTimelineSection(candidate, liquidity) {
               : candidate.status === 'FAILED' ? 'blocked'
               : 'missing',
         decorator: 'NormalizationService',
-        details: candidate.normalizationFailureReason ?? ''
+        details: escapeHtml(candidate.normalizationFailureReason ?? '')
     });
 
     // Layer 3 — Liquidity
@@ -226,7 +226,7 @@ function buildEnrichmentTimelineSection(candidate, liquidity) {
               : liquidity.score === 'THIN' ? 'warn'
               : 'blocked',
         decorator: 'LiquidityAssessmentService',
-        details: liquidity ? `Score: ${liquidity.score}` : ''
+        details: liquidity ? `Score: ${escapeHtml(liquidity.score)}` : ''
     });
 
     // Layer 4 — AI Advice
@@ -240,7 +240,7 @@ function buildEnrichmentTimelineSection(candidate, liquidity) {
               : 'blocked',
         decorator: candidate.aiAdvice?.modelUsed ?? 'AiSignalAdvisorService',
         details: candidate.aiAdvice
-            ? `${candidate.aiAdvice.recommendation} · ${Math.round(candidate.aiAdvice.confidence * 100)}%`
+            ? `${escapeHtml(candidate.aiAdvice.recommendation)} · ${Math.round(candidate.aiAdvice.confidence * 100)}%`
             : ''
     });
 
