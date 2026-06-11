@@ -67,6 +67,14 @@ public class LiquidityAssessmentController
         return toResponse( assessment );
     }
 
+    @GetMapping("/liquidity-assessments/{assessmentId}")
+    public ResponseEntity<LiquidityAssessmentResponse> getById( @PathVariable String assessmentId )
+    {
+        return liquidityAssessmentService.findByAssessmentId( assessmentId )
+                                         .map( a -> ResponseEntity.ok( toResponse( a ) ) )
+                                         .orElse( ResponseEntity.notFound().build() );
+    }
+
     @GetMapping("/candidates/{candidateId}/liquidity")
     public ResponseEntity<LiquidityAssessmentResponse> getForCandidate( @PathVariable Long candidateId )
     {

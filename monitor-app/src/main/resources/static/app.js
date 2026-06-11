@@ -148,16 +148,25 @@ async function refreshCurrentScreen() {
         if (state.screen === "venues") {
             loadingTarget = nodes.venuesList;
             setLoading(loadingTarget, t("loading_venues"));
-            const [venues, overview] = await Promise.all([
+            const [venues, overview, allTimings] = await Promise.all([
                 api.listVenues(),
-                api.getOverview().catch(() => null)
+                api.getOverview().catch(() => null),
+                api.listVenueTimings(null).catch(() => [])
             ]);
             const overviewByVenue = Object.fromEntries(
                 (overview?.venues ?? []).map(v => [v.venue, v])
             );
+            // p50 from order-submit timing row per venue
+            const p50ByVenue = {};
+            for (const t of (allTimings ?? [])) {
+                if (t.operation === "order-submit" && t.venue && t.p50DurationMs != null) {
+                    p50ByVenue[t.venue] = t.p50DurationMs;
+                }
+            }
             const enrichedVenues = venues.map(v => ({
                 ...v,
-                enrichmentCoveragePct: overviewByVenue[v.venue]?.enrichmentCoveragePct ?? null
+                enrichmentCoveragePct: overviewByVenue[v.venue]?.enrichmentCoveragePct ?? null,
+                p50DurationMs: p50ByVenue[v.venue] ?? null
             }));
             renderVenues({
                 nodes,

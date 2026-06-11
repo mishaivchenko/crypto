@@ -146,7 +146,7 @@ function wireEventCardExpansion(container, { showError, onRefresh }) {
                 ]);
             }
 
-            let trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null;
+            let trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null;
             if (event.armedTradeId) {
                 [trade, attempts, tradeLiquidity, outcome, position] = await Promise.all([
                     api.getArmedTrade(event.armedTradeId).catch(() => null),
@@ -156,8 +156,11 @@ function wireEventCardExpansion(container, { showError, onRefresh }) {
                     api.getTradePosition(event.armedTradeId).catch(() => null)
                 ]);
             }
+            if (event.baselineLiquidityAssessmentId) {
+                baselineLiquidity = await api.getLiquidityAssessment(event.baselineLiquidityAssessmentId).catch(() => null);
+            }
 
-            contentEl.innerHTML = buildEventExpansionContent({ event, candidate, liquidity, trade, attempts, tradeLiquidity, outcome, position });
+            contentEl.innerHTML = buildEventExpansionContent({ event, candidate, liquidity, trade, attempts, tradeLiquidity, baselineLiquidity, outcome, position });
 
             wireArmForm(contentEl, { showError, onRefresh });
             wireAssessLiquidity(contentEl, { showError, onRefresh });

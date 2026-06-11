@@ -259,6 +259,9 @@ export const api = {
         const params = new URLSearchParams({ venue, venueSymbol });
         return request(`/api/v1/trades/${tradeId}/refresh-liquidity?${params}`, { method: "POST" });
     },
+    getLiquidityAssessment(assessmentId) {
+        return request(`/api/v1/liquidity-assessments/${encodeURIComponent(assessmentId)}`).catch(() => null);
+    },
     getCandidateLiquidity(id) {
         return request(`/api/v1/candidates/${id}/liquidity`).catch(() => null);
     },

@@ -4,19 +4,28 @@ import { buildHistoryTradeDrawerContent } from "../workflows/history-detail.js";
 import { api } from "../../api.js";
 import { t } from "../../i18n.js";
 
-function enrichmentHealthChip(trade) {
+function enrichmentHealthChip(trade, tradeLiquidity = null) {
     const latMs = trade.effectiveEntryLatencyMs;
-    const liqScore = trade.liquidityAssessment?.score ?? trade.liquidityScore ?? null;
     const highLatency = latMs != null && latMs > 600;
-    const thinLiquidity = liqScore === "THIN";
 
     if (highLatency) {
         return `<span class="chip chip-bad" data-enrich-chip="${escapeHtml(String(trade.id))}">Latency: ${latMs}мс</span>`;
     }
-    if (thinLiquidity) {
-        return `<span class="chip chip-warning" data-enrich-chip="${escapeHtml(String(trade.id))}">Liquidity: THIN</span>`;
+
+    // Liquidity score is not on ArmedTradeResponse — use explicitly passed assessment if available
+    if (tradeLiquidity) {
+        const score = tradeLiquidity.score;
+        if (score === "UNTRADABLE") {
+            return `<span class="chip chip-bad" data-enrich-chip="${escapeHtml(String(trade.id))}">Liquidity: UNTRADABLE</span>`;
+        }
+        if (score === "THIN") {
+            return `<span class="chip chip-warning" data-enrich-chip="${escapeHtml(String(trade.id))}">Liquidity: THIN</span>`;
+        }
+        return `<span class="chip chip-good" data-enrich-chip="${escapeHtml(String(trade.id))}">Enrichment OK</span>`;
     }
-    return `<span class="chip chip-good" data-enrich-chip="${escapeHtml(String(trade.id))}">Enrichment OK</span>`;
+
+    // Liquidity not yet loaded — show neutral pending chip; wireHistoryExpansion will update it
+    return `<span class="chip chip-muted" data-enrich-chip="${escapeHtml(String(trade.id))}" title="Expand to check liquidity">Enrichment ?</span>`;
 }
 
 function historyRowWithEnrichment(trade, attempts, outcome) {

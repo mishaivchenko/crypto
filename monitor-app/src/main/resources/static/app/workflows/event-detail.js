@@ -202,8 +202,9 @@ function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = nu
         }] : []),
         ...(attempts && attempts.length ? (() => {
             const first = attempts[0];
+            const _TERMINAL_FAILED = new Set(["FAILED", "REJECTED", "CANCELLED", "EXPIRED"]);
             const execStatus = first.status === "FILLED" ? "ok"
-                : first.status === "FAILED" ? "blocked" : "warn";
+                : _TERMINAL_FAILED.has(first.status) ? "blocked" : "warn";
             return [{
                 name: t("enrichment_step_execution") || "Исполнение",
                 status: execStatus,
@@ -300,14 +301,12 @@ export function buildArmForm(event, suggestedNotional = 25) {
     `;
 }
 
-export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null }) {
     const canArm = event.status === "DISCOVERED";
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
 
-    // liquidity (from signalCandidateId) is the baseline snapshot; trade liquidity is current
-    const baselineLiquidity = liquidity ?? null;
     const liquidityDelta = tradeLiquidity && baselineLiquidity
         ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
         : "";
@@ -327,14 +326,12 @@ export function buildEventExpansionContent({ event, candidate = null, liquidity 
     `;
 }
 
-export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null }) {
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
     const canArm = event.status === "DISCOVERED";
 
-    // liquidity (from signalCandidateId) is the baseline snapshot; trade liquidity is current
-    const baselineLiquidity = liquidity ?? null;
     const liquidityDelta = tradeLiquidity && baselineLiquidity
         ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
         : "";
@@ -384,7 +381,7 @@ export async function openEventDetail({ id, nodes, showError }) {
             ]);
         }
 
-        let trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null;
+        let trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null;
         if (event.armedTradeId) {
             [trade, attempts, tradeLiquidity, outcome, position] = await Promise.all([
                 api.getArmedTrade(event.armedTradeId).catch(() => null),
@@ -394,10 +391,14 @@ export async function openEventDetail({ id, nodes, showError }) {
                 api.getTradePosition(event.armedTradeId).catch(() => null)
             ]);
         }
+        // Load the baseline snapshot by its authoritative id from the event response
+        if (event.baselineLiquidityAssessmentId) {
+            baselineLiquidity = await api.getLiquidityAssessment(event.baselineLiquidityAssessmentId).catch(() => null);
+        }
 
         nodes.modalType.textContent = t("event_modal_type");
         nodes.modalTitle.innerHTML = `${venueIcon(event.venue)}${escapeHtml(event.symbol)} · ${escapeHtml(event.venue)}`;
-        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, outcome, position });
+        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, baselineLiquidity, outcome, position });
         openModal(nodes);
     } catch (error) {
         showError(error.message);
