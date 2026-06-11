@@ -1932,7 +1932,7 @@ details[open] > .card-expand-toggle::before {
   margin-bottom: 6px;
   background: var(--layer-base-bg);
 }
-.layer-block__header { gap: 6px; }
+.layer-block__header { gap: 6px; min-height: 44px; touch-action: manipulation; }
 .layer-block__body { margin-top: 6px; }
 .layer-label {
   font-size: 10px;
@@ -1997,4 +1997,28 @@ details[open] > .card-expand-toggle::before {
 }
 .venues-grid__row:hover > span {
   background: var(--hover-bg, rgba(255,255,255,0.04));
+}
+
+/* ── T-33: Mobile tap-target sizes ─────────────────────────────────── */
+
+.layer-block .button,
+.layer-block .chip-btn {
+  min-height: 44px;
+}
+
+.button:not(.secondary):not(.danger),
+.button.primary {
+  min-height: 48px;
+  touch-action: manipulation;
+}
+
+.enrichment-timeline__row,
+.timeline-step {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.pipeline-stage {
+  min-height: 64px;
+  touch-action: manipulation;
 }

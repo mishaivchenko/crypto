@@ -10,6 +10,12 @@ export function createAppState() {
         lastCandidates: null,
         lastTrades: null,
         engineMetrics: null,
-        pnlAggregate: null
+        pnlAggregate: null,
+        layerCollapsed: {
+            trade: { latency: true, health: false, execution: true },
+            candidate: { liquidity: false, ai: false },
+            history: { enrichment: true },
+            venue: { latency: false },
+        }
     };
 }

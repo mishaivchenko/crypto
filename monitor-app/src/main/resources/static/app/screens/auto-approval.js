@@ -18,13 +18,22 @@ function actionBadge(action) {
 }
 
 function ruleRow(rule) {
-    const venues = rule.allowedVenues?.length ? rule.allowedVenues.join(", ") : "any";
-    const ai = rule.allowedAiRecommendations?.length ? rule.allowedAiRecommendations.join(", ") : "any";
-    const liq = rule.allowedLiquidityScores?.length ? rule.allowedLiquidityScores.join(", ") : "any";
     const rateRange = [
         rule.minFundingRatePct != null ? `≥${rule.minFundingRatePct}%` : null,
         rule.maxFundingRatePct != null ? `≤${rule.maxFundingRatePct}%` : null
     ].filter(Boolean).join(" ") || "any";
+
+    const venueChips = rule.allowedVenues?.length
+        ? rule.allowedVenues.map(v => `<span class="chip chip-muted">${escapeHtml(v)}</span>`).join(" ")
+        : `<span class="chip chip-muted">any</span>`;
+
+    const liqChips = rule.allowedLiquidityScores?.length
+        ? rule.allowedLiquidityScores.map(s => `<span class="chip chip-muted">${escapeHtml(s)}</span>`).join(" ")
+        : `<span class="chip chip-muted">any</span>`;
+
+    const aiChips = rule.allowedAiRecommendations?.length
+        ? rule.allowedAiRecommendations.map(r => `<span class="chip chip-muted">${escapeHtml(r)}</span>`).join(" ")
+        : `<span class="chip chip-muted">any</span>`;
 
     return `
     <div class="list-item" data-rule-id="${rule.id}">
@@ -44,13 +53,35 @@ function ruleRow(rule) {
                 <button class="button danger" data-action="delete-rule" data-rule-id="${rule.id}">Delete</button>
             </div>
         </div>
-        <div class="chip-row">
-            <span class="chip chip-muted">Rate: ${rateRange}</span>
-            <span class="chip chip-muted">Venues: ${escapeHtml(venues)}</span>
-            <span class="chip chip-muted">AI: ${escapeHtml(ai)}</span>
-            ${rule.minAiConfidence != null ? `<span class="chip chip-muted">Conf ≥${rule.minAiConfidence}</span>` : ""}
-            <span class="chip chip-muted">Liquidity: ${escapeHtml(liq)}</span>
-            <span class="chip chip-muted">Notional: $${rule.defaultNotionalUsd} ${rule.defaultSide}</span>
+        <div style="margin-top:6px">
+            <div style="border-left:3px solid var(--layer-base-border);padding:6px 8px;margin:4px 0;background:var(--layer-base-bg);border-radius:0 4px 4px 0">
+                <strong style="font-size:0.75rem;display:block;margin-bottom:4px">${t("layer.base")}</strong>
+                <div class="chip-row" style="margin:0">
+                    ${venueChips}
+                    <span class="chip chip-muted">Rate: ${rateRange}</span>
+                    <span class="chip chip-muted">${rule.mode}</span>
+                </div>
+            </div>
+            <div style="border-left:3px solid var(--layer-liquidity-border);padding:6px 8px;margin:4px 0;background:var(--layer-liquidity-bg);border-radius:0 4px 4px 0">
+                <strong style="font-size:0.75rem;display:block;margin-bottom:4px">${t("layer.liquidity")}</strong>
+                <div class="chip-row" style="margin:0">${liqChips}</div>
+            </div>
+            <div style="border-left:3px solid var(--layer-ai-border);padding:6px 8px;margin:4px 0;background:var(--layer-ai-bg);border-radius:0 4px 4px 0">
+                <strong style="font-size:0.75rem;display:block;margin-bottom:4px">${t("layer.ai")}</strong>
+                <div class="chip-row" style="margin:0">
+                    ${aiChips}
+                    ${rule.minAiConfidence != null ? `<span class="chip chip-muted">Conf ≥${rule.minAiConfidence}</span>` : ""}
+                </div>
+            </div>
+            <div style="padding:6px 8px;margin:4px 0;border-radius:4px">
+                <strong style="font-size:0.75rem;display:block;margin-bottom:4px">Action</strong>
+                <div class="chip-row" style="margin:0">
+                    ${actionBadge(rule.action)}
+                    <span class="chip chip-muted">$${rule.defaultNotionalUsd}</span>
+                    <span class="chip chip-muted">${rule.defaultSide}</span>
+                    <span class="chip chip-muted">priority ${rule.priority}</span>
+                </div>
+            </div>
         </div>
         ${rule.notes ? `<div class="list-item-note">${escapeHtml(rule.notes)}</div>` : ""}
     </div>`;
@@ -66,68 +97,23 @@ function chipToggles(name, options, selected) {
 function ruleForm(rule) {
     return `
     <form id="rule-form" class="drawer-form">
-        <p class="field"><span>${t("auto_approval_form_conditions")}</span></p>
 
-        <div class="drawer-form-row labeled-row">
-            <label class="field">
-                <span>${t("auto_approval_form_min_rate")}</span>
-                <input type="number" step="0.0001" name="minFundingRatePct" value="${rule?.minFundingRatePct ?? ""}">
-            </label>
-            <label class="field">
-                <span>${t("auto_approval_form_max_rate")}</span>
-                <input type="number" step="0.0001" name="maxFundingRatePct" value="${rule?.maxFundingRatePct ?? ""}">
-            </label>
-        </div>
-
-        <div class="field">
-            <span>${t("auto_approval_form_venues")}</span>
-            <div class="chip-row">${chipToggles("allowedVenues", VENUES, rule?.allowedVenues)}</div>
-        </div>
-
-        <div class="field">
-            <span>${t("auto_approval_form_ai_recs")}</span>
-            <div class="chip-row">${chipToggles("allowedAiRecommendations", AI_RECOMMENDATIONS, rule?.allowedAiRecommendations)}</div>
-        </div>
-
-        <label class="field">
-            <span>${t("auto_approval_form_ai_conf")}</span>
-            <input type="number" step="0.01" min="0" max="1" name="minAiConfidence" value="${rule?.minAiConfidence ?? ""}">
-        </label>
-
-        <div class="field">
-            <span>${t("auto_approval_form_liquidity")}</span>
-            <div class="chip-row">${chipToggles("allowedLiquidityScores", LIQUIDITY_SCORES, rule?.allowedLiquidityScores)}</div>
-        </div>
-
-        <p class="field"><span>${t("auto_approval_form_trade_settings")}</span></p>
-
-        <div class="drawer-form-row labeled-row">
-            <label class="field">
-                <span>${t("auto_approval_form_notional")}</span>
-                <input type="number" step="1" min="1" name="defaultNotionalUsd" value="${rule?.defaultNotionalUsd ?? 10}" required>
-            </label>
-            <label class="field">
-                <span>${t("auto_approval_form_side")}</span>
-                <select name="defaultSide">
-                    ${SIDES.map(s => `<option value="${s}" ${(rule?.defaultSide ?? "SHORT") === s ? "selected" : ""}>${s}</option>`).join("")}
-                </select>
-            </label>
-        </div>
-
-        <label class="field">
-            <span>${t("auto_approval_form_action")}</span>
-            <select name="action">
-                ${ACTIONS.map(a => `<option value="${a}" ${(rule?.action ?? "AUTO_EXECUTE") === a ? "selected" : ""}>${a}</option>`).join("")}
-            </select>
-        </label>
-
-        <p class="field"><span>${t("auto_approval_form_metadata")}</span></p>
-
-        <div class="drawer-form-row labeled-row">
-            <label class="field">
-                <span>${t("auto_approval_form_name")}</span>
-                <input type="text" name="name" value="${escapeHtml(rule?.name ?? "")}" required>
-            </label>
+        <div style="border-left:3px solid var(--layer-base-border);padding:6px 10px 10px;margin:8px 0;border-radius:0 4px 4px 0;background:var(--layer-base-bg)">
+            <p class="field" style="margin:0 0 6px"><strong style="font-size:0.8rem">${t("layer.base")}</strong></p>
+            <div class="field">
+                <span>${t("auto_approval_form_venues")}</span>
+                <div class="chip-row">${chipToggles("allowedVenues", VENUES, rule?.allowedVenues)}</div>
+            </div>
+            <div class="drawer-form-row labeled-row">
+                <label class="field">
+                    <span>${t("auto_approval_form_min_rate")}</span>
+                    <input type="number" step="0.0001" name="minFundingRatePct" value="${rule?.minFundingRatePct ?? ""}">
+                </label>
+                <label class="field">
+                    <span>${t("auto_approval_form_max_rate")}</span>
+                    <input type="number" step="0.0001" name="maxFundingRatePct" value="${rule?.maxFundingRatePct ?? ""}">
+                </label>
+            </div>
             <label class="field">
                 <span>${t("auto_approval_form_mode")}</span>
                 <select name="mode">
@@ -136,11 +122,60 @@ function ruleForm(rule) {
             </label>
         </div>
 
+        <div style="border-left:3px solid var(--layer-liquidity-border);padding:6px 10px 10px;margin:8px 0;border-radius:0 4px 4px 0;background:var(--layer-liquidity-bg)">
+            <p class="field" style="margin:0 0 6px"><strong style="font-size:0.8rem">${t("layer.liquidity")}</strong></p>
+            <div class="field">
+                <span>${t("auto_approval_form_liquidity")}</span>
+                <div class="chip-row">${chipToggles("allowedLiquidityScores", LIQUIDITY_SCORES, rule?.allowedLiquidityScores)}</div>
+            </div>
+        </div>
+
+        <div style="border-left:3px solid var(--layer-ai-border);padding:6px 10px 10px;margin:8px 0;border-radius:0 4px 4px 0;background:var(--layer-ai-bg)">
+            <p class="field" style="margin:0 0 6px"><strong style="font-size:0.8rem">${t("layer.ai")}</strong></p>
+            <div class="field">
+                <span>${t("auto_approval_form_ai_recs")}</span>
+                <div class="chip-row">${chipToggles("allowedAiRecommendations", AI_RECOMMENDATIONS, rule?.allowedAiRecommendations)}</div>
+            </div>
+            <label class="field">
+                <span>${t("auto_approval_form_ai_conf")}</span>
+                <input type="number" step="0.01" min="0" max="1" name="minAiConfidence" value="${rule?.minAiConfidence ?? ""}">
+            </label>
+        </div>
+
+        <div style="padding:6px 10px 10px;margin:8px 0;border-radius:4px;border:1px solid var(--border-color,#333)">
+            <p class="field" style="margin:0 0 6px"><strong style="font-size:0.8rem">Action</strong></p>
+            <label class="field">
+                <span>${t("auto_approval_form_action")}</span>
+                <select name="action">
+                    ${ACTIONS.map(a => `<option value="${a}" ${(rule?.action ?? "AUTO_EXECUTE") === a ? "selected" : ""}>${a}</option>`).join("")}
+                </select>
+            </label>
+            <div class="drawer-form-row labeled-row">
+                <label class="field">
+                    <span>${t("auto_approval_form_notional")}</span>
+                    <input type="number" step="1" min="1" name="defaultNotionalUsd" value="${rule?.defaultNotionalUsd ?? 10}" required>
+                </label>
+                <label class="field">
+                    <span>${t("auto_approval_form_side")}</span>
+                    <select name="defaultSide">
+                        ${SIDES.map(s => `<option value="${s}" ${(rule?.defaultSide ?? "SHORT") === s ? "selected" : ""}>${s}</option>`).join("")}
+                    </select>
+                </label>
+            </div>
+        </div>
+
         <div class="drawer-form-row labeled-row">
+            <label class="field">
+                <span>${t("auto_approval_form_name")}</span>
+                <input type="text" name="name" value="${escapeHtml(rule?.name ?? "")}" required>
+            </label>
             <label class="field">
                 <span>${t("auto_approval_form_priority")}</span>
                 <input type="number" name="priority" value="${rule?.priority ?? 100}">
             </label>
+        </div>
+
+        <div class="drawer-form-row labeled-row">
             <label class="toggle-row">
                 <input type="checkbox" name="enabled" ${(rule?.enabled ?? true) ? "checked" : ""}>
                 <span>${t("auto_approval_form_enabled")}</span>

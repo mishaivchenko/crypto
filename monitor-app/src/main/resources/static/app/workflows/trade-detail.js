@@ -22,7 +22,7 @@ import {
 } from "../shared.js";
 import { t } from "../../i18n.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
-import { renderLayerBlock } from "../components/layer-block.js";
+import { renderLayerBlock, getLayerCollapsed } from "../components/layer-block.js";
 import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
 
 function infoTip(text) {
@@ -197,7 +197,8 @@ function buildLatencyLayerBlock(trade) {
         timestamp: trade.warmupDoneAt,
         source: "WARMUP_PROBE",
         status: latStatus,
-        collapsed: true,
+        collapsed: getLayerCollapsed("trade", "latency", true),
+        screen: "trade",
         content: latContent
     });
 }
@@ -419,7 +420,8 @@ function buildBaseLayerBlock(trade, candidate) {
         timestamp: baseTs,
         source: "RSS/API",
         status: baseStatus,
-        collapsed: false,
+        collapsed: getLayerCollapsed("trade", "base", false),
+        screen: "trade",
         content
     });
 }
@@ -476,7 +478,8 @@ function buildLiquidityLayerBlock(liquidity, trade) {
         timestamp: liqTs,
         source: "ORDER_BOOK_PROBE",
         status: liqStatus,
-        collapsed: false,
+        collapsed: getLayerCollapsed("trade", "liquidity", false),
+        screen: "trade",
         content
     });
 }
@@ -530,7 +533,8 @@ function buildLatencyChainLayerBlock(trade) {
         timestamp: trade.warmupDoneAt,
         source: "WARMUP_PROBE",
         status: latStatus,
-        collapsed: false,
+        collapsed: getLayerCollapsed("trade", "latency", true),
+        screen: "trade",
         content
     });
 }
@@ -586,7 +590,8 @@ function buildHealthLayerBlock(trade, liquidity) {
         timestamp: trade.armedAt,
         source: "AUTO_COMPUTED",
         status: healthStatus,
-        collapsed: false,
+        collapsed: getLayerCollapsed("trade", "health", false),
+        screen: "trade",
         content
     });
 }
@@ -646,7 +651,8 @@ function buildExecutionLayerBlock(attempts, position, outcome) {
         timestamp: firstAttempt.triggerAt,
         source: "LIVE_ORDER",
         status: execStatus,
-        collapsed: false,
+        collapsed: getLayerCollapsed("trade", "execution", true),
+        screen: "trade",
         content: attemptsHtml + posHtml + outcomeHtml
     });
 }
