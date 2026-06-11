@@ -15,28 +15,13 @@ import {
     venueIcon
 } from "../shared.js";
 import { t } from "../../i18n.js";
+import { renderLayerBlock } from "../components/layer-block.js";
+import { renderEnrichmentTimestamp } from "../components/enrichment-timestamp.js";
 
-function latencySection(venue, timings) {
-    const timing = timings.find(t => t.operation === "order-submit") ?? null;
-    const p50 = timing?.p50DurationMs != null ? `${timing.p50DurationMs} ms` : "—";
-    const p95 = timing?.p95DurationMs != null ? `${timing.p95DurationMs} ms` : "—";
-    const p99 = timing?.p99DurationMs != null ? `${timing.p99DurationMs} ms` : "—";
+// Kept for inline edit form reuse inside T-28 block 3
+function latencyAdjustForm(venue) {
     const defaultMs = venue.defaultManualLatencyAdjustmentMs ?? "";
-    return section(t("venue_latency_section"), `
-        <div class="meta-grid">
-            ${metaRow(t("venue_p50"), `<span id="venue-probe-result">${p50}</span>`)}
-            ${metaRow(t("venue_p95"), p95)}
-            ${metaRow(t("venue_p99"), p99)}
-        </div>
-        <p class="meta-helper">${t("venue_p_diagnostic_note")}</p>
-        <div class="actions" style="margin-top:8px">
-            <button class="button secondary" type="button"
-                data-action="probe-venue-latency"
-                data-venue="${escapeHtml(venue.venue)}">
-                ${t("venue_probe_btn")}
-            </button>
-            <span id="venue-probe-inline" style="margin-left:8px;font-size:0.85em;color:var(--text-muted)"></span>
-        </div>
+    return `
         <form class="drawer-form" data-action="set-venue-default-latency" data-venue="${escapeHtml(venue.venue)}" style="margin-top:12px">
             <div class="drawer-form-row labeled-row">
                 <label class="field">
@@ -47,15 +32,111 @@ function latencySection(venue, timings) {
             <div class="actions">
                 <button class="button" type="submit">${t("venue_default_latency_save")}</button>
             </div>
-        </form>
-    `);
+        </form>`;
+}
+
+// T-28: Three LayerBlock sections replacing the old latencySection call
+function latencyLayerBlocks(venue, timings, venueTrades) {
+    // --- Block 1: Latency Chain ---
+    const submitTiming = timings.find(tm => tm.operation === "order-submit") ?? null;
+    const p50 = submitTiming?.p50DurationMs ?? null;
+    const p95 = submitTiming?.p95DurationMs ?? null;
+    const p99 = submitTiming?.p99DurationMs ?? null;
+
+    let latencyStatus;
+    if (p50 == null) {
+        latencyStatus = "missing";
+    } else if (p50 < 400) {
+        latencyStatus = "ok";
+    } else if (p50 <= 600) {
+        latencyStatus = "warn";
+    } else {
+        latencyStatus = "blocked";
+    }
+
+    const latencyChainContent = `
+        <div class="meta-grid">
+            ${metaRow(t("venue_p50"), `<span id="venue-probe-result">${p50 != null ? `${p50} ms` : "—"}</span>`)}
+            ${metaRow(t("venue_p95"), p95 != null ? `${p95} ms` : "—")}
+            ${metaRow(t("venue_p99"), p99 != null ? `${p99} ms` : "—")}
+        </div>
+        <p class="meta-helper">${t("venue_p_diagnostic_note")}</p>
+        <div class="actions" style="margin-top:8px">
+            <button class="button secondary" type="button"
+                data-action="probe-venue-latency"
+                data-venue="${escapeHtml(venue.venue)}">
+                ${t("venue_probe_btn")}
+            </button>
+            <span id="venue-probe-inline" style="margin-left:8px;font-size:0.85em;color:var(--text-muted)"></span>
+        </div>`;
+
+    const latencyChainBlock = renderLayerBlock({
+        layerType: "latency",
+        layerName: t("venue_latency_section"),
+        decoratorName: "LatencyCalibrationService",
+        timestamp: submitTiming?.lastOccurredAt ?? null,
+        source: "order-submit",
+        status: latencyStatus,
+        collapsed: false,
+        content: latencyChainContent
+    });
+
+    // --- Block 2: Warmup History ---
+    let warmupStatus;
+    let warmupContent;
+
+    if (!venueTrades || venueTrades.length === 0) {
+        warmupStatus = "missing";
+        warmupContent = `<p class="muted" style="margin:4px 0">Нет данных о прогреве</p>`;
+    } else {
+        const anyFallback = venueTrades.some(tr => tr.warmupFallbackUsed);
+        warmupStatus = anyFallback ? "warn" : "ok";
+        const rows = venueTrades.map(tr => `
+            <div class="meta-row">
+                <span class="meta-label">${escapeHtml(tr.symbol ?? `Trade #${tr.id}`)}</span>
+                <strong class="meta-value">${tr.warmupDoneAt ? renderEnrichmentTimestamp(tr.warmupDoneAt, null) : "—"}</strong>
+                <span class="meta-helper">${tr.warmupFallbackUsed ? '<span class="chip chip-warning">fallback</span>' : '<span class="chip chip-good">ok</span>'}</span>
+            </div>`).join("");
+        warmupContent = `<div class="meta-grid">${rows}</div>`;
+    }
+
+    const warmupBlock = renderLayerBlock({
+        layerType: "latency",
+        layerName: "Warmup History",
+        decoratorName: "WarmupProbeService",
+        timestamp: venueTrades?.[0]?.warmupDoneAt ?? null,
+        source: null,
+        status: warmupStatus,
+        collapsed: true,
+        content: warmupContent
+    });
+
+    // --- Block 3: Default Adjustment ---
+    const adjustMs = venue.defaultManualLatencyAdjustmentMs ?? 0;
+    const adjustStatus = adjustMs === 0 ? "ok" : "warn";
+
+    const adjustContent = latencyAdjustForm(venue);
+
+    const adjustBlock = renderLayerBlock({
+        layerType: "latency",
+        layerName: t("venue_default_latency_override"),
+        decoratorName: "ManualAdjustment",
+        timestamp: null,
+        source: null,
+        status: adjustStatus,
+        collapsed: true,
+        content: adjustContent
+    });
+
+    return latencyChainBlock + warmupBlock + adjustBlock;
 }
 
 const PASSPHRASE_VENUES = new Set(["okx", "bitget", "kucoin"]);
 
-export function buildVenueDrawerContent({ venue, instruments, timings }) {
+export function buildVenueDrawerContent({ venue, instruments, timings, trades }) {
     const needsPassphrase = PASSPHRASE_VENUES.has(venue.venue?.toLowerCase());
     const hasKeys = venue.credentialsConfigured;
+    const venueTrades = (trades ?? []).slice(0, 3);
     return `
         ${section(t("venue_profile"), `
             <div class="meta-grid">
@@ -109,7 +190,7 @@ export function buildVenueDrawerContent({ venue, instruments, timings }) {
                 <span class="meta-helper">${formatNumber(timing.requests)} req · ${formatNumber(timing.successes)} ok · ${formatNumber(timing.failures)} fail · last ${formatInstant(timing.lastOccurredAt)}</span>
             </div>
         `).join("") : emptyState(t("empty_timings")))}
-        ${latencySection(venue, timings)}
+        ${latencyLayerBlocks(venue, timings, venueTrades)}
         ${section(t("venue_synced_instruments"), instruments.length ? instruments.map((instrument) => `
             <div class="meta-row">
                 <span class="meta-label">${escapeHtml(instrument.venueSymbol)}</span>
@@ -122,15 +203,25 @@ export function buildVenueDrawerContent({ venue, instruments, timings }) {
 
 export async function openVenueDetail({ venueName, nodes, showError }) {
     try {
-        const [venue, instruments, timings] = await Promise.all([
+        const [venue, instruments, timings, allTrades] = await Promise.all([
             api.getVenue(venueName),
             api.listVenueInstruments(venueName),
-            api.listVenueTimings(venueName)
+            api.listVenueTimings(venueName),
+            api.listArmedTrades({ includeHistorical: false }).catch(() => [])
         ]);
+
+        const venueTrades = (allTrades ?? [])
+            .filter(tr => tr.venue === venueName)
+            .sort((a, b) => {
+                const da = a.warmupDoneAt ? new Date(a.warmupDoneAt).getTime() : 0;
+                const db = b.warmupDoneAt ? new Date(b.warmupDoneAt).getTime() : 0;
+                return db - da;
+            })
+            .slice(0, 3);
 
         nodes.modalType.textContent = t("venue_modal_type");
         nodes.modalTitle.innerHTML = `${venueIcon(venue.venue)}${escapeHtml(venue.venue)}`;
-        nodes.modalContent.innerHTML = buildVenueDrawerContent({ venue, instruments, timings });
+        nodes.modalContent.innerHTML = buildVenueDrawerContent({ venue, instruments, timings, trades: venueTrades });
         openModal(nodes);
     } catch (error) {
         showError(error.message);

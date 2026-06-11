@@ -21,6 +21,8 @@ import {
 } from "../shared.js";
 import { buildDeleteCandidateSection } from "./pipeline.js";
 import { t } from "../../i18n.js";
+import { renderEnrichmentTimeline } from "../components/enrichment-timeline.js";
+import { renderEnrichmentDelta } from "../components/enrichment-delta.js";
 
 function infoTip(text) {
     return `<details class="info-tip"><summary class="info-tip-trigger">ⓘ</summary><div class="info-tip-body">${escapeHtml(text)}</div></details>`;
@@ -167,6 +169,61 @@ function buildOutcomeSection(outcome) {
     `);
 }
 
+function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = null, attempts = [] } = {}) {
+    const liquidityStatus = !tradeLiquidity ? null
+        : (tradeLiquidity.score === "EXCELLENT" || tradeLiquidity.score === "GOOD" || tradeLiquidity.score === "MEDIUM") ? "ok"
+        : tradeLiquidity.score === "THIN" ? "warn"
+        : "blocked";
+
+    const armedStatus = !trade ? null
+        : trade.state === "ARMED" ? "ok" : "warn";
+
+    const layers = [
+        {
+            name: t("enrichment_step_base") || "Base Discovery",
+            status: "ok",
+            timestamp: event.discoveredAt,
+            decorator: "DISCOVERY",
+            details: ""
+        },
+        ...(tradeLiquidity ? [{
+            name: t("enrichment_step_liquidity") || "Liquidity Assessed",
+            status: liquidityStatus,
+            timestamp: tradeLiquidity.sampledAt,
+            decorator: "ORDER_BOOK",
+            details: tradeLiquidity.score ? escapeHtml(tradeLiquidity.score) : ""
+        }] : []),
+        ...(trade ? [{
+            name: t("enrichment_step_armed") || "Armed",
+            status: armedStatus,
+            timestamp: trade.armedAt,
+            decorator: trade.armSource === "AUTO" ? "AUTO" : "OPERATOR",
+            details: trade.armSource ? escapeHtml(trade.armSource) : ""
+        }] : []),
+        ...(attempts && attempts.length ? (() => {
+            const first = attempts[0];
+            const _TERMINAL_FAILED = new Set(["FAILED", "REJECTED", "CANCELLED", "EXPIRED"]);
+            const execStatus = first.status === "FILLED" ? "ok"
+                : _TERMINAL_FAILED.has(first.status) ? "blocked" : "warn";
+            return [{
+                name: t("enrichment_step_execution") || "Исполнение",
+                status: execStatus,
+                timestamp: first.triggerAt ?? null,
+                decorator: "ENGINE",
+                details: escapeHtml(first.status ?? "")
+            }];
+        })() : [{
+            name: t("enrichment_step_execution") || "Исполнение",
+            status: "missing",
+            timestamp: null,
+            decorator: "ENGINE",
+            details: t("enrichment_step_execution_pending") || "Ожидается"
+        }])
+    ];
+
+    return renderEnrichmentTimeline(layers);
+}
+
 export function buildArmForm(event, suggestedNotional = 25) {
     const defaultEntry = toLocalInputValueSeconds(event.fundingTime);
     const defaultExit = toLocalInputValueSeconds(offsetIso(event.fundingTime, 90));
@@ -244,18 +301,24 @@ export function buildArmForm(event, suggestedNotional = 25) {
     `;
 }
 
-export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+export function buildEventExpansionContent({ event, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null }) {
     const canArm = event.status === "DISCOVERED";
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
 
+    const liquidityDelta = tradeLiquidity && baselineLiquidity
+        ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
+        : "";
+
     return `
+        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade, attempts })}
         ${signalAnalysisChips(candidate, liquidity)}
         ${canArm ? buildArmForm(event, suggestedNotional) : ""}
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}
+        ${liquidityDelta ? `<div class="enrichment-delta-row">${liquidityDelta}</div>` : ""}
         ${buildAttemptsSection(attempts)}
         ${buildPositionSection(position)}
         ${buildOutcomeSection(outcome)}
@@ -263,14 +326,19 @@ export function buildEventExpansionContent({ event, candidate = null, liquidity 
     `;
 }
 
-export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null }) {
+export function buildEventDrawerContent({ event, journal, candidate = null, liquidity = null, trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null }) {
     const suggestedNotional = liquidity?.recommendedMaxOrderNotional != null
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
     const canArm = event.status === "DISCOVERED";
 
+    const liquidityDelta = tradeLiquidity && baselineLiquidity
+        ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
+        : "";
+
     return `
         ${pipelineStageMarkup("event")}
+        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade, attempts })}
         ${section(t("event_snapshot"), `
             <div class="meta-grid">
                 ${metaRow(t("event_status"), formatBadge("event", event.status))}
@@ -289,6 +357,7 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
         ${trade ? buildTradeParamsSection(trade) : ""}
         ${trade ? buildLatencyChainSection(trade) : ""}
         ${buildTradeLiquiditySection(tradeLiquidity)}
+        ${liquidityDelta ? `<div class="enrichment-delta-row">${liquidityDelta}</div>` : ""}
         ${buildAttemptsSection(attempts)}
         ${buildPositionSection(position)}
         ${buildOutcomeSection(outcome)}
@@ -312,7 +381,7 @@ export async function openEventDetail({ id, nodes, showError }) {
             ]);
         }
 
-        let trade = null, attempts = [], tradeLiquidity = null, outcome = null, position = null;
+        let trade = null, attempts = [], tradeLiquidity = null, baselineLiquidity = null, outcome = null, position = null;
         if (event.armedTradeId) {
             [trade, attempts, tradeLiquidity, outcome, position] = await Promise.all([
                 api.getArmedTrade(event.armedTradeId).catch(() => null),
@@ -322,10 +391,14 @@ export async function openEventDetail({ id, nodes, showError }) {
                 api.getTradePosition(event.armedTradeId).catch(() => null)
             ]);
         }
+        // Load the baseline snapshot by its authoritative id from the event response
+        if (event.baselineLiquidityAssessmentId) {
+            baselineLiquidity = await api.getLiquidityAssessment(event.baselineLiquidityAssessmentId).catch(() => null);
+        }
 
         nodes.modalType.textContent = t("event_modal_type");
         nodes.modalTitle.innerHTML = `${venueIcon(event.venue)}${escapeHtml(event.symbol)} · ${escapeHtml(event.venue)}`;
-        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, outcome, position });
+        nodes.modalContent.innerHTML = buildEventDrawerContent({ event, journal, candidate, liquidity, trade, attempts, tradeLiquidity, baselineLiquidity, outcome, position });
         openModal(nodes);
     } catch (error) {
         showError(error.message);
