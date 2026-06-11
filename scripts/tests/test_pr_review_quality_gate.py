@@ -51,21 +51,21 @@ class TestPrReviewQualityGate(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("0.65", reason)
 
-    def test_rejects_no_high_concerns(self):
-        # Only LOW/MEDIUM — not worth posting
+    def test_passes_medium_concerns(self):
+        # MEDIUM concerns are posted — operator decides if actionable
         ok, reason = passes(_result(confidence=0.80, concerns=(_concern("MEDIUM"),)))
-        self.assertFalse(ok)
-        self.assertIn("no HIGH or CRITICAL", reason)
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ok")
 
-    def test_rejects_only_low_concerns(self):
+    def test_passes_only_low_concerns(self):
         ok, reason = passes(_result(confidence=0.80, concerns=(_concern("LOW"),)))
-        self.assertFalse(ok)
-        self.assertIn("no HIGH or CRITICAL", reason)
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ok")
 
-    def test_rejects_no_concerns_at_all_when_not_approve(self):
+    def test_passes_no_concerns_when_sufficient_confidence(self):
         ok, reason = passes(_result(decision="COMMENT", confidence=0.90, concerns=()))
-        self.assertFalse(ok)
-        self.assertIn("no HIGH or CRITICAL", reason)
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ok")
 
     def test_passes_approve_with_no_concerns(self):
         ok, reason = passes(_result(decision="APPROVE", confidence=0.90, concerns=()))
