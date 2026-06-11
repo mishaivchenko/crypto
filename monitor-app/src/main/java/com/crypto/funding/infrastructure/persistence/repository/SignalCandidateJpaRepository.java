@@ -1,5 +1,6 @@
 package com.crypto.funding.infrastructure.persistence.repository;
 
+import com.crypto.funding.domain.candidate.SignalCandidateStatus;
 import com.crypto.funding.infrastructure.persistence.model.SignalCandidateEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -26,4 +27,6 @@ public interface SignalCandidateJpaRepository extends JpaRepository<SignalCandid
         String sourceType,
         Long sourceChatId
     );
+
+    List<SignalCandidateEntity> findAllByStatus( SignalCandidateStatus status );
 }

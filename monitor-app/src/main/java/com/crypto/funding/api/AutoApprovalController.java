@@ -2,6 +2,7 @@ package com.crypto.funding.api;
 
 import com.crypto.funding.api.dto.AutoApprovalRuleRequest;
 import com.crypto.funding.api.dto.AutoApprovalRuleResponse;
+import com.crypto.funding.application.autoapproval.AutoApprovalPipelineService;
 import com.crypto.funding.application.autoapproval.AutoApprovalRuleService;
 import com.crypto.funding.application.autoapproval.CreateAutoApprovalRuleCommand;
 import com.crypto.funding.application.autoapproval.UpdateAutoApprovalRuleCommand;
@@ -28,11 +29,13 @@ public class AutoApprovalController
 {
     private final AutoApprovalRuleService ruleService;
     private final AutoApprovalProperties properties;
+    private final AutoApprovalPipelineService pipelineService;
 
-    public AutoApprovalController( AutoApprovalRuleService ruleService, AutoApprovalProperties properties )
+    public AutoApprovalController( AutoApprovalRuleService ruleService, AutoApprovalProperties properties, AutoApprovalPipelineService pipelineService )
     {
         this.ruleService = ruleService;
         this.properties = properties;
+        this.pipelineService = pipelineService;
     }
 
     @GetMapping("/status")
@@ -49,6 +52,7 @@ public class AutoApprovalController
     public Map<String, Object> enable()
     {
         properties.setEnabled( true );
+        pipelineService.sweepNormalized();
         return Map.of( "enabled", true );
     }
 
@@ -88,6 +92,10 @@ public class AutoApprovalController
             request.priority(),
             request.notes()
         ) );
+        if( Boolean.TRUE.equals( request.enabled() ) )
+        {
+            pipelineService.sweepNormalized();
+        }
         return AutoApprovalRuleResponse.from( rule );
     }
 
@@ -123,7 +131,9 @@ public class AutoApprovalController
     @PostMapping("/rules/{id}/enable")
     public AutoApprovalRuleResponse enableRule( @PathVariable Long id )
     {
-        return AutoApprovalRuleResponse.from( ruleService.enable( id ) );
+        AutoApprovalRuleResponse response = AutoApprovalRuleResponse.from( ruleService.enable( id ) );
+        pipelineService.sweepNormalized();
+        return response;
     }
 
     @PostMapping("/rules/{id}/disable")

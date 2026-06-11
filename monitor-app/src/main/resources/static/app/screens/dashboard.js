@@ -245,68 +245,7 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     `;
 }
 
-export function criticalMetricsPanelMarkup(metrics, pnl) {
-    const venueSubmitRows = metrics
-        ? Object.entries(metrics.averageSubmitDurationMsByVenue ?? {}).map(([venue, avg]) => {
-            const last = metrics.lastSubmitDurationMsByVenue?.[venue] ?? null;
-            const avgTone = avg > 500 ? "chip-warning" : "chip-muted";
-            const avgValue = `<span class="chip ${avgTone}">${formatDurationMs(avg)}</span>`;
-            return metaRow(escapeHtml(venue), avgValue, last != null ? `${t("metrics_last")} ${formatDurationMs(last)}` : "");
-        }).join("")
-        : "";
-
-    const exchangeLatencySection = venueSubmitRows
-        ? `<div class="meta-grid">${venueSubmitRows}</div>`
-        : `<p class="muted">${t("empty_engine_no_latency")}</p>`;
-
-    const planFetchTone = metrics && metrics.averagePlanFetchDurationMs > 200 ? "chip-warning" : "chip-muted";
-    const internalTimingSection = metrics ? `
-        <div class="meta-grid">
-            ${metaRow(t("metrics_plan_fetch"), `<span class="chip ${planFetchTone}">${formatDurationMs(metrics.averagePlanFetchDurationMs)}</span>`, `${t("metrics_last")} ${formatDurationMs(metrics.lastPlanFetchDurationMs)}`)}
-            ${metaRow(t("metrics_attempt_record"), formatDurationMs(metrics.averageAttemptRecordDurationMs), `${t("metrics_last")} ${formatDurationMs(metrics.lastAttemptRecordDurationMs)}`)}
-            ${metaRow(t("metrics_execution_run"), formatDurationMs(metrics.averageExecutionRunDurationMs), `${t("metrics_last")} ${formatDurationMs(metrics.lastExecutionRunDurationMs)}`)}
-        </div>
-    ` : `<p class="muted">${t("empty_engine_no_data")}</p>`;
-
-    const pnlSection = pnl ? (() => {
-        const net = Number(pnl.totalNetPnlUsd ?? 0);
-        const netTone = net >= 0 ? "chip-good" : "chip-bad";
-        const netValue = `<span class="chip ${netTone}">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`;
-        const winRate = pnl.closedTrades > 0 ? pnl.profitableTrades / pnl.closedTrades : null;
-        const winTone = winRate == null ? "chip-muted" : winRate >= 0.6 ? "chip-good" : winRate >= 0.4 ? "chip-warning" : "chip-bad";
-        const winValue = winRate != null
-            ? `<span class="chip ${winTone}">${formatNumber(pnl.profitableTrades)}/${formatNumber(pnl.closedTrades)} (${Math.round(winRate * 100)}%)</span>`
-            : `<span class="chip chip-muted">${formatNumber(pnl.closedTrades)} ${t("metrics_closed_trades_short")}</span>`;
-        return `
-            <div class="meta-grid">
-                ${metaRow(t("metrics_net_pnl"), netValue)}
-                ${metaRow(t("metrics_gross_pnl"), `${formatDecimal(pnl.totalGrossPnlUsd, 4)} USD`)}
-                ${metaRow(t("metrics_total_fees"), `${formatDecimal(pnl.totalFeesUsd, 4)} USD`)}
-                ${metaRow(t("metrics_win_rate"), winValue, `${formatNumber(pnl.closedTrades)} ${t("metrics_closed_trades_short")}`)}
-            </div>
-        `;
-    })() : `<p class="muted">${t("empty_engine_no_closed")}</p>`;
-
-    return `
-        <div class="panel-header">
-            <h3>${t("metrics_critical")}</h3>
-        </div>
-        <details open>
-            <summary class="meta-label">${t("metrics_exchange_submit")}</summary>
-            ${exchangeLatencySection}
-        </details>
-        <details>
-            <summary class="meta-label">${t("metrics_engine_timing")}</summary>
-            ${internalTimingSection}
-        </details>
-        <details>
-            <summary class="meta-label">${t("metrics_pnl_summary")}</summary>
-            ${pnlSection}
-        </details>
-    `;
-}
-
-export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun, onNavigate }) {
+export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigate }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
 
     // T-24: PipelineViz replaces flat summary cards + keep access-mode card
@@ -322,12 +261,22 @@ export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpd
     // T-23: Freshness KPI card
     const freshnessCard = dashboardFreshnessCardMarkup(overview);
 
+    // T-25: Critical Enrichment Alerts — computed before innerHTML assignment
+    const alertsHtml = dashboardEnrichmentAlertsMarkup(
+        state.lastCandidates ?? null,
+        state.lastTrades ?? null,
+        overview
+    );
+
     nodes.dashboardSummary.innerHTML = `
-        <div class="pipeline-viz-wrapper" style="margin-bottom:12px">${pipelineHtml}</div>
-        <div class="summary-cards-row" style="display:flex;gap:12px;flex-wrap:wrap">
-            ${accessModeCard}
-            ${freshnessCard}
+        <div class="snapshot-row" style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">${pipelineHtml}</div>
+            <div class="snapshot-status-cards" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                ${accessModeCard}
+                ${freshnessCard}
+            </div>
         </div>
+        <div class="snapshot-alerts" style="margin-top:8px">${alertsHtml}</div>
     `;
 
     // Wire PipelineViz navigation clicks (T-24)
@@ -337,47 +286,17 @@ export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpd
         wirePipelineVizClicks(pipelineEl, stagesWithNav);
     }
 
-    // T-25: Critical Enrichment Alerts — rendered after PipelineViz
-    const alertsHtml = dashboardEnrichmentAlertsMarkup(
-        state.lastCandidates ?? null,
-        state.lastTrades ?? null,
-        overview
-    );
-    const alertsWrapper = nodes.dashboardSummary.querySelector(".enrichment-alerts-wrapper");
-    if (!alertsWrapper) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "enrichment-alerts-wrapper";
-        wrapper.style.cssText = "margin-top:12px";
-        wrapper.innerHTML = alertsHtml;
-        nodes.dashboardSummary.appendChild(wrapper);
-    } else {
-        alertsWrapper.innerHTML = alertsHtml;
-    }
-    // Wire alert clicks
+    // Wire alert clicks (alerts now inside innerHTML)
     nodes.dashboardSummary.querySelectorAll("[data-alert-screen]").forEach((el) => {
         el.addEventListener("click", () => {
             if (onNavigate) onNavigate(el.dataset.alertScreen);
         });
     });
 
-    nodes.dashboardDevTools.innerHTML = dashboardDevToolsMarkup(state.engineRuntime, state.engineRuntimeError);
-    nodes.dashboardMetrics.innerHTML = criticalMetricsPanelMarkup(state.engineMetrics, state.pnlAggregate);
     nodes.dashboardVenues.innerHTML = overview.venues.length
         ? overview.venues.map((venue) => venueCard(venue)).join("")
         : emptyState(t("empty_venue_diagnostics"), t("empty_venue_diagnostics_detail"));
 
-    const runOnceButton = nodes.dashboardDevTools.querySelector("[data-action='run-engine-once']");
-    if (runOnceButton) {
-        runOnceButton.addEventListener("click", onRunEngineOnce);
-    }
-    const devTestRunButton = nodes.dashboardDevTools.querySelector("[data-action='open-dev-test-run']");
-    if (devTestRunButton) {
-        devTestRunButton.addEventListener("click", onOpenDevTestRun);
-    }
-    const runtimeForm = nodes.dashboardDevTools.querySelector("[data-action='update-engine-runtime']");
-    if (runtimeForm) {
-        runtimeForm.addEventListener("submit", onUpdateEngineRuntime);
-    }
     wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", onOpenVenue);
 }
 
