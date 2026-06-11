@@ -9,7 +9,6 @@ export function createAppState() {
         engineRuntimeError: null,
         lastCandidates: null,
         lastTrades: null,
-        engineMetrics: null,
         pnlAggregate: null,
         layerCollapsed: {
             trade: { latency: true, health: false, execution: true },
