@@ -14,8 +14,8 @@ export function clearLayerCollapsed() {
   _store = {};
 }
 
-// Guard against double-registration of the global setter
-if (!window.__setLayerCollapsed) {
+// Guard against double-registration of the global setter (typeof check for Node.js test env)
+if (typeof window !== 'undefined' && !window.__setLayerCollapsed) {
   window.__setLayerCollapsed = function(screen, layerType, collapsed) {
     var key = (screen || '') + ':' + (layerType || '');
     _store[key] = collapsed;
@@ -117,36 +117,38 @@ export function renderLayerPipeline(layers, { screen } = {}) {
     + rowsHtml
     + '</div>';
 
-  // Register a live ticker after the current render cycle
-  setTimeout(function() {
-    var root = document.querySelector('.layer-pipeline[data-pipeline-id="' + pipelineId + '"]');
-    if (!root) return;
+  // Register a live ticker after the current render cycle (skipped in Node.js test env)
+  if (typeof document !== 'undefined') {
+    setTimeout(function() {
+      var root = document.querySelector('.layer-pipeline[data-pipeline-id="' + pipelineId + '"]');
+      if (!root) return;
 
-    var intervalId = setInterval(function() {
-      var tickers = root.querySelectorAll('.lp-ticker[data-seconds]');
-      tickers.forEach(function(el) {
-        var raw = el.getAttribute('data-seconds');
-        if (raw === '' || raw === null) {
-          el.textContent = '—';
-          el.style.color = '';
-          return;
+      var intervalId = setInterval(function() {
+        var tickers = root.querySelectorAll('.lp-ticker[data-seconds]');
+        tickers.forEach(function(el) {
+          var raw = el.getAttribute('data-seconds');
+          if (raw === '' || raw === null) {
+            el.textContent = '—';
+            el.style.color = '';
+            return;
+          }
+          var secs = parseInt(raw, 10) + 1;
+          el.setAttribute('data-seconds', secs);
+          el.textContent = _formatAge(secs);
+          el.style.color = _ageColor(secs);
+        });
+      }, 1000);
+
+      // Clean up when pipeline is removed from DOM
+      var observer = new MutationObserver(function() {
+        if (!document.body.contains(root)) {
+          clearInterval(intervalId);
+          observer.disconnect();
         }
-        var secs = parseInt(raw, 10) + 1;
-        el.setAttribute('data-seconds', secs);
-        el.textContent = _formatAge(secs);
-        el.style.color = _ageColor(secs);
       });
-    }, 1000);
-
-    // Clean up when pipeline is removed from DOM
-    var observer = new MutationObserver(function() {
-      if (!document.body.contains(root)) {
-        clearInterval(intervalId);
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-  }, 0);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }, 0);
+  }
 
   return html;
 }
