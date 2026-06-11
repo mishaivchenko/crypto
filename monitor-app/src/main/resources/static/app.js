@@ -92,7 +92,8 @@ async function refreshCurrentScreen() {
                 onUpdateEngineRuntime: (event) => handleUpdateEngineRuntime({ event, state, refreshCurrentScreen, showSuccess, showError }),
                 onOpenVenue: openVenue,
                 onOpenDevTestRun: openDevTestRun,
-                onRenderAutoApproval: () => renderAutoApproval({ nodes, showError, showSuccess })
+                onRenderAutoApproval: () => renderAutoApproval({ nodes, showError, showSuccess }),
+                onNavigate: switchScreen
             });
             return;
         }

@@ -15,6 +15,157 @@ import {
     numberOrNull
 } from "../shared.js";
 import { t } from "../../i18n.js";
+import { renderPipelineViz, wirePipelineVizClicks } from "../components/pipeline-viz.js";
+
+// T-24: Dashboard — PipelineViz replaces flat summary cards
+export function dashboardPipelineVizMarkup(overview) {
+    // Derive a rough "closed/executed" count from overview
+    const executedCount = overview.closedTrades ?? overview.executedTrades ?? 0;
+
+    const stages = [
+        {
+            label: t("nav_signal_queue") || "Сигналы",
+            count: overview.pendingCandidates ?? 0,
+            lastDecorator: "+Liquidity",
+            decoratorType: "liquidity",
+            status: (overview.pendingCandidates ?? 0) > 0 ? "ok" : "neutral",
+            screenKey: "candidates"
+        },
+        {
+            label: t("nav_funding_events") || "События",
+            count: overview.fundingEvents ?? 0,
+            lastDecorator: "+Latency",
+            decoratorType: "latency",
+            status: (overview.fundingEvents ?? 0) > 0 ? "ok" : "neutral",
+            screenKey: "events"
+        },
+        {
+            label: t("nav_prepared_trades") || "Сделки",
+            count: overview.armedTrades ?? 0,
+            lastDecorator: "+Health",
+            decoratorType: "health",
+            status: (overview.armedTrades ?? 0) > 0 ? "ok" : "neutral",
+            screenKey: "trades"
+        },
+        {
+            label: t("nav_history") || "Исполнено",
+            count: executedCount,
+            lastDecorator: "+Orders",
+            decoratorType: "execution",
+            status: executedCount > 0 ? "ok" : "neutral",
+            screenKey: "history"
+        },
+    ];
+
+    return { stages, html: renderPipelineViz(stages) };
+}
+
+// T-23: Dashboard — Enrichment Freshness KPI card
+export function dashboardFreshnessCardMarkup(overview) {
+    const freshness = overview.enrichmentFreshness;
+    if (!freshness) return "";
+
+    const avgSec = freshness.avgAgeSeconds ?? null;
+    let tone, valueLabel;
+    if (avgSec == null) {
+        tone = "neutral";
+        valueLabel = "—";
+    } else if (avgSec < 180) {
+        tone = "good";
+        const m = Math.floor(avgSec / 60);
+        const s = Math.round(avgSec % 60);
+        valueLabel = m > 0 ? `${m}м ${s}с` : `${s}с`;
+    } else if (avgSec < 600) {
+        tone = "warning";
+        const m = Math.floor(avgSec / 60);
+        const s = Math.round(avgSec % 60);
+        valueLabel = `${m}м ${s}с`;
+    } else {
+        tone = "bad";
+        const m = Math.floor(avgSec / 60);
+        valueLabel = `${m}м`;
+    }
+
+    const missingCount = freshness.entitiesMissingLiquidity ?? 0;
+    const missingHtml = missingCount > 0
+        ? `<p class="muted" style="color:#e53e3e;font-size:11px">${missingCount} без ликвидности</p>`
+        : "";
+
+    return summaryCard("Свежесть обогащения", valueLabel, missingCount > 0 ? `${missingCount} без ликвидности` : "Все слои актуальны", tone, true);
+}
+
+// T-25: Dashboard — Critical Enrichment Alerts section
+export function dashboardEnrichmentAlertsMarkup(candidates, trades, overview) {
+    const alerts = [];
+
+    // Alert 1: stale liquidity on candidates (> 10 min)
+    if (candidates && candidates.length > 0) {
+        const nowMs = Date.now();
+        const staleCount = candidates.filter((c) => {
+            const ts = c.liquidityAssessment?.sampledAt ?? c.sampledAt ?? null;
+            if (!ts) return false;
+            return nowMs - new Date(ts).getTime() > 10 * 60 * 1000;
+        }).length;
+        if (staleCount > 0) {
+            alerts.push({
+                text: `${staleCount} сигналов с устаревшей ликвидностью (> 10 мин)`,
+                screen: "candidates",
+                tone: "bad"
+            });
+        }
+    }
+
+    // Alert 2: trades with Latency Chain > 600ms
+    if (trades && trades.length > 0) {
+        const highLatCount = trades.filter((tr) => {
+            const eff = tr.effectiveEntryLatencyMs ?? tr.measuredEntryLatencyMs ?? null;
+            return eff != null && eff > 600;
+        }).length;
+        if (highLatCount > 0) {
+            alerts.push({
+                text: `${highLatCount} сделок с Latency Chain > 600мс`,
+                screen: "trades",
+                tone: "bad"
+            });
+        }
+    }
+
+    // Alert 3: venues with failed connection status
+    if (overview && overview.venues) {
+        const failedVenues = overview.venues.filter((v) =>
+            v.connectionStatus === "INVALID_CREDENTIALS" || v.connectionStatus === "ERROR"
+        );
+        if (failedVenues.length > 0) {
+            const relatedTrades = trades ? trades.filter((tr) =>
+                failedVenues.some((v) => v.venue === tr.venue)
+            ).length : 0;
+            failedVenues.forEach((v) => {
+                alerts.push({
+                    text: `Площадка ${escapeHtml(v.venue)} недоступна${relatedTrades > 0 ? ` (влияет на ${relatedTrades} активных сделок)` : ""}`,
+                    screen: "venues",
+                    tone: "bad"
+                });
+            });
+        }
+    }
+
+    if (alerts.length === 0) {
+        return `<div class="enrichment-alerts enrichment-alerts--ok" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:rgba(56,161,105,0.08);border:1px solid rgba(56,161,105,0.25)">
+            <span style="color:var(--freshness-ok,#38a169)">●</span>
+            <span style="font-size:12px;color:#aaa">Все слои обогащения актуальны</span>
+        </div>`;
+    }
+
+    const alertHtml = alerts.map((alert) =>
+        `<div class="enrichment-alert" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;background:rgba(229,62,62,0.08);cursor:pointer" data-alert-screen="${escapeHtml(alert.screen)}">
+            <span style="color:#e53e3e;font-size:11px">✕</span>
+            <span style="font-size:12px;flex:1">${escapeHtml(alert.text)}</span>
+            <span style="font-size:10px;color:#888">→</span>
+        </div>`
+    ).join("");
+
+    return `<div class="enrichment-alerts" style="display:flex;flex-direction:column;gap:4px">${alertHtml}</div>`;
+}
 
 export function dashboardSummaryMarkup(overview) {
     return `
@@ -189,9 +340,60 @@ export function criticalMetricsPanelMarkup(metrics, pnl) {
     `;
 }
 
-export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun, onRenderAutoApproval }) {
+export function renderDashboard({ nodes, overview, state, onRunEngineOnce, onUpdateEngineRuntime, onOpenVenue, onOpenDevTestRun, onRenderAutoApproval, onNavigate }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
-    nodes.dashboardSummary.innerHTML = dashboardSummaryMarkup(overview);
+
+    // T-24: PipelineViz replaces flat summary cards + keep access-mode card
+    const { stages, html: pipelineHtml } = dashboardPipelineVizMarkup(overview);
+    const accessModeCard = summaryCard(
+        t("topbar_access_mode"),
+        String(overview.globalAccessMode ?? "testnet").toUpperCase(),
+        `${overview.activeVenues} ${t("dashboard_venues_detail")} ${overview.version}`,
+        "neutral",
+        true
+    );
+
+    // T-23: Freshness KPI card
+    const freshnessCard = dashboardFreshnessCardMarkup(overview);
+
+    nodes.dashboardSummary.innerHTML = `
+        <div class="pipeline-viz-wrapper" style="margin-bottom:12px">${pipelineHtml}</div>
+        <div class="summary-cards-row" style="display:flex;gap:12px;flex-wrap:wrap">
+            ${accessModeCard}
+            ${freshnessCard}
+        </div>
+    `;
+
+    // Wire PipelineViz navigation clicks (T-24)
+    const pipelineEl = nodes.dashboardSummary.querySelector(".pipeline-viz");
+    if (pipelineEl && onNavigate) {
+        const stagesWithNav = stages.map((s) => ({ ...s, onClick: () => onNavigate(s.screenKey) }));
+        wirePipelineVizClicks(pipelineEl, stagesWithNav);
+    }
+
+    // T-25: Critical Enrichment Alerts — rendered after PipelineViz
+    const alertsHtml = dashboardEnrichmentAlertsMarkup(
+        state.lastCandidates ?? null,
+        state.lastTrades ?? null,
+        overview
+    );
+    const alertsWrapper = nodes.dashboardSummary.querySelector(".enrichment-alerts-wrapper");
+    if (!alertsWrapper) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "enrichment-alerts-wrapper";
+        wrapper.style.cssText = "margin-top:12px";
+        wrapper.innerHTML = alertsHtml;
+        nodes.dashboardSummary.appendChild(wrapper);
+    } else {
+        alertsWrapper.innerHTML = alertsHtml;
+    }
+    // Wire alert clicks
+    nodes.dashboardSummary.querySelectorAll("[data-alert-screen]").forEach((el) => {
+        el.addEventListener("click", () => {
+            if (onNavigate) onNavigate(el.dataset.alertScreen);
+        });
+    });
+
     nodes.dashboardDevTools.innerHTML = dashboardDevToolsMarkup(state.engineRuntime, state.engineRuntimeError);
     nodes.dashboardMetrics.innerHTML = criticalMetricsPanelMarkup(state.engineMetrics, state.pnlAggregate);
     nodes.dashboardVenues.innerHTML = overview.venues.length
