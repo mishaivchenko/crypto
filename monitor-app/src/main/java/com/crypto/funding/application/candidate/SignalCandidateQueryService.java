@@ -50,6 +50,14 @@ public class SignalCandidateQueryService
                                    .orElseThrow( () -> new ResourceNotFoundException( "Сигнал не найден: " + id ) );
     }
 
+    @Transactional(readOnly = true)
+    public List<Long> findAllIdsByStatus( SignalCandidateStatus status )
+    {
+        return candidateRepository.findAllByStatus( status ).stream()
+                                  .map( SignalCandidateEntity::getId )
+                                  .toList();
+    }
+
     private Specification<SignalCandidateEntity> specification(
         SignalCandidateStatus status,
         String venue,
