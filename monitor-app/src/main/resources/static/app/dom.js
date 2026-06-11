@@ -18,7 +18,6 @@ export function createNodes(doc = document) {
             settings: doc.getElementById("screen-settings"),
         },
         dashboardSummary: doc.getElementById("dashboard-summary"),
-        dashboardMetrics: doc.getElementById("dashboard-metrics"),
         dashboardVenues: doc.getElementById("dashboard-venues"),
         candidatesList: doc.getElementById("candidates-list"),
         eventsList: doc.getElementById("events-list"),
