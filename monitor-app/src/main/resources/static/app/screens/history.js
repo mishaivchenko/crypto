@@ -73,16 +73,38 @@ function wireHistoryExpansion(container, { attemptsByTrade, showError, onRefresh
 
         try {
             const trade = await api.getArmedTrade(tradeId);
-            const [event, candidate, journal, position, outcome] = await Promise.all([
+            const [event, candidate, journal, position, outcome, tradeLiquidity] = await Promise.all([
                 api.getFundingEvent(trade.fundingEventId),
                 trade.signalCandidateId ? optionalRequest(() => api.getCandidate(trade.signalCandidateId)) : Promise.resolve(null),
                 api.listArmedTradeJournal(tradeId).catch(() => []),
                 api.getTradePosition(tradeId).catch(() => null),
-                api.getTradeOutcome(tradeId).catch(() => null)
+                api.getTradeOutcome(tradeId).catch(() => null),
+                api.getTradeLiquidity(tradeId).catch(() => null)
             ]);
             const attempts = attemptsByTrade[tradeId] ?? await api.listOrderAttempts(tradeId).catch(() => []);
 
             contentEl.innerHTML = buildHistoryTradeDrawerContent({ trade, event, candidate, journal, attempts, position, outcome });
+
+            // Update enrichment chip now that we have real liquidity data
+            if (tradeLiquidity) {
+                const chipEl = details.closest("article")?.querySelector(`[data-enrich-chip="${CSS.escape(String(tradeId))}"]`);
+                if (chipEl) {
+                    const latMs = trade.effectiveEntryLatencyMs;
+                    const highLatency = latMs != null && latMs > 600;
+                    const thinLiquidity = tradeLiquidity.score === "THIN";
+                    const untradable = tradeLiquidity.score === "UNTRADABLE";
+                    if (highLatency) {
+                        chipEl.className = "chip chip-bad";
+                        chipEl.textContent = `Latency: ${latMs}мс`;
+                    } else if (untradable) {
+                        chipEl.className = "chip chip-bad";
+                        chipEl.textContent = "Liquidity: UNTRADABLE";
+                    } else if (thinLiquidity) {
+                        chipEl.className = "chip chip-warning";
+                        chipEl.textContent = "Liquidity: THIN";
+                    }
+                }
+            }
 
             wireCancelTrade(contentEl, { showError, onRefresh });
         } catch (err) {

@@ -148,9 +148,20 @@ async function refreshCurrentScreen() {
         if (state.screen === "venues") {
             loadingTarget = nodes.venuesList;
             setLoading(loadingTarget, t("loading_venues"));
+            const [venues, overview] = await Promise.all([
+                api.listVenues(),
+                api.getOverview().catch(() => null)
+            ]);
+            const overviewByVenue = Object.fromEntries(
+                (overview?.venues ?? []).map(v => [v.venue, v])
+            );
+            const enrichedVenues = venues.map(v => ({
+                ...v,
+                enrichmentCoveragePct: overviewByVenue[v.venue]?.enrichmentCoveragePct ?? null
+            }));
             renderVenues({
                 nodes,
-                venues: await api.listVenues(),
+                venues: enrichedVenues,
                 onOpenVenue: openVenue
             });
         }

@@ -1,4 +1,4 @@
-import { emptyState, escapeHtml, formatInstant, venueIcon } from "../shared.js";
+import { emptyState, escapeHtml, formatInstant, venueCard, venueIcon, venueStatusBadge } from "../shared.js";
 import { t } from "../../i18n.js";
 
 // T-27: Coverage column cell
@@ -108,4 +108,11 @@ export function renderVenues({ nodes, venues, onOpenVenue }) {
         });
     }
     render();
+}
+
+// Compatibility export — tests import this name; renders each venue using venueCard (+ status badge)
+export function venuesListMarkup(venues = []) {
+    return venues.length
+        ? venues.map(v => venueCard(v)).join("")
+        : emptyState(t("empty_venues"), t("empty_venues_detail"));
 }

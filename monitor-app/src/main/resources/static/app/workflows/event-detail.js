@@ -169,7 +169,7 @@ function buildOutcomeSection(outcome) {
     `);
 }
 
-function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = null } = {}) {
+function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = null, attempts = [] } = {}) {
     const liquidityStatus = !tradeLiquidity ? null
         : (tradeLiquidity.score === "EXCELLENT" || tradeLiquidity.score === "GOOD" || tradeLiquidity.score === "MEDIUM") ? "ok"
         : tradeLiquidity.score === "THIN" ? "warn"
@@ -200,13 +200,24 @@ function buildEventEnrichmentTimeline(event, { tradeLiquidity = null, trade = nu
             decorator: trade.armSource === "AUTO" ? "AUTO" : "OPERATOR",
             details: trade.armSource ? escapeHtml(trade.armSource) : ""
         }] : []),
-        {
+        ...(attempts && attempts.length ? (() => {
+            const first = attempts[0];
+            const execStatus = first.status === "FILLED" ? "ok"
+                : first.status === "FAILED" ? "blocked" : "warn";
+            return [{
+                name: t("enrichment_step_execution") || "Исполнение",
+                status: execStatus,
+                timestamp: first.triggerAt ?? null,
+                decorator: "ENGINE",
+                details: escapeHtml(first.status ?? "")
+            }];
+        })() : [{
             name: t("enrichment_step_execution") || "Исполнение",
             status: "missing",
             timestamp: null,
             decorator: "ENGINE",
             details: t("enrichment_step_execution_pending") || "Ожидается"
-        }
+        }])
     ];
 
     return renderEnrichmentTimeline(layers);
@@ -295,13 +306,14 @@ export function buildEventExpansionContent({ event, candidate = null, liquidity 
         ? Math.floor(Number(liquidity.recommendedMaxOrderNotional))
         : 25;
 
-    const baselineLiquidity = event.baselineLiquiditySnapshot ?? null;
+    // liquidity (from signalCandidateId) is the baseline snapshot; trade liquidity is current
+    const baselineLiquidity = liquidity ?? null;
     const liquidityDelta = tradeLiquidity && baselineLiquidity
         ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
         : "";
 
     return `
-        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade })}
+        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade, attempts })}
         ${signalAnalysisChips(candidate, liquidity)}
         ${canArm ? buildArmForm(event, suggestedNotional) : ""}
         ${trade ? buildTradeParamsSection(trade) : ""}
@@ -321,14 +333,15 @@ export function buildEventDrawerContent({ event, journal, candidate = null, liqu
         : 25;
     const canArm = event.status === "DISCOVERED";
 
-    const baselineLiquidity = event.baselineLiquiditySnapshot ?? null;
+    // liquidity (from signalCandidateId) is the baseline snapshot; trade liquidity is current
+    const baselineLiquidity = liquidity ?? null;
     const liquidityDelta = tradeLiquidity && baselineLiquidity
         ? renderEnrichmentDelta(tradeLiquidity, baselineLiquidity)
         : "";
 
     return `
         ${pipelineStageMarkup("event")}
-        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade })}
+        ${buildEventEnrichmentTimeline(event, { tradeLiquidity, trade, attempts })}
         ${section(t("event_snapshot"), `
             <div class="meta-grid">
                 ${metaRow(t("event_status"), formatBadge("event", event.status))}
