@@ -1,17 +1,13 @@
 import { api } from "../../api.js";
 import {
-    emptyState,
     escapeHtml,
     formatBadge,
-    formatDecimal,
     formatDurationMs,
     formatInstant,
     formatNumber,
     formatRelative,
     metaRow,
     summaryCard,
-    venueCard,
-    wireOpenButtons,
     numberOrNull
 } from "../shared.js";
 import { t } from "../../i18n.js";
@@ -215,6 +211,17 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     `;
 }
 
+function _fmsDash(v) {
+    if (v == null || v === 0) return "—";
+    return formatDurationMs(v);
+}
+
+function _fmsPnl(v) {
+    if (v == null) return "—";
+    const n = parseFloat(v);
+    return `${n >= 0 ? "+" : ""}$${Math.abs(n).toFixed(2)}`;
+}
+
 export function renderMetricsPanel({ nodes, metrics, pnlAggregate }) {
     if (!metrics) {
         nodes.dashboardMetrics.style.display = "none";
@@ -225,89 +232,75 @@ export function renderMetricsPanel({ nodes, metrics, pnlAggregate }) {
     const loopOn = Boolean(metrics.executionLoopEnabled);
     const liveOn = Boolean(metrics.liveOrderEnabled);
     const killOn = Boolean(metrics.killSwitchEnabled);
-
-    const chipTone = (cond, toneTrue, toneFalse) => cond ? toneTrue : toneFalse;
-
     const totalRuns = (metrics.executionRuns ?? 0) + (metrics.forcedExecutionRuns ?? 0);
+    const hasRunData = metrics.lastRunFinishedAt != null || (metrics.lastPlansScanned ?? 0) > 0;
 
-    // PnL section
-    let pnlHtml = "";
-    if (pnlAggregate) {
-        const fmt = (v) => {
-            if (v == null) return "—";
-            const n = parseFloat(v);
-            return `${n >= 0 ? "+" : ""}$${Math.abs(n).toFixed(2)}`;
-        };
-        const fmtFees = (v) => {
-            if (v == null) return "—";
-            const n = parseFloat(v);
-            return `-$${Math.abs(n).toFixed(2)}`;
-        };
-        pnlHtml = `
-            <div style="flex:1;min-width:0">
-                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_pnl")}</p>
-                <div class="meta-grid">
-                    ${metaRow("Net PnL", fmt(pnlAggregate.netPnlUsd))}
-                    ${metaRow("Gross", fmt(pnlAggregate.grossPnlUsd))}
-                    ${metaRow("Fees", fmtFees(pnlAggregate.totalFeesUsd))}
-                    ${metaRow("Trades", `${formatNumber(pnlAggregate.closedTrades)} (${formatNumber(pnlAggregate.profitableTrades)} profitable)`)}
-                </div>
-            </div>`;
-    }
+    // Last run — only show if engine has run at least once
+    const lastRunHtml = hasRunData ? `
+        <div style="flex:1;min-width:160px">
+            <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_last_run")}</p>
+            <div class="meta-grid">
+                ${metaRow("Сканировано", formatNumber(metrics.lastPlansScanned ?? 0))}
+                ${metaRow("Отправлено", formatNumber(metrics.lastAttemptsSubmitted ?? 0))}
+                ${metaRow("Пропущено", formatNumber(metrics.lastAttemptsSkipped ?? 0))}
+                ${metaRow("Длительность", _fmsDash(metrics.lastExecutionRunDurationMs))}
+            </div>
+        </div>` : "";
 
-    // Latency by venue
+    // Rolling averages — only show if totalRuns > 0
+    const rollingHtml = totalRuns > 0 ? `
+        <div style="flex:1;min-width:160px">
+            <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_rolling")}</p>
+            <div class="meta-grid">
+                ${metaRow("Прогонов", formatNumber(totalRuns))}
+                ${metaRow("Avg duration", _fmsDash(metrics.averageExecutionRunDurationMs))}
+                ${metaRow("Avg plan fetch", _fmsDash(metrics.averagePlanFetchDurationMs))}
+                ${metaRow("Avg record write", _fmsDash(metrics.averageAttemptRecordDurationMs))}
+            </div>
+        </div>` : "";
+
+    // PnL — only show if there are closed trades
+    const hasPnl = pnlAggregate && (pnlAggregate.closedTrades ?? 0) > 0;
+    const pnlHtml = hasPnl ? `
+        <div style="flex:1;min-width:160px">
+            <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_pnl")}</p>
+            <div class="meta-grid">
+                ${metaRow("Net PnL", _fmsPnl(pnlAggregate.totalNetPnlUsd ?? pnlAggregate.netPnlUsd))}
+                ${metaRow("Gross", _fmsPnl(pnlAggregate.totalGrossPnlUsd ?? pnlAggregate.grossPnlUsd))}
+                ${metaRow("Fees", `-$${Math.abs(parseFloat(pnlAggregate.totalFeesUsd ?? 0)).toFixed(2)}`)}
+                ${metaRow("Сделок", `${formatNumber(pnlAggregate.closedTrades)} (${formatNumber(pnlAggregate.profitableTrades)} в плюс)`)}
+            </div>
+        </div>` : "";
+
+    // Latency by venue — only show venues that have data
     const avgByVenue = metrics.averageSubmitDurationMsByVenue ?? {};
     const lastByVenue = metrics.lastSubmitDurationMsByVenue ?? {};
-    const venues = Object.keys(avgByVenue);
-    let latencyHtml = "";
-    if (venues.length === 0) {
-        latencyHtml = `<p class="muted" style="font-size:12px">—</p>`;
-    } else {
-        latencyHtml = venues.map((v) => {
-            const avg = avgByVenue[v] != null ? formatDurationMs(avgByVenue[v]) : "—";
-            const last = lastByVenue[v] != null ? formatDurationMs(lastByVenue[v]) : "—";
-            return metaRow(escapeHtml(v), `${avg} avg / ${last} last`);
-        }).join("");
-    }
+    const venueNames = Object.keys(avgByVenue).filter((v) => avgByVenue[v] != null);
+    const latencyHtml = venueNames.length > 0 ? `
+        <div style="flex:1;min-width:160px">
+            <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_latency_by_venue")}</p>
+            <div class="meta-grid">
+                ${venueNames.map((v) => {
+                    const avg = _fmsDash(avgByVenue[v]);
+                    const last = _fmsDash(lastByVenue[v]);
+                    return metaRow(escapeHtml(v), `${avg} avg · ${last} last`);
+                }).join("")}
+            </div>
+        </div>` : "";
+
+    const hasBottomSection = pnlHtml || latencyHtml;
 
     nodes.dashboardMetrics.innerHTML = `
         <div class="panel-header">
             <h3>${t("dashboard_metrics_title")}</h3>
         </div>
-        <div class="chip-row" style="margin-bottom:12px">
-            <span class="chip chip-${chipTone(loopOn, "good", "neutral")}">${t("dashboard_loop")}: ${loopOn ? "ON" : "OFF"}</span>
-            <span class="chip chip-${chipTone(liveOn, "bad", "good")}">${t("dev_live_orders")}: ${liveOn ? "ON" : "OFF"}</span>
-            <span class="chip chip-${chipTone(killOn, "bad", "good")}">${t("dev_kill_switch")}: ${killOn ? "ON" : "OFF"}</span>
+        <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px">
+            <span class="chip chip-${loopOn ? "good" : "neutral"}">Loop: ${loopOn ? "ON" : "OFF"}</span>
+            <span class="chip chip-${liveOn ? "bad" : "good"}">Live orders: ${liveOn ? "ON" : "OFF"}</span>
+            <span class="chip chip-${killOn ? "bad" : "good"}">Kill switch: ${killOn ? "ON" : "OFF"}</span>
         </div>
-        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
-            <div style="flex:1;min-width:0">
-                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_last_run")}</p>
-                <div class="meta-grid">
-                    ${metaRow("Сканировано", formatNumber(metrics.lastPlansScanned))}
-                    ${metaRow("Отправлено", formatNumber(metrics.lastAttemptsSubmitted))}
-                    ${metaRow("Пропущено", formatNumber(metrics.lastAttemptsSkipped))}
-                    ${metaRow("Длительность", formatDurationMs(metrics.lastExecutionRunDurationMs))}
-                </div>
-            </div>
-            <div style="flex:1;min-width:0">
-                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_rolling")}</p>
-                <div class="meta-grid">
-                    ${metaRow("Прогонов", formatNumber(totalRuns))}
-                    ${metaRow("Avg duration", formatDurationMs(metrics.averageExecutionRunDurationMs))}
-                    ${metaRow("Avg plan fetch", formatDurationMs(metrics.averagePlanFetchDurationMs))}
-                    ${metaRow("Avg record write", formatDurationMs(metrics.averageAttemptRecordDurationMs))}
-                </div>
-            </div>
-        </div>
-        <div style="display:flex;gap:24px;flex-wrap:wrap">
-            ${pnlHtml}
-            <div style="flex:1;min-width:0">
-                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_latency_by_venue")}</p>
-                <div class="meta-grid">
-                    ${latencyHtml}
-                </div>
-            </div>
-        </div>
+        ${lastRunHtml || rollingHtml ? `<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:${hasBottomSection ? "16px" : "0"}">${lastRunHtml}${rollingHtml}</div>` : ""}
+        ${hasBottomSection ? `<div style="display:flex;gap:24px;flex-wrap:wrap">${pnlHtml}${latencyHtml}</div>` : ""}
     `;
 }
 
@@ -344,6 +337,20 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
         overview
     );
 
+    // Compact venue status strip — click navigates to Venue Access
+    const venueStripHtml = overview.venues.length > 0 ? `
+        <div class="venue-status-strip" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+            ${overview.venues.map((v) => {
+                const ok = v.connectionStatus !== "INVALID_CREDENTIALS" && v.connectionStatus !== "ERROR";
+                const noKeys = !v.credentialsConfigured && v.credentialsRequired;
+                const dot = noKeys ? "⚠" : (ok ? "●" : "✕");
+                const color = noKeys ? "#d69e2e" : (ok ? "#38a169" : "#e53e3e");
+                return `<span class="chip" style="cursor:pointer;font-size:11px;gap:4px" data-open-venue="${escapeHtml(v.venue)}">` +
+                    `<span style="color:${color}">${dot}</span> ${escapeHtml(v.venue)}` +
+                    `</span>`;
+            }).join("")}
+        </div>` : "";
+
     nodes.dashboardSummary.innerHTML = `
         <div class="snapshot-row" style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
             <div style="flex:1;min-width:0">${pipelineHtml}</div>
@@ -352,6 +359,7 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
                 ${engineStatusCard}
             </div>
         </div>
+        ${venueStripHtml}
         <div class="snapshot-alerts" style="margin-top:8px">${alertsHtml}</div>
     `;
 
@@ -362,18 +370,19 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
         wirePipelineVizClicks(pipelineEl, stagesWithNav);
     }
 
+    // Wire venue strip clicks → open venue detail
+    nodes.dashboardSummary.querySelectorAll("[data-open-venue]").forEach((el) => {
+        el.addEventListener("click", () => {
+            if (onOpenVenue) onOpenVenue(el.dataset.openVenue);
+        });
+    });
+
     // Wire alert clicks (alerts now inside innerHTML)
     nodes.dashboardSummary.querySelectorAll("[data-alert-screen]").forEach((el) => {
         el.addEventListener("click", () => {
             if (onNavigate) onNavigate(el.dataset.alertScreen);
         });
     });
-
-    nodes.dashboardVenues.innerHTML = overview.venues.length
-        ? overview.venues.map((venue) => venueCard(venue)).join("")
-        : emptyState(t("empty_venue_diagnostics"), t("empty_venue_diagnostics_detail"));
-
-    wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", onOpenVenue);
 
     renderMetricsPanel({
         nodes,
