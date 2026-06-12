@@ -232,6 +232,12 @@ const translations = {
         dashboard_engineering_note: "Engineering control panel for manual engine testing.",
         dashboard_engine_status: "Engine",
 
+        dashboard_metrics_title: "Engine Metrics",
+        dashboard_last_run: "Last run",
+        dashboard_rolling: "Rolling",
+        dashboard_pnl: "PnL",
+        dashboard_latency_by_venue: "Latency by venue",
+
         // Critical metrics
         metrics_critical: "Critical Metrics",
         metrics_exchange_submit: "Exchange submit latency (avg / last)",
@@ -980,6 +986,12 @@ const translations = {
         dashboard_dev_tool_note: "Dev tool запускает один принудительный проход engine по waiting/entry-window/overdue планам и сразу пишет Order Attempts в monitor.",
         dashboard_engineering_note: "Инженерный контур для ручной проверки engine.",
         dashboard_engine_status: "Движок",
+
+        dashboard_metrics_title: "Метрики движка",
+        dashboard_last_run: "Последний прогон",
+        dashboard_rolling: "Скользящие",
+        dashboard_pnl: "PnL",
+        dashboard_latency_by_venue: "Latency по площадкам",
 
         // Critical metrics
         metrics_critical: "Критические метрики",

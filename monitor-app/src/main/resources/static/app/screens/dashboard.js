@@ -215,6 +215,102 @@ export function dashboardDevToolsMarkup(runtime, runtimeError) {
     `;
 }
 
+export function renderMetricsPanel({ nodes, metrics, pnlAggregate }) {
+    if (!metrics) {
+        nodes.dashboardMetrics.style.display = "none";
+        return;
+    }
+    nodes.dashboardMetrics.style.display = "";
+
+    const loopOn = Boolean(metrics.executionLoopEnabled);
+    const liveOn = Boolean(metrics.liveOrderEnabled);
+    const killOn = Boolean(metrics.killSwitchEnabled);
+
+    const chipTone = (cond, toneTrue, toneFalse) => cond ? toneTrue : toneFalse;
+
+    const totalRuns = (metrics.executionRuns ?? 0) + (metrics.forcedExecutionRuns ?? 0);
+
+    // PnL section
+    let pnlHtml = "";
+    if (pnlAggregate) {
+        const fmt = (v) => {
+            if (v == null) return "—";
+            const n = parseFloat(v);
+            return `${n >= 0 ? "+" : ""}$${Math.abs(n).toFixed(2)}`;
+        };
+        const fmtFees = (v) => {
+            if (v == null) return "—";
+            const n = parseFloat(v);
+            return `-$${Math.abs(n).toFixed(2)}`;
+        };
+        pnlHtml = `
+            <div style="flex:1;min-width:0">
+                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_pnl")}</p>
+                <div class="meta-grid">
+                    ${metaRow("Net PnL", fmt(pnlAggregate.netPnlUsd))}
+                    ${metaRow("Gross", fmt(pnlAggregate.grossPnlUsd))}
+                    ${metaRow("Fees", fmtFees(pnlAggregate.totalFeesUsd))}
+                    ${metaRow("Trades", `${formatNumber(pnlAggregate.closedTrades)} (${formatNumber(pnlAggregate.profitableTrades)} profitable)`)}
+                </div>
+            </div>`;
+    }
+
+    // Latency by venue
+    const avgByVenue = metrics.averageSubmitDurationMsByVenue ?? {};
+    const lastByVenue = metrics.lastSubmitDurationMsByVenue ?? {};
+    const venues = Object.keys(avgByVenue);
+    let latencyHtml = "";
+    if (venues.length === 0) {
+        latencyHtml = `<p class="muted" style="font-size:12px">—</p>`;
+    } else {
+        latencyHtml = venues.map((v) => {
+            const avg = avgByVenue[v] != null ? formatDurationMs(avgByVenue[v]) : "—";
+            const last = lastByVenue[v] != null ? formatDurationMs(lastByVenue[v]) : "—";
+            return metaRow(escapeHtml(v), `${avg} avg / ${last} last`);
+        }).join("");
+    }
+
+    nodes.dashboardMetrics.innerHTML = `
+        <div class="panel-header">
+            <h3>${t("dashboard_metrics_title")}</h3>
+        </div>
+        <div class="chip-row" style="margin-bottom:12px">
+            <span class="chip chip-${chipTone(loopOn, "good", "neutral")}">${t("dashboard_loop")}: ${loopOn ? "ON" : "OFF"}</span>
+            <span class="chip chip-${chipTone(liveOn, "bad", "good")}">${t("dev_live_orders")}: ${liveOn ? "ON" : "OFF"}</span>
+            <span class="chip chip-${chipTone(killOn, "bad", "good")}">${t("dev_kill_switch")}: ${killOn ? "ON" : "OFF"}</span>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
+            <div style="flex:1;min-width:0">
+                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_last_run")}</p>
+                <div class="meta-grid">
+                    ${metaRow("Сканировано", formatNumber(metrics.lastPlansScanned))}
+                    ${metaRow("Отправлено", formatNumber(metrics.lastAttemptsSubmitted))}
+                    ${metaRow("Пропущено", formatNumber(metrics.lastAttemptsSkipped))}
+                    ${metaRow("Длительность", formatDurationMs(metrics.lastExecutionRunDurationMs))}
+                </div>
+            </div>
+            <div style="flex:1;min-width:0">
+                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_rolling")}</p>
+                <div class="meta-grid">
+                    ${metaRow("Прогонов", formatNumber(totalRuns))}
+                    ${metaRow("Avg duration", formatDurationMs(metrics.averageExecutionRunDurationMs))}
+                    ${metaRow("Avg plan fetch", formatDurationMs(metrics.averagePlanFetchDurationMs))}
+                    ${metaRow("Avg record write", formatDurationMs(metrics.averageAttemptRecordDurationMs))}
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap">
+            ${pnlHtml}
+            <div style="flex:1;min-width:0">
+                <p class="eyebrow" style="margin-bottom:6px">${t("dashboard_latency_by_venue")}</p>
+                <div class="meta-grid">
+                    ${latencyHtml}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigate }) {
     nodes.globalModeSelect.value = String(overview.globalAccessMode ?? "TESTNET").toUpperCase();
 
@@ -278,6 +374,12 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
         : emptyState(t("empty_venue_diagnostics"), t("empty_venue_diagnostics_detail"));
 
     wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", onOpenVenue);
+
+    renderMetricsPanel({
+        nodes,
+        metrics: state.engineMetrics,
+        pnlAggregate: state.pnlAggregate
+    });
 
     // Waterfall panel
     if (nodes.dashboardWaterfall) {
