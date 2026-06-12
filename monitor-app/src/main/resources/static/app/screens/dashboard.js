@@ -59,37 +59,6 @@ export function dashboardPipelineVizMarkup(overview, pnlAggregate) {
     return { stages, html: renderPipelineViz(stages) };
 }
 
-// T-23: Dashboard — Enrichment Freshness KPI card
-export function dashboardFreshnessCardMarkup(overview) {
-    const freshness = overview.enrichmentFreshness;
-    if (!freshness) return "";
-
-    const avgSec = freshness.avgSecondsSinceLastAssessment ?? null;
-    let tone, valueLabel;
-    if (avgSec == null) {
-        tone = "neutral";
-        valueLabel = "—";
-    } else if (avgSec < 180) {
-        tone = "good";
-        const m = Math.floor(avgSec / 60);
-        const s = Math.round(avgSec % 60);
-        valueLabel = m > 0 ? `${m}м ${s}с` : `${s}с`;
-    } else if (avgSec < 600) {
-        tone = "warning";
-        const m = Math.floor(avgSec / 60);
-        const s = Math.round(avgSec % 60);
-        valueLabel = `${m}м ${s}с`;
-    } else {
-        tone = "bad";
-        const m = Math.floor(avgSec / 60);
-        valueLabel = `${m}м`;
-    }
-
-    const missingCount = freshness.uncoveredEntityCount ?? 0;
-
-    return summaryCard("Свежесть обогащения", valueLabel, missingCount > 0 ? `${missingCount} без ликвидности` : "Все слои актуальны", tone, true);
-}
-
 // T-25: Dashboard — Critical Enrichment Alerts section
 export function dashboardEnrichmentAlertsMarkup(candidates, trades, overview) {
     const alerts = [];
@@ -258,8 +227,18 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
         true
     );
 
-    // T-23: Freshness KPI card
-    const freshnessCard = dashboardFreshnessCardMarkup(overview);
+    // Engine STATUS card — only rendered when engineRuntime is available
+    const runtime = state.engineRuntime ?? null;
+    let engineStatusCard = "";
+    if (runtime !== null) {
+        const attemptsSubmitted = runtime.lastAttemptsSubmitted ?? 0;
+        const avgMs = runtime.lastExecutionRunDurationMs ?? "—";
+        const uncoveredCount = overview.enrichmentFreshness?.uncoveredEntityCount ?? 0;
+        const engineDetail = `${attemptsSubmitted} попыток · ${avgMs}мс avg · ${uncoveredCount} без ликвидности`;
+        const engineTone = runtime.executionLoopEnabled ? "good" : "neutral";
+        const engineValue = runtime.executionLoopEnabled ? "Loop ON" : "Loop OFF";
+        engineStatusCard = summaryCard(t("dashboard_engine_status"), engineValue, engineDetail, engineTone, true);
+    }
 
     // T-25: Critical Enrichment Alerts — computed before innerHTML assignment
     const alertsHtml = dashboardEnrichmentAlertsMarkup(
@@ -273,7 +252,7 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
             <div style="flex:1;min-width:0">${pipelineHtml}</div>
             <div class="snapshot-status-cards" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
                 ${accessModeCard}
-                ${freshnessCard}
+                ${engineStatusCard}
             </div>
         </div>
         <div class="snapshot-alerts" style="margin-top:8px">${alertsHtml}</div>

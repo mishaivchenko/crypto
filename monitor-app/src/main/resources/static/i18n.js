@@ -230,6 +230,7 @@ const translations = {
         dashboard_runtime_note: "Runtime changes apply immediately but reset on engine restart. Base defaults are still set via compose/env.",
         dashboard_dev_tool_note: "The dev tool triggers a single forced engine pass over waiting/entry-window/overdue plans and immediately writes Order Attempts to monitor.",
         dashboard_engineering_note: "Engineering control panel for manual engine testing.",
+        dashboard_engine_status: "Engine",
 
         // Critical metrics
         metrics_critical: "Critical Metrics",
@@ -978,6 +979,7 @@ const translations = {
         dashboard_runtime_note: "Изменения runtime применяются сразу, но сбрасываются при перезапуске engine. Базовые defaults задаются через compose/env.",
         dashboard_dev_tool_note: "Dev tool запускает один принудительный проход engine по waiting/entry-window/overdue планам и сразу пишет Order Attempts в monitor.",
         dashboard_engineering_note: "Инженерный контур для ручной проверки engine.",
+        dashboard_engine_status: "Движок",
 
         // Critical metrics
         metrics_critical: "Критические метрики",
