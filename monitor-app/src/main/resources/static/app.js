@@ -72,16 +72,18 @@ async function refreshCurrentScreen() {
         if (state.screen === "dashboard") {
             setLoading(nodes.dashboardSummary, t("loading_dashboard"));
             setLoading(nodes.dashboardVenues, t("loading_venues_pulse"));
-            const [overview, runtimeResult, pnlAggregate] = await Promise.all([
+            const [overview, runtimeResult, pnlAggregate, engineMetrics] = await Promise.all([
                 api.getOverview(),
                 api.getEngineRuntime()
                     .then((runtime) => ({ runtime, error: null }))
                     .catch((error) => ({ runtime: null, error: error.message })),
-                api.getPnlAggregate()
+                api.getPnlAggregate(),
+                api.getEngineMetrics().catch(() => null)
             ]);
             state.engineRuntime = runtimeResult.runtime;
             state.engineRuntimeError = runtimeResult.error;
             state.pnlAggregate = pnlAggregate;
+            state.engineMetrics = engineMetrics;
             // Load waterfall per venue
             const venueNames = (overview.venues ?? []).map((v) => v.venue);
             const waterfallResults = await Promise.all(
