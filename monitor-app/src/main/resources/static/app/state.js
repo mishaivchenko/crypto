@@ -10,6 +10,7 @@ export function createAppState() {
         lastCandidates: null,
         lastTrades: null,
         pnlAggregate: null,
+        waterfallByVenue: {},
         layerCollapsed: {
             trade: { latency: true, health: false, execution: true },
             candidate: { liquidity: false, ai: false },
