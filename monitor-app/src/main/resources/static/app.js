@@ -82,6 +82,14 @@ async function refreshCurrentScreen() {
             state.engineRuntime = runtimeResult.runtime;
             state.engineRuntimeError = runtimeResult.error;
             state.pnlAggregate = pnlAggregate;
+            // Load waterfall per venue
+            const venueNames = (overview.venues ?? []).map((v) => v.venue);
+            const waterfallResults = await Promise.all(
+                venueNames.map((v) => api.getOrderWaterfall(v).catch(() => null))
+            );
+            state.waterfallByVenue = Object.fromEntries(
+                venueNames.map((v, i) => [v, waterfallResults[i]])
+            );
             renderDashboard({
                 nodes,
                 overview,

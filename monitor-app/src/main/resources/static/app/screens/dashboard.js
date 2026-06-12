@@ -16,6 +16,7 @@ import {
 } from "../shared.js";
 import { t } from "../../i18n.js";
 import { renderPipelineViz, wirePipelineVizClicks } from "../components/pipeline-viz.js";
+import { renderWaterfallChart } from "../components/waterfall-chart.js";
 
 // T-24: Dashboard — PipelineViz replaces flat summary cards
 export function dashboardPipelineVizMarkup(overview, pnlAggregate) {
@@ -298,6 +299,23 @@ export function renderDashboard({ nodes, overview, state, onOpenVenue, onNavigat
         : emptyState(t("empty_venue_diagnostics"), t("empty_venue_diagnostics_detail"));
 
     wireOpenButtons(nodes.dashboardVenues, "[data-open-venue]", onOpenVenue);
+
+    // Waterfall panel
+    if (nodes.dashboardWaterfall) {
+        const waterfallByVenue = state.waterfallByVenue ?? {};
+        const venueCharts = Object.values(waterfallByVenue)
+            .filter((d) => d && d.sampleSize > 0)
+            .map((d) => renderWaterfallChart(d))
+            .join("");
+        if (venueCharts) {
+            nodes.dashboardWaterfall.style.display = "";
+            nodes.dashboardWaterfall.innerHTML =
+                `<div class="panel-header"><h3>Waterfall исполнения ордеров</h3></div>` +
+                `<div style="padding:12px 16px">${venueCharts}</div>`;
+        } else {
+            nodes.dashboardWaterfall.style.display = "none";
+        }
+    }
 }
 
 export async function handleRunEngineOnce({ state, refreshCurrentScreen, showSuccess, showError }) {

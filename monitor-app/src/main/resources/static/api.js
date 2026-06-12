@@ -309,5 +309,8 @@ export const api = {
     },
     disableAutoApprovalRule(id) {
         return request(`/api/v1/auto-approval/rules/${id}/disable`, { method: "POST" });
+    },
+    getOrderWaterfall(venue) {
+        return request(`/api/v1/order-attempts/waterfall?venue=${encodeURIComponent(venue)}`);
     }
 };
