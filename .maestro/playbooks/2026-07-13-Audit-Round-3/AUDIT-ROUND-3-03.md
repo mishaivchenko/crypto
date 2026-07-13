@@ -28,7 +28,26 @@
   - All modules share `spring-boot-starter-test` (test scope) from root `subprojects` block
   - **No starters beyond these:** there are no `spring-boot-starter-cache`, `-security`, `-batch`, `-quartz`, `-amqp`, `-websocket`, `-mail`, or other optional starters
   - Version managed by BOM: `spring-boot-dependencies:3.5.14` + `spring-cloud-dependencies:2025.0.2`
-- [ ] Identify starters that are included but not needed
+- [x] Identify starters that are included but not needed
+  - **monitor-app**: All 6 starters are actively used — no unneeded starters.
+    - `spring-boot-starter-data-jpa` used by 18 JPA entities, 15 repositories
+    - `spring-boot-starter-validation` used by 8 controllers with `@Valid` + 15 DTOs with constraint annotations
+    - `spring-boot-starter-web` used by 17 REST controllers
+    - `spring-boot-starter-actuator` used for `/actuator/health`, `/actuator/info`, `/actuator/prometheus` (configured in `platform-core.yml`)
+    - `spring-cloud-starter-openfeign` used by 5 exchange venue adapters
+  - **engine-app**: `spring-boot-starter-actuator` — **declared but NOT used**
+    - Zero references to `actuator`, `management.*`, health indicators, micrometer, or Prometheus in any Java source or config file
+    - No custom `HealthIndicator` or `HealthContributor` beans defined
+    - No management endpoint exposure configured in any engine-app YAML profile
+    - Engine pushes metrics to monitor via `RestClient` directly (not via Actuator)
+    - Warmup HTTP probes use `java.net.http.HttpClient` directly — not Spring Actuator
+    - For containerized deployment: `/actuator/health` would be available (auto-configured by default), but it's never referenced — removing `spring-boot-starter-actuator` would only remove the default health/info/metrics endpoints, which are not utilized
+  - **telegram-bot-app**: `spring-boot-starter-web` — **arguably not needed as a full starter**
+    - Explicitly disables embedded web server via `spring.main.web-application-type: none` in `application.yml`
+    - The embedded Tomcat classes are bundled in the fat JAR but never started
+    - Only present for Spring MVC annotations (`@RequestMapping` etc.) on Feign client interfaces — `spring-webmvc` alone would suffice
+    - Additionally, `jackson-databind` is declared explicitly in `build.gradle` but is redundant — already a transitive dependency of `spring-boot-starter-web` via `spring-boot-starter-json` (though BOM-managed, so version-safe)
+  - **Conclusion**: `spring-boot-starter-actuator` in engine-app is the strongest candidate for removal. `spring-boot-starter-web` in telegram-bot-app is a trade-off (convenience vs. footprint) — the fat JAR bloat is minimal, and keeping it avoids a fragile dependency chain for Feign annotation support.
 - [ ] Check which auto-configurations are active (`spring.autoconfigure.log` or equivalent)
 - [ ] Check which auto-configurations are excluded explicitly
 - [ ] Check for unexpected beans from transitive starters
