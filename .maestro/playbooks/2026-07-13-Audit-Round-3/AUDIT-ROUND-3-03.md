@@ -341,7 +341,38 @@
   - **`prod` does NOT exist** — no `application-prod.yml` anywhere; only `prod-like` is used in production contexts (Docker Compose, `.env.example`)
   - telegram-bot-app has NO `prod-like` profile — runs base defaults in production (token-driven bean activation via `@ConditionalOnProperty`)
   - Full report: `Working/profile-inventory.md`
-- [ ] Identify profiles that are documented but may not exist in code
+- [x] Identify profiles that are documented but may not exist in code
+  - **Profiles in code (via `application-{profile}.yml`):**
+    - `local-safe` — all 3 modules ✅
+    - `testnet` — engine-app ONLY ✅
+    - `staging` — all 3 modules ✅
+    - `prod-like` — monitor-app + engine-app ONLY; telegram-bot-app has NO `prod-like` profile ✅
+    - `prod` — does NOT exist anywhere ❌
+  - **Profile documentation sources checked:**
+    - `CLAUDE.md` profile table (lines 112-119): `local-safe`, `staging`, `prod-like` — **3 profiles listed**
+    - `README.md` profile table (lines 119-125): `local-safe`, `staging`, `prod-like` — **3 profiles listed**
+    - `docs/03-runtime-config.md` (line 5): "Три явных профиля" — `local-safe`, `staging`, `prod-like` but then "Engine Testnet Profile" subsection documents `testnet`
+    - `docs/07-runbook.md`: References `SPRING_PROFILES_ACTIVE=testnet` in usage examples
+    - `docs/engine-tdd/requirements/acceptance-boundary.md` (ENG-ACC-005): `local-safe`, `staging`, `prod-like` — omits `testnet`
+  - **Discrepancy 1 — `testnet` is under-documented in primary sources:**
+    - `testnet` profile exists in code (`engine-app/src/main/resources/application-testnet.yml`), is actively used for Gate testnet execution, and is fully functional
+    - However, it is **missing from the CLAUDE.md and README.md profile tables** — both only list 3 profiles (`local-safe`, `staging`, `prod-like`)
+    - `docs/03-runtime-config.md` documents `testnet` but only as an aside in the "Engine Testnet Profile" section (lines 193-209), not as a first-class profile alongside the other three
+    - A reader relying on CLAUDE.md or README.md alone would not discover the testnet profile exists
+    - **Recommendation:** Add a `testnet` row to the CLAUDE.md and README.md profile tables, noting it applies to engine-app only and enables execution loop + live orders
+  - **Discrepancy 2 — No profile documentation notes per-module availability:**
+    - `testnet` exists only in engine-app (not monitor-app, not telegram-bot-app)
+    - `prod-like` exists in monitor-app and engine-app but NOT telegram-bot-app
+    - The deploy docker-compose.yml works around this by using `staging` for telegram-bot while `prod-like` for monitor/engine
+    - Profile tables don't indicate which modules each profile applies to
+  - **Discrepancy 3 — `prod` does not exist (confirmed consistent):**
+    - No documentation claims `prod` exists; all documentation consistently uses `prod-like` for production contexts
+    - This is intentional and correctly documented
+  - **Discrepancy 4 — `testnet` not in acceptance-boundary TDD requirement:**
+    - `docs/engine-tdd/requirements/acceptance-boundary.md` (ENG-ACC-005) explicitly scopes safety to `local-safe`, `staging`, and `prod-like`
+    - `testnet` is intentionally excluded from the safe-defaults requirement because its purpose is to enable execution — this is correct behavior
+  - **No `@Profile` annotations exist anywhere** — profile behavior is entirely property-driven via per-profile YAML files, not conditional bean registration
+  - **telegram-bot-app profile YAMLs don't use `spring.config.activate.on-profile`** — unlike monitor-app and engine-app, telegram-bot-app relies on Spring Boot's filename-based profile activation convention only
 - [ ] Verify `local-safe` profile — exact configuration
 - [ ] Verify `testnet` profile — exact configuration
 - [ ] Verify `staging` profile — exact configuration
