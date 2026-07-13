@@ -112,12 +112,41 @@
   - Full report: `Working/thread-pool-creation-audit.md`
   - **Risk**: Single-threaded scheduler could delay the 250ms engine execution tick if any other scheduled method blocks — a potential trading-decision latency issue
   - **Recommendation**: Set `spring.task.scheduling.pool.size` to at least 2–4 to prevent scheduler contention
-- [ ] Check if default Spring scheduler thread pool is used
-- [ ] Check if default TaskExecutor is configured
-- [ ] Check if default TaskScheduler is configured
-- [ ] List all `@Scheduled` methods across monitor-app and engine-app
-- [ ] List all `@Async` methods
-- [ ] Check for virtual threads in Spring (`spring.threads.virtual.enabled`)
+- [x] Check if default Spring scheduler thread pool is used
+  - **Yes, the default is used.** No `spring.task.scheduling.pool.size` property exists in any YAML. No `SchedulingConfigurer` implementation exists. No custom `TaskScheduler` bean.
+  - **Default size = 1.** Spring Boot auto-configures `ThreadPoolTaskScheduler` with a single-thread fixed pool. All 6 `@Scheduled` methods across 3 modules share this one thread.
+  - **Risk:** The 250ms engine execution tick competes with 5 other scheduled methods. A blocking operation in any `@Scheduled` method stalls the engine loop — a potential trading-decision latency issue.
+  - **Recommendation (from prior finding):** Set `spring.task.scheduling.pool.size` to 2–4 to prevent scheduler contention.
+- [x] Check if default TaskExecutor is configured
+  - **Yes, the default `ThreadPoolTaskExecutor` is used.** No `spring.task.execution.pool.*` properties exist in any YAML. No `AsyncConfigurer` implementation. No custom `Executor`/`TaskExecutor` bean.
+  - **Default config:** core=8, max=Integer.MAX_VALUE (unbounded), queue=Integer.MAX_VALUE (unbounded), keepAlive=60s, threadNamePrefix="task-". Created by Spring Boot's `TaskExecutionAutoConfiguration` (present on classpath via `spring-boot-starter`).
+  - 7 `@Async` methods use this executor (1 in engine-app, 6 in monitor-app). telegram-bot-app has no `@EnableAsync` — no executor bean created in that module (no `@Async` methods to resolve).
+- [x] Check if default TaskScheduler is configured
+  - **Yes, the default is used.** Identical finding to "default scheduler thread pool" above. No `ThreadPoolTaskScheduler` customization, no `spring.task.scheduling.*` properties, no `SchedulingConfigurer`.
+  - The default `ThreadPoolTaskScheduler` is auto-configured by `TaskSchedulingAutoConfiguration` when `@EnableScheduling` is present (3 modules have it).
+- [x] List all `@Scheduled` methods across monitor-app and engine-app
+  - **6 total across 3 modules:**
+    1. `engine-app/EngineExecutionScheduler.runLoop()` — `fixedDelayString = "${engine.execution-scheduler-tick-ms:250}"` (250ms default)
+    2. `engine-app/EngineMetricsPublisher.publishOnSchedule()` — `fixedDelayString = "${engine.metrics-publish.interval-ms:15000}"` (15s default, with initialDelay)
+    3. `monitor-app/InstrumentMetadataSyncRunner.scheduledSync()` — `fixedDelayString = "${trading.metadata.sync-interval-minutes:240}m"` (240min default)
+    4. `monitor-app/FundingApiCandidateSourceService.scheduledRefresh()` — `fixedDelayString = "${trading.candidate-source.refresh-interval-seconds:60}000"` (60s default)
+    5. `telegram-bot-app/TradeNotificationScheduler.pollAndNotify()` — `fixedDelayString = "${telegram.bot.signal-poll-interval-ms:30000}"` (30s default)
+    6. `telegram-bot-app/SignalNotificationScheduler.pollAndNotify()` — `fixedDelayString = "${telegram.bot.signal-poll-interval-ms:30000}"` (30s default)
+  - All 6 use `fixedDelay` (not `fixedRate` or `cron`). All use configurable delay strings with defaults.
+- [x] List all `@Async` methods
+  - **7 total across 2 modules:**
+    1. `monitor-app/SignalLiquidityService.assessAsync(SignalCandidate)` — asynchronous liquidity assessment
+    2. `monitor-app/AiSignalAdvisorService.analyzeAsync(Long)` — DeepSeek AI analysis
+    3. `monitor-app/AutoApprovalPipelineService.onCandidateReady(CandidateReadyForAutoApprovalEvent)` — event handler
+    4. `monitor-app/AutoApprovalPipelineService.sweepNormalized()` — periodic sweep
+    5. `monitor-app/AutoApprovalPipelineService.tryAutoProcess(Long)` — individual auto-processing
+    6. `monitor-app/LiquidityAutoAssessService.assessAfterArm(Long, String, String)` — post-arm assessment
+    7. `engine-app/EngineCredentialCache.loadOnStartup()` — credential cache warmup
+  - telegram-bot-app has no `@Async` methods (no `@EnableAsync` annotation)
+- [x] Check for virtual threads in Spring (`spring.threads.virtual.enabled`)
+  - **Not configured.** `spring.threads.virtual.enabled` is entirely absent from all YAML/properties files across all modules. No `@Bean` returning virtual thread executor exists.
+  - JDK 25 is the build target, which fully supports virtual threads (Project Loom), but the project doesn't opt in.
+  - If enabled: would switch `ThreadPoolTaskExecutor` to virtual threads per task (no thread pool overhead) and `ThreadPoolTaskScheduler` to virtual threads. Not recommended for scheduler (fixed pool sizing is safer for latency-critical ticks).
 
 ### Startup and shutdown
 - [ ] Check graceful shutdown configuration (`server.shutdown=graceful`)
