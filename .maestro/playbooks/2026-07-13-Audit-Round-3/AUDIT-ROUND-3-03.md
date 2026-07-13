@@ -553,7 +553,18 @@
   - Report: `Working/property-sources-audit.md` Section 5E
 
 ### Environment variables
-- [ ] List all mandatory environment variables
+- [x] List all mandatory environment variables
+  - **Inventory**: `Working/environment-variables-inventory.md`
+  - **Classification: 0 truly mandatory, 6 conditionally mandatory, ~65 optional, ~21 consume-only engine credentials, ~26 consume-only monitor credentials**
+  - **Key finding**: The application starts without any env vars set — every critical function defaults to its safest value. No env var can crash the app at startup except `CREDENTIALS_MASTER_KEY_BASE64`, and only when credential storage is explicitly enabled.
+  - **6 conditionally mandatory vars** (gated by features defaulting OFF):
+    1. `CREDENTIALS_MASTER_KEY_BASE64` — required when credential storage ON + require master key ON
+    2. `SECURITY_OPERATOR_BOOTSTRAP_USERS` — required when operator auth ON (staging/prod-like)
+    3. `AI_DEEPSEEK_API_KEY` — required when DeepSeek AI analysis ON
+    4. `TELEGRAM_BOT_TOKEN` — required when Telegram bot desired
+    5. `MONITOR_OPERATOR_TOKEN` — required when operator auth ON + telegram-bot running
+    6. `INTERNAL_ENGINE_TOKEN` — required when internal auth ON
+  - **Source files checked**: 14 YAML files, 33 `Environment.getProperty()` code paths, 10 `build.gradle` `System.getenv()` calls, 3 Docker Compose files, `deploy/.env`, root `.env`, `deploy/.env.example`
 - [ ] List all optional environment variables with defaults
 - [ ] Check which defaults are safe
 - [ ] Check which defaults could enable trading
