@@ -271,7 +271,18 @@
   - Full report: `Working/rest-api-validation-audit.md`
 
 ### Health and readiness
-- [ ] Check `readiness` and `liveness` probe configuration
+- [x] Check `readiness` and `liveness` probe configuration
+  - **Probe endpoints (`management.endpoint.health.probes.enabled`): NOT configured** — no `management.endpoint.health.probes.*` in any YAML across all 3 modules. K8s-ready `/actuator/health/readiness` and `/actuator/health/liveness` endpoints are NOT available.
+  - **Kubernetes probes: N/A** — zero K8s manifests (no deployment YAMLs, Helm charts, or Kustomize configs) exist in the repo
+  - **Docker HEALTHCHECK: NOT configured** — root `Dockerfile` has no `HEALTHCHECK` instruction; none of the 3 Docker Compose files define `healthcheck:` blocks. `restart: unless-stopped` catches crashes but not application-level unavailability.
+  - **Custom HealthIndicator: NONE** — zero `HealthIndicator`/`HealthContributor`/`HealthAggregator` beans across all modules. Only Spring Boot auto-configured indicators active (DiskSpace, SSL). No trading-readiness awareness at all.
+  - **Actuator health exposure per module:**
+    - monitor-app: ✅ `/actuator/health` exposed via `platform-core.yml` (`health,info,prometheus`)
+    - engine-app: ⚠️ `spring-boot-starter-actuator` on classpath with NO explicit `management.endpoints.web.exposure.include` — only `/actuator/health` available by Spring Boot default
+    - telegram-bot-app: ❌ No web server, no actuator — health endpoints not applicable
+  - **CI/CD smoke test**: Uses basic `curl -sf http://localhost:$svc/actuator/health` (24×5s loop = 120s timeout). Does NOT distinguish readiness from liveness or validate any business-specific state.
+  - **Path-mapping**: Not configured — default `/actuator/health` path preserved; no `/healthz`/`/readyz` aliases
+  - **Full report**: `Working/readiness-liveness-probe-audit.md`
 - [ ] Check `/actuator/info` for Git commit info
 - [ ] Check health indicator implementations
 - [ ] Verify: is health UP when credentials are missing?
