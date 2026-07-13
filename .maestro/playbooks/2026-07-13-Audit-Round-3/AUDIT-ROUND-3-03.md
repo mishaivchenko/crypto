@@ -72,7 +72,17 @@
   - No custom `@AutoConfiguration` classes exist in any module
 
 ### Application structure
-- [ ] Check how `Clock` is created and injected (determinism for testing)
+- [x] Check how `Clock` is created and injected (determinism for testing)
+  - **Findings:**
+    - **No `@Bean Clock` exists** in any configuration class across all 3 modules — `Clock.systemUTC()` is hardcoded inline in every `@Autowired` public constructor
+    - **9 production services** use `Clock` (via `Instant.now(clock)`): 6 in monitor-app (FundingEventLifecycleService, MonitorEnginePlanService, EngineMetricsSnapshotView, LiquidityAssessmentService, FundingObservationMapper, FundingApiCandidateSourceService) + 3 in engine-app (EngineExecutionService, EngineMetricsPublisher, EngineRuntimeControlService)
+    - **Consistent dual-constructor pattern** in all 9: `public @Autowired` constructor calls `this(..., Clock.systemUTC())`, package-private constructor accepts `Clock clock` for test injection — excellent for unit-test determinism
+    - **`EngineExecutionService`** goes further: 4 overloaded constructors, also injects `LongSupplier nanoTimeSupplier` (testable via `Clock.fixed` + fixed nanos)
+    - **Services using bare `Instant.now()` directly (not injectable):** SignalCandidateLifecycleService, SignalCandidateReviewService, AiSignalAdvisorService, ArmedTradeCommandService, FundingEventCommandService, MonitorOverviewService, OperatorCredentialService, EngineLifecycleRecordService, VenueLatencyProbeService, InstrumentRegistryService, VenueProfileService, VenueDiagnosticsService (12 services total)
+    - **`System.currentTimeMillis()`** not injectable in: BybitCredentialChecker, KucoinCredentialChecker, GateCredentialChecker, BitgetCredentialChecker, LiveExchangeExecutionPort (acceptable — these are HTTP request timestamps, not trade decision time)
+    - **`System.nanoTime()`** not injectable in: VenueLatencyProbeService, InstrumentRegistryService, VenueDiagnosticsService, FundingApiCandidateSourceService (only EngineExecutionService injects it via `LongSupplier`)
+    - **Verdict:** The Clock-injected services are well-designed for deterministic testing. The main gap is the 12+ services using bare `Instant.now()`, which would need to be refactored to accept `Clock` if deterministic tests are needed. For non-deterministic integration tests, the current pattern is adequate.
+  - Detailed breakdown: `Working/clock-injection-analysis.md`
 - [ ] Check how HTTP clients are created (Feign config, `@Bean` method)
 - [ ] Check how thread pools are created
 - [ ] Check if default Spring scheduler thread pool is used
