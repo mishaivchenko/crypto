@@ -48,10 +48,28 @@
     - Only present for Spring MVC annotations (`@RequestMapping` etc.) on Feign client interfaces — `spring-webmvc` alone would suffice
     - Additionally, `jackson-databind` is declared explicitly in `build.gradle` but is redundant — already a transitive dependency of `spring-boot-starter-web` via `spring-boot-starter-json` (though BOM-managed, so version-safe)
   - **Conclusion**: `spring-boot-starter-actuator` in engine-app is the strongest candidate for removal. `spring-boot-starter-web` in telegram-bot-app is a trade-off (convenience vs. footprint) — the fat JAR bloat is minimal, and keeping it avoids a fragile dependency chain for Feign annotation support.
-- [ ] Check which auto-configurations are active (`spring.autoconfigure.log` or equivalent)
-- [ ] Check which auto-configurations are excluded explicitly
-- [ ] Check for unexpected beans from transitive starters
-- [ ] Review custom `@SpringBootApplication` configurations
+- [x] Check which auto-configurations are active (`spring.autoconfigure.log` or equivalent)
+  - **Engine-app**: 168 auto-configuration classes active (lightweight web app)
+  - **Monitor-app**: 262 auto-configuration classes active (full JPA + Feign + Cloud infra)
+  - **Telegram-bot-app**: 86 auto-configuration classes active (non-web, Feign client only)
+  - Full report: `Working/auto-configuration-report.md`
+  - Verified via `--debug` flag → `ConditionEvaluationReportLoggingListener` output
+- [x] Check which auto-configurations are excluded explicitly
+  - **No explicit exclusions in any module** — no `spring.autoconfigure.exclude` in any YAML/properties/annotation across all 3 modules
+  - The only `@EnableAutoConfiguration` with options is in test support (`JpaSliceTestConfiguration`)
+- [x] Check for unexpected beans from transitive starters
+  - **WebSocketServletAutoConfiguration** active in engine-app and monitor-app — auto-configured because Tomcat embedded, but no WebSocket endpoints exist in either module
+  - **Cache auto-config** (GenericCacheConfiguration → SimpleCacheConfiguration) active in all 3 modules — cache manager beans created but no `@Cacheable` usage anywhere
+  - **GsonAutoConfiguration** active in telegram-bot-app — Gson on classpath via Feign/Spring Cloud transitive dependency, creates Gson bean and converter (no web server so unused)
+  - **DiskSpaceHealthContributor + SslHealthContributor** active in engine-app — Actuator on classpath creates health indicators even though Actuator endpoints aren't used by custom code
+  - None of these are harmful — beans are light, no external connections, no unexpected side effects
+- [x] Review custom `@SpringBootApplication` configurations
+  - **MonitorApplication**: 5 explicit scanBasePackages (excludes root package `com.crypto.funding`); `@EnableScheduling` + `@EnableAsync`; `@ConfigurationPropertiesScan`
+  - **EngineApplication**: Default scan (package + subpackages); `@Import(EngineModuleConfiguration.class)` for module config; `@EnableScheduling` + `@EnableAsync`
+  - **TelegramBotApplication**: Single scan package; `@EnableFeignClients` with basePackages; `@EnableScheduling` only (no `@EnableAsync`)
+  - **EngineModuleConfiguration**: `@ConfigurationPropertiesScan`, `@EnableConfigurationProperties(EngineProperties.class)`, `@Import` of 3 beans
+  - None use `exclude` or `excludeName` parameters on `@SpringBootApplication`
+  - No custom `@AutoConfiguration` classes exist in any module
 
 ### Application structure
 - [ ] Check how `Clock` is created and injected (determinism for testing)

@@ -1,0 +1,135 @@
+<h2>Форма «Create Prepared Trade» — до и после</h2>
+<p class="subtitle">Те же поля, разная плотность. Кликни что больше нравится.</p>
+
+<div class="split">
+
+  <!-- BEFORE -->
+  <div class="mockup">
+    <div class="mockup-header">Сейчас</div>
+    <div class="mockup-body" style="background:#070a0f;padding:16px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:13px;">
+
+      <div style="border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#96a3b4;margin-bottom:14px;">Entry Window</div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Notional, USD</div>
+          <input disabled value="297" style="width:100%;background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Planned Entry</div>
+            <input disabled value="11.06.2026, 03:00:00" style="width:100%;background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Side</div>
+            <input disabled value="SHORT" style="width:100%;background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+            <div style="font-size:11px;color:#96a3b4;margin-top:4px;">Funding strategy is SHORT-only.</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Spacing, MS</div>
+            <input disabled value="30" style="width:100%;background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Manual Latency Adj, MS</div>
+            <input disabled value="0" style="width:100%;background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#96a3b4;margin-bottom:14px;">Exit Window</div>
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Planned Exit</div>
+          <input disabled value="11.06.2026, 03:01:30" style="width:100%;background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 18px;margin-bottom:12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#96a3b4;margin-bottom:14px;">Risk Management</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Stop Loss, USD</div>
+            <input disabled placeholder="e.g. 50.00" style="width:100%;background:rgba(7,11,17,0.94);color:#96a3b4;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;margin-bottom:6px;">Take Profit, USD</div>
+            <input disabled placeholder="e.g. 50.00" style="width:100%;background:rgba(7,11,17,0.94);color:#96a3b4;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:42px;font-size:13px;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+
+      <textarea disabled placeholder="Why this event should move to a Prepared Trade" style="width:100%;background:rgba(7,11,17,0.94);color:#96a3b4;border:1px solid rgba(245,242,233,0.07);border-radius:12px 6px 16px 6px;padding:10px 12px;min-height:90px;font-size:13px;box-sizing:border-box;resize:none;"></textarea>
+
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div class="mockup" data-choice="compact" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="mockup-header">Компактно ✓</div>
+    <div class="mockup-body" style="background:#070a0f;padding:14px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:13px;">
+
+      <!-- Inline context chip -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:6px 10px;background:rgba(255,182,86,0.07);border:1px solid rgba(255,182,86,0.15);border-radius:8px 4px 10px 4px;">
+        <span style="font-size:11px;color:#96a3b4;">Funding rate</span>
+        <strong style="font-size:12px;color:#ffb656;">-0.005075%</strong>
+        <span style="margin-left:auto;font-size:10px;background:rgba(255,111,111,0.15);color:#ffd7d7;border:1px solid rgba(255,111,111,0.25);padding:2px 7px;border-radius:999px;">SHORT only</span>
+      </div>
+
+      <!-- Dense field grid — no section wrappers -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:6px;margin-bottom:6px;">
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Notional</span>
+          <input disabled value="297 USD" style="background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Planned Entry</span>
+          <input disabled value="03:00:00" style="background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Attempts</span>
+          <input disabled value="3" style="background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:6px;margin-bottom:6px;">
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Planned Exit</span>
+          <input disabled value="03:01:30" style="background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Spacing, ms</span>
+          <input disabled value="30" style="background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Latency adj</span>
+          <input disabled value="0" style="background:rgba(7,11,17,0.94);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <!-- SL/TP as compact optional row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Stop Loss <span style="font-size:9px;opacity:0.6;">(optional)</span></span>
+          <input disabled placeholder="—" style="background:rgba(7,11,17,0.94);color:#96a3b4;border:1px solid rgba(245,242,233,0.05);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:grid;gap:3px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#96a3b4;">Take Profit <span style="font-size:9px;opacity:0.6;">(optional)</span></span>
+          <input disabled placeholder="—" style="background:rgba(7,11,17,0.94);color:#96a3b4;border:1px solid rgba(245,242,233,0.05);border-radius:8px 3px 10px 3px;padding:6px 9px;min-height:32px;font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <!-- Note: collapsed by default, expandable -->
+      <details style="margin-bottom:10px;">
+        <summary style="font-size:11px;color:#96a3b4;cursor:pointer;padding:4px 0;list-style:none;">▶ Add preparation note (optional)</summary>
+        <textarea disabled placeholder="Why this event should move to a Prepared Trade" style="width:100%;background:rgba(7,11,17,0.94);color:#96a3b4;border:1px solid rgba(245,242,233,0.07);border-radius:8px 3px 10px 3px;padding:7px 9px;min-height:54px;font-size:12px;box-sizing:border-box;resize:none;margin-top:5px;"></textarea>
+      </details>
+
+      <button disabled style="min-height:40px;padding:9px 20px;border-radius:12px 6px 18px 6px;background:linear-gradient(180deg,#ffd68d,#ffb656);color:#231506;font-weight:700;border:none;font-size:13px;cursor:pointer;width:100%;">Create Prepared Trade</button>
+    </div>
+  </div>
+
+</div>

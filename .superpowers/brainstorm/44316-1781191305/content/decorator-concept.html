@@ -1,0 +1,98 @@
+<h2>Что значит «визуально декоратор»?</h2>
+<p class="subtitle">Три разные интерпретации того же контента. Не стиль — идея компоновки.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="card-body">
+      <h3>Вложенность / Оберётка</h3>
+      <p>Каждый слой буквально оборачивает предыдущий — визуально видно что Liquidity «сидит поверх» Base Signal. Отступы растут, как матрёшка.</p>
+    </div>
+    <div class="card-image" style="padding:14px;background:#070a0f;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:12px;">
+      <!-- Nesting / wrapping metaphor -->
+      <div style="border-radius:14px 6px 18px 6px;padding:10px 12px;background:linear-gradient(180deg,rgba(74,127,193,0.12),rgba(74,127,193,0.06));border:1px solid rgba(74,127,193,0.35);position:relative;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#4a7fc1;font-weight:700;margin-bottom:6px;">⬡ Base Signal</div>
+        <div style="font-size:11px;color:#96a3b4;margin-bottom:8px;">BTCUSDT · +0.031% · Gate</div>
+
+        <div style="border-radius:10px 4px 14px 4px;padding:8px 10px;background:linear-gradient(180deg,rgba(78,186,132,0.12),rgba(78,186,132,0.06));border:1px solid rgba(78,186,132,0.3);margin-left:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#4eba84;font-weight:700;margin-bottom:5px;">⬡ + Liquidity</div>
+          <div style="font-size:11px;color:#96a3b4;margin-bottom:8px;">Score 87 · Spread 0.02% · Tradeable</div>
+
+          <div style="border-radius:8px 3px 12px 3px;padding:7px 9px;background:linear-gradient(180deg,rgba(212,162,74,0.12),rgba(212,162,74,0.06));border:1px solid rgba(212,162,74,0.3);margin-left:8px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#d4a24a;font-weight:700;margin-bottom:5px;">⬡ + Latency</div>
+            <div style="font-size:11px;color:#96a3b4;">p50 42ms · adj 18ms · lead 74ms</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="card-body">
+      <h3>Вертикальный пайплайн</h3>
+      <p>Слои — это этапы. Вертикальная линия связывает их, каждый этап добавляет данные к предыдущему. Показывает хронологию обогащения.</p>
+    </div>
+    <div class="card-image" style="padding:14px;background:#070a0f;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:12px;">
+      <!-- Vertical pipeline -->
+      <div style="display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#4a7fc1;margin-top:4px;"></div>
+            <div style="width:2px;flex:1;min-height:20px;background:linear-gradient(180deg,#4a7fc1,#4eba84);"></div>
+          </div>
+          <div style="flex:1;padding-bottom:10px;">
+            <div style="font-size:10px;color:#4a7fc1;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;">Base Signal</div>
+            <div style="font-size:11px;color:#96a3b4;margin-top:2px;">BTCUSDT · +0.031% · Gate · <span style="color:#64e49c">3s ago</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#4eba84;margin-top:4px;"></div>
+            <div style="width:2px;flex:1;min-height:20px;background:linear-gradient(180deg,#4eba84,#d4a24a);"></div>
+          </div>
+          <div style="flex:1;padding-bottom:10px;">
+            <div style="font-size:10px;color:#4eba84;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;">+ Liquidity</div>
+            <div style="font-size:11px;color:#96a3b4;margin-top:2px;">Score 87 · Spread 0.02% · <span style="color:#64e49c">12s ago</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#d4a24a;margin-top:4px;"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:10px;color:#d4a24a;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;">+ Latency</div>
+            <div style="font-size:11px;color:#96a3b4;margin-top:2px;">p50 42ms · adj 18ms · lead 74ms · <span style="color:#64e49c">8s ago</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="card-body">
+      <h3>Стопка / Стекинг</h3>
+      <p>Слои — это буквально стопка карточек. Самый нижний — Base, каждый следующий «лежит поверх». Можно раскрыть любой слой независимо.</p>
+    </div>
+    <div class="card-image" style="padding:14px;background:#070a0f;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:12px;">
+      <!-- Stack metaphor -->
+      <div style="position:relative;padding-bottom:6px;">
+        <!-- shadow layers suggesting depth -->
+        <div style="position:absolute;bottom:0;left:8px;right:8px;height:28px;border-radius:10px 4px 14px 4px;background:rgba(74,127,193,0.08);border:1px solid rgba(74,127,193,0.15);"></div>
+        <div style="position:absolute;bottom:4px;left:4px;right:4px;height:28px;border-radius:11px 5px 15px 5px;background:rgba(78,186,132,0.09);border:1px solid rgba(78,186,132,0.18);"></div>
+        <!-- top card -->
+        <div style="position:relative;border-radius:12px 5px 16px 5px;padding:9px 12px;background:linear-gradient(180deg,rgba(212,162,74,0.14),rgba(212,162,74,0.07));border:1px solid rgba(212,162,74,0.35);">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <div style="font-size:10px;color:#d4a24a;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;">Latency</div>
+            <div style="font-size:10px;color:#4eba84;background:rgba(78,186,132,0.12);border:1px solid rgba(78,186,132,0.25);padding:1px 6px;border-radius:999px;">+ Liquidity ›</div>
+            <div style="font-size:10px;color:#4a7fc1;background:rgba(74,127,193,0.12);border:1px solid rgba(74,127,193,0.25);padding:1px 6px;border-radius:999px;">+ Base ›</div>
+          </div>
+          <div style="font-size:11px;color:#96a3b4;">p50 42ms · adj 18ms · lead <strong style="color:#7ce0cf;">74ms</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

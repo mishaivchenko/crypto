@@ -1,0 +1,101 @@
+<h2>renderLayerPipeline — непрерывная линия</h2>
+<p class="subtitle">Линия — одна абсолютная колонка, точки на ней. Плюс индикатор авто-рефреша.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Signal Card — enrichment pipeline</div>
+  <div class="mockup-body" style="background:#070a0f;padding:16px 14px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:12px;max-width:520px;">
+
+    <!-- Card header -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <strong style="font-size:14px;letter-spacing:-0.02em;">BTCUSDT</strong>
+      <span style="font-size:11px;color:#5bc7ff;font-weight:600;">+0.031%</span>
+      <span style="font-size:10px;background:rgba(255,255,255,0.05);color:#96a3b4;padding:2px 7px;border-radius:999px;">Gate</span>
+      <span style="margin-left:auto;font-size:10px;color:#96a3b4;">until funding in 4h</span>
+      <!-- auto-refresh pulse indicator -->
+      <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#4eba84;">
+        <span style="width:6px;height:6px;border-radius:50%;background:#4eba84;animation:pulse 2s infinite;display:inline-block;"></span>
+        live
+      </span>
+    </div>
+
+    <!-- Pipeline: single continuous line via CSS grid -->
+    <div style="position:relative;padding-left:26px;">
+
+      <!-- The continuous line — one element spanning full height -->
+      <div style="position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,#4a7fc1 0%,#9b72e8 33%,#4eba84 66%,#d4a24a 100%);opacity:0.5;border-radius:1px;"></div>
+
+      <!-- Layer 1: Base Signal — expanded -->
+      <div style="position:relative;margin-bottom:6px;">
+        <div style="position:absolute;left:-22px;top:9px;width:10px;height:10px;border-radius:50%;background:#4a7fc1;box-shadow:0 0 8px rgba(74,127,193,0.7);z-index:1;"></div>
+        <div style="border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.98),rgba(9,13,19,0.98));border:1px solid rgba(74,127,193,0.3);">
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;min-height:32px;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#4a7fc1;">Base Signal</span>
+            <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:1px 6px;border-radius:999px;">LIVE</span>
+            <span style="font-size:10px;color:#555;margin-left:auto;">FUNDING_API · <span style="color:#4eba84;">3s ago</span></span>
+            <span style="font-size:10px;color:#555;">▾</span>
+          </div>
+          <div style="padding:0 10px 8px;font-size:11px;color:#96a3b4;display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.04);">
+            <span style="padding-top:6px;">Symbol <strong style="color:#f5f2e9;">BTCUSDT</strong></span>
+            <span style="padding-top:6px;">Rate <strong style="color:#5bc7ff;">+0.031%</strong></span>
+            <span style="padding-top:6px;">Venue <strong style="color:#f5f2e9;">Gate</strong></span>
+            <span style="padding-top:6px;">Detected <strong style="color:#f5f2e9;">03:00:01</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 2: AI -->
+      <div style="position:relative;margin-bottom:6px;">
+        <div style="position:absolute;left:-22px;top:9px;width:10px;height:10px;border-radius:50%;background:#9b72e8;box-shadow:0 0 8px rgba(155,114,232,0.6);z-index:1;"></div>
+        <div style="border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.98),rgba(9,13,19,0.98));border:1px solid rgba(128,90,213,0.2);">
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;min-height:32px;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#9b72e8;">AI Advisor</span>
+            <span style="font-size:10px;background:rgba(255,182,86,0.13);color:#ffe8a0;border:1px solid rgba(255,182,86,0.25);padding:1px 6px;border-radius:999px;">WATCH</span>
+            <span style="font-size:10px;color:#555;margin-left:auto;">deepseek · <span style="color:#4eba84;">8s ago</span></span>
+            <span style="font-size:10px;color:#555;">▶</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 3: Liquidity -->
+      <div style="position:relative;margin-bottom:6px;">
+        <div style="position:absolute;left:-22px;top:9px;width:10px;height:10px;border-radius:50%;background:#4eba84;box-shadow:0 0 8px rgba(78,186,132,0.6);z-index:1;"></div>
+        <div style="border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.98),rgba(9,13,19,0.98));border:1px solid rgba(78,186,132,0.2);">
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;min-height:32px;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#4eba84;">Liquidity</span>
+            <span style="font-size:10px;background:rgba(255,111,111,0.14);color:#ffd7d7;border:1px solid rgba(255,111,111,0.28);padding:1px 6px;border-radius:999px;">THIN</span>
+            <span style="font-size:10px;color:#555;margin-left:auto;">ORDER_BOOK · <span style="color:#d4a24a;">48s ago</span></span>
+            <span style="font-size:10px;color:#555;">▶</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 4: Latency -->
+      <div style="position:relative;">
+        <div style="position:absolute;left:-22px;top:9px;width:10px;height:10px;border-radius:50%;background:#d4a24a;box-shadow:0 0 8px rgba(212,162,74,0.6);z-index:1;"></div>
+        <div style="border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.98),rgba(9,13,19,0.98));border:1px solid rgba(212,162,74,0.2);">
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;min-height:32px;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#d4a24a;">Latency</span>
+            <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:1px 6px;border-radius:999px;">OK</span>
+            <span style="font-size:10px;color:#555;margin-left:auto;">WARMUP_PROBE · <span style="color:#4eba84;">20s ago</span></span>
+            <span style="font-size:10px;color:#555;">▶</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
+      <button disabled style="flex:1;min-height:36px;padding:7px 14px;border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,#ffd68d,#ffb656);color:#231506;font-weight:700;border:none;font-size:12px;">Approve</button>
+      <button disabled style="min-height:36px;padding:7px 14px;border-radius:10px 4px 14px 4px;background:rgba(255,255,255,0.03);color:#f5f2e9;border:1px solid rgba(245,242,233,0.07);font-size:12px;">Reject</button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+</style>

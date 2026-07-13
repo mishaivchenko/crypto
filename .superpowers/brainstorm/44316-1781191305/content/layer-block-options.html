@@ -1,0 +1,118 @@
+<h2>Layer Block — Style Options</h2>
+<p class="subtitle">Каждый вариант использует ту же иконку и данные. Выбери, какой язык дизайна лучше вписывается в остальной UI.</p>
+
+<div class="section">
+
+<div class="cards">
+
+  <!-- OPTION A: Full design-language integration -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="card-body">
+      <h3>Полная интеграция</h3>
+      <p>Те же асимметричные радиусы <code>14px 6px 18px 6px</code>, градиентный фон, цветная левая полоска — как у <code>.list-item</code></p>
+    </div>
+    <div class="card-image" style="padding:16px;background:#070a0f;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:13px;">
+      <!-- Layer block A: full list-item style -->
+      <div style="border-radius:14px 6px 18px 6px;padding:10px 14px;background:linear-gradient(180deg,rgba(18,27,38,0.98),rgba(10,15,22,0.98));border:1px solid rgba(245,242,233,0.07);box-shadow:0 4px 18px rgba(0,0,0,0.35);position:relative;overflow:hidden;margin-bottom:8px;">
+        <div style="position:absolute;inset:0 auto 0 0;width:3px;background:#4a7fc1;border-radius:14px 0 0 18px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;padding-left:6px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#96a3b4;background:rgba(74,127,193,0.15);border:1px solid rgba(74,127,193,0.3);padding:2px 7px;border-radius:999px;">Base Signal</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.15);color:#d9ffe5;border:1px solid rgba(106,229,141,0.28);padding:2px 7px;border-radius:999px;">LIVE</span>
+          <span style="font-size:11px;color:#96a3b4;margin-left:auto;">3s ago</span>
+          <span style="font-size:11px;color:#555;">▾</span>
+        </div>
+        <div style="margin-top:8px;border-top:1px solid rgba(245,242,233,0.07);padding-top:8px;padding-left:6px;">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:#96a3b4;">Symbol <strong style="color:#f5f2e9;">BTCUSDT</strong></span>
+            <span style="font-size:11px;color:#96a3b4;">Rate <strong style="color:#5bc7ff;">+0.031%</strong></span>
+            <span style="font-size:11px;color:#96a3b4;">Source <strong style="color:#f5f2e9;">uainvest</strong></span>
+          </div>
+        </div>
+      </div>
+      <div style="border-radius:14px 6px 18px 6px;padding:10px 14px;background:linear-gradient(180deg,rgba(18,27,38,0.98),rgba(10,15,22,0.98));border:1px solid rgba(245,242,233,0.07);box-shadow:0 4px 18px rgba(0,0,0,0.35);position:relative;overflow:hidden;">
+        <div style="position:absolute;inset:0 auto 0 0;width:3px;background:#4eba84;border-radius:14px 0 0 18px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;padding-left:6px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#96a3b4;background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);padding:2px 7px;border-radius:999px;">Liquidity</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.15);color:#d9ffe5;border:1px solid rgba(106,229,141,0.28);padding:2px 7px;border-radius:999px;">TRADEABLE</span>
+          <span style="font-size:11px;color:#96a3b4;margin-left:auto;">12s ago</span>
+          <span style="font-size:11px;color:#555;">▾</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B: Subtle inset block within panel -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="card-body">
+      <h3>Вложенный блок</h3>
+      <p>Скромнее — без градиента, слегка утопленный фон, левая полоска тонкая. Визуально это «контент внутри карточки», не сама карточка.</p>
+    </div>
+    <div class="card-image" style="padding:16px;background:#070a0f;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:13px;">
+      <!-- Layer block B: inset style -->
+      <div style="border-radius:10px 4px 14px 4px;padding:9px 12px;background:rgba(19,27,37,0.82);border:1px solid rgba(245,242,233,0.05);border-left:3px solid #4a7fc1;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#4a7fc1;padding:2px 0;">Base Signal</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:2px 7px;border-radius:3px;">LIVE</span>
+          <span style="font-size:11px;color:#96a3b4;margin-left:auto;">3s ago</span>
+          <span style="font-size:11px;color:#555;">▾</span>
+        </div>
+        <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.04);padding-top:6px;">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:#96a3b4;">Symbol <strong style="color:#f5f2e9;">BTCUSDT</strong></span>
+            <span style="font-size:11px;color:#96a3b4;">Rate <strong style="color:#5bc7ff;">+0.031%</strong></span>
+            <span style="font-size:11px;color:#96a3b4;">Source <strong style="color:#f5f2e9;">uainvest</strong></span>
+          </div>
+        </div>
+      </div>
+      <div style="border-radius:10px 4px 14px 4px;padding:9px 12px;background:rgba(19,27,37,0.82);border:1px solid rgba(245,242,233,0.05);border-left:3px solid #4eba84;">
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#4eba84;padding:2px 0;">Liquidity</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:2px 7px;border-radius:3px;">TRADEABLE</span>
+          <span style="font-size:11px;color:#96a3b4;margin-left:auto;">12s ago</span>
+          <span style="font-size:11px;color:#555;">▾</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION C: Mid-point — gradient + asymmetric but smaller/calmer -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="card-body">
+      <h3>Умеренный</h3>
+      <p>Асимметричные радиусы <code>12px 4px 16px 4px</code>, лёгкий градиент, полоска — но всё чуть меньше и тише, чем карточки верхнего уровня.</p>
+    </div>
+    <div class="card-image" style="padding:16px;background:#070a0f;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:13px;">
+      <!-- Layer block C: moderate style -->
+      <div style="border-radius:12px 4px 16px 4px;padding:9px 13px;background:linear-gradient(180deg,rgba(16,23,34,0.96),rgba(9,13,19,0.96));border:1px solid rgba(245,242,233,0.06);box-shadow:0 2px 10px rgba(0,0,0,0.25);position:relative;overflow:hidden;margin-bottom:6px;">
+        <div style="position:absolute;inset:0 auto 0 0;width:2px;background:#4a7fc1;border-radius:12px 0 0 16px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;padding-left:4px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#96a3b4;background:rgba(255,255,255,0.05);padding:2px 7px;border-radius:999px;">Base Signal</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.13);color:#d9ffe5;border:1px solid rgba(106,229,141,0.25);padding:2px 7px;border-radius:999px;">LIVE</span>
+          <span style="font-size:11px;color:#96a3b4;margin-left:auto;">3s ago</span>
+          <span style="font-size:11px;color:#555;">▾</span>
+        </div>
+        <div style="margin-top:7px;border-top:1px solid rgba(245,242,233,0.06);padding-top:7px;padding-left:4px;">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:#96a3b4;">Symbol <strong style="color:#f5f2e9;">BTCUSDT</strong></span>
+            <span style="font-size:11px;color:#96a3b4;">Rate <strong style="color:#5bc7ff;">+0.031%</strong></span>
+            <span style="font-size:11px;color:#96a3b4;">Source <strong style="color:#f5f2e9;">uainvest</strong></span>
+          </div>
+        </div>
+      </div>
+      <div style="border-radius:12px 4px 16px 4px;padding:9px 13px;background:linear-gradient(180deg,rgba(16,23,34,0.96),rgba(9,13,19,0.96));border:1px solid rgba(245,242,233,0.06);box-shadow:0 2px 10px rgba(0,0,0,0.25);position:relative;overflow:hidden;">
+        <div style="position:absolute;inset:0 auto 0 0;width:2px;background:#4eba84;border-radius:12px 0 0 16px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;padding-left:4px;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#96a3b4;background:rgba(255,255,255,0.05);padding:2px 7px;border-radius:999px;">Liquidity</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.13);color:#d9ffe5;border:1px solid rgba(106,229,141,0.25);padding:2px 7px;border-radius:999px;">TRADEABLE</span>
+          <span style="font-size:11px;color:#96a3b4;margin-left:auto;">12s ago</span>
+          <span style="font-size:11px;color:#555;">▾</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>

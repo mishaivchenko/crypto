@@ -1,0 +1,128 @@
+<h2>renderLayerPipeline — дизайн компонента</h2>
+<p class="subtitle">Полный рефактор: 12 call-сайтов → один wrapper. Слева — как сейчас, справа — новый пайплайн.</p>
+
+<div class="split">
+
+  <!-- BEFORE: independent blocks -->
+  <div class="mockup">
+    <div class="mockup-header">Сейчас — независимые блоки</div>
+    <div class="mockup-body" style="background:#070a0f;padding:14px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:12px;">
+
+      <div style="padding:8px 12px;border-left:3px solid #4a7fc1;border-radius:4px;margin-bottom:6px;background:rgba(74,111,165,0.10);">
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;">
+          <span style="font-size:10px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:3px;color:#96a3b4;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">BASE SIGNAL</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:2px 6px;border-radius:3px;">LIVE</span>
+          <span style="font-size:11px;color:#555;margin-left:auto;">▾</span>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:#96a3b4;">BTCUSDT · +0.031% · Gate · 3s ago</div>
+      </div>
+
+      <div style="padding:8px 12px;border-left:3px solid #805ad5;border-radius:4px;margin-bottom:6px;background:rgba(128,90,213,0.10);">
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;">
+          <span style="font-size:10px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:3px;color:#96a3b4;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">AI</span>
+          <span style="font-size:10px;background:rgba(255,182,86,0.13);color:#ffe8a0;border:1px solid rgba(255,182,86,0.25);padding:2px 6px;border-radius:3px;">WATCH</span>
+          <span style="font-size:11px;color:#555;margin-left:auto;">▾</span>
+        </div>
+      </div>
+
+      <div style="padding:8px 12px;border-left:3px solid #4eba84;border-radius:4px;margin-bottom:6px;background:rgba(56,161,105,0.10);">
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;">
+          <span style="font-size:10px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:3px;color:#96a3b4;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">LIQUIDITY</span>
+          <span style="font-size:10px;background:rgba(255,111,111,0.14);color:#ffd7d7;border:1px solid rgba(255,111,111,0.28);padding:2px 6px;border-radius:3px;">THIN</span>
+          <span style="font-size:11px;color:#555;margin-left:auto;">▾</span>
+        </div>
+      </div>
+
+      <div style="padding:8px 12px;border-left:3px solid #d4a24a;border-radius:4px;background:rgba(214,158,46,0.10);">
+        <div style="display:flex;align-items:center;gap:6px;min-height:36px;">
+          <span style="font-size:10px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:3px;color:#96a3b4;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">LATENCY</span>
+          <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:2px 6px;border-radius:3px;">OK</span>
+          <span style="font-size:11px;color:#555;margin-left:auto;">▾</span>
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:#555;margin-top:8px;text-align:center;">— блоки ни на что не указывают, нет истории, нет связи —</p>
+    </div>
+  </div>
+
+  <!-- AFTER: pipeline -->
+  <div class="mockup" data-choice="pipeline" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="mockup-header">renderLayerPipeline ✓</div>
+    <div class="mockup-body" style="background:#070a0f;padding:14px;font-family:'IBM Plex Sans',sans-serif;color:#f5f2e9;font-size:12px;">
+
+      <div style="display:flex;flex-direction:column;">
+
+        <!-- Layer 1: Base Signal — expanded -->
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:18px;flex-shrink:0;padding-top:2px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#4a7fc1;box-shadow:0 0 6px rgba(74,127,193,0.5);flex-shrink:0;"></div>
+            <div style="width:2px;flex:1;min-height:36px;background:linear-gradient(180deg,#4a7fc1,#805ad5);opacity:0.4;"></div>
+          </div>
+          <div style="flex:1;padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:6px;min-height:32px;cursor:pointer;padding:6px 10px;border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.96),rgba(9,13,19,0.96));border:1px solid rgba(74,127,193,0.25);">
+              <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#4a7fc1;">Base Signal</span>
+              <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:1px 6px;border-radius:999px;">LIVE</span>
+              <span style="font-size:10px;color:#555;margin-left:auto;">FUNDING_API · 3s ago</span>
+              <span style="font-size:10px;color:#555;">▾</span>
+            </div>
+            <div style="padding:7px 10px;font-size:11px;color:#96a3b4;display:flex;gap:14px;flex-wrap:wrap;">
+              <span>Symbol <strong style="color:#f5f2e9;">BTCUSDT</strong></span>
+              <span>Rate <strong style="color:#5bc7ff;">+0.031%</strong></span>
+              <span>Venue <strong style="color:#f5f2e9;">Gate</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer 2: AI -->
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:18px;flex-shrink:0;padding-top:2px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#805ad5;box-shadow:0 0 6px rgba(128,90,213,0.5);flex-shrink:0;"></div>
+            <div style="width:2px;flex:1;min-height:28px;background:linear-gradient(180deg,#805ad5,#4eba84);opacity:0.4;"></div>
+          </div>
+          <div style="flex:1;padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:6px;min-height:32px;cursor:pointer;padding:6px 10px;border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.96),rgba(9,13,19,0.96));border:1px solid rgba(128,90,213,0.2);">
+              <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#9b72e8;">AI Advisor</span>
+              <span style="font-size:10px;background:rgba(255,182,86,0.13);color:#ffe8a0;border:1px solid rgba(255,182,86,0.25);padding:1px 6px;border-radius:999px;">WATCH</span>
+              <span style="font-size:10px;color:#555;margin-left:auto;">deepseek · 8s ago</span>
+              <span style="font-size:10px;color:#555;">▶</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer 3: Liquidity -->
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:18px;flex-shrink:0;padding-top:2px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#4eba84;box-shadow:0 0 6px rgba(78,186,132,0.5);flex-shrink:0;"></div>
+            <div style="width:2px;flex:1;min-height:28px;background:linear-gradient(180deg,#4eba84,#d4a24a);opacity:0.4;"></div>
+          </div>
+          <div style="flex:1;padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:6px;min-height:32px;cursor:pointer;padding:6px 10px;border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.96),rgba(9,13,19,0.96));border:1px solid rgba(78,186,132,0.2);">
+              <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#4eba84;">Liquidity</span>
+              <span style="font-size:10px;background:rgba(255,111,111,0.14);color:#ffd7d7;border:1px solid rgba(255,111,111,0.28);padding:1px 6px;border-radius:999px;">THIN</span>
+              <span style="font-size:10px;color:#555;margin-left:auto;">ORDER_BOOK · 12s ago</span>
+              <span style="font-size:10px;color:#555;">▶</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer 4: Latency -->
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;align-items:center;width:18px;flex-shrink:0;padding-top:2px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#d4a24a;box-shadow:0 0 6px rgba(212,162,74,0.5);flex-shrink:0;"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;min-height:32px;cursor:pointer;padding:6px 10px;border-radius:10px 4px 14px 4px;background:linear-gradient(180deg,rgba(16,23,34,0.96),rgba(9,13,19,0.96));border:1px solid rgba(212,162,74,0.2);">
+              <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;color:#d4a24a;">Latency</span>
+              <span style="font-size:10px;background:rgba(106,229,141,0.12);color:#d9ffe5;border:1px solid rgba(106,229,141,0.22);padding:1px 6px;border-radius:999px;">OK</span>
+              <span style="font-size:10px;color:#555;margin-left:auto;">WARMUP_PROBE · 20s ago</span>
+              <span style="font-size:10px;color:#555;">▶</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <p style="font-size:11px;color:#4eba84;margin-top:10px;text-align:center;">— видно порядок обогащения, freshness, линия связывает слои —</p>
+    </div>
+  </div>
+
+</div>

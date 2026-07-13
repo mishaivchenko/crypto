@@ -1,0 +1,75 @@
+<h2>Settings Panel — выбери подход</h2>
+<p class="subtitle">Всё что сейчас разбросано по Dev Tools, Dashboard, Auto-Approval и верхней панели — нужно собрать. Три варианта как это организовать.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="A" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Settings Screen — отдельный экран в сайдбаре</h3>
+      <p>Новая вкладка «⚙ Settings» рядом с Dashboard, Signals, Events, Trades. Внутри — четыре вертикальные секции: <strong>Engine</strong>, <strong>AI Advisor</strong>, <strong>Pipeline Automation</strong>, <strong>Global</strong>. Навигация по якорям внутри страницы.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Всё в одном месте, легко найти</li>
+          <li>Место для роста — легко добавить новые секции</li>
+          <li>Текущий Dashboard очищается от Dev Tools</li>
+          <li>Удобно для тюнинга — открыл и работаешь</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Новый экран — нужно обновить роутинг</li>
+          <li>Dev Tools уходят с Dashboard — нужна привычка</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="B" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Правая панель (slide-in drawer)</h3>
+      <p>Кнопка ⚙ в topbar открывает slide-in drawer справа. Внутри — те же секции. Dashboard остаётся, Dev Tools переезжают в drawer.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Не занимает место в сайдбаре</li>
+          <li>Доступна с любого экрана</li>
+          <li>Не ломает навигацию</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Drawer — паттерн уже используется для деталей трейдов/событий, может конфликтовать</li>
+          <li>Места меньше, чем у полного экрана</li>
+          <li>Неудобно для сложных форм (auto-approval rules)</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="C" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Overview расширяется — секция «Control Panel» внутри Dashboard</h3>
+      <p>Dev Tools, AI toggle, Auto-Approval, Engine runtime — всё переезжает в специальную секцию на Dashboard под текущими метриками. Auto-Approval остаётся своим экраном, но глобальный toggle переезжает на Dashboard.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Минимальные изменения структуры</li>
+          <li>Dashboard = command center — логично</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Dashboard и так перегружен</li>
+          <li>Не решает проблему «всё в одном месте»</li>
+          <li>При тюнинге нужно скроллить</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:24px;padding:14px 16px;background:rgba(255,255,255,0.04);border-radius:10px;font-size:12px;color:#96a3b4">
+  <strong style="color:#f5f2e9">Что сейчас разбросано (будет собрано):</strong>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:8px">
+    <span>⚡ Engine: loop ON/OFF, interval, live orders, kill switch, run-once, LAB</span>
+    <span>🤖 AI Advisor: toggle ON/OFF, performance stats</span>
+    <span>🔄 Auto-Approval: global enable, rules list, добавить правило</span>
+    <span>🌐 Global: lang EN/RU, access mode testnet/prod, operator token</span>
+  </div>
+</div>

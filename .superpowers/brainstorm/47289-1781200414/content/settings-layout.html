@@ -1,0 +1,269 @@
+<h2>Settings Screen — макет</h2>
+<p class="subtitle">Вот как выглядит экран. Четыре секции, вертикально. Кликни на вариант компоновки который нравится.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="A" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Одна колонка — секции друг за другом</h3>
+      <div class="mockup" style="max-width:600px">
+        <div class="mockup-header">⚙ Settings</div>
+        <div class="mockup-body" style="background:#070a0f;font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:#f5f2e9;padding:0">
+
+          <!-- Sticky anchor nav -->
+          <div style="position:sticky;top:0;background:#0d1117;border-bottom:1px solid rgba(255,255,255,0.06);padding:8px 16px;display:flex;gap:16px;z-index:10">
+            <a href="#engine" style="color:#5bc7ff;text-decoration:none;font-size:10px;font-weight:600">⚡ Engine</a>
+            <a href="#ai" style="color:#9b72e8;text-decoration:none;font-size:10px;font-weight:600">🤖 AI Advisor</a>
+            <a href="#automation" style="color:#4eba84;text-decoration:none;font-size:10px;font-weight:600">🔄 Pipeline Automation</a>
+            <a href="#global" style="color:#d4a24a;text-decoration:none;font-size:10px;font-weight:600">🌐 Global</a>
+          </div>
+
+          <!-- Engine section -->
+          <div id="engine" style="border-bottom:1px solid rgba(255,255,255,0.05);padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span style="font-size:12px;font-weight:700;color:#5bc7ff">⚡ Engine Control</span>
+              <span style="font-size:9px;background:rgba(91,199,255,0.1);color:#5bc7ff;border:1px solid rgba(91,199,255,0.2);padding:1px 6px;border-radius:999px">RUNTIME</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Execution Loop</div>
+                <div style="display:flex;gap:4px">
+                  <span style="background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);color:#4eba84;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">ON ●</span>
+                  <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">OFF</span>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Live Orders</div>
+                <div style="display:flex;gap:4px">
+                  <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">ON</span>
+                  <span style="background:rgba(224,90,90,0.15);border:1px solid rgba(224,90,90,0.3);color:#e05a5a;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">OFF ●</span>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Kill Switch</div>
+                <div style="display:flex;gap:4px">
+                  <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">ACTIVE</span>
+                  <span style="background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);color:#4eba84;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">OFF ●</span>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Loop interval</div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <input type="number" value="250" style="width:50px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#f5f2e9;border-radius:4px;padding:2px 6px;font-size:10px">
+                  <span style="color:#96a3b4;font-size:9px">ms</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button style="padding:5px 12px;background:linear-gradient(180deg,rgba(91,199,255,0.15),rgba(91,199,255,0.08));border:1px solid rgba(91,199,255,0.25);color:#5bc7ff;border-radius:8px 3px 10px 3px;font-size:10px;cursor:pointer">▷ Run Once</button>
+              <button style="padding:5px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:#96a3b4;border-radius:8px 3px 10px 3px;font-size:10px;cursor:pointer">🧪 LAB Test Run</button>
+            </div>
+          </div>
+
+          <!-- AI section -->
+          <div id="ai" style="border-bottom:1px solid rgba(255,255,255,0.05);padding:14px 16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;font-weight:700;color:#9b72e8">🤖 AI Signal Advisor</span>
+                <span style="font-size:9px;background:rgba(155,114,232,0.1);color:#9b72e8;border:1px solid rgba(155,114,232,0.2);padding:1px 6px;border-radius:999px">DeepSeek</span>
+              </div>
+              <div style="display:flex;gap:4px">
+                <span style="background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);color:#4eba84;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">ON ●</span>
+                <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">OFF</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:10px">
+              <div style="background:rgba(78,186,132,0.06);border:1px solid rgba(78,186,132,0.15);border-radius:6px;padding:6px;text-align:center">
+                <div style="color:#4eba84;font-size:14px;font-weight:700">24</div>
+                <div style="color:#96a3b4;font-size:9px">GO signals</div>
+              </div>
+              <div style="background:rgba(212,162,74,0.06);border:1px solid rgba(212,162,74,0.15);border-radius:6px;padding:6px;text-align:center">
+                <div style="color:#d4a24a;font-size:14px;font-weight:700">18</div>
+                <div style="color:#96a3b4;font-size:9px">WATCH signals</div>
+              </div>
+              <div style="background:rgba(224,90,90,0.06);border:1px solid rgba(224,90,90,0.15);border-radius:6px;padding:6px;text-align:center">
+                <div style="color:#e05a5a;font-size:14px;font-weight:700">9</div>
+                <div style="color:#96a3b4;font-size:9px">PASS signals</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pipeline Automation section -->
+          <div id="automation" style="border-bottom:1px solid rgba(255,255,255,0.05);padding:14px 16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;font-weight:700;color:#4eba84">🔄 Pipeline Automation</span>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center">
+                <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">ON</span>
+                <span style="background:rgba(224,90,90,0.15);border:1px solid rgba(224,90,90,0.3);color:#e05a5a;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">OFF ●</span>
+              </div>
+            </div>
+            <!-- Rules list -->
+            <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);border:1px solid rgba(78,186,132,0.15);border-radius:6px;padding:6px 10px">
+                <div>
+                  <span style="font-size:10px;color:#f5f2e9;font-weight:600">Gate HIGH+ → AUTO_EXECUTE</span>
+                  <span style="font-size:9px;color:#96a3b4;margin-left:6px">priority 1</span>
+                </div>
+                <div style="display:flex;gap:4px">
+                  <span style="font-size:9px;background:rgba(78,186,132,0.1);color:#4eba84;border:1px solid rgba(78,186,132,0.2);padding:1px 5px;border-radius:999px">enabled</span>
+                  <button style="font-size:9px;background:none;border:none;color:#555;cursor:pointer">✎</button>
+                  <button style="font-size:9px;background:none;border:none;color:#555;cursor:pointer">✕</button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;padding:6px 10px;opacity:0.5">
+                <div>
+                  <span style="font-size:10px;color:#f5f2e9;font-weight:600">Any GO → AUTO_REJECT</span>
+                  <span style="font-size:9px;color:#96a3b4;margin-left:6px">priority 2</span>
+                </div>
+                <div style="display:flex;gap:4px">
+                  <span style="font-size:9px;background:rgba(255,255,255,0.05);color:#555;border:1px solid rgba(255,255,255,0.08);padding:1px 5px;border-radius:999px">disabled</span>
+                  <button style="font-size:9px;background:none;border:none;color:#555;cursor:pointer">✎</button>
+                  <button style="font-size:9px;background:none;border:none;color:#555;cursor:pointer">✕</button>
+                </div>
+              </div>
+            </div>
+            <button style="padding:5px 12px;background:rgba(78,186,132,0.08);border:1px solid rgba(78,186,132,0.2);color:#4eba84;border-radius:8px 3px 10px 3px;font-size:10px;cursor:pointer">+ Add rule</button>
+          </div>
+
+          <!-- Global section -->
+          <div id="global" style="padding:14px 16px">
+            <div style="font-size:12px;font-weight:700;color:#d4a24a;margin-bottom:10px">🌐 Global</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Language</div>
+                <div style="display:flex;gap:4px">
+                  <span style="background:rgba(212,162,74,0.15);border:1px solid rgba(212,162,74,0.3);color:#d4a24a;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">EN ●</span>
+                  <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">RU</span>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Access Mode</div>
+                <div style="display:flex;gap:4px">
+                  <span style="background:rgba(212,162,74,0.15);border:1px solid rgba(212,162,74,0.3);color:#d4a24a;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">TESTNET ●</span>
+                  <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">PROD</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="B" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Две колонки — Engine слева, остальное справа</h3>
+      <div class="mockup" style="max-width:680px">
+        <div class="mockup-header">⚙ Settings</div>
+        <div class="mockup-body" style="background:#070a0f;font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:#f5f2e9;padding:14px 16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+            <!-- Left: Engine -->
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#5bc7ff;margin-bottom:10px">⚡ Engine Control</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                  <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Execution Loop</div>
+                  <div style="display:flex;gap:4px">
+                    <span style="background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);color:#4eba84;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">ON ●</span>
+                    <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">OFF</span>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                  <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Live Orders</div>
+                  <div style="display:flex;gap:4px">
+                    <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">ON</span>
+                    <span style="background:rgba(224,90,90,0.15);border:1px solid rgba(224,90,90,0.3);color:#e05a5a;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">OFF ●</span>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                  <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Kill Switch</div>
+                  <div style="display:flex;gap:4px">
+                    <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:2px 8px;border-radius:999px;font-size:10px">ACTIVE</span>
+                    <span style="background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);color:#4eba84;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600">OFF ●</span>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:8px">
+                  <div style="color:#96a3b4;font-size:9px;margin-bottom:4px">Loop interval</div>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <input type="number" value="250" style="width:50px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#f5f2e9;border-radius:4px;padding:2px 6px;font-size:10px">
+                    <span style="color:#96a3b4;font-size:9px">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button style="padding:5px 10px;background:rgba(91,199,255,0.08);border:1px solid rgba(91,199,255,0.2);color:#5bc7ff;border-radius:8px 3px 10px 3px;font-size:10px;cursor:pointer">▷ Run Once</button>
+                <button style="padding:5px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:#96a3b4;border-radius:8px 3px 10px 3px;font-size:10px;cursor:pointer">🧪 LAB</button>
+              </div>
+            </div>
+
+            <!-- Right: AI + Automation + Global -->
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:11px;font-weight:700;color:#9b72e8">🤖 AI Advisor</span>
+                  <div style="display:flex;gap:3px">
+                    <span style="background:rgba(78,186,132,0.15);border:1px solid rgba(78,186,132,0.3);color:#4eba84;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600">ON ●</span>
+                    <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:1px 7px;border-radius:999px;font-size:10px">OFF</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <div style="flex:1;background:rgba(78,186,132,0.06);border:1px solid rgba(78,186,132,0.12);border-radius:4px;padding:4px;text-align:center">
+                    <div style="color:#4eba84;font-size:12px;font-weight:700">24</div><div style="color:#96a3b4;font-size:8px">GO</div>
+                  </div>
+                  <div style="flex:1;background:rgba(212,162,74,0.06);border:1px solid rgba(212,162,74,0.12);border-radius:4px;padding:4px;text-align:center">
+                    <div style="color:#d4a24a;font-size:12px;font-weight:700">18</div><div style="color:#96a3b4;font-size:8px">WATCH</div>
+                  </div>
+                  <div style="flex:1;background:rgba(224,90,90,0.06);border:1px solid rgba(224,90,90,0.12);border-radius:4px;padding:4px;text-align:center">
+                    <div style="color:#e05a5a;font-size:12px;font-weight:700">9</div><div style="color:#96a3b4;font-size:8px">PASS</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:11px;font-weight:700;color:#4eba84">🔄 Automation</span>
+                  <div style="display:flex;gap:3px">
+                    <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:1px 7px;border-radius:999px;font-size:10px">ON</span>
+                    <span style="background:rgba(224,90,90,0.15);border:1px solid rgba(224,90,90,0.3);color:#e05a5a;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600">OFF ●</span>
+                  </div>
+                </div>
+                <div style="font-size:9px;color:#96a3b4">2 rules · 1 enabled</div>
+                <button style="margin-top:6px;padding:4px 10px;background:rgba(78,186,132,0.08);border:1px solid rgba(78,186,132,0.2);color:#4eba84;border-radius:6px;font-size:9px;cursor:pointer">Manage rules ↓</button>
+              </div>
+
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px">
+                <div style="font-size:11px;font-weight:700;color:#d4a24a;margin-bottom:6px">🌐 Global</div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:9px;color:#96a3b4">Language</span>
+                    <div style="display:flex;gap:3px">
+                      <span style="background:rgba(212,162,74,0.15);border:1px solid rgba(212,162,74,0.3);color:#d4a24a;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600">EN ●</span>
+                      <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:1px 7px;border-radius:999px;font-size:10px">RU</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:9px;color:#96a3b4">Access Mode</span>
+                    <div style="display:flex;gap:3px">
+                      <span style="background:rgba(212,162,74,0.15);border:1px solid rgba(212,162,74,0.3);color:#d4a24a;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600">TESTNET ●</span>
+                      <span style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#555;padding:1px 7px;border-radius:999px;font-size:10px">PROD</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px">Оба варианта используют pill-toggles вместо dropdown. В варианте A Auto-Approval разворачивается inline с полной формой правил. В варианте B — компактный блок с кнопкой «Manage rules ↓» которая раскрывает список ниже.</p>
