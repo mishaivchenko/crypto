@@ -99,7 +99,19 @@
     4. **Feign has no timeout or resilience config:** uses OpenFeign defaults; no retry, no circuit breaker, no custom error decoder
     5. **No shared HTTP client across modules:** monitor-app's shared bean is inaccessible to engine-app (separate Spring context); each module creates its own
   - Full report: `Working/http-client-creation-audit.md`
-- [ ] Check how thread pools are created
+- [x] Check how thread pools are created
+  - **No custom thread pool executors exist anywhere in the codebase** — no `ThreadPoolExecutor`, `Executors.new*`, `ThreadPoolTaskExecutor`, `SimpleAsyncTaskExecutor`, `AsyncConfigurer`, or `SchedulingConfigurer` in any of the 3 modules
+  - **`@EnableAsync` + `@EnableScheduling`** on both monitor-app and engine-app; telegram-bot-app has `@EnableScheduling` only (no `@EnableAsync`)
+  - **Default `ThreadPoolTaskScheduler` pool size = 1**: ALL 6 `@Scheduled` methods across all 3 modules share the same single scheduler thread — the 250ms engine execution tick, 60s candidate poll, 240min metadata sync, and both telegram pollers all compete for one thread
+  - **7 `@Async` methods** use Spring Boot's default `ThreadPoolTaskExecutor` (core=8, max=unbounded, queue=unbounded) — 1 in engine-app (`EngineCredentialCache.loadOnStartup`), 6 in monitor-app (`SignalLiquidityService.assessAsync`, `AiSignalAdvisorService.analyzeAsync`, `AutoApprovalPipelineService` × 3, `LiquidityAutoAssessService.assessAfterArm`)
+  - **6 `@Scheduled` methods**: `EngineExecutionScheduler.runLoop` (250ms), `EngineMetricsPublisher.publishOnSchedule` (15s), `FundingApiCandidateSourceService.scheduledRefresh` (60s), `InstrumentMetadataSyncRunner.scheduledSync` (240min), `SignalNotificationScheduler.pollAndNotify` (30s), `TradeNotificationScheduler.pollAndNotify` (30s)
+  - **HikariCP** is the only explicitly sized pool (`maximum-pool-size: 2` in platform-core.yml)
+  - **No `spring.task.execution.*` or `spring.task.scheduling.*`** properties configured in any YAML file
+  - **No virtual thread configuration** (`spring.threads.virtual.enabled` absent)
+  - **No `@Bean` returning `Executor`/`ExecutorService`/`ScheduledExecutorService`** in any configuration class
+  - Full report: `Working/thread-pool-creation-audit.md`
+  - **Risk**: Single-threaded scheduler could delay the 250ms engine execution tick if any other scheduled method blocks — a potential trading-decision latency issue
+  - **Recommendation**: Set `spring.task.scheduling.pool.size` to at least 2–4 to prevent scheduler contention
 - [ ] Check if default Spring scheduler thread pool is used
 - [ ] Check if default TaskExecutor is configured
 - [ ] Check if default TaskScheduler is configured
