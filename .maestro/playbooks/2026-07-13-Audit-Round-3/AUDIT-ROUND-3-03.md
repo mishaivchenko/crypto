@@ -437,7 +437,15 @@
   - **Venue mode inconsistency**: bitget/okx/kucoin default to `production` while bybit/gate default to `testnet`
 
 ### Profile activation
-- [ ] Check how active profile is selected (ENV var, JVM arg, config default)
+- [x] Check how active profile is selected (ENV var, JVM arg, config default)
+  - **3 mechanisms identified**: (1) `SPRING_PROFILES_ACTIVE` env var set by `build.gradle` bootRun tasks (defaults to `local-safe`), `deploy/docker-compose.yml` (hardcoded `prod-like`/`staging`), or runtime container env; (2) `--spring.profiles.active=<profile>` JVM argument; (3) No programmatic profile selection — all 3 Application classes use plain `SpringApplication.run()` without customization
+  - **build.gradle only covers bootRun** — `java -jar` direct launch gets NO profile unless env/JVM arg provided
+  - **telegram-bot-app** profile YAMLs lack `spring.config.activate.on-profile` declaration (filename-convention only) — inconsistent with monitor-app and engine-app
+  - **Root Dockerfile** has no `SPRING_PROFILES_ACTIVE` — containers rely entirely on runtime env
+  - **`docker-compose.yml` (local with observability)** sets no profile — containers run with base defaults only (safe but candidate source still polls)
+  - **CI build/test/bootJar** never set profiles (compile-only operations)
+  - **Running without any profile**: all safety defaults apply (loop OFF, live OFF, kill switch ON), but candidate source polls external API every 60s (matchIfMissing=true)
+  - Full report: `Working/profile-activation-audit.md`
 - [ ] Check if profile can be enabled through default environment
 - [ ] Verify behavior when no profile is set
 - [ ] Check which profile Docker Compose uses
