@@ -5,7 +5,10 @@
 ## Section 6 — Spring Boot and Application Framework
 
 ### Version and starters
-- [ ] Run `./gradlew dependencyInsight --dependency spring-boot --no-daemon` — record exact Spring Boot version
+- [x] Run `./gradlew dependencyInsight --dependency spring-boot --no-daemon` — record exact Spring Boot version
+  - **Spring Boot version: 3.5.14** (Spring Cloud 2025.0.2)
+  - Confirmed via `build.gradle` line: `springBootVersion = '3.5.14'` and `dependencyInsight` on both modules
+  - BOM: `org.springframework.boot:spring-boot-dependencies:3.5.14`
 - [ ] Identify all Spring Boot starters in each application module
 - [ ] Identify starters that are included but not needed
 - [ ] Check which auto-configurations are active (`spring.autoconfigure.log` or equivalent)
