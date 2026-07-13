@@ -332,7 +332,15 @@
 ## Section 8 — Configuration Inventory
 
 ### Profile analysis
-- [ ] List all existing profiles (`local-safe`, `testnet`, `staging`, `prod-like`, `prod`)
+- [x] List all existing profiles (`local-safe`, `testnet`, `staging`, `prod-like`, `prod`)
+  - **Profiles that EXIST in code (via `application-{profile}.yml` with `spring.config.activate.on-profile`):**
+    - `local-safe` — all 3 modules (monitor, engine, telegram-bot); default via `build.gradle:13` (`localBootProfile = 'local-safe'`)
+    - `testnet` — engine-app ONLY; enables loop + live orders for Gate testnet
+    - `staging` — all 3 modules; auth + credentials + metrics ON, execution OFF
+    - `prod-like` — monitor-app and engine-app ONLY (NOT telegram-bot-app); everything ON except execution (requires explicit ENV)
+  - **`prod` does NOT exist** — no `application-prod.yml` anywhere; only `prod-like` is used in production contexts (Docker Compose, `.env.example`)
+  - telegram-bot-app has NO `prod-like` profile — runs base defaults in production (token-driven bean activation via `@ConditionalOnProperty`)
+  - Full report: `Working/profile-inventory.md`
 - [ ] Identify profiles that are documented but may not exist in code
 - [ ] Verify `local-safe` profile — exact configuration
 - [ ] Verify `testnet` profile — exact configuration
