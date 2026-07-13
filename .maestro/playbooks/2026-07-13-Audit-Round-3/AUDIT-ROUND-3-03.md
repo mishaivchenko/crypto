@@ -486,7 +486,18 @@
   - Smoke test: `/actuator/health` only on ports 8090/8091 — no profile-specific validation
   - **Inherited base-application risks still apply:** `candidate-source.enabled: true` (matchIfMissing), `server.shutdown: immediate`, `spring.task.scheduling.pool.size: 1`
   - Full report: `Working/ci-staging-profile-audit.md`
-- [ ] Check which profile production should use
+- [x] Check which profile production should use
+  - **Answer: `prod-like` for monitor-app and engine-app; `prod-like` (needs creation) for telegram-bot-app**
+  - `prod-like` is the correct choice — auth ON, credentials ON, master key required, loop OFF by default
+  - **telegram-bot-app has no `prod-like` profile** — currently falls back to `staging` in `deploy/docker-compose.yml`
+  - **CI `deploy-prod` is stubbed** (line 269-278 in `ci-cd.yml`) — VPS deployment not yet configured
+  - **No `prod` profile exists** and none should be created — `prod-like` is intentional (signals "execution loop always off by default")
+  - engine-app staging and prod-like are **byte-for-byte identical** — no behavioral difference; use `prod-like` for naming consistency
+  - monitor-app staging vs prod-like differ by **one property**: `metadata.require-credentials-on-startup: false` (staging) vs `true` (prod-like) — correct for production
+  - Inherited base defaults apply: `candidate-source.enabled: true`, `server.shutdown: immediate`, `scheduler pool size: 1`
+  - Production trading activation requires explicit env vars (`ENGINE_EXECUTION_LOOP_ENABLED=true`, etc.) — the double-lock pattern is correct
+  - Full report: `Working/production-profile-recommendation.md`
+  - **Recommendation:** Create `application-prod-like.yml` for telegram-bot-app with `spring.config.activate.on-profile: prod-like` profile guard, proper production logging levels, and no-default token/env var bindings
 - [ ] Verify safety of multiple simultaneous profiles
 - [ ] Check for dangerous profile combinations
 
