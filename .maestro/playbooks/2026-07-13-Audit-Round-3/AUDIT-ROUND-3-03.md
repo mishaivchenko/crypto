@@ -385,7 +385,15 @@
     4. All 13 engine-app beans load unconditionally — execution loop ticks at 250ms but immediately exits via runtime guard
     5. No auth, no credentials, no execution, no live orders, no external API risk (except candidate source polling)
   - **Safety verdict: safe for local development** — all trading-critical features disabled
-- [ ] Verify `testnet` profile — exact configuration
+- [x] Verify `testnet` profile — exact configuration
+  - ✅ **10 explicit overrides** identified in `engine-app/src/main/resources/application-testnet.yml`
+  - ✅ Loop ON (2000ms interval), Live Orders ON, Kill Switch OFF — all 3 runtime guards removed
+  - ✅ Only Gate testnet enabled ($25 max notional), credentials still checked (FAILED if missing)
+  - ✅ Monitor has NO testnet profile — monitor behavior depends on its independently-set profile
+  - ⚠️ **Documentation gap**: `testnet` is missing from CLAUDE.md and README.md profile tables
+  - ⚠️ OKX and Bitget use same URL for testnet/production (mitigated: neither is in `live-enabled-venues`)
+  - ⚠️ No double-confirmation mechanism before enabling loop + live orders + removing kill switch
+  - Full report: `Working/testnet-profile-verification.md`
 - [ ] Verify `staging` profile — exact configuration
 - [ ] Verify `prod-like` profile — exact configuration
 - [ ] Document exact differences between profiles
