@@ -446,7 +446,18 @@
   - **CI build/test/bootJar** never set profiles (compile-only operations)
   - **Running without any profile**: all safety defaults apply (loop OFF, live OFF, kill switch ON), but candidate source polls external API every 60s (matchIfMissing=true)
   - Full report: `Working/profile-activation-audit.md`
-- [ ] Check if profile can be enabled through default environment
+- [x] Check if profile can be enabled through default environment
+  - **No profile can be enabled through the Spring Boot default environment** — none of the 8+ mechanisms tested provide implicit profile activation
+  - `spring.profiles.active` absent from all base `application.yml` files (0/3 modules)
+  - `spring.profiles.default` absent from all configuration files
+  - `application-default.yml` does not exist in any module
+  - `SPRING_PROFILES_ACTIVE` absent from OS shell profiles, `.env`, deploy `.env`, deploy `.env.example`
+  - No `.env` auto-loading library on classpath
+  - No IDE run configurations exist
+  - No programmatic profile activation in any Application.java (all use plain `SpringApplication.run()`)
+  - The only implicit activation is build.gradle's `bootRun` task defaulting to `local-safe` — a Gradle convenience, not a Spring Boot default
+  - Running with zero profiles is safe: loop OFF, live OFF, kill switch ON — but candidate source polls external API every 60s (`matchIfMissing=true`)
+  - Full report updated in `Working/profile-activation-audit.md` (Section 7 added)
 - [ ] Verify behavior when no profile is set
 - [ ] Check which profile Docker Compose uses
 - [ ] Check which profile CI staging uses

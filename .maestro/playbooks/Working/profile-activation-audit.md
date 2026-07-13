@@ -195,7 +195,62 @@ Without `SPRING_PROFILES_ACTIVE` and without `--spring.profiles.active`:
 
 ---
 
-## 7. Key Findings
+## 7. Can Profile Be Enabled Through Default Environment?
+
+### Question
+Can a Spring Boot profile be activated by **default environment mechanisms** — i.e., without explicit user action via `SPRING_PROFILES_ACTIVE`, `--spring.profiles.active`, or `build.gradle` bootRun tasks?
+
+### Mechanisms Checked
+
+| Mechanism | Present? | Details |
+|-----------|----------|---------|
+| `spring.profiles.active` in base `application.yml` | ❌ | Not set in any of the 3 modules' base configs |
+| `spring.profiles.default` property | ❌ | Not set anywhere in any YAML, properties, or Java source |
+| `application-default.yml` file | ❌ | Does not exist in any module or at root |
+| `spring.profiles.include` in base config | ❌ | Not used anywhere |
+| `SPRING_PROFILES_ACTIVE` in OS shell profiles | ❌ | Not set in `.zshrc`, `.bashrc`, `.bash_profile`, or `.profile` |
+| `SPRING_PROFILES_ACTIVE` in `.env` (repo root) | ❌ | `.env` at root sets Telegram + venue credentials but NOT `SPRING_PROFILES_ACTIVE` |
+| `SPRING_PROFILES_ACTIVE` in `deploy/.env` | ❌ | `deploy/.env` sets metrics, tokens, DB, but NOT `SPRING_PROFILES_ACTIVE` |
+| `SPRING_PROFILES_ACTIVE` in `deploy/.env.example` | ✅ **Template only** | Documents `SPRING_PROFILES_ACTIVE=prod-like` but this is template documentation, not runtime activation |
+| `.env` auto-loading (spring-cloud-dotenv, etc.) | ❌ | No `.env` auto-loading dependency exists |
+| OS-level /etc/environment or launchd plist | ❌ | Not configured (shell profile check confirms) |
+| IDE run configurations | ❌ | No `.idea/runConfigurations/` or `.vscode/launch.json` files exist |
+| Programmatic in Application.java | ❌ | All 3 classes use plain `SpringApplication.run()` — no `setAdditionalProfiles()`, `setActiveProfiles()`, or `SpringApplicationBuilder` usage |
+
+### Verdict
+
+**No profile can be enabled through the Spring Boot "default environment" mechanism.**
+
+The project does not use any of the built-in Spring Boot mechanisms that would activate a profile by default:
+- `spring.profiles.active` is absent from all base `application.yml` files
+- `spring.profiles.default` is absent from all configuration
+- `application-default.yml` files do not exist
+- No `.env` auto-loading mechanism is present on the classpath
+- No OS shell profile or system configuration sets `SPRING_PROFILES_ACTIVE`
+
+The only implicit profile activation comes from `build.gradle`'s `bootRun` task configuration (`local-safe` default), which is a **Gradle task-level convenience default**, not a Spring Boot default environment mechanism. It only activates when running via `./gradlew bootRun*`.
+
+### What Happens with No Profile (True Default Environment)
+
+When the application runs without any profile set (e.g., `java -jar app.jar` without `SPRING_PROFILES_ACTIVE` or `--spring.profiles.active`):
+
+1. No `application-{profile}.yml` files are loaded
+2. Only base files apply: each module's `application.yml` + `platform-core.yml` (monitor-app only)
+3. All properties use their `${ENV_VAR:default}` expressions
+
+**Effective behavior with no profile:**
+- Auth: OFF (default `false`)
+- Credential storage: OFF (default `false`)
+- Engine execution loop: OFF (default `false`)
+- Live orders: OFF (default `false`)
+- Kill switch: ON (default `true`)
+- Candidate source polling: **ON** (60s interval, `matchIfMissing=true`)
+- Metrics publish: OFF (default `false`)
+- Venue access mode: `production` (monitor) / `testnet` (engine) — inconsistent but harmless
+
+**Key risk:** Candidate source (`uainvest.com.ua`) is polled every 60 seconds even with no profile set. This is the only external call made in a "no profile" environment.
+
+## 8. Key Findings
 
 1. **No single source of truth** — profile selection depends on how the app is launched
 2. **build.gradle defaults only apply to `bootRun*` tasks** — running via `java -jar` requires explicit env or JVM args
@@ -206,4 +261,5 @@ Without `SPRING_PROFILES_ACTIVE` and without `--spring.profiles.active`:
 7. **CI build/test jobs never set profiles** — these are compile-only operations
 8. **No programmatic profile selection exists** — all main classes use `SpringApplication.run()` without customization
 9. **Running without any profile is safe** (no execution, no live orders, no auth) but candidate source still polls external API every 60s
-10. **Test confirms JVM argument mechanism** — `EngineApplicationTest` tests `--spring.profiles.active=local-safe`
+10. **No profile can be activated through Spring Boot's built-in default environment mechanisms** — every profile activation requires explicit user action via env var, JVM arg, or build.gradle task
+11. **Test confirms JVM argument mechanism** — `EngineApplicationTest` tests `--spring.profiles.active=local-safe`
