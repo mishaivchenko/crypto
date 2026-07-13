@@ -229,16 +229,46 @@
   - **Only exception**: `EngineMetricsPublisher` (engine-app) and the 5 engine-metrics beans (monitor-app) — these are not created when metrics publishing is disabled, which happens in local-safe and testnet profiles.
 
 ### REST API and validation
-- [ ] Check for global exception handler (`@ControllerAdvice`)
-- [ ] Check for request validation
-- [ ] Check if Bean Validation provider is in runtime classpath
-- [ ] Verify which REST endpoints lack validation
-- [ ] Check for OpenAPI/Swagger documentation
-- [ ] Check for API specification generation
-- [ ] Check for contract between monitor and engine
-- [ ] Check if internal API is versioned
-- [ ] Check how monitor-engine version incompatibility is detected
-- [ ] Check if build version is exposed via actuator
+- [x] Check for global exception handler (`@ControllerAdvice`)
+  - **monitor-app**: `ApiExceptionHandler` with `@RestControllerAdvice` — handles 6 exception types (ResourceNotFound → 404, DomainValidation → 409, IllegalArgumentException/IllegalStateException → 400, MethodArgumentNotValid → 400, NoResourceFound → 404, `Exception` catch-all → 500). Response format: `ApiErrorResponse` record with timestamp/status/message/path.
+  - **engine-app**: **NO `@ControllerAdvice` exists** — relies on Spring Boot's default `BasicErrorController`. Inconsistent error format vs monitor-app.
+  - **telegram-bot-app**: No web server (`web-application-type: none`) — not applicable.
+- [x] Check for request validation
+  - **Public endpoints WITH `@Valid` (9 endpoints):** operator credentials upsert, funding event arm, dev engine runtime update, dev test run create, auto-approval rule create/update, armed trade update, candidate approve/reject, venue global mode set.
+  - **Public DTOs with Bean Validation (9 DTOs):** OperatorCredentialRequest, ArmFundingEventRequest, UpdateArmedTradeRequest, DevTestRunCreateRequest, AutoApprovalRuleRequest, EngineRuntimeSettingsRequest, SetGlobalVenueModeRequest, ApproveCandidateRequest, RejectCandidateRequest.
+  - **Public endpoints WITHOUT `@Valid` (2 DTOs):** `SetVenueDefaultLatencyRequest` (venue default latency) and `DevTestRunPhaseRequest` (dev test run entry/exit) — both DTOs have zero validation annotations.
+- [x] Check if Bean Validation provider is in runtime classpath
+  - **monitor-app**: ✅ Hibernate Validator available via `spring-boot-starter-validation`
+  - **engine-app**: ❌ **Missing** — has `jakarta.validation` API from `spring-boot-starter-web` transitive deps, but no Hibernate Validator implementation. `@Valid` on `@RequestBody` would be silently ignored without the starter.
+  - **telegram-bot-app**: ❌ Missing (no HTTP endpoints)
+  - **platform-core**: ❌ Missing (intentionally — pure domain library)
+- [x] Verify which REST endpoints lack validation
+  - **ALL internal endpoints lack `@Valid` across both directions:**
+  - **monitor-app internal** (7 endpoints): metrics-snapshot, order-attempts, trade-state, positions, outcomes, latency-samples, warmup-calibration — all receive `@RequestBody` without `@Valid`, all use platform-core contract records with zero Bean Validation annotations.
+  - **engine-app internal** (2 endpoints): execution/target, runtime — both lack `@Valid`. Engine-app also lacks spring-boot-starter-validation, so `@Valid` wouldn't work anyway.
+  - **engine-app has NO validation capability at all** — needs `spring-boot-starter-validation` added to build.gradle.
+- [x] Check for OpenAPI/Swagger documentation
+  - **None exists.** No springdoc-openapi, springfox, or swagger dependencies in any build.gradle. No `@Operation`, `@ApiResponse`, `@Schema`, `@Tag` annotations anywhere. No OpenAPI spec files (`.yaml`/`.json`) in the repository.
+- [x] Check for API specification generation
+  - **Not configured.** No springdoc-openapi, no Swagger Codegen, no OpenAPI Generator, no protobuf, no GraphQL schema.
+- [x] Check for contract between monitor and engine
+  - **Via `platform-core` shared library.** 20+ contract classes in `platform-core/.../contract/engine/` (records, enums, request/response types). Both `monitor-app` and `engine-app` compile against the same platform-core jar.
+  - **No contract testing** (Pact, Spring Cloud Contract) — incompatible changes compile fine but break at runtime.
+  - **No validation annotations** on any platform-core contract records — internal API validation is entirely absent.
+- [x] Check if internal API is versioned
+  - **monitor-app internal:** `/internal/v1/engine/...` — ✅ versioned (v1)
+  - **monitor-app public:** `/api/v1/...` and `/api/v2/monitor/...` — ✅ versioned
+  - **engine-app internal:** `/internal/engine/...` — ❌ **NOT versioned** (no `/v1/` prefix)
+  - `EngineControlService` (monitor-app) calls engine using unversioned paths. Future incompatible changes to engine API cannot be detected at the URL level. The modules must be deployed in lockstep.
+- [x] Check how monitor-engine version incompatibility is detected
+  - **None exists.** No version headers, no startup compatibility check, no runtime version comparison.
+  - Version `"2.0.0"` is hardcoded as **Java string literals** in `MonitorOverviewService.java` and `EngineRuntimeControlService.java` — not sourced from any properties or build artifact.
+  - No `Accept-Version`, `X-API-Version`, or version negotiation headers used in HTTP calls.
+- [x] Check if build version is exposed via actuator
+  - **`/actuator/info` returns empty `{}`** — no `build-info.properties` or `git.properties` generated.
+  - Root `build.gradle` sets `version = '2.0.0'` for the artifact, but this value is not consumed at runtime.
+  - Neither the `spring-boot` `buildInfo()` task nor `git-commit-id-plugin` is configured.
+  - Full report: `Working/rest-api-validation-audit.md`
 
 ### Health and readiness
 - [ ] Check `readiness` and `liveness` probe configuration
