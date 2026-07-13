@@ -283,14 +283,32 @@
   - **CI/CD smoke test**: Uses basic `curl -sf http://localhost:$svc/actuator/health` (24×5s loop = 120s timeout). Does NOT distinguish readiness from liveness or validate any business-specific state.
   - **Path-mapping**: Not configured — default `/actuator/health` path preserved; no `/healthz`/`/readyz` aliases
   - **Full report**: `Working/readiness-liveness-probe-audit.md`
-- [ ] Check `/actuator/info` for Git commit info
-- [ ] Check health indicator implementations
-- [ ] Verify: is health UP when credentials are missing?
-- [ ] Verify: is health UP when exchange is unreachable?
-- [ ] Verify: is health UP when DB is read-only?
-- [ ] Verify: is health UP when clock drift is excessive?
-- [ ] Check if a separate trading-readiness indicator exists or is needed
-- [ ] Compare health status vs actual readiness to trade
+- [x] Check `/actuator/info` for Git commit info
+  - **No `build-info.properties` or `git.properties` exists anywhere** — no `springBoot { buildInfo() }` in any build.gradle, no `gradle-git-properties` plugin, no `management.info.*` config
+  - **`/actuator/info` returns empty `{}`** on monitor-app (where exposed via `platform-core.yml`)
+  - **engine-app does not expose `/actuator/info`** — no actuator exposure config in engine-app at all (only default `/actuator/health`)
+  - Version `"2.0.0"` exists only as Java string literals in `MonitorOverviewService.java` and `EngineRuntimeControlService.java` — not sourced from build metadata
+  - No way to determine which Git commit a running instance was built from without external CI tracking
+- [x] Check health indicator implementations
+  - **Zero custom `HealthIndicator`, `HealthContributor`, `AbstractHealthIndicator`, or `@Endpoint` beans exist** in any module
+  - **Auto-configured indicators only** (Spring Boot defaults):
+    - `DiskSpaceHealthContributor` — active in engine-app and monitor-app (free disk ≥ 10MB)
+    - `SslHealthContributor` — active in both (SSL cert validity)
+    - `PingHealthIndicator` — active in both (always returns UP)
+    - `DataSourceHealthIndicator` — active in monitor-app only (SQLite connection validation)
+  - Full report: `Working/health-indicator-audit.md`
+- [x] Verify: is health UP when credentials are missing?
+  - **YES — health is UP regardless of credential state.** No health indicator checks credential presence. Exchange credential verification happens on-demand via `VenueDiagnosticsService.checkCredentials()`/`OperatorCredentialService`, not via the health endpoint. `CredentialAwareExecutionPort` returns FAILED for orders without credentials but this is not reflected in health status.
+- [x] Verify: is health UP when exchange is unreachable?
+  - **YES — health is UP regardless of exchange connectivity.** No health indicator checks exchange API reachability. All 5 venue exchanges can be unreachable while `/actuator/health` reports `UP`.
+- [x] Verify: is health UP when DB is read-only?
+  - **Partial — depends on SQLite JDBC driver behavior.** `DataSourceHealthIndicator` runs a validation query (`SELECT 1`) against the SQLite connection. If the DB file has read-only permissions preventing connection entirely, health reports DOWN. However, if the driver opens in read-only mode and the validation query succeeds despite writes failing, health would be UP while DB is effectively read-only. No health indicator validates write capability specifically.
+- [x] Verify: is health UP when clock drift is excessive?
+  - **YES — health is UP regardless of clock drift.** No clock drift detection, NTP sync check, or time-based health indicator exists anywhere. Clock drift of even a few seconds could cause HMAC signature rejection by exchanges, missed entry windows, or confused trade journal ordering — none of which would be reflected in health status.
+- [x] Check if a separate trading-readiness indicator exists or is needed
+  - **No trading-readiness indicator exists; one is strongly needed.** Current health checks (disk space, SSL, ping, DB connection) provide no signal about actual trading capability. A `TradingReadinessHealthIndicator` should check: engine loop status, live order mode, kill switch state, credential presence, exchange reachability, clock sync. See `Working/health-indicator-audit.md` for full design proposal.
+- [x] Compare health status vs actual readiness to trade
+  - **The application health endpoint provides effectively no meaningful signal about trading readiness.** In all 6 critical dimensions (loop status, live orders, credentials, exchange connectivity, clock sync, DB writability), health either always reports UP (5/6) or offers only partial driver-dependent coverage (1/6). The only dimensions with adequate coverage are disk space and SSL — neither of which are specific to trading readiness. Full comparison table in `Working/health-indicator-audit.md`.
 
 ### Application properties
 - [ ] Identify dangerous defaults
