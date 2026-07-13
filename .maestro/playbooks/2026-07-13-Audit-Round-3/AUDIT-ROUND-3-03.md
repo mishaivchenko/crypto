@@ -498,8 +498,18 @@
   - Production trading activation requires explicit env vars (`ENGINE_EXECUTION_LOOP_ENABLED=true`, etc.) — the double-lock pattern is correct
   - Full report: `Working/production-profile-recommendation.md`
   - **Recommendation:** Create `application-prod-like.yml` for telegram-bot-app with `spring.config.activate.on-profile: prod-like` profile guard, proper production logging levels, and no-default token/env var bindings
-- [ ] Verify safety of multiple simultaneous profiles
-- [ ] Check for dangerous profile combinations
+- [x] Verify safety of multiple simultaneous profiles
+  - **Full report**: `Working/simultaneous-profiles-safety.md`
+  - **Key finding 1 — CRITICAL**: testnet + ANY safe profile on engine-app is order-dependent dangerous. If testnet is last: loop ON, live orders ON, kill switch OFF (all 3 guards disabled). If testnet is NOT last: loop appears OFF, but live orders ON and kill switch OFF persist — no other profile overrides these.
+  - **Key finding 2 — MASKED DANGER**: Safe profiles (local-safe, staging, prod-like) do NOT set `live-order-enabled` or `kill-switch-enabled`. When combined with testnet, these dangerous values survive even when the safe profile is listed last. A user who activates `testnet,local-safe` gets loop=OFF but live=ON and kill=OFF — a false sense of safety.
+  - **Key finding 3**: No production/CI/deployment path ever activates multiple profiles (all Docker Compose and bootRun tasks use single profiles). Risk is confined to manual `SPRING_PROFILES_ACTIVE` overrides.
+  - **No `spring.profiles.include`** in any config — profiles cannot be implicitly composed through configuration.
+  - **Recommendation**: Safe profiles should explicitly set `live-order-enabled: false` and `kill-switch-enabled: true` to prevent testnet contamination.
+- [x] Check for dangerous profile combinations
+  - Covered in same report (`Working/simultaneous-profiles-safety.md`).
+  - **Comprehensive matrix**: All 84+ theoretical combinations analyzed for engine-app (16 dangerous due to testnet), monitor-app (4 with auth gaps), telegram-bot-app (none dangerous).
+  - **Top recommendation**: Add startup validation that warns when testnet is combined with other profiles, and add defense-in-depth property overrides to safe profiles.
+  - **Matrix summary**: 6 engine-app combinations are DANGEROUS (testnet listed after a safe profile), 6 are MASKED DANGER (testnet listed before a safe profile — live/kill switch remain contaminated). Only testnet-alone is intentionally dangerous.
 
 ### Property sources
 - [ ] List all `@ConfigurationProperties` classes with `@Validated`
