@@ -423,8 +423,18 @@
   - **Key finding 3:** telegram-bot-app lags behind in profile structure — lacks `spring.config.activate.on-profile` declarations and has no `prod-like` profile
   - **Key finding 4:** The candidate source external API poll is enabled by default in **all** profiles — no profile explicitly disables it
   - **Key finding 5:** The single difference between monitor-app staging and prod-like is `trading.metadata.require-credentials-on-startup` (`false` → `true`)
-- [ ] Check which parameters are overridden in each profile
-- [ ] Check for dangerous parameter inheritance between profiles
+- [x] Check which parameters are overridden in each profile
+  - **Full inventory**: `Working/profile-override-inventory.md`
+  - **Total explicit overrides across all profiles**: 43
+  - **Meaningful changes from base defaults**: ~17
+  - **Profile with most overrides**: engine-app testnet (12)
+  - **Profile with fewest meaningful changes**: engine-app local-safe (0 — all documentation-style)
+  - **All raw YAMLs read and verified** against `platform-core.yml`, all 3 modules' `application.yml`, and all 12 profile YAMLs
+- [x] Check for dangerous parameter inheritance between profiles
+  - **Full analysis**: `Working/profile-override-inventory.md` (Part 2)
+  - **5 critical, 8 high, 7 medium, 10 low severity findings identified**
+  - **Top 3 most dangerous**: (1) `candidate-source.enabled: true` inherited by ALL profiles (external API poll every 60s); (2) `server.shutdown: immediate` inherited by ALL profiles (in-flight trades lost on SIGTERM); (3) `spring.task.scheduling.pool.size: 1` inherited by ALL profiles (6 @Scheduled methods share one thread)
+  - **Venue mode inconsistency**: bitget/okx/kucoin default to `production` while bybit/gate default to `testnet`
 
 ### Profile activation
 - [ ] Check how active profile is selected (ENV var, JVM arg, config default)
