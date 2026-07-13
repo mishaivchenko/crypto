@@ -565,7 +565,11 @@
     5. `MONITOR_OPERATOR_TOKEN` — required when operator auth ON + telegram-bot running
     6. `INTERNAL_ENGINE_TOKEN` — required when internal auth ON
   - **Source files checked**: 14 YAML files, 33 `Environment.getProperty()` code paths, 10 `build.gradle` `System.getenv()` calls, 3 Docker Compose files, `deploy/.env`, root `.env`, `deploy/.env.example`
-- [ ] List all optional environment variables with defaults
+- [x] List all optional environment variables with defaults
+  - **Inventory verified:** `.maestro/playbooks/Working/environment-variables-inventory.md` Part 2 (97 optional env vars with defaults), Part 4 (6 build-only), Part 5 (8 Docker Compose-only)
+  - **Source files checked:** platform-core.yml, monitor-app/application.yml, engine-app/application.yml, telegram-bot-app/application.yml, root docker-compose.yml, deploy/docker-compose.yml, deploy/observability/docker-compose.yml, build.gradle
+  - **97 optional env vars** with safe functional defaults: 62 monitor-app (platform-core), 1 monitor-app base, 22 engine-app, 11 telegram-bot-app
+  - **Key findings:** All default to safe (disabled) values — execution loop OFF, live orders OFF, auth OFF, credentials OFF. `TRADING_CANDIDATE_SOURCE_ENABLED=true` is the only feature with a risky default enabled in all profiles. 3 venues (bitget, okx, kucoin) default to `production` mode.
 - [ ] Check which defaults are safe
 - [ ] Check which defaults could enable trading
 - [ ] Map the relationships between: execution loop, live orders, kill switch
