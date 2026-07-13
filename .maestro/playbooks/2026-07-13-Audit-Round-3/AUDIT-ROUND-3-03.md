@@ -394,7 +394,18 @@
   - ⚠️ OKX and Bitget use same URL for testnet/production (mitigated: neither is in `live-enabled-venues`)
   - ⚠️ No double-confirmation mechanism before enabling loop + live orders + removing kill switch
   - Full report: `Working/testnet-profile-verification.md`
-- [ ] Verify `staging` profile — exact configuration
+- [x] Verify `staging` profile — exact configuration
+  - **Full report:** `Working/staging-profile-verification.md`
+  - **Safety verdict:** Safe for staging/pre-production use ✅
+  - **Key findings:**
+    1. Auth ON, credentials storage ON, master key required — all critical protections active
+    2. Engine loop OFF, live orders OFF, kill switch ON — no execution risk
+    3. engine-app staging and prod-like profiles are byte-for-byte identical
+    4. telegram-bot-app staging YAML lacks `spring.config.activate.on-profile` declaration (inconsistent pattern)
+    5. telegram-bot-app has no `prod-like` profile — uses `staging` in production deploy
+    6. Venue access mode mismatch: monitor uses `production`, engine uses `testnet` (inconsistent but harmless since execution is off)
+    7. Candidate source polls external API every 60s (not disabled by staging)
+    8. Metadata sync runs on startup (pulls from all 5 exchanges)
 - [ ] Verify `prod-like` profile — exact configuration
 - [ ] Document exact differences between profiles
 - [ ] Check which parameters are overridden in each profile
