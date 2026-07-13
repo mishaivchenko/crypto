@@ -9,7 +9,25 @@
   - **Spring Boot version: 3.5.14** (Spring Cloud 2025.0.2)
   - Confirmed via `build.gradle` line: `springBootVersion = '3.5.14'` and `dependencyInsight` on both modules
   - BOM: `org.springframework.boot:spring-boot-dependencies:3.5.14`
-- [ ] Identify all Spring Boot starters in each application module
+- [x] Identify all Spring Boot starters in each application module
+  - **monitor-app** (6 starters):
+    - `spring-boot-starter` — core auto-config, logging, embedded container support
+    - `spring-boot-starter-actuator` — health, metrics, env endpoints
+    - `spring-boot-starter-data-jpa` — JPA/Hibernate (transitive: `spring-boot-starter-aop`, `spring-boot-starter-jdbc`)
+    - `spring-boot-starter-validation` — Bean Validation (Hibernate Validator)
+    - `spring-boot-starter-web` — REST controllers, embedded Tomcat (transitive: `spring-boot-starter-json`, `spring-boot-starter-tomcat`)
+    - `spring-cloud-starter-openfeign` — declarative HTTP clients
+  - **engine-app** (3 starters):
+    - `spring-boot-starter` — core
+    - `spring-boot-starter-web` — REST, embedded Tomcat
+    - `spring-boot-starter-actuator` — health, metrics
+  - **telegram-bot-app** (3 starters):
+    - `spring-boot-starter` — core
+    - `spring-boot-starter-web` — REST, embedded Tomcat
+    - `spring-cloud-starter-openfeign` — HTTP clients (to monitor)
+  - All modules share `spring-boot-starter-test` (test scope) from root `subprojects` block
+  - **No starters beyond these:** there are no `spring-boot-starter-cache`, `-security`, `-batch`, `-quartz`, `-amqp`, `-websocket`, `-mail`, or other optional starters
+  - Version managed by BOM: `spring-boot-dependencies:3.5.14` + `spring-cloud-dependencies:2025.0.2`
 - [ ] Identify starters that are included but not needed
 - [ ] Check which auto-configurations are active (`spring.autoconfigure.log` or equivalent)
 - [ ] Check which auto-configurations are excluded explicitly
