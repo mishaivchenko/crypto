@@ -458,8 +458,21 @@
   - The only implicit activation is build.gradle's `bootRun` task defaulting to `local-safe` — a Gradle convenience, not a Spring Boot default
   - Running with zero profiles is safe: loop OFF, live OFF, kill switch ON — but candidate source polls external API every 60s (`matchIfMissing=true`)
   - Full report updated in `Working/profile-activation-audit.md` (Section 7 added)
-- [ ] Verify behavior when no profile is set
-- [ ] Check which profile Docker Compose uses
+- [x] Verify behavior when no profile is set
+  - **Verified. Full report: `Working/no-profile-behavior-verification.md`**
+  - **Safety verdict:** Safe for read-only use — no execution loop (OFF), no live orders (OFF), kill switch ON
+  - **Risks found:**
+    1. **Medium** — Candidate source (`uainvest.com.ua`) polled every 60s despite no profile (`TRADING_CANDIDATE_SOURCE_ENABLED` defaults to `true` via `matchIfMissing`)
+    2. **Medium** — telegram-bot-app's `application-staging.yml` lacks `spring.config.activate.on-profile`, loads unconditionally, and sets `token: ${TELEGRAM_BOT_TOKEN}` (NO default) — if env var unset, placeholder string becomes token value, bot beans are created with invalid token causing unnecessary scheduler/scheduler load and log noise
+    3. **Low** — No token auth between modules (`INTERNAL_ENGINE_TOKEN` defaults to empty)
+    4. **Low** — Metadata sync runs on startup against 5 exchange APIs (fails silently without credentials)
+  - **Effective config per module documented and verified** against base YAMLs, profile YAMLs, and `@ConditionalOnProperty` beans
+- [x] Check which profile Docker Compose uses
+  - **Root `docker-compose.yml`**: **NO profile set** — all 3 services run with base defaults only (no `SPRING_PROFILES_ACTIVE` anywhere). Explicit env overrides compensate (`ENGINE_EXECUTION_LOOP_ENABLED=false`, metrics ON, `TRADING_VENUE_ACCESS_MODE=testnet`). Candidate source still polls every 60s (matchIfMissing). telegram-bot not included. Safe for local dev.
+  - **`deploy/docker-compose.yml`**: monitor-app=**prod-like**, engine-app=**prod-like**, telegram-bot=**staging** (no prod-like profile for telegram-bot-app). Uses pre-built images. Auth/credentials ON, loop OFF, live orders OFF. Production-safe.
+  - **`deploy/observability/docker-compose.yml`**: monitor-app=**staging**, engine-app=**staging**, telegram-bot absent. Auth/credentials OFF (env override), engine loop ON (env override). Observability testing only — **not** for production or network exposure.
+  - **No compose file sets `testnet` profile** — testnet execution requires manual env activation only.
+  - Full report: `Working/docker-compose-profile-audit.md`
 - [ ] Check which profile CI staging uses
 - [ ] Check which profile production should use
 - [ ] Verify safety of multiple simultaneous profiles
