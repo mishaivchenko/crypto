@@ -473,7 +473,19 @@
   - **`deploy/observability/docker-compose.yml`**: monitor-app=**staging**, engine-app=**staging**, telegram-bot absent. Auth/credentials OFF (env override), engine loop ON (env override). Observability testing only — **not** for production or network exposure.
   - **No compose file sets `testnet` profile** — testnet execution requires manual env activation only.
   - Full report: `Working/docker-compose-profile-audit.md`
-- [ ] Check which profile CI staging uses
+- [x] Check which profile CI staging uses
+  - **CI staging uses `prod-like` for monitor-app and engine-app, `staging` for telegram-bot-app**
+  - Defined in `deploy/docker-compose.yml` lines 10, 42, 67 — NOT in CI workflow YAML itself
+  - **Key finding:** The "Staging" deploy actually uses the `prod-like` Spring profile (not `staging`), which is misleading naming but functionally defensible:
+    - engine-app `staging` and `prod-like` are byte-for-byte identical — zero behavioral difference
+    - monitor-app differs by only one property: `metadata.require-credentials-on-startup: true` (prod-like) vs `false` (staging) — more production-like in staging is arguably correct
+    - telegram-bot uses `staging` because it has no `prod-like` profile
+  - `deploy/.env` redundantly sets `SPRING_PROFILES_ACTIVE=prod-like` — consistent with compose-level setting for monitor/engine; telegram-bot's compose-level `staging` takes precedence over `.env`
+  - Runner: self-hosted Mac mini (`runs-on: [self-hosted, mac-mini, staging]`), GitHub `environment: staging` (secret scoping, not Spring profile)
+  - Build: Native arm64 JAR build on Mac mini (no QEMU, no DockerHub pull needed)
+  - Smoke test: `/actuator/health` only on ports 8090/8091 — no profile-specific validation
+  - **Inherited base-application risks still apply:** `candidate-source.enabled: true` (matchIfMissing), `server.shutdown: immediate`, `spring.task.scheduling.pool.size: 1`
+  - Full report: `Working/ci-staging-profile-audit.md`
 - [ ] Check which profile production should use
 - [ ] Verify safety of multiple simultaneous profiles
 - [ ] Check for dangerous profile combinations
