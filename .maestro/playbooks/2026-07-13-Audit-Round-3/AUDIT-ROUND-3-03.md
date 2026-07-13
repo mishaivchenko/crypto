@@ -512,15 +512,45 @@
   - **Matrix summary**: 6 engine-app combinations are DANGEROUS (testnet listed after a safe profile), 6 are MASKED DANGER (testnet listed before a safe profile — live/kill switch remain contaminated). Only testnet-alone is intentionally dangerous.
 
 ### Property sources
-- [ ] List all `@ConfigurationProperties` classes with `@Validated`
-- [ ] List all `@Value` property injections
-- [ ] List all direct `Environment.getProperty()` calls
-- [ ] List all `System.getenv()` calls
-- [ ] Check for duplicate property names across files
-- [ ] Check for declared properties that are never read
-- [ ] Check for read properties that are undocumented
-- [ ] Check for property name typos
-- [ ] Check for differently-named properties between monitor and engine
+- [x] List all `@ConfigurationProperties` classes with `@Validated`
+  - **20 classes found across 3 modules** (15 monitor-app, 2 engine-app, 3 telegram-bot-app)
+  - **NONE use `@Validated`** — zero `@Validated` annotations anywhere in the codebase
+  - Report: `Working/property-sources-audit.md` Part 1
+- [x] List all `@Value` property injections
+  - **4 total** (3 duplicated in Gate adapters, 1 in telegram-bot Feign config)
+  - Only 2 unique properties consumed: `trading.gate.contracts-base-url` (×3) and `monitor.operator-token`
+  - Report: `Working/property-sources-audit.md` Part 2
+- [x] List all direct `Environment.getProperty()` calls
+  - **33 calls** across 12 classes (23 in monitor-app, 10 in engine-app)
+  - 15 calls with no default (returns null), 13 with static defaults, 9 with dynamic fallback defaults
+  - Report: `Working/property-sources-audit.md` Part 3
+- [x] List all `System.getenv()` calls
+  - **Zero** in Java source files — all env-var access routed through Spring's `Environment` abstraction
+  - 10 calls in `build.gradle` only (all optional with fallbacks)
+  - Report: `Working/property-sources-audit.md` Part 4
+- [x] Check for duplicate property names across files
+  - All duplicates are **intentional profile overrides** — no unintentional duplicates found
+  - Properties overriden across profile YAMLs: engine execution/intervals, security, credentials, metrics, metadata, telegram
+  - Report: `Working/property-sources-audit.md` Section 5A
+- [x] Check for declared properties that are never read
+  - **1 property**: `monitor.ui.version: 2.0.0` in `monitor-app/application.yml` — declared but never programmatically consumed from Spring Environment. Version is hardcoded in `MonitorOverviewService.java` instead.
+  - All other YAML-declared properties are consumed by at least one code path
+  - Report: `Working/property-sources-audit.md` Section 5B
+- [x] Check for read properties that are undocumented
+  - **13 unique property keys** consumed by code but not declared in any YAML (all dynamic/derived keys — covered by env-var fallbacks in `platform-core.yml`)
+  - `trading.{venue}.contracts-base-url` for non-Gate venues has NO default anywhere
+  - Report: `Working/property-sources-audit.md` Section 5C
+- [x] Check for property name typos
+  - **No typos found** — all property key names are consistent within their module
+  - **1 behavioral inconsistency**: `engine.gate.production-base-url` (perpetual futures API) vs `platform-core.yml` `trading.gate.production.base-url` (spot API) — different endpoints
+  - Engine uses `{mode}-base-url` (hyphen); monitor uses `{mode}.base-url` (dot) — different separator conventions
+  - Report: `Working/property-sources-audit.md` Section 5D
+- [x] Check for differently-named properties between monitor and engine
+  - **Engine and monitor share zero property namespace conventions** for common concepts
+  - Credentials: `trading.{venue}.{mode}.api-key` (monitor) vs `engine.credentials.{venue}.api-key` (engine)
+  - Access mode: `trading.venue-access.mode` (monitor) vs `engine.trading-venue-access-mode` (engine)
+  - Base URL: `trading.{venue}.{mode}.base-url` (monitor) vs `engine.{venue}.{mode}-base-url` (engine)
+  - Report: `Working/property-sources-audit.md` Section 5E
 
 ### Environment variables
 - [ ] List all mandatory environment variables
