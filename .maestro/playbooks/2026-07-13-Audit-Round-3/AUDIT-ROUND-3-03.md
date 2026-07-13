@@ -406,7 +406,16 @@
     6. Venue access mode mismatch: monitor uses `production`, engine uses `testnet` (inconsistent but harmless since execution is off)
     7. Candidate source polls external API every 60s (not disabled by staging)
     8. Metadata sync runs on startup (pulls from all 5 exchanges)
-- [ ] Verify `prod-like` profile — exact configuration
+- [x] Verify `prod-like` profile — exact configuration
+  - **Full report:** `Working/prod-like-profile-verification.md`
+  - **monitor-app (5 overrides):** auth=ON, credentials-storage=ON, require-master-key=ON, engine-metrics=ON, metadata-require-credentials=ON
+  - **engine-app (2 overrides):** execution-loop=OFF, metrics-publish=ON
+  - **telegram-bot-app:** No prod-like profile exists — uses `staging` in Docker Compose
+  - **engine-app staging vs prod-like:** Byte-for-byte identical — only env vars differentiate them
+  - **monitor-app staging vs prod-like:** Only 1 difference — `metadata.require-credentials-on-startup: true` (prod-like) vs `false` (staging)
+  - **Safety verdict: safe** — loop OFF, live orders OFF, kill switch ON, auth ON, master key required
+  - **Notable:** `trading.candidate-source.enabled` inherits default `true` (matchIfMissing) — external API polled every 60s
+  - **Finding:** Engine-app default venue access mode is `testnet`, monitor-app default is `production` — inconsistent but harmless (loop is OFF)
 - [ ] Document exact differences between profiles
 - [ ] Check which parameters are overridden in each profile
 - [ ] Check for dangerous parameter inheritance between profiles
