@@ -149,14 +149,61 @@
   - If enabled: would switch `ThreadPoolTaskExecutor` to virtual threads per task (no thread pool overhead) and `ThreadPoolTaskScheduler` to virtual threads. Not recommended for scheduler (fixed pool sizing is safer for latency-critical ticks).
 
 ### Startup and shutdown
-- [ ] Check graceful shutdown configuration (`server.shutdown=graceful`)
-- [ ] Check shutdown timeout settings
-- [ ] Identify what happens to an executing trade on SIGTERM
-- [ ] List all `ApplicationRunner` or `CommandLineRunner` beans
-- [ ] Check if startup hooks call external APIs
-- [ ] Check if startup can create or modify trading state
-- [ ] List all scheduled jobs that start automatically
-- [ ] Document how to disable each scheduled job
+- [x] Check graceful shutdown configuration (`server.shutdown=graceful`)
+  - **Not configured in any module** — all 3 apps use Spring Boot default `server.shutdown=immediate`
+  - No `spring.lifecycle.timeout-per-shutdown-phase` property exists anywhere
+  - No `@PreDestroy`, `DisposableBean`, `SmartLifecycle`, or `Lifecycle` implementations exist
+  - No custom JVM shutdown hooks registered
+- [x] Check shutdown timeout settings
+  - **No shutdown timeout parameters configured** — even if graceful shutdown were enabled, no beans implement cleanup hooks. The phase timeout default of 30s would have no effect as there's nothing to await.
+- [x] Identify what happens to an executing trade on SIGTERM
+  - **Critical gap: no protection for in-flight trades during shutdown.** With `immediate` shutdown, the JVM exits promptly, killing all threads mid-operation
+  - Engine execution loop (250ms `@Scheduled`): Spring stops scheduling new invocations; any in-flight `runOnce()` call continues (no interruption mechanism)
+  - `LiveExchangeExecutionPort` handles `InterruptedException` correctly (restores flag, returns FAILED attempt), but HTTP POST to exchange is not interruptible once sent
+  - **Risk: order POST sent but response not received before JVM exits** — no reconciliation mechanism on restart. `submittedAttemptKeys` (in-memory dedup set) is lost, risking duplicate orders
+  - 7 `@Async` methods may be mid-execution (no graceful drain of `ThreadPoolTaskExecutor`)
+  - Full report: `Working/startup-shutdown-audit.md`
+- [x] List all `ApplicationRunner` or `CommandLineRunner` beans
+  - **3 `ApplicationRunner` beans** (all in monitor-app):
+    1. `OperatorAccountService` — upserts bootstrap operator accounts from env var
+    2. `CredentialStorageStartupValidator` — validates master key is present (throws if invariant violated)
+    3. `InstrumentMetadataSyncRunner` — syncs venue instrument metadata (conditional: `trading.metadata.sync-on-startup=true`)
+  - **0 `CommandLineRunner`** beans anywhere
+  - **2 `@EventListener(ApplicationReadyEvent.class)`** methods:
+    1. `FundingApiCandidateSourceService.loadOnStartup()` — fetches candidates from external API (blocking)
+    2. `EngineCredentialCache.loadOnStartup()` — async loads engine credentials with retry (up to 10×, 10s apart)
+  - **1 `@PostConstruct`**: `FundingBot.startPolling()` — starts Telegram bot polling immediately after bean init
+- [x] Check if startup hooks call external APIs
+  - **4 startup hooks call external APIs:**
+    1. `InstrumentMetadataSyncRunner.run()` → venue exchange APIs (conditional)
+    2. `FundingApiCandidateSourceService.loadOnStartup()` → `uainvest.com.ua` (blocking)
+    3. `EngineCredentialCache.loadOnStartup()` → monitor internal API (async, retries)
+    4. `FundingBot.startPolling()` → Telegram API polling
+  - **None block application startup** — errors are logged as warnings, startup continues
+  - Only `CredentialStorageStartupValidator` can prevent startup, and it checks a local env var (no external call)
+- [x] Check if startup can create or modify trading state
+  - **None create `FundingEvent`, `ArmedTrade`, or execute actual trades**
+  - `OperatorAccountService` upserts operator accounts (auth only, not trading state)
+  - `FundingApiCandidateSourceService` ingests `SignalCandidate` records only (requires operator review to become trades)
+  - `InstrumentMetadataSyncRunner` updates metadata only
+  - Auto-approval pipeline runs on events/API calls, not automatically on startup
+- [x] List all scheduled jobs that start automatically
+  - **6 total across 3 modules:**
+    1. `EngineExecutionScheduler.runLoop()` — 250ms fixedDelay (kill switch guards execution)
+    2. `EngineMetricsPublisher.publishOnSchedule()` — 15s fixedDelay (`@ConditionalOnProperty`)
+    3. `InstrumentMetadataSyncRunner.scheduledSync()` — 240min fixedDelay
+    4. `FundingApiCandidateSourceService.scheduledRefresh()` — 60s fixedDelay (`@ConditionalOnProperty`, matchIfMissing=true)
+    5. `TradeNotificationScheduler.pollAndNotify()` — 30s fixedDelay (telegram-bot)
+    6. `SignalNotificationScheduler.pollAndNotify()` — 30s fixedDelay (telegram-bot)
+  - All use `fixedDelay` (not `fixedRate`/`cron`). All share single scheduler thread (default pool size=1).
+- [x] Document how to disable each scheduled job
+  - See `Working/startup-shutdown-audit.md` for full table of properties, env vars, and profile defaults
+  - **Key disable methods:**
+    - Engine loop: `engine.execution-loop-enabled=false` or `ENGINE_EXECUTION_LOOP_ENABLED=false`
+    - Metrics publish: `engine.metrics-publish.enabled=false` or `ENGINE_METRICS_PUBLISH_ENABLED=false`
+    - Candidate refresh: `trading.candidate-source.enabled=false` or `TRADING_CANDIDATE_SOURCE_ENABLED=false`
+    - Telegram: unset `TELEGRAM_BOT_TOKEN` (blank disables conditional bean)
+    - Metadata sync: not directly disableable via env var (set interval to 0 or use schedule code guard)
 
 ### Profile-dependent beans
 - [ ] Identify beans that depend on active profile
