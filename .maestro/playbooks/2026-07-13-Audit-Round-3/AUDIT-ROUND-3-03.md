@@ -206,10 +206,27 @@
     - Metadata sync: not directly disableable via env var (set interval to 0 or use schedule code guard)
 
 ### Profile-dependent beans
-- [ ] Identify beans that depend on active profile
-- [ ] Identify beans created only for testnet
-- [ ] Identify beans created only for local-safe
-- [ ] Identify beans created even when live trading is disabled
+- [x] Identify beans that depend on active profile
+  - **Zero `@Profile` annotations exist** anywhere in the codebase — no Java class uses `@Profile`.
+  - Profile-dependent behavior is driven entirely through property values in per-profile YAML files, NOT through conditional bean registration.
+  - **11 `@ConditionalOnProperty` beans** gate subsystems (not profiles):
+    - **engine-app** (1): `EngineMetricsPublisher` — gated on `engine.metrics-publish.enabled=true` (disabled in local-safe, testnet; enabled in staging, prod-like)
+    - **monitor-app** (6): 5 engine-metrics beans gated on `monitor.engine-metrics.enabled=true` (disabled in local-safe); `FundingApiCandidateSourceService` gated on `trading.candidate-source.enabled=true` (matchIfMissing — enabled by default)
+    - **telegram-bot-app** (4): `TelegramBot`, `FundingBot`, `SignalNotificationScheduler`, `TradeNotificationScheduler` — all gated on `telegram.bot.token` being non-empty
+  - All other beans across all 3 modules are **unconditional** — they exist in every profile.
+  - Full report: `Working/profile-dependent-beans-audit.md`
+- [x] Identify beans created only for testnet
+  - **No beans are created only for testnet.** The testnet profile overrides property values (execution-loop-enabled=true, live-order-enabled=true) but does not create or destroy any beans.
+  - All 12/13 engine-app beans exist regardless of profile — the testnet profile simply removes the runtime guards.
+- [x] Identify beans created only for local-safe
+  - **No beans are created only for local-safe.** The local-safe profile disables features via property values: loop=false, metrics enabled=false, auth=false, credential storage=false, metadata sync=false, DeepSeek=false.
+  - All beans exist but most are behaviorally disabled. `EngineMetricsPublisher` and the 5 monitor engine-metrics beans are not created in local-safe (due to `@ConditionalOnProperty`), but they are feature-gated, not profile-gated.
+- [x] Identify beans created even when live trading is disabled
+  - **Nearly the entire application context exists** even with live trading disabled.
+  - **engine-app**: 12/13 beans are unconditional — `EngineExecutionService`, `EngineExecutionScheduler`, `CredentialAwareExecutionPort`, `EnginePlanClient`, `EngineController`, `EngineCredentialCache`, etc. All exist. The execution loop ticks at 250ms but immediately exits via `EngineRuntimeControlService.isExecutionLoopEnabled()` guard. The `CredentialAwareExecutionPort` returns FAILED for every order when `liveOrderEnabled=false`.
+  - **monitor-app**: All 20+ venue adapter classes, all REST controllers, all services (including `AutoApprovalPipelineService`), `VenueHttpClientConfig.venueHttpClient()` bean, persistence layer — all unconditional.
+  - **telegram-bot-app**: `MonitorFeignConfig.monitorOperatorTokenInterceptor()` and `MonitorApiClient` Feign interface are unconditional.
+  - **Only exception**: `EngineMetricsPublisher` (engine-app) and the 5 engine-metrics beans (monitor-app) — these are not created when metrics publishing is disabled, which happens in local-safe and testnet profiles.
 
 ### REST API and validation
 - [ ] Check for global exception handler (`@ControllerAdvice`)
