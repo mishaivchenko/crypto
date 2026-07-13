@@ -311,10 +311,23 @@
   - **The application health endpoint provides effectively no meaningful signal about trading readiness.** In all 6 critical dimensions (loop status, live orders, credentials, exchange connectivity, clock sync, DB writability), health either always reports UP (5/6) or offers only partial driver-dependent coverage (1/6). The only dimensions with adequate coverage are disk space and SSL — neither of which are specific to trading readiness. Full comparison table in `Working/health-indicator-audit.md`.
 
 ### Application properties
-- [ ] Identify dangerous defaults
-- [ ] Identify defaults that differ between code and documentation
-- [ ] Create list of properties with their safe defaults
-- [ ] List all `application.yml` and `application-*.yml` files
+- [x] Identify dangerous defaults
+  - **6 critical/4 high/4 medium/6 low findings identified** — full report at `Working/application-properties-audit.md`
+  - **Top 3 most dangerous:** (1) `security.operators.auth-enabled: false` — no auth by default; (2) `trading.bitget/okx/kucoin.mode: production` — inconsistent with bybit/gate's `testnet` defaults, could hit production URLs unexpectedly; (3) `server.shutdown` defaults to `immediate` — in-flight trades lost on SIGTERM
+  - Additional concerns: scheduler pool size = 1 (all 6 `@Scheduled` methods share one thread); `TRADING_CANDIDATE_SOURCE_ENABLED` defaults to `true` (matchIfMissing) but `local-safe` does NOT disable it
+- [x] Identify defaults that differ between code and documentation
+  - **No code-vs-documentation drift detected.** All `.env.example` values that differ from code defaults (auth-enabled, credentials-enabled, profiles-active) are intentionally production-oriented and correctly documented as such
+  - Detailed comparison table in `Working/application-properties-audit.md`
+- [x] Create list of properties with their safe defaults
+  - Full property-safe-defaults table in `Working/application-properties-audit.md` — 40+ properties across 10 categories
+  - Key recommendations: set `trading.{bitget,okx,kucoin}.mode: testnet` (consistency), `server.shutdown: graceful` (data safety), `spring.task.scheduling.pool.size: 4` (prevent starvation), `TRADING_CANDIDATE_SOURCE_ENABLED: false` in local-safe profile
+- [x] List all `application.yml` and `application-*.yml` files
+  - **14 files across 3 modules + 1 shared config:**
+    - `config/application.yaml` — optional runtime override
+    - `monitor-app/src/main/resources/`: platform-core.yml, application.yml, application-local-safe.yml, application-staging.yml, application-prod-like.yml
+    - `engine-app/src/main/resources/`: application.yml, application-local-safe.yml, application-testnet.yml, application-staging.yml, application-prod-like.yml
+    - `telegram-bot-app/src/main/resources/`: application.yml, application-local-safe.yml, application-staging.yml
+  - See `Working/application-properties-audit.md` for full catalog with each file's purpose
 
 ## Section 8 — Configuration Inventory
 
