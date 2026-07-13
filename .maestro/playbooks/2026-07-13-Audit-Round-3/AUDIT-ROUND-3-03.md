@@ -416,7 +416,13 @@
   - **Safety verdict: safe** — loop OFF, live orders OFF, kill switch ON, auth ON, master key required
   - **Notable:** `trading.candidate-source.enabled` inherits default `true` (matchIfMissing) — external API polled every 60s
   - **Finding:** Engine-app default venue access mode is `testnet`, monitor-app default is `production` — inconsistent but harmless (loop is OFF)
-- [ ] Document exact differences between profiles
+- [x] Document exact differences between profiles
+  - **Full report:** `Working/profile-differences-comparison.md`
+  - **Key finding 1:** engine-app staging and prod-like profiles are **byte-for-byte identical** — the only behavioral distinction comes from environment variables, not YAML overrides
+  - **Key finding 2:** Only `testnet` profile reverses the 3 critical execution guards (loop ON, live ON, kill switch OFF) — all other profiles keep them safe
+  - **Key finding 3:** telegram-bot-app lags behind in profile structure — lacks `spring.config.activate.on-profile` declarations and has no `prod-like` profile
+  - **Key finding 4:** The candidate source external API poll is enabled by default in **all** profiles — no profile explicitly disables it
+  - **Key finding 5:** The single difference between monitor-app staging and prod-like is `trading.metadata.require-credentials-on-startup` (`false` → `true`)
 - [ ] Check which parameters are overridden in each profile
 - [ ] Check for dangerous parameter inheritance between profiles
 
