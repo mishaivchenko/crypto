@@ -373,7 +373,18 @@
     - `testnet` is intentionally excluded from the safe-defaults requirement because its purpose is to enable execution — this is correct behavior
   - **No `@Profile` annotations exist anywhere** — profile behavior is entirely property-driven via per-profile YAML files, not conditional bean registration
   - **telegram-bot-app profile YAMLs don't use `spring.config.activate.on-profile`** — unlike monitor-app and engine-app, telegram-bot-app relies on Spring Boot's filename-based profile activation convention only
-- [ ] Verify `local-safe` profile — exact configuration
+- [x] Verify `local-safe` profile — exact configuration
+  - **Complete verification at:** `Working/local-safe-profile-verification.md`
+  - **monitor-app** (7 explicit overrides): auth-enabled=OFF, credentials-storage=OFF, require-master-key=OFF, engine-metrics=OFF, metadata-sync=OFF, metadata-cred-check=OFF, deepseek=OFF
+  - **engine-app** (2 explicit overrides): execution-loop=OFF, metrics-publish=OFF
+  - **telegram-bot-app** (no `spring.config.activate.on-profile` declared — uses filename convention): token=empty (bot disabled), monitor=http://localhost:8090, DEBUG logging
+  - **Key findings:**
+    1. `trading.candidate-source.enabled` defaults to `true` (matchIfMissing) — NOT disabled in local-safe, external API (`uainvest.com.ua`) polled every 60s during local dev
+    2. Inconsistent venue defaults: bitget/okx/kucoin default to `production`, bybit/gate default to `testnet` — irrelevant without credentials/loop but confusing
+    3. telegram-bot-app local-safe YAML lacks `spring.config.activate.on-profile` declaration (works via filename convention, but inconsistent with other modules)
+    4. All 13 engine-app beans load unconditionally — execution loop ticks at 250ms but immediately exits via runtime guard
+    5. No auth, no credentials, no execution, no live orders, no external API risk (except candidate source polling)
+  - **Safety verdict: safe for local development** — all trading-critical features disabled
 - [ ] Verify `testnet` profile — exact configuration
 - [ ] Verify `staging` profile — exact configuration
 - [ ] Verify `prod-like` profile — exact configuration
