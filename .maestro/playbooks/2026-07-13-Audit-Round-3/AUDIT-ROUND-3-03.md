@@ -83,7 +83,22 @@
     - **`System.nanoTime()`** not injectable in: VenueLatencyProbeService, InstrumentRegistryService, VenueDiagnosticsService, FundingApiCandidateSourceService (only EngineExecutionService injects it via `LongSupplier`)
     - **Verdict:** The Clock-injected services are well-designed for deterministic testing. The main gap is the 12+ services using bare `Instant.now()`, which would need to be refactored to accept `Clock` if deterministic tests are needed. For non-deterministic integration tests, the current pattern is adequate.
   - Detailed breakdown: `Working/clock-injection-analysis.md`
-- [ ] Check how HTTP clients are created (Feign config, `@Bean` method)
+- [x] Check how HTTP clients are created (Feign config, `@Bean` method)
+  - **Feign (telegram-bot-app only):** Single `MonitorApiClient` interface with `@FeignClient(name = "monitor-api", url = "${monitor.base-url}")` — 3 endpoints (candidates, armed-trades, overview). Configured via `MonitorFeignConfig` providing one `RequestInterceptor` bean for `X-Operator-Token` header. Activated via `@EnableFeignClients(basePackages = "com.crypto.funding.telegram.client")`. **No customizations:** no custom `Feign.Builder`, `Decoder`, `Encoder`, `ErrorDecoder`, `Retryer`, or `Logger.Level`. No Feign timeout configuration (uses defaults: 10s connect, 60s read). No circuit breaker (`spring-cloud-starter-circuitbreaker-resilience4j` absent).
+  - **Shared `HttpClient` bean (monitor-app):** `VenueHttpClientConfig` creates a `@Bean HttpClient venueHttpClient(VenueHttpProperties)` with properties from `trading.http.*`: `connectTimeoutMs=1000`, `requestTimeoutMs=5000`, `preferHttp2=true`. **Notable:** `requestTimeoutMs` is declared in `VenueHttpProperties` but **never wired to the HttpClient** — `HttpClient.Builder` only supports `connectTimeout()`, not read timeout (must be set per-request). Consumed by 20 adapter classes (5 each for metadata, credential checking, mark price, order book) plus `FundingApiPayloadFetcher`.
+  - **Standalone `HttpClient` instances (not shared):**
+    - `VenueLatencyProbeService` (monitor-app): `HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()` — hardcoded 5s connect timeout, does not use `VenueHttpProperties`.
+    - `EngineExecutionService` (engine-app): `HttpClient.newBuilder().build()` — **no connect timeout** (infinite default). Used for latency probe at line 765.
+    - `LiveExchangeExecutionPort` (engine-app): `HttpClient.newHttpClient()` in 3 default constructors, 4th overload accepts injected `HttpClient` for testing. **No connect timeout** on default instances — `REQUEST_TIMEOUT=10s` only applied per-request via `HttpRequest.Builder.timeout()`. Used for all 5 venue live order submissions (Bybit, Gate, OKX, KuCoin, Bitget).
+  - **`RestClient` instances (auto-configured `RestClient.Builder`):** 3 total — `EnginePlanClient` (engine-app, to monitor), `EngineControlService` (monitor-app, to engine), `DeepSeekClient` (monitor-app, to DeepSeek AI). **None customize timeouts**, request factories, message converters, or retry. Backed by Spring Boot default `SimpleClientHttpRequestFactory` (`HttpURLConnection` — no connection pooling). `DeepSeekClient` has `.onStatus()` for 4xx/5xx error handling only.
+  - **What does NOT exist:** No `RestTemplate`, `WebClient`, Apache `HttpClient`/`CloseableHttpClient`, OkHttp, or any `RestClient.Builder` customization `@Bean` anywhere. No `feign.httpclient.enabled`/`feign.okhttp.enabled` properties. Engine-app has no Feign dependency at all — uses `RestClient` + raw `HttpClient`.
+  - **Key findings:**
+    1. **Missing connect timeouts in engine-app:** `EngineExecutionService.probeHttpClient` and `LiveExchangeExecutionPort` default instances have no connect timeout — network partitions block execution indefinitely
+    2. **`VenueHttpProperties.requestTimeoutMs` is unused:** declared (5000ms default) but never applied to the `HttpClient` bean; each adapter must set per-request timeout individually
+    3. **No `RestClient` customization:** all 3 instances use auto-configured defaults backed by `HttpURLConnection` — no connection pooling, no explicit timeouts, minimal error handling
+    4. **Feign has no timeout or resilience config:** uses OpenFeign defaults; no retry, no circuit breaker, no custom error decoder
+    5. **No shared HTTP client across modules:** monitor-app's shared bean is inaccessible to engine-app (separate Spring context); each module creates its own
+  - Full report: `Working/http-client-creation-audit.md`
 - [ ] Check how thread pools are created
 - [ ] Check if default Spring scheduler thread pool is used
 - [ ] Check if default TaskExecutor is configured
