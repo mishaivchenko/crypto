@@ -2,9 +2,6 @@ package com.crypto.funding.application.execution;
 
 import com.crypto.funding.infrastructure.persistence.model.TradeOutcomeEntity;
 import com.crypto.funding.infrastructure.persistence.repository.TradeOutcomeJpaRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
@@ -12,86 +9,71 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TradeOutcomeQueryService
-{
+public class TradeOutcomeQueryService {
     public record OutcomeSummary(
-        Long armedTradeId,
-        BigDecimal grossPnlUsd,
-        BigDecimal netPnlUsd,
-        BigDecimal feesUsd,
-        String outcomeCode,
-        Instant evaluatedAt
-    )
-    {
-    }
+            Long armedTradeId,
+            BigDecimal grossPnlUsd,
+            BigDecimal netPnlUsd,
+            BigDecimal feesUsd,
+            String outcomeCode,
+            Instant evaluatedAt) {}
 
     public record PnlAggregate(
-        BigDecimal totalNetPnlUsd,
-        BigDecimal totalGrossPnlUsd,
-        BigDecimal totalFeesUsd,
-        long closedTrades,
-        long profitableTrades
-    )
-    {
-    }
+            BigDecimal totalNetPnlUsd,
+            BigDecimal totalGrossPnlUsd,
+            BigDecimal totalFeesUsd,
+            long closedTrades,
+            long profitableTrades) {}
 
     private final TradeOutcomeJpaRepository tradeOutcomeRepository;
 
-    public TradeOutcomeQueryService( TradeOutcomeJpaRepository tradeOutcomeRepository )
-    {
+    public TradeOutcomeQueryService(TradeOutcomeJpaRepository tradeOutcomeRepository) {
         this.tradeOutcomeRepository = tradeOutcomeRepository;
     }
 
     @Transactional(readOnly = true)
-    public Optional<OutcomeSummary> findByArmedTrade( Long armedTradeId )
-    {
-        return tradeOutcomeRepository.findFirstByArmedTradeIdOrderByCreatedAtDesc( armedTradeId )
-                                     .map( this::toSummary );
+    public Optional<OutcomeSummary> findByArmedTrade(Long armedTradeId) {
+        return tradeOutcomeRepository
+                .findFirstByArmedTradeIdOrderByCreatedAtDesc(armedTradeId)
+                .map(this::toSummary);
     }
 
     @Transactional(readOnly = true)
-    public Map<Long, OutcomeSummary> findByArmedTradeIds( Collection<Long> armedTradeIds )
-    {
-        return tradeOutcomeRepository.findByArmedTradeIdIn( armedTradeIds ).stream()
-                                     .collect( Collectors.toMap(
-                                         TradeOutcomeEntity::getArmedTradeId,
-                                         this::toSummary,
-                                         ( existing, replacement ) -> existing
-                                     ) );
+    public Map<Long, OutcomeSummary> findByArmedTradeIds(Collection<Long> armedTradeIds) {
+        return tradeOutcomeRepository.findByArmedTradeIdIn(armedTradeIds).stream()
+                .collect(Collectors.toMap(
+                        TradeOutcomeEntity::getArmedTradeId, this::toSummary, (existing, replacement) -> existing));
     }
 
     @Transactional(readOnly = true)
-    public PnlAggregate aggregate()
-    {
+    public PnlAggregate aggregate() {
         List<TradeOutcomeEntity> all = tradeOutcomeRepository.findAll();
         BigDecimal totalNet = BigDecimal.ZERO;
         BigDecimal totalGross = BigDecimal.ZERO;
         BigDecimal totalFees = BigDecimal.ZERO;
         long profitable = 0;
-        for( TradeOutcomeEntity entity : all )
-        {
-            if( entity.getNetPnlUsd() != null )
-            {
-                totalNet = totalNet.add( entity.getNetPnlUsd() );
-                if( entity.getNetPnlUsd().signum() > 0 ) profitable++;
+        for (TradeOutcomeEntity entity : all) {
+            if (entity.getNetPnlUsd() != null) {
+                totalNet = totalNet.add(entity.getNetPnlUsd());
+                if (entity.getNetPnlUsd().signum() > 0) profitable++;
             }
-            if( entity.getGrossPnlUsd() != null ) totalGross = totalGross.add( entity.getGrossPnlUsd() );
-            if( entity.getFeesUsd() != null ) totalFees = totalFees.add( entity.getFeesUsd() );
+            if (entity.getGrossPnlUsd() != null) totalGross = totalGross.add(entity.getGrossPnlUsd());
+            if (entity.getFeesUsd() != null) totalFees = totalFees.add(entity.getFeesUsd());
         }
-        return new PnlAggregate( totalNet, totalGross, totalFees, all.size(), profitable );
+        return new PnlAggregate(totalNet, totalGross, totalFees, all.size(), profitable);
     }
 
-    private OutcomeSummary toSummary( TradeOutcomeEntity entity )
-    {
+    private OutcomeSummary toSummary(TradeOutcomeEntity entity) {
         return new OutcomeSummary(
-            entity.getArmedTradeId(),
-            entity.getGrossPnlUsd(),
-            entity.getNetPnlUsd(),
-            entity.getFeesUsd(),
-            entity.getOutcomeCode(),
-            entity.getEvaluatedAt()
-        );
+                entity.getArmedTradeId(),
+                entity.getGrossPnlUsd(),
+                entity.getNetPnlUsd(),
+                entity.getFeesUsd(),
+                entity.getOutcomeCode(),
+                entity.getEvaluatedAt());
     }
 }

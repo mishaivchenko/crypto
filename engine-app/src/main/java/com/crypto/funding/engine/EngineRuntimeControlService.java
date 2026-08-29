@@ -2,22 +2,20 @@ package com.crypto.funding.engine;
 
 import com.crypto.funding.contract.engine.EngineRuntimeControlRequest;
 import com.crypto.funding.contract.engine.EngineRuntimeControlResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
-public class EngineRuntimeControlService
-{
+public class EngineRuntimeControlService {
     static final long MIN_EXECUTION_LOOP_INTERVAL_MS = 100L;
 
     private final AtomicBoolean executionLoopEnabled = new AtomicBoolean();
     private final AtomicLong executionLoopIntervalMs = new AtomicLong();
-    private final AtomicLong lastScheduledDispatchAtMs = new AtomicLong( Long.MIN_VALUE );
+    private final AtomicLong lastScheduledDispatchAtMs = new AtomicLong(Long.MIN_VALUE);
     private final EngineTelemetryService telemetryService;
     private final Clock clock;
     private final EngineProperties properties;
@@ -25,117 +23,99 @@ public class EngineRuntimeControlService
     private volatile Instant updatedAt;
 
     @Autowired
-    public EngineRuntimeControlService( EngineProperties properties, EngineTelemetryService telemetryService )
-    {
-        this( properties, telemetryService, Clock.systemUTC() );
+    public EngineRuntimeControlService(EngineProperties properties, EngineTelemetryService telemetryService) {
+        this(properties, telemetryService, Clock.systemUTC());
     }
 
-    EngineRuntimeControlService( EngineProperties properties, EngineTelemetryService telemetryService, Clock clock )
-    {
+    EngineRuntimeControlService(EngineProperties properties, EngineTelemetryService telemetryService, Clock clock) {
         this.telemetryService = telemetryService;
         this.clock = clock;
         this.properties = properties;
-        this.executionLoopEnabled.set( properties.isExecutionLoopEnabled() );
-        this.executionLoopIntervalMs.set( clampInterval( properties.getExecutionLoopIntervalMs() ) );
-        this.updatedAt = Instant.now( clock );
+        this.executionLoopEnabled.set(properties.isExecutionLoopEnabled());
+        this.executionLoopIntervalMs.set(clampInterval(properties.getExecutionLoopIntervalMs()));
+        this.updatedAt = Instant.now(clock);
     }
 
-    public EngineRuntimeControlResponse snapshot()
-    {
-        return toResponse( telemetryService.snapshot() );
+    public EngineRuntimeControlResponse snapshot() {
+        return toResponse(telemetryService.snapshot());
     }
 
-    public EngineRuntimeControlResponse update( EngineRuntimeControlRequest request )
-    {
-        if( request.executionLoopEnabled() != null )
-        {
-            executionLoopEnabled.set( request.executionLoopEnabled() );
+    public EngineRuntimeControlResponse update(EngineRuntimeControlRequest request) {
+        if (request.executionLoopEnabled() != null) {
+            executionLoopEnabled.set(request.executionLoopEnabled());
         }
-        if( request.executionLoopIntervalMs() != null )
-        {
-            executionLoopIntervalMs.set( clampInterval( request.executionLoopIntervalMs() ) );
+        if (request.executionLoopIntervalMs() != null) {
+            executionLoopIntervalMs.set(clampInterval(request.executionLoopIntervalMs()));
         }
-        if( request.liveOrderEnabled() != null )
-        {
-            properties.setLiveOrderEnabled( request.liveOrderEnabled() );
+        if (request.liveOrderEnabled() != null) {
+            properties.setLiveOrderEnabled(request.liveOrderEnabled());
         }
-        if( request.killSwitchEnabled() != null )
-        {
-            properties.setKillSwitchEnabled( request.killSwitchEnabled() );
+        if (request.killSwitchEnabled() != null) {
+            properties.setKillSwitchEnabled(request.killSwitchEnabled());
         }
-        lastScheduledDispatchAtMs.set( Long.MIN_VALUE );
-        updatedAt = Instant.now( clock );
+        lastScheduledDispatchAtMs.set(Long.MIN_VALUE);
+        updatedAt = Instant.now(clock);
         return snapshot();
     }
 
-    public boolean shouldRunScheduledLoop()
-    {
-        if( !executionLoopEnabled.get() )
-        {
+    public boolean shouldRunScheduledLoop() {
+        if (!executionLoopEnabled.get()) {
             return false;
         }
         long now = clock.millis();
         long interval = executionLoopIntervalMs.get();
         long previous = lastScheduledDispatchAtMs.get();
-        if( previous != Long.MIN_VALUE && now - previous < interval )
-        {
+        if (previous != Long.MIN_VALUE && now - previous < interval) {
             return false;
         }
-        return tryMarkScheduledDispatch( previous, now );
+        return tryMarkScheduledDispatch(previous, now);
     }
 
-    public boolean executionLoopEnabled()
-    {
+    public boolean executionLoopEnabled() {
         return executionLoopEnabled.get();
     }
 
-    public long executionLoopIntervalMs()
-    {
+    public long executionLoopIntervalMs() {
         return executionLoopIntervalMs.get();
     }
 
-    public Instant updatedAt()
-    {
+    public Instant updatedAt() {
         return updatedAt;
     }
 
-    private EngineRuntimeControlResponse toResponse( EngineTelemetryService.RuntimeSnapshot telemetry )
-    {
+    private EngineRuntimeControlResponse toResponse(EngineTelemetryService.RuntimeSnapshot telemetry) {
         return new EngineRuntimeControlResponse(
-            "engine-app",
-            "2.0.0",
-            properties.getTradingVenueAccessMode(),
-            properties.isLiveOrderEnabled(),
-            properties.isKillSwitchEnabled(),
-            properties.liveEnabledVenues(),
-            properties.getMaxNotionalUsd(),
-            executionLoopEnabled(),
-            executionLoopIntervalMs(),
-            MIN_EXECUTION_LOOP_INTERVAL_MS,
-            updatedAt(),
-            telemetry.lastRunStartedAt(),
-            telemetry.lastRunFinishedAt(),
-            telemetry.lastRunForced(),
-            telemetry.lastPlansScanned(),
-            telemetry.lastAttemptsSubmitted(),
-            telemetry.lastAttemptsSkipped(),
-            telemetry.lastExecutionRunDurationMs(),
-            telemetry.lastForcedRunStartedAt(),
-            telemetry.lastForcedRunFinishedAt(),
-            telemetry.lastForcedPlansScanned(),
-            telemetry.lastForcedAttemptsSubmitted(),
-            telemetry.lastForcedAttemptsSkipped(),
-            telemetry.lastForcedRunDurationMs()
-        );
+                "engine-app",
+                "2.0.0",
+                properties.getTradingVenueAccessMode(),
+                properties.isLiveOrderEnabled(),
+                properties.isKillSwitchEnabled(),
+                properties.liveEnabledVenues(),
+                properties.getMaxNotionalUsd(),
+                executionLoopEnabled(),
+                executionLoopIntervalMs(),
+                MIN_EXECUTION_LOOP_INTERVAL_MS,
+                updatedAt(),
+                telemetry.lastRunStartedAt(),
+                telemetry.lastRunFinishedAt(),
+                telemetry.lastRunForced(),
+                telemetry.lastPlansScanned(),
+                telemetry.lastAttemptsSubmitted(),
+                telemetry.lastAttemptsSkipped(),
+                telemetry.lastExecutionRunDurationMs(),
+                telemetry.lastForcedRunStartedAt(),
+                telemetry.lastForcedRunFinishedAt(),
+                telemetry.lastForcedPlansScanned(),
+                telemetry.lastForcedAttemptsSubmitted(),
+                telemetry.lastForcedAttemptsSkipped(),
+                telemetry.lastForcedRunDurationMs());
     }
 
-    boolean tryMarkScheduledDispatch( long previous, long now )
-    {
-        return lastScheduledDispatchAtMs.compareAndSet( previous, now );
+    boolean tryMarkScheduledDispatch(long previous, long now) {
+        return lastScheduledDispatchAtMs.compareAndSet(previous, now);
     }
 
-    private static long clampInterval( long value )
-    {
-        return Math.max( MIN_EXECUTION_LOOP_INTERVAL_MS, value );
+    private static long clampInterval(long value) {
+        return Math.max(MIN_EXECUTION_LOOP_INTERVAL_MS, value);
     }
 }

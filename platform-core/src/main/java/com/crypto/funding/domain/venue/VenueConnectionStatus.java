@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.venue;
 
-public enum VenueConnectionStatus
-{
+public enum VenueConnectionStatus {
     NOT_CONNECTED,
     CONNECTED,
     INVALID_CREDENTIALS,

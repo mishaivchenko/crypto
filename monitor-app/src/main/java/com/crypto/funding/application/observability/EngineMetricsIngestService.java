@@ -6,22 +6,17 @@ import org.springframework.stereotype.Service;
 
 @Service
 @ConditionalOnProperty(prefix = "monitor.engine-metrics", name = "enabled", havingValue = "true")
-public class EngineMetricsIngestService
-{
+public class EngineMetricsIngestService {
     private final EngineMetricsSnapshotNormalizer normalizer;
     private final EngineMetricsSnapshotStore snapshotStore;
 
     public EngineMetricsIngestService(
-        EngineMetricsSnapshotNormalizer normalizer,
-        EngineMetricsSnapshotStore snapshotStore
-    )
-    {
+            EngineMetricsSnapshotNormalizer normalizer, EngineMetricsSnapshotStore snapshotStore) {
         this.normalizer = normalizer;
         this.snapshotStore = snapshotStore;
     }
 
-    public void ingest( EngineMetricsSnapshot snapshot )
-    {
-        snapshotStore.update( normalizer.normalize( snapshot ) );
+    public void ingest(EngineMetricsSnapshot snapshot) {
+        snapshotStore.update(normalizer.normalize(snapshot));
     }
 }

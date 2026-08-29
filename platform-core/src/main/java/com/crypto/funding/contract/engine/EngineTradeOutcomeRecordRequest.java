@@ -4,13 +4,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record EngineTradeOutcomeRecordRequest(
-    Long armedTradeId,
-    BigDecimal grossPnlUsd,
-    BigDecimal netPnlUsd,
-    BigDecimal feesUsd,
-    String outcomeCode,
-    String notes,
-    Instant evaluatedAt
-)
-{
-}
+        Long armedTradeId,
+        BigDecimal grossPnlUsd,
+        BigDecimal netPnlUsd,
+        BigDecimal feesUsd,
+        String outcomeCode,
+        String notes,
+        Instant evaluatedAt) {}

@@ -6,17 +6,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class MonitorFeignConfig
-{
+public class MonitorFeignConfig {
     @Bean
     public RequestInterceptor monitorOperatorTokenInterceptor(
-        @Value( "${monitor.operator-token:}" ) String operatorToken
-    )
-    {
+            @Value("${monitor.operator-token:}") String operatorToken) {
         return template -> {
-            if( operatorToken != null && !operatorToken.isBlank() )
-            {
-                template.header( "X-Operator-Token", operatorToken );
+            if (operatorToken != null && !operatorToken.isBlank()) {
+                template.header("X-Operator-Token", operatorToken);
             }
         };
     }

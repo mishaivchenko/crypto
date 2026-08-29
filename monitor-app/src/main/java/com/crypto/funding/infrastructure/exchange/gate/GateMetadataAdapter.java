@@ -8,9 +8,6 @@ import com.crypto.funding.domain.venue.InstrumentStatus;
 import com.crypto.funding.symbol.SymbolMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -21,10 +18,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 @Component
-public class GateMetadataAdapter implements VenueMetadataPort
-{
+public class GateMetadataAdapter implements VenueMetadataPort {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final VenueHttpProperties venueHttpProperties;
@@ -32,12 +30,11 @@ public class GateMetadataAdapter implements VenueMetadataPort
     private final VenueProfileService venueProfileService;
 
     public GateMetadataAdapter(
-        HttpClient httpClient,
-        VenueHttpProperties venueHttpProperties,
-        @Value( "${trading.gate.contracts-base-url:${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}}" ) String contractsBaseUrl,
-        VenueProfileService venueProfileService
-    )
-    {
+            HttpClient httpClient,
+            VenueHttpProperties venueHttpProperties,
+            @Value("${trading.gate.contracts-base-url:${GATE_CONTRACTS_BASE_URL:https://fx-api.gateio.ws/api/v4}}")
+                    String contractsBaseUrl,
+            VenueProfileService venueProfileService) {
         this.httpClient = httpClient;
         this.venueHttpProperties = venueHttpProperties;
         this.contractsBaseUrl = contractsBaseUrl;
@@ -45,98 +42,84 @@ public class GateMetadataAdapter implements VenueMetadataPort
     }
 
     @Override
-    public String venue()
-    {
+    public String venue() {
         return "gate";
     }
 
     @Override
-    public List<InstrumentMetadata> fetchPerpetualInstruments() throws IOException, InterruptedException
-    {
-        venueProfileService.resolveCredentials( venue() );
+    public List<InstrumentMetadata> fetchPerpetualInstruments() throws IOException, InterruptedException {
+        venueProfileService.resolveCredentials(venue());
         HttpRequest request = HttpRequest.newBuilder()
-                                         .uri( URI.create( contractsBaseUrl + "/futures/usdt/contracts" ) )
-                                         .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )
-                                         .GET()
-                                         .build();
+                .uri(URI.create(contractsBaseUrl + "/futures/usdt/contracts"))
+                .timeout(Duration.ofMillis(venueHttpProperties.getRequestTimeoutMs()))
+                .GET()
+                .build();
 
-        HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
-        if( response.statusCode() >= 300 )
-        {
-            throw new IOException( "Gate contracts list failed: " + response.statusCode() + " body=" + response.body() );
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 300) {
+            throw new IOException("Gate contracts list failed: " + response.statusCode() + " body=" + response.body());
         }
 
-        JsonNode root = objectMapper.readTree( response.body() );
+        JsonNode root = objectMapper.readTree(response.body());
         List<InstrumentMetadata> instruments = new ArrayList<>();
         Instant syncedAt = Instant.now();
-        for( JsonNode item : root )
-        {
-            String exchangeSymbol = item.path( "name" ).asText( null );
-            if( exchangeSymbol == null || !exchangeSymbol.endsWith( "_USDT" ) )
-            {
+        for (JsonNode item : root) {
+            String exchangeSymbol = item.path("name").asText(null);
+            if (exchangeSymbol == null || !exchangeSymbol.endsWith("_USDT")) {
                 continue;
             }
 
-            boolean inDelisting = item.path( "in_delisting" ).asBoolean( false );
-            String baseAsset = exchangeSymbol.substring( 0, exchangeSymbol.indexOf( '_' ) );
+            boolean inDelisting = item.path("in_delisting").asBoolean(false);
+            String baseAsset = exchangeSymbol.substring(0, exchangeSymbol.indexOf('_'));
             String quoteAsset = "USDT";
-            BigDecimal minOrderQty = decimalOrNull( item, "order_size_min" );
-            BigDecimal qtyStep = decimalOrNull( item, "order_size_round" );
-            if( qtyStep == null && !item.path( "enable_decimal" ).asBoolean( false ) )
-            {
+            BigDecimal minOrderQty = decimalOrNull(item, "order_size_min");
+            BigDecimal qtyStep = decimalOrNull(item, "order_size_round");
+            if (qtyStep == null && !item.path("enable_decimal").asBoolean(false)) {
                 qtyStep = BigDecimal.ONE;
             }
-            BigDecimal minNotionalValue = minNotionalValue( item, minOrderQty );
+            BigDecimal minNotionalValue = minNotionalValue(item, minOrderQty);
 
-            instruments.add( new InstrumentMetadata(
-                null,
-                venue(),
-                SymbolMapper.toUnified( exchangeSymbol.replace( "_", "" ) ),
-                exchangeSymbol,
-                baseAsset,
-                quoteAsset,
-                "PERPETUAL",
-                inDelisting ? InstrumentStatus.INACTIVE : InstrumentStatus.ACTIVE,
-                minOrderQty,
-                qtyStep,
-                minNotionalValue,
-                null,
-                syncedAt,
-                null,
-                null
-            ) );
+            instruments.add(new InstrumentMetadata(
+                    null,
+                    venue(),
+                    SymbolMapper.toUnified(exchangeSymbol.replace("_", "")),
+                    exchangeSymbol,
+                    baseAsset,
+                    quoteAsset,
+                    "PERPETUAL",
+                    inDelisting ? InstrumentStatus.INACTIVE : InstrumentStatus.ACTIVE,
+                    minOrderQty,
+                    qtyStep,
+                    minNotionalValue,
+                    null,
+                    syncedAt,
+                    null,
+                    null));
         }
         return instruments;
     }
 
-    private BigDecimal decimalOrNull( JsonNode item, String field )
-    {
-        if( !item.hasNonNull( field ) )
-        {
+    private BigDecimal decimalOrNull(JsonNode item, String field) {
+        if (!item.hasNonNull(field)) {
             return null;
         }
-        String raw = item.get( field ).asText();
-        return raw == null || raw.isBlank() ? null : new BigDecimal( raw );
+        String raw = item.get(field).asText();
+        return raw == null || raw.isBlank() ? null : new BigDecimal(raw);
     }
 
-    private BigDecimal minNotionalValue( JsonNode item, BigDecimal minOrderQty )
-    {
-        BigDecimal multiplier = decimalOrNull( item, "quanto_multiplier" );
-        BigDecimal price = firstDecimalOrNull( item, "last_price", "mark_price", "index_price" );
-        if( minOrderQty == null || multiplier == null || price == null )
-        {
+    private BigDecimal minNotionalValue(JsonNode item, BigDecimal minOrderQty) {
+        BigDecimal multiplier = decimalOrNull(item, "quanto_multiplier");
+        BigDecimal price = firstDecimalOrNull(item, "last_price", "mark_price", "index_price");
+        if (minOrderQty == null || multiplier == null || price == null) {
             return null;
         }
-        return minOrderQty.multiply( multiplier ).multiply( price );
+        return minOrderQty.multiply(multiplier).multiply(price);
     }
 
-    private BigDecimal firstDecimalOrNull( JsonNode item, String... fields )
-    {
-        for( String field : fields )
-        {
-            BigDecimal decimal = decimalOrNull( item, field );
-            if( decimal != null && decimal.signum() > 0 )
-            {
+    private BigDecimal firstDecimalOrNull(JsonNode item, String... fields) {
+        for (String field : fields) {
+            BigDecimal decimal = decimalOrNull(item, field);
+            if (decimal != null && decimal.signum() > 0) {
                 return decimal;
             }
         }

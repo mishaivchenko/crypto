@@ -7,12 +7,10 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Version;
-
 import java.time.Instant;
 
 @MappedSuperclass
-public abstract class AuditableEntity
-{
+public abstract class AuditableEntity {
     @Version
     @Column(name = "version")
     private Long version;
@@ -26,44 +24,36 @@ public abstract class AuditableEntity
     private Instant updatedAt;
 
     @PrePersist
-    void onCreate()
-    {
+    void onCreate() {
         Instant now = Instant.now();
-        if( createdAt == null )
-        {
+        if (createdAt == null) {
             createdAt = now;
         }
         updatedAt = now;
     }
 
     @PreUpdate
-    void onUpdate()
-    {
+    void onUpdate() {
         updatedAt = Instant.now();
     }
 
-    public Long getVersion()
-    {
+    public Long getVersion() {
         return version;
     }
 
-    public Instant getCreatedAt()
-    {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt( Instant createdAt )
-    {
+    public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
 
-    public Instant getUpdatedAt()
-    {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt( Instant updatedAt )
-    {
+    public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
 }

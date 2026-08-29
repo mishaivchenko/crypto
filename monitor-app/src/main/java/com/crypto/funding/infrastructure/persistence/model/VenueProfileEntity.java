@@ -10,13 +10,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 
 @Entity
 @Table(name = "venue_profile")
-public class VenueProfileEntity
-{
+public class VenueProfileEntity {
     @Id
     @Column(name = "venue", nullable = false, updatable = false)
     private String venue;
@@ -42,73 +40,59 @@ public class VenueProfileEntity
     @Column(name = "default_manual_latency_adjustment_ms")
     private Long defaultManualLatencyAdjustmentMs;
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public VenueAccessMode getSelectedMode()
-    {
+    public VenueAccessMode getSelectedMode() {
         return selectedMode;
     }
 
-    public void setSelectedMode( VenueAccessMode selectedMode )
-    {
+    public void setSelectedMode(VenueAccessMode selectedMode) {
         this.selectedMode = selectedMode;
     }
 
-    public VenueConnectionStatus getConnectionStatus()
-    {
+    public VenueConnectionStatus getConnectionStatus() {
         return connectionStatus;
     }
 
-    public void setConnectionStatus( VenueConnectionStatus connectionStatus )
-    {
+    public void setConnectionStatus(VenueConnectionStatus connectionStatus) {
         this.connectionStatus = connectionStatus;
     }
 
-    public String getConnectionMessage()
-    {
+    public String getConnectionMessage() {
         return connectionMessage;
     }
 
-    public void setConnectionMessage( String connectionMessage )
-    {
+    public void setConnectionMessage(String connectionMessage) {
         this.connectionMessage = connectionMessage;
     }
 
-    public Integer getLastConnectionHttpStatus()
-    {
+    public Integer getLastConnectionHttpStatus() {
         return lastConnectionHttpStatus;
     }
 
-    public void setLastConnectionHttpStatus( Integer lastConnectionHttpStatus )
-    {
+    public void setLastConnectionHttpStatus(Integer lastConnectionHttpStatus) {
         this.lastConnectionHttpStatus = lastConnectionHttpStatus;
     }
 
-    public Instant getLastCheckedAt()
-    {
+    public Instant getLastCheckedAt() {
         return lastCheckedAt;
     }
 
-    public void setLastCheckedAt( Instant lastCheckedAt )
-    {
+    public void setLastCheckedAt(Instant lastCheckedAt) {
         this.lastCheckedAt = lastCheckedAt;
     }
 
-    public Long getDefaultManualLatencyAdjustmentMs()
-    {
+    public Long getDefaultManualLatencyAdjustmentMs() {
         return defaultManualLatencyAdjustmentMs;
     }
 
-    public void setDefaultManualLatencyAdjustmentMs( Long defaultManualLatencyAdjustmentMs )
-    {
+    public void setDefaultManualLatencyAdjustmentMs(Long defaultManualLatencyAdjustmentMs) {
         this.defaultManualLatencyAdjustmentMs = defaultManualLatencyAdjustmentMs;
     }
 }

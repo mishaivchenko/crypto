@@ -17,6 +17,6 @@ export function createAppState() {
             candidate: { liquidity: false, ai: false },
             history: { enrichment: true },
             venue: { latency: false },
-        }
+        },
     };
 }

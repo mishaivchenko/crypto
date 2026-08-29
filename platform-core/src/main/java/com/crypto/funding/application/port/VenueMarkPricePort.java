@@ -1,11 +1,10 @@
 package com.crypto.funding.application.port;
 
-import java.math.BigDecimal;
 import java.io.IOException;
+import java.math.BigDecimal;
 
-public interface VenueMarkPricePort
-{
+public interface VenueMarkPricePort {
     String venue();
 
-    BigDecimal getMarkPrice( String venueSymbol ) throws IOException, InterruptedException;
+    BigDecimal getMarkPrice(String venueSymbol) throws IOException, InterruptedException;
 }

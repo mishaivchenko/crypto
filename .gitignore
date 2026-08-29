@@ -73,6 +73,7 @@ replay_pid*
 # Node / Frontend (Vite + TS)
 ############################################
 frontend/node_modules/
+monitor-app/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/.cache/

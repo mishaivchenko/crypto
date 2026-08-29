@@ -14,9 +14,10 @@ import {
     kv,
     metaRow,
     pipelineStageMarkup,
-    section
+    section,
 } from "../ui.js";
 import { t } from "../i18n.js";
+import { renderEnrichmentTimestamp } from "./components/enrichment-timestamp.js";
 import { renderLayerPipeline } from "./components/layer-pipeline.js";
 
 export {
@@ -35,7 +36,7 @@ export {
     kv,
     metaRow,
     pipelineStageMarkup,
-    section
+    section,
 };
 
 export function formatShortTime(iso) {
@@ -49,12 +50,14 @@ const VENUE_ICON_URLS = {
     bybit: "https://coin-images.coingecko.com/markets/images/698/small/bybit_spot.png?1706864649",
     okx: "https://coin-images.coingecko.com/markets/images/96/small/WeChat_Image_20220117220452.png?1706864283",
     kucoin: "https://coin-images.coingecko.com/markets/images/61/small/kucoin.png?1706864282",
-    bitget: "https://coin-images.coingecko.com/markets/images/540/small/2023-07-25_21.47.43.jpg?1706864507"
+    bitget: "https://coin-images.coingecko.com/markets/images/540/small/2023-07-25_21.47.43.jpg?1706864507",
 };
 
 export function venueIcon(venueName) {
     if (!venueName) return "";
-    const key = String(venueName).toLowerCase().replace(/[^a-z]/g, "");
+    const key = String(venueName)
+        .toLowerCase()
+        .replace(/[^a-z]/g, "");
     const url = VENUE_ICON_URLS[key];
     return url ? `<img class="venue-icon" src="${url}" alt="${escapeHtml(venueName)}">` : "";
 }
@@ -137,9 +140,10 @@ export function venueStatusBadge(venue) {
 
 export function venueCard(venue) {
     const syncAgeMs = venue.lastSyncedAt ? Date.now() - new Date(venue.lastSyncedAt).getTime() : null;
-    const staleSyncChip = syncAgeMs != null && syncAgeMs > 5 * 60 * 1000
-        ? `<span class="chip chip-warning">${t("label_last_sync")} ${formatInstant(venue.lastSyncedAt)}</span>`
-        : "";
+    const staleSyncChip =
+        syncAgeMs != null && syncAgeMs > 5 * 60 * 1000
+            ? `<span class="chip chip-warning">${t("label_last_sync")} ${formatInstant(venue.lastSyncedAt)}</span>`
+            : "";
     return `
         <article class="list-item venue-card">
             <header>
@@ -185,18 +189,30 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
 
     const cardFundingTime = candidate.suggestedFundingTime ?? candidate.sourceFundingTime ?? null;
     const cardRatePct = candidate.suggestedFundingRatePct ?? candidate.sourceFundingRatePct ?? null;
-    const cardRateTone = cardRatePct == null ? "muted" : Number(cardRatePct) > 0.001 ? "good" : Number(cardRatePct) > 0.0005 ? "warning" : "muted";
-    const cardRateChip = cardRatePct != null
-        ? `<span class="chip chip-${cardRateTone}" title="${t("card_rate")}">${Number(cardRatePct) >= 0 ? "+" : ""}${formatDecimal(cardRatePct, 6)}%</span>`
-        : "";
+    const cardRateTone =
+        cardRatePct == null
+            ? "muted"
+            : Number(cardRatePct) > 0.001
+              ? "good"
+              : Number(cardRatePct) > 0.0005
+                ? "warning"
+                : "muted";
+    const cardRateChip =
+        cardRatePct != null
+            ? `<span class="chip chip-${cardRateTone}" title="${t("card_rate")}">${Number(cardRatePct) >= 0 ? "+" : ""}${formatDecimal(cardRatePct, 6)}%</span>`
+            : "";
     const cardCountdownChip = cardFundingTime
         ? `<span class="chip chip-muted">${formatFundingCountdown(cardFundingTime)}</span>`
         : "";
 
-    const baseStatus = candidate.status === "NORMALIZED" ? "ok"
-        : candidate.status === "NEW" ? "warn"
-        : candidate.status === "FAILED" ? "blocked"
-        : "missing";
+    const baseStatus =
+        candidate.status === "NORMALIZED"
+            ? "ok"
+            : candidate.status === "NEW"
+              ? "warn"
+              : candidate.status === "FAILED"
+                ? "blocked"
+                : "missing";
 
     const baseLayerContent = `
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
@@ -227,16 +243,20 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
         source: "FUNDING_API",
         status: baseStatus,
         collapsed: false,
-        content: baseLayerContent
+        content: baseLayerContent,
     });
 
     let actionsBlock = "";
     if (ai) {
         const aiTone = ai.recommendation === "GO" ? "good" : ai.recommendation === "PASS" ? "bad" : "warning";
-        const aiStatus = ai.recommendation === "GO" ? "ok"
-            : ai.recommendation === "WATCH" ? "warn"
-            : ai.recommendation === "PASS" ? "blocked"
-            : "missing";
+        const aiStatus =
+            ai.recommendation === "GO"
+                ? "ok"
+                : ai.recommendation === "WATCH"
+                  ? "warn"
+                  : ai.recommendation === "PASS"
+                    ? "blocked"
+                    : "missing";
         const reasoning = ai.reasoning ?? "";
         const aiLayerContent = `
             <div class="chip-row">
@@ -253,17 +273,25 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
             source: ai.modelUsed,
             status: aiStatus,
             collapsed: true,
-            content: aiLayerContent
+            content: aiLayerContent,
         });
     }
 
     if (liquidity) {
-        const scoreTone = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" ? "good"
-            : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE" ? "bad" : "warning";
-        const liqStatus = liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" || liquidity.score === "MEDIUM" ? "ok"
-            : liquidity.score === "THIN" ? "warn"
-            : liquidity.score === "UNTRADABLE" ? "blocked"
-            : "missing";
+        const scoreTone =
+            liquidity.score === "EXCELLENT" || liquidity.score === "GOOD"
+                ? "good"
+                : liquidity.score === "THIN" || liquidity.score === "UNTRADABLE"
+                  ? "bad"
+                  : "warning";
+        const liqStatus =
+            liquidity.score === "EXCELLENT" || liquidity.score === "GOOD" || liquidity.score === "MEDIUM"
+                ? "ok"
+                : liquidity.score === "THIN"
+                  ? "warn"
+                  : liquidity.score === "UNTRADABLE"
+                    ? "blocked"
+                    : "missing";
         const liqLayerContent = `
             <div class="chip-row">
                 <span class="chip chip-${scoreTone}">${escapeHtml(t(`liquidity_score_${liquidity.score}`) ?? liquidity.score)}</span>
@@ -281,12 +309,13 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
             source: "ORDER_BOOK",
             status: liqStatus,
             collapsed: true,
-            content: liqLayerContent
+            content: liqLayerContent,
         });
     }
 
     if (ai && liquidity) {
-        const closed = candidate.status === "EVENT_CREATED" || candidate.status === "REJECTED" || candidate.status === "DELETED";
+        const closed =
+            candidate.status === "EVENT_CREATED" || candidate.status === "REJECTED" || candidate.status === "DELETED";
         if (!closed) {
             const venue = candidate.suggestedVenue ?? candidate.sourceVenue ?? candidate.venueHints?.[0] ?? "";
             const symbol = candidate.normalizedSymbol ?? candidate.rawSymbol ?? "";
@@ -300,8 +329,8 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
             const approveTooltip = liqBlocked
                 ? t("layer.status.blocked") + ": Liquidity Layer (UNTRADABLE)"
                 : aiMissing
-                    ? t("layer.status.missing") + ": AI Layer — " + t("ai_analyze_button")
-                    : "";
+                  ? t("layer.status.missing") + ": AI Layer — " + t("ai_analyze_button")
+                  : "";
 
             actionsBlock = `
             <div class="card-quick-actions">
@@ -317,23 +346,29 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
                 <button class="button reject" type="button"
                     data-action="quick-reject-candidate"
                     data-id="${candidate.id}">✗ ${t("signal_reject_button")}</button>
-                ${hasRequired
-                    ? `<p class="signal-approve-hint">${escapeHtml(venue)} · ${escapeHtml(symbol)} · ${formatInstant(fundingTime)} · ${formatDecimal(fundingRatePct, 6)}%</p>`
-                    : `<p class="signal-approve-warning">⚠ ${t("signal_approve_missing_data")}</p>`}
+                ${
+                    hasRequired
+                        ? `<p class="signal-approve-hint">${escapeHtml(venue)} · ${escapeHtml(symbol)} · ${formatInstant(fundingTime)} · ${formatDecimal(fundingRatePct, 6)}%</p>`
+                        : `<p class="signal-approve-warning">⚠ ${t("signal_approve_missing_data")}</p>`
+                }
             </div>`;
         }
     }
 
     return `
         <article class="list-item signal-card" data-candidate-id="${candidate.id}">
-            <div class="card-full-content">${renderLayerPipeline(enrichLayers, { screen: 'candidates' })}${actionsBlock}</div>
-            ${candidate.status === "FAILED" ? `
+            <div class="card-full-content">${renderLayerPipeline(enrichLayers, { screen: "candidates" })}${actionsBlock}</div>
+            ${
+                candidate.status === "FAILED"
+                    ? `
             <details class="card-expansion" data-lazy-candidate-repair="${candidate.id}">
                 <summary class="card-expand-toggle">${t("card_expand_repair")}</summary>
                 <div class="card-full-content">
                     <p class="card-loading">…</p>
                 </div>
-            </details>` : ""}
+            </details>`
+                    : ""
+            }
         </article>
     `;
 }
@@ -341,9 +376,10 @@ export function candidateCard(candidate, { liquidity = null } = {}) {
 export function eventCard(event, { trade = null, outcome = null } = {}) {
     const ratePct = event.fundingRatePct != null ? Number(event.fundingRatePct) : null;
     const rateTone = ratePct == null ? "neutral" : ratePct < 0 ? "bad" : ratePct > 0.005 ? "good" : "neutral";
-    const rateChip = ratePct != null
-        ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
-        : "";
+    const rateChip =
+        ratePct != null
+            ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
+            : "";
     const countdown = formatFundingCountdown(event.fundingTime);
 
     let tradeChips = "";
@@ -360,9 +396,10 @@ export function eventCard(event, { trade = null, outcome = null } = {}) {
     }
 
     const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
-    const pnlChip = net != null
-        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
-        : "";
+    const pnlChip =
+        net != null
+            ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+            : "";
 
     const expandLabel = event.status === "DISCOVERED" ? t("card_expand_arm") : t("card_expand_details");
 
@@ -413,25 +450,26 @@ function tradeEnrichmentStrip(trade) {
     const warmupTs = trade.warmupDoneAt ?? null;
     const measuredLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs ?? null;
 
-    const liqStatus = liqScore == null ? "missing"
-        : liqScore === "UNTRADABLE" ? "blocked"
-        : liqScore === "THIN" ? "warn"
-        : "ok";
-    const latStatus = measuredLat == null ? "missing"
-        : measuredLat > 600 ? "blocked"
-        : measuredLat > 400 ? "warn"
-        : "ok";
-    const warmupStatus = !warmupTs ? "missing"
-        : trade.warmupFallbackUsed ? "warn"
-        : "ok";
+    const liqStatus =
+        liqScore == null ? "missing" : liqScore === "UNTRADABLE" ? "blocked" : liqScore === "THIN" ? "warn" : "ok";
+    const latStatus =
+        measuredLat == null ? "missing" : measuredLat > 600 ? "blocked" : measuredLat > 400 ? "warn" : "ok";
+    const warmupStatus = !warmupTs ? "missing" : trade.warmupFallbackUsed ? "warn" : "ok";
 
     const STATUS_DOT = { ok: "●", warn: "▲", blocked: "✕", missing: "?" };
-    const STATUS_COLOR = { ok: "var(--freshness-ok, #38a169)", warn: "var(--freshness-stale, #d69e2e)", blocked: "var(--freshness-missing, #e53e3e)", missing: "#888" };
+    const STATUS_COLOR = {
+        ok: "var(--freshness-ok, #38a169)",
+        warn: "var(--freshness-stale, #d69e2e)",
+        blocked: "var(--freshness-missing, #e53e3e)",
+        missing: "#888",
+    };
 
     const dot = (s) => `<span style="color:${STATUS_COLOR[s]};font-size:10px">${STATUS_DOT[s]}</span>`;
 
     const oldestTs = [liqTs, warmupTs].filter(Boolean).sort()[0] ?? null;
-    const freshnessHtml = oldestTs ? renderEnrichmentTimestamp(oldestTs, null) : `<span style="color:#888;font-size:11px">—</span>`;
+    const freshnessHtml = oldestTs
+        ? renderEnrichmentTimestamp(oldestTs, null)
+        : `<span style="color:#888;font-size:11px">—</span>`;
 
     return `<div class="trade-enrichment-strip" style="display:flex;align-items:center;gap:10px;padding:4px 0 2px;font-size:11px;color:#888;cursor:pointer;" data-open-enrichment-timeline="${escapeHtml(String(trade.id))}">
         <span>${dot(liqStatus)} Liquidity</span>
@@ -443,16 +481,18 @@ function tradeEnrichmentStrip(trade) {
 
 export function tradeCard(trade, outcome = null) {
     const net = outcome?.netPnlUsd != null ? Number(outcome.netPnlUsd) : null;
-    const pnlChip = net != null
-        ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
-        : "";
+    const pnlChip =
+        net != null
+            ? `<span class="chip chip-${net >= 0 ? "good" : "bad"}" title="Net PnL">${net >= 0 ? "+" : ""}${formatDecimal(net, 4)} USD</span>`
+            : "";
     const effLat = trade.effectiveEntryLatencyMs ?? trade.measuredEntryLatencyMs;
 
     const ratePct = trade.fundingRatePct != null ? Number(trade.fundingRatePct) : null;
     const rateTone = ratePct == null ? "muted" : ratePct > 0.001 ? "good" : ratePct > 0.0005 ? "warning" : "muted";
-    const rateChip = ratePct != null
-        ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
-        : "";
+    const rateChip =
+        ratePct != null
+            ? `<span class="chip chip-${rateTone}" title="${t("card_rate")}">${ratePct >= 0 ? "+" : ""}${formatDecimal(ratePct, 6)}%</span>`
+            : "";
 
     const countdown = formatFundingCountdown(trade.fundingTime);
     const countdownChip = `<span class="chip chip-muted">${countdown}</span>`;
@@ -492,7 +532,14 @@ export function tradeCard(trade, outcome = null) {
 
 export function wireOpenButtons(container, selector, handler) {
     container.querySelectorAll(selector).forEach((button) => {
-        button.addEventListener("click", () => handler(button.dataset.openCandidate || button.dataset.openEvent || button.dataset.openTrade || button.dataset.openVenue));
+        button.addEventListener("click", () =>
+            handler(
+                button.dataset.openCandidate ||
+                    button.dataset.openEvent ||
+                    button.dataset.openTrade ||
+                    button.dataset.openVenue,
+            ),
+        );
     });
 }
 

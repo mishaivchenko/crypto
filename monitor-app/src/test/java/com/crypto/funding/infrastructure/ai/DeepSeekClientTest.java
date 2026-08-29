@@ -1,66 +1,57 @@
 package com.crypto.funding.infrastructure.ai;
 
-import com.crypto.funding.config.DeepSeekProperties;
-import com.crypto.funding.domain.ai.AiRecommendation;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestClient;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class DeepSeekClientTest
-{
+import com.crypto.funding.config.DeepSeekProperties;
+import com.crypto.funding.domain.ai.AiRecommendation;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestClient;
+
+class DeepSeekClientTest {
     private DeepSeekClient client;
     private DeepSeekProperties properties;
     private Method parseResponseMethod;
 
     @BeforeEach
-    void setUp() throws Exception
-    {
+    void setUp() throws Exception {
         properties = new DeepSeekProperties();
-        properties.setModel( "deepseek-chat" );
-        properties.setBaseUrl( "https://api.deepseek.com" );
-        properties.setApiKey( "test-key" );
+        properties.setModel("deepseek-chat");
+        properties.setBaseUrl("https://api.deepseek.com");
+        properties.setApiKey("test-key");
 
-        RestClient.Builder builder = mock( RestClient.Builder.class );
-        RestClient restClient = mock( RestClient.class );
-        when( builder.baseUrl( any( String.class ) ) ).thenReturn( builder );
-        when( builder.defaultHeader( any(), any() ) ).thenReturn( builder );
-        when( builder.build() ).thenReturn( restClient );
+        RestClient.Builder builder = mock(RestClient.Builder.class);
+        RestClient restClient = mock(RestClient.class);
+        when(builder.baseUrl(any(String.class))).thenReturn(builder);
+        when(builder.defaultHeader(any(), any())).thenReturn(builder);
+        when(builder.build()).thenReturn(restClient);
 
-        client = new DeepSeekClient( builder, properties, new ObjectMapper() );
+        client = new DeepSeekClient(builder, properties, new ObjectMapper());
 
-        parseResponseMethod = DeepSeekClient.class.getDeclaredMethod( "parseResponse", String.class );
-        parseResponseMethod.setAccessible( true );
+        parseResponseMethod = DeepSeekClient.class.getDeclaredMethod("parseResponse", String.class);
+        parseResponseMethod.setAccessible(true);
     }
 
-    private DeepSeekClient.AdviceResult parseResponse( String json ) throws Exception
-    {
-        try
-        {
-            return (DeepSeekClient.AdviceResult) parseResponseMethod.invoke( client, json );
-        }
-        catch( InvocationTargetException e )
-        {
-            if( e.getCause() instanceof RuntimeException re )
-            {
+    private DeepSeekClient.AdviceResult parseResponse(String json) throws Exception {
+        try {
+            return (DeepSeekClient.AdviceResult) parseResponseMethod.invoke(client, json);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof RuntimeException re) {
                 throw re;
             }
-            throw new RuntimeException( e.getCause() );
+            throw new RuntimeException(e.getCause());
         }
     }
 
     @Test
-    void parsesValidResponse_returnsGoRecommendation() throws Exception
-    {
+    void parsesValidResponse_returnsGoRecommendation() throws Exception {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"GO\\",\\"confidence\\":0.8,\\"reasoning\\":\\"Good signal\\"}"}}],
@@ -68,16 +59,15 @@ class DeepSeekClientTest
             }
             """;
 
-        DeepSeekClient.AdviceResult result = parseResponse( json );
+        DeepSeekClient.AdviceResult result = parseResponse(json);
 
-        assertThat( result.recommendation() ).isEqualTo( AiRecommendation.GO );
-        assertThat( result.confidence() ).isEqualTo( 0.8 );
-        assertThat( result.reasoning() ).isEqualTo( "Good signal" );
+        assertThat(result.recommendation()).isEqualTo(AiRecommendation.GO);
+        assertThat(result.confidence()).isEqualTo(0.8);
+        assertThat(result.reasoning()).isEqualTo("Good signal");
     }
 
     @Test
-    void parsesValidResponse_clipsConfidenceAboveOne() throws Exception
-    {
+    void parsesValidResponse_clipsConfidenceAboveOne() throws Exception {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"WATCH\\",\\"confidence\\":1.5,\\"reasoning\\":\\"ok\\"}"}}],
@@ -85,14 +75,13 @@ class DeepSeekClientTest
             }
             """;
 
-        DeepSeekClient.AdviceResult result = parseResponse( json );
+        DeepSeekClient.AdviceResult result = parseResponse(json);
 
-        assertThat( result.confidence() ).isEqualTo( 1.0 );
+        assertThat(result.confidence()).isEqualTo(1.0);
     }
 
     @Test
-    void parsesValidResponse_clipsConfidenceBelowZero() throws Exception
-    {
+    void parsesValidResponse_clipsConfidenceBelowZero() throws Exception {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"PASS\\",\\"confidence\\":-0.1,\\"reasoning\\":\\"skip\\"}"}}],
@@ -100,14 +89,13 @@ class DeepSeekClientTest
             }
             """;
 
-        DeepSeekClient.AdviceResult result = parseResponse( json );
+        DeepSeekClient.AdviceResult result = parseResponse(json);
 
-        assertThat( result.confidence() ).isEqualTo( 0.0 );
+        assertThat(result.confidence()).isEqualTo(0.0);
     }
 
     @Test
-    void parsesValidResponse_setsModelFromProperties() throws Exception
-    {
+    void parsesValidResponse_setsModelFromProperties() throws Exception {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"GO\\",\\"confidence\\":0.7,\\"reasoning\\":\\"ok\\"}"}}],
@@ -115,14 +103,13 @@ class DeepSeekClientTest
             }
             """;
 
-        DeepSeekClient.AdviceResult result = parseResponse( json );
+        DeepSeekClient.AdviceResult result = parseResponse(json);
 
-        assertThat( result.modelUsed() ).isEqualTo( "deepseek-chat" );
+        assertThat(result.modelUsed()).isEqualTo("deepseek-chat");
     }
 
     @Test
-    void parsesValidResponse_countsTokens() throws Exception
-    {
+    void parsesValidResponse_countsTokens() throws Exception {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"GO\\",\\"confidence\\":0.9,\\"reasoning\\":\\"strong\\"}"}}],
@@ -130,30 +117,28 @@ class DeepSeekClientTest
             }
             """;
 
-        DeepSeekClient.AdviceResult result = parseResponse( json );
+        DeepSeekClient.AdviceResult result = parseResponse(json);
 
-        assertThat( result.promptTokens() ).isEqualTo( 200 );
-        assertThat( result.completionTokens() ).isEqualTo( 75 );
+        assertThat(result.promptTokens()).isEqualTo(200);
+        assertThat(result.completionTokens()).isEqualTo(75);
     }
 
     @Test
-    void parsesNullUsage_returnsZeroTokens() throws Exception
-    {
+    void parsesNullUsage_returnsZeroTokens() throws Exception {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"PASS\\",\\"confidence\\":0.5,\\"reasoning\\":\\"nope\\"}"}}]
             }
             """;
 
-        DeepSeekClient.AdviceResult result = parseResponse( json );
+        DeepSeekClient.AdviceResult result = parseResponse(json);
 
-        assertThat( result.promptTokens() ).isEqualTo( 0 );
-        assertThat( result.completionTokens() ).isEqualTo( 0 );
+        assertThat(result.promptTokens()).isEqualTo(0);
+        assertThat(result.completionTokens()).isEqualTo(0);
     }
 
     @Test
-    void parsesInvalidRecommendation_throwsRuntime()
-    {
+    void parsesInvalidRecommendation_throwsRuntime() {
         String json = """
             {
               "choices": [{"message": {"content": "{\\"recommendation\\":\\"INVALID\\",\\"confidence\\":0.5,\\"reasoning\\":\\"???\\"}"}}],
@@ -161,18 +146,17 @@ class DeepSeekClientTest
             }
             """;
 
-        assertThatThrownBy( () -> parseResponse( json ) )
-            .isInstanceOf( RuntimeException.class )
-            .hasMessageContaining( "Failed to parse DeepSeek response" );
+        assertThatThrownBy(() -> parseResponse(json))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Failed to parse DeepSeek response");
     }
 
     @Test
-    void parsesMalformedJson_throwsRuntime()
-    {
+    void parsesMalformedJson_throwsRuntime() {
         String json = "not-valid-json";
 
-        assertThatThrownBy( () -> parseResponse( json ) )
-            .isInstanceOf( RuntimeException.class )
-            .hasMessageContaining( "Failed to parse DeepSeek response" );
+        assertThatThrownBy(() -> parseResponse(json))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Failed to parse DeepSeek response");
     }
 }

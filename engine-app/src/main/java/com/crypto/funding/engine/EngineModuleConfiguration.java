@@ -8,11 +8,5 @@ import org.springframework.context.annotation.Import;
 @Configuration
 @ConfigurationPropertiesScan(basePackages = "com.crypto.funding.engine")
 @EnableConfigurationProperties(EngineProperties.class)
-@Import({
-    EnginePlanClient.class,
-    EnginePlanService.class,
-    EngineController.class
-})
-public class EngineModuleConfiguration
-{
-}
+@Import({EnginePlanClient.class, EnginePlanService.class, EngineController.class})
+public class EngineModuleConfiguration {}

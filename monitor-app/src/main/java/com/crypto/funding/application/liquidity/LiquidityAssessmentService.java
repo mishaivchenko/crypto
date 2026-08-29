@@ -13,11 +13,6 @@ import com.crypto.funding.infrastructure.persistence.repository.LiquidityAssessm
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,11 +21,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class LiquidityAssessmentService
-{
-    private static final Logger log = LoggerFactory.getLogger( LiquidityAssessmentService.class );
+public class LiquidityAssessmentService {
+    private static final Logger log = LoggerFactory.getLogger(LiquidityAssessmentService.class);
 
     private final LiquidityAssessmentJpaRepository repository;
     private final Map<String, VenueOrderBookPort> orderBookPortsByVenue;
@@ -43,122 +41,110 @@ public class LiquidityAssessmentService
 
     @org.springframework.beans.factory.annotation.Autowired
     public LiquidityAssessmentService(
-        LiquidityAssessmentJpaRepository repository,
-        List<VenueOrderBookPort> orderBookPorts,
-        LiquidityProperties properties,
-        MeterRegistry meterRegistry
-    )
-    {
-        this( repository, orderBookPorts, properties, meterRegistry, Clock.systemUTC() );
+            LiquidityAssessmentJpaRepository repository,
+            List<VenueOrderBookPort> orderBookPorts,
+            LiquidityProperties properties,
+            MeterRegistry meterRegistry) {
+        this(repository, orderBookPorts, properties, meterRegistry, Clock.systemUTC());
     }
 
     LiquidityAssessmentService(
-        LiquidityAssessmentJpaRepository repository,
-        List<VenueOrderBookPort> orderBookPorts,
-        LiquidityProperties properties,
-        MeterRegistry meterRegistry,
-        Clock clock
-    )
-    {
+            LiquidityAssessmentJpaRepository repository,
+            List<VenueOrderBookPort> orderBookPorts,
+            LiquidityProperties properties,
+            MeterRegistry meterRegistry,
+            Clock clock) {
         this.repository = repository;
-        this.orderBookPortsByVenue = orderBookPorts.stream()
-                                                   .collect( Collectors.toMap( VenueOrderBookPort::venue, Function.identity() ) );
+        this.orderBookPortsByVenue =
+                orderBookPorts.stream().collect(Collectors.toMap(VenueOrderBookPort::venue, Function.identity()));
         this.properties = properties;
         this.clock = clock;
-        this.assessmentCreatedCounter = meterRegistry.counter( "liquidity.assessment.created" );
-        this.assessmentUntradableCounter = meterRegistry.counter( "liquidity.assessment.untradable" );
-        this.assessmentTimer = meterRegistry.timer( "liquidity.assessment.duration" );
+        this.assessmentCreatedCounter = meterRegistry.counter("liquidity.assessment.created");
+        this.assessmentUntradableCounter = meterRegistry.counter("liquidity.assessment.untradable");
+        this.assessmentTimer = meterRegistry.timer("liquidity.assessment.duration");
     }
 
-    // No @Transactional here — port.fetchOrderBook() is a network call; repository.save() manages its own short transaction.
-    public LiquidityAssessment assess( String venue, String venueSymbol, Long tradeId )
-    {
-        return assessmentTimer.record( () -> doAssess( venue, venueSymbol, tradeId, null ) );
+    // No @Transactional here — port.fetchOrderBook() is a network call; repository.save() manages its own short
+    // transaction.
+    public LiquidityAssessment assess(String venue, String venueSymbol, Long tradeId) {
+        return assessmentTimer.record(() -> doAssess(venue, venueSymbol, tradeId, null));
     }
 
-    // No @Transactional here — port.fetchOrderBook() is a network call; repository.save() manages its own short transaction.
-    public LiquidityAssessment assessForCandidate( String venue, String venueSymbol, Long signalCandidateId )
-    {
-        return assessmentTimer.record( () -> doAssess( venue, venueSymbol, null, signalCandidateId ) );
+    // No @Transactional here — port.fetchOrderBook() is a network call; repository.save() manages its own short
+    // transaction.
+    public LiquidityAssessment assessForCandidate(String venue, String venueSymbol, Long signalCandidateId) {
+        return assessmentTimer.record(() -> doAssess(venue, venueSymbol, null, signalCandidateId));
     }
 
-    private LiquidityAssessment doAssess( String venue, String venueSymbol, Long tradeId, Long signalCandidateId )
-    {
-        VenueOrderBookPort port = orderBookPortsByVenue.get( venue );
-        if( port == null )
-        {
-            throw new IllegalArgumentException( "No order book adapter for venue: " + venue );
+    private LiquidityAssessment doAssess(String venue, String venueSymbol, Long tradeId, Long signalCandidateId) {
+        VenueOrderBookPort port = orderBookPortsByVenue.get(venue);
+        if (port == null) {
+            throw new IllegalArgumentException("No order book adapter for venue: " + venue);
         }
 
         OrderBookSnapshot snapshot;
-        try
-        {
-            snapshot = port.fetchOrderBook( venueSymbol, properties.getOrderBookDepth() );
-        }
-        catch( Exception e )
-        {
-            throw new RuntimeException( "Failed to fetch order book for " + venue + "/" + venueSymbol, e );
+        try {
+            snapshot = port.fetchOrderBook(venueSymbol, properties.getOrderBookDepth());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch order book for " + venue + "/" + venueSymbol, e);
         }
 
         LiquidityThresholds thresholds = new LiquidityThresholds(
-            properties.getMinTradableNotional(),
-            properties.getThinNotional(),
-            properties.getMediumNotional(),
-            properties.getGoodNotional(),
-            properties.getExcellentNotional()
-        );
+                properties.getMinTradableNotional(),
+                properties.getThinNotional(),
+                properties.getMediumNotional(),
+                properties.getGoodNotional(),
+                properties.getExcellentNotional());
 
-        Instant expiresAt = snapshot.sampledAt().plusMillis( properties.getTtlMs() );
+        Instant expiresAt = snapshot.sampledAt().plusMillis(properties.getTtlMs());
         LiquidityAssessment assessment = LiquidityCalculator.assess(
-            snapshot,
-            TradeSide.SHORT,
-            properties.getMaxSlippageBps(),
-            properties.getSafetyHaircut(),
-            thresholds,
-            expiresAt
-        );
+                snapshot,
+                TradeSide.SHORT,
+                properties.getMaxSlippageBps(),
+                properties.getSafetyHaircut(),
+                thresholds,
+                expiresAt);
 
         boolean hasId = tradeId != null || signalCandidateId != null;
-        LiquidityAssessment withTradeId = !hasId ? assessment : new LiquidityAssessment(
-            assessment.id(),
-            tradeId,
-            signalCandidateId,
-            assessment.venue(),
-            assessment.symbol(),
-            assessment.side(),
-            assessment.bestBid(),
-            assessment.bestAsk(),
-            assessment.spreadBps(),
-            assessment.maxSlippageBps(),
-            assessment.entryBidDepthNotional(),
-            assessment.exitAskDepthNotional(),
-            assessment.roundTripSafeNotional(),
-            assessment.safetyHaircut(),
-            assessment.recommendedMaxOrderNotional(),
-            assessment.score(),
-            assessment.sampledAt(),
-            assessment.expiresAt()
-        );
+        LiquidityAssessment withTradeId = !hasId
+                ? assessment
+                : new LiquidityAssessment(
+                        assessment.id(),
+                        tradeId,
+                        signalCandidateId,
+                        assessment.venue(),
+                        assessment.symbol(),
+                        assessment.side(),
+                        assessment.bestBid(),
+                        assessment.bestAsk(),
+                        assessment.spreadBps(),
+                        assessment.maxSlippageBps(),
+                        assessment.entryBidDepthNotional(),
+                        assessment.exitAskDepthNotional(),
+                        assessment.roundTripSafeNotional(),
+                        assessment.safetyHaircut(),
+                        assessment.recommendedMaxOrderNotional(),
+                        assessment.score(),
+                        assessment.sampledAt(),
+                        assessment.expiresAt());
 
-        save( withTradeId );
+        save(withTradeId);
 
         log.info(
-            "liquidity.assessment venue={} symbol={} side={} spreadBps={} entryBidDepth={} exitAskDepth={} roundTripSafe={} recommendedMax={} score={} sampledAt={}",
-            withTradeId.venue(),
-            withTradeId.symbol(),
-            withTradeId.side(),
-            withTradeId.spreadBps(),
-            withTradeId.entryBidDepthNotional(),
-            withTradeId.exitAskDepthNotional(),
-            withTradeId.roundTripSafeNotional(),
-            withTradeId.recommendedMaxOrderNotional(),
-            withTradeId.score(),
-            withTradeId.sampledAt()
-        );
+                "liquidity.assessment venue={} symbol={} side={} spreadBps={} entryBidDepth={} exitAskDepth={} roundTripSafe={} recommendedMax={} score={} sampledAt={}",
+                withTradeId.venue(),
+                withTradeId.symbol(),
+                withTradeId.side(),
+                withTradeId.spreadBps(),
+                withTradeId.entryBidDepthNotional(),
+                withTradeId.exitAskDepthNotional(),
+                withTradeId.roundTripSafeNotional(),
+                withTradeId.recommendedMaxOrderNotional(),
+                withTradeId.score(),
+                withTradeId.sampledAt());
 
         assessmentCreatedCounter.increment();
-        if( withTradeId.score() == LiquidityScore.UNTRADABLE )
-        {
+        if (withTradeId.score() == LiquidityScore.UNTRADABLE) {
             assessmentUntradableCounter.increment();
         }
 
@@ -166,93 +152,81 @@ public class LiquidityAssessmentService
     }
 
     @Transactional(readOnly = true)
-    public Optional<LiquidityAssessment> findLatestForTrade( Long tradeId )
-    {
-        return repository.findFirstByTradeIdOrderBySampledAtDesc( tradeId )
-                         .map( this::toDomain );
+    public Optional<LiquidityAssessment> findLatestForTrade(Long tradeId) {
+        return repository.findFirstByTradeIdOrderBySampledAtDesc(tradeId).map(this::toDomain);
     }
 
     @Transactional(readOnly = true)
-    public Optional<LiquidityAssessment> findLatestForCandidate( Long signalCandidateId )
-    {
-        return repository.findFirstBySignalCandidateIdOrderBySampledAtDesc( signalCandidateId )
-                         .map( this::toDomain );
+    public Optional<LiquidityAssessment> findLatestForCandidate(Long signalCandidateId) {
+        return repository
+                .findFirstBySignalCandidateIdOrderBySampledAtDesc(signalCandidateId)
+                .map(this::toDomain);
     }
 
     @Transactional(readOnly = true)
-    public Optional<LiquidityAssessment> findByAssessmentId( String assessmentId )
-    {
-        return repository.findByAssessmentId( assessmentId )
-                         .map( this::toDomain );
+    public Optional<LiquidityAssessment> findByAssessmentId(String assessmentId) {
+        return repository.findByAssessmentId(assessmentId).map(this::toDomain);
     }
 
-    private void save( LiquidityAssessment assessment )
-    {
+    private void save(LiquidityAssessment assessment) {
         LiquidityAssessmentEntity entity = new LiquidityAssessmentEntity();
-        entity.setAssessmentId( assessment.id() );
-        entity.setTradeId( assessment.tradeId() );
-        entity.setSignalCandidateId( assessment.signalCandidateId() );
-        entity.setVenue( assessment.venue() );
-        entity.setSymbol( assessment.symbol() );
-        entity.setSide( assessment.side() );
-        entity.setBestBid( assessment.bestBid() );
-        entity.setBestAsk( assessment.bestAsk() );
-        entity.setSpreadBps( assessment.spreadBps() );
-        entity.setMaxSlippageBps( assessment.maxSlippageBps() );
-        entity.setEntryBidDepthNotional( assessment.entryBidDepthNotional() );
-        entity.setExitAskDepthNotional( assessment.exitAskDepthNotional() );
-        entity.setRoundTripSafeNotional( assessment.roundTripSafeNotional() );
-        entity.setSafetyHaircut( assessment.safetyHaircut() );
-        entity.setRecommendedMaxOrderNotional( assessment.recommendedMaxOrderNotional() );
-        entity.setScore( assessment.score() );
-        entity.setSampledAt( assessment.sampledAt() );
-        entity.setExpiresAt( assessment.expiresAt() );
-        repository.save( entity );
+        entity.setAssessmentId(assessment.id());
+        entity.setTradeId(assessment.tradeId());
+        entity.setSignalCandidateId(assessment.signalCandidateId());
+        entity.setVenue(assessment.venue());
+        entity.setSymbol(assessment.symbol());
+        entity.setSide(assessment.side());
+        entity.setBestBid(assessment.bestBid());
+        entity.setBestAsk(assessment.bestAsk());
+        entity.setSpreadBps(assessment.spreadBps());
+        entity.setMaxSlippageBps(assessment.maxSlippageBps());
+        entity.setEntryBidDepthNotional(assessment.entryBidDepthNotional());
+        entity.setExitAskDepthNotional(assessment.exitAskDepthNotional());
+        entity.setRoundTripSafeNotional(assessment.roundTripSafeNotional());
+        entity.setSafetyHaircut(assessment.safetyHaircut());
+        entity.setRecommendedMaxOrderNotional(assessment.recommendedMaxOrderNotional());
+        entity.setScore(assessment.score());
+        entity.setSampledAt(assessment.sampledAt());
+        entity.setExpiresAt(assessment.expiresAt());
+        repository.save(entity);
     }
 
-    private LiquidityAssessment toDomain( LiquidityAssessmentEntity entity )
-    {
+    private LiquidityAssessment toDomain(LiquidityAssessmentEntity entity) {
         return new LiquidityAssessment(
-            entity.getAssessmentId(),
-            entity.getTradeId(),
-            entity.getSignalCandidateId(),
-            entity.getVenue(),
-            entity.getSymbol(),
-            entity.getSide(),
-            entity.getBestBid(),
-            entity.getBestAsk(),
-            entity.getSpreadBps(),
-            entity.getMaxSlippageBps(),
-            entity.getEntryBidDepthNotional(),
-            entity.getExitAskDepthNotional(),
-            entity.getRoundTripSafeNotional(),
-            entity.getSafetyHaircut(),
-            entity.getRecommendedMaxOrderNotional(),
-            entity.getScore(),
-            entity.getSampledAt(),
-            entity.getExpiresAt()
-        );
+                entity.getAssessmentId(),
+                entity.getTradeId(),
+                entity.getSignalCandidateId(),
+                entity.getVenue(),
+                entity.getSymbol(),
+                entity.getSide(),
+                entity.getBestBid(),
+                entity.getBestAsk(),
+                entity.getSpreadBps(),
+                entity.getMaxSlippageBps(),
+                entity.getEntryBidDepthNotional(),
+                entity.getExitAskDepthNotional(),
+                entity.getRoundTripSafeNotional(),
+                entity.getSafetyHaircut(),
+                entity.getRecommendedMaxOrderNotional(),
+                entity.getScore(),
+                entity.getSampledAt(),
+                entity.getExpiresAt());
     }
 
-    public boolean isExpired( LiquidityAssessment assessment )
-    {
-        if( assessment == null || assessment.expiresAt() == null )
-        {
+    public boolean isExpired(LiquidityAssessment assessment) {
+        if (assessment == null || assessment.expiresAt() == null) {
             return true;
         }
-        return Instant.now( clock ).isAfter( assessment.expiresAt() );
+        return Instant.now(clock).isAfter(assessment.expiresAt());
     }
 
-    public BigDecimal effectiveMaxOrderNotional( LiquidityAssessment assessment, BigDecimal plannedNotional )
-    {
-        if( assessment == null || assessment.recommendedMaxOrderNotional() == null )
-        {
+    public BigDecimal effectiveMaxOrderNotional(LiquidityAssessment assessment, BigDecimal plannedNotional) {
+        if (assessment == null || assessment.recommendedMaxOrderNotional() == null) {
             return plannedNotional;
         }
-        if( plannedNotional == null )
-        {
+        if (plannedNotional == null) {
             return assessment.recommendedMaxOrderNotional();
         }
-        return plannedNotional.min( assessment.recommendedMaxOrderNotional() );
+        return plannedNotional.min(assessment.recommendedMaxOrderNotional());
     }
 }

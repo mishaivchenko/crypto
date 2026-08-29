@@ -14,25 +14,24 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
-import java.time.Instant;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Entity
 @Table(
-    name = "signal_candidate",
-    indexes = {
-        @Index(name = "idx_signal_candidate_detected_at", columnList = "detected_at"),
-        @Index(name = "idx_signal_candidate_status", columnList = "status"),
-        @Index(name = "idx_signal_candidate_source_msg", columnList = "source_type,source_chat_id,source_message_id"),
-        @Index(name = "idx_signal_candidate_raw_detected", columnList = "source_type,raw_symbol,detected_at")
-    }
-)
-public class SignalCandidateEntity extends AuditableEntity
-{
+        name = "signal_candidate",
+        indexes = {
+            @Index(name = "idx_signal_candidate_detected_at", columnList = "detected_at"),
+            @Index(name = "idx_signal_candidate_status", columnList = "status"),
+            @Index(
+                    name = "idx_signal_candidate_source_msg",
+                    columnList = "source_type,source_chat_id,source_message_id"),
+            @Index(name = "idx_signal_candidate_raw_detected", columnList = "source_type,raw_symbol,detected_at")
+        })
+public class SignalCandidateEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -95,198 +94,159 @@ public class SignalCandidateEntity extends AuditableEntity
     private Long fundingEventId;
 
     @PrePersist
-    void beforePersist()
-    {
-        if( detectedAt == null )
-        {
+    void beforePersist() {
+        if (detectedAt == null) {
             detectedAt = Instant.now();
         }
     }
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getSourceType()
-    {
+    public String getSourceType() {
         return sourceType;
     }
 
-    public void setSourceType( String sourceType )
-    {
+    public void setSourceType(String sourceType) {
         this.sourceType = sourceType;
     }
 
-    public Long getSourceChatId()
-    {
+    public Long getSourceChatId() {
         return sourceChatId;
     }
 
-    public void setSourceChatId( Long sourceChatId )
-    {
+    public void setSourceChatId(Long sourceChatId) {
         this.sourceChatId = sourceChatId;
     }
 
-    public Long getSourceMessageId()
-    {
+    public Long getSourceMessageId() {
         return sourceMessageId;
     }
 
-    public void setSourceMessageId( Long sourceMessageId )
-    {
+    public void setSourceMessageId(Long sourceMessageId) {
         this.sourceMessageId = sourceMessageId;
     }
 
-    public String getRawPayload()
-    {
+    public String getRawPayload() {
         return rawPayload;
     }
 
-    public void setRawPayload( String rawPayload )
-    {
+    public void setRawPayload(String rawPayload) {
         this.rawPayload = rawPayload;
     }
 
-    public String getRawSymbol()
-    {
+    public String getRawSymbol() {
         return rawSymbol;
     }
 
-    public String getSourceVenue()
-    {
+    public String getSourceVenue() {
         return sourceVenue;
     }
 
-    public void setSourceVenue( String sourceVenue )
-    {
+    public void setSourceVenue(String sourceVenue) {
         this.sourceVenue = sourceVenue;
     }
 
-    public void setRawSymbol( String rawSymbol )
-    {
+    public void setRawSymbol(String rawSymbol) {
         this.rawSymbol = rawSymbol;
     }
 
-    public String getNormalizedSymbol()
-    {
+    public String getNormalizedSymbol() {
         return normalizedSymbol;
     }
 
-    public void setNormalizedSymbol( String normalizedSymbol )
-    {
+    public void setNormalizedSymbol(String normalizedSymbol) {
         this.normalizedSymbol = normalizedSymbol;
     }
 
-    public List<String> getVenueHints()
-    {
-        if( venueHintsCsv == null || venueHintsCsv.isBlank() )
-        {
+    public List<String> getVenueHints() {
+        if (venueHintsCsv == null || venueHintsCsv.isBlank()) {
             return List.of();
         }
-        return Arrays.stream( venueHintsCsv.split( "," ) )
-                     .map( String::trim )
-                     .filter( value -> !value.isEmpty() )
-                     .toList();
+        return Arrays.stream(venueHintsCsv.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
     }
 
-    public void setVenueHints( List<String> venueHints )
-    {
-        if( venueHints == null || venueHints.isEmpty() )
-        {
+    public void setVenueHints(List<String> venueHints) {
+        if (venueHints == null || venueHints.isEmpty()) {
             this.venueHintsCsv = null;
             return;
         }
-        this.venueHintsCsv = venueHints.stream().distinct().sorted().collect( Collectors.joining( "," ) );
+        this.venueHintsCsv = venueHints.stream().distinct().sorted().collect(Collectors.joining(","));
     }
 
-    public Instant getDetectedAt()
-    {
+    public Instant getDetectedAt() {
         return detectedAt;
     }
 
-    public void setDetectedAt( Instant detectedAt )
-    {
+    public void setDetectedAt(Instant detectedAt) {
         this.detectedAt = detectedAt;
     }
 
-    public SignalCandidateStatus getStatus()
-    {
+    public SignalCandidateStatus getStatus() {
         return status;
     }
 
-    public void setStatus( SignalCandidateStatus status )
-    {
+    public void setStatus(SignalCandidateStatus status) {
         this.status = status;
     }
 
-    public Instant getReviewedAt()
-    {
+    public Instant getReviewedAt() {
         return reviewedAt;
     }
 
-    public void setReviewedAt( Instant reviewedAt )
-    {
+    public void setReviewedAt(Instant reviewedAt) {
         this.reviewedAt = reviewedAt;
     }
 
-    public ReviewDecision getReviewDecision()
-    {
+    public ReviewDecision getReviewDecision() {
         return reviewDecision;
     }
 
-    public void setReviewDecision( ReviewDecision reviewDecision )
-    {
+    public void setReviewDecision(ReviewDecision reviewDecision) {
         this.reviewDecision = reviewDecision;
     }
 
-    public String getReviewNotes()
-    {
+    public String getReviewNotes() {
         return reviewNotes;
     }
 
-    public void setReviewNotes( String reviewNotes )
-    {
+    public void setReviewNotes(String reviewNotes) {
         this.reviewNotes = reviewNotes;
     }
 
-    public String getNormalizationFailureReason()
-    {
+    public String getNormalizationFailureReason() {
         return normalizationFailureReason;
     }
 
-    public void setNormalizationFailureReason( String normalizationFailureReason )
-    {
+    public void setNormalizationFailureReason(String normalizationFailureReason) {
         this.normalizationFailureReason = normalizationFailureReason;
     }
 
-    public Instant getSourceFundingTime()
-    {
+    public Instant getSourceFundingTime() {
         return sourceFundingTime;
     }
 
-    public void setSourceFundingTime( Instant sourceFundingTime )
-    {
+    public void setSourceFundingTime(Instant sourceFundingTime) {
         this.sourceFundingTime = sourceFundingTime;
     }
 
-    public BigDecimal getSourceFundingRatePct()
-    {
+    public BigDecimal getSourceFundingRatePct() {
         return sourceFundingRatePct;
     }
 
-    public void setSourceFundingRatePct( BigDecimal sourceFundingRatePct )
-    {
+    public void setSourceFundingRatePct(BigDecimal sourceFundingRatePct) {
         this.sourceFundingRatePct = sourceFundingRatePct;
     }
 
-    public Long getFundingEventId()
-    {
+    public Long getFundingEventId() {
         return fundingEventId;
     }
 
-    public void setFundingEventId( Long fundingEventId )
-    {
+    public void setFundingEventId(Long fundingEventId) {
         this.fundingEventId = fundingEventId;
     }
 }

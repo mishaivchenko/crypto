@@ -15,20 +15,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "armed_trade",
-    indexes = {
-        @Index(name = "idx_armed_trade_event_id", columnList = "funding_event_id"),
-        @Index(name = "idx_armed_trade_state", columnList = "state")
-    }
-)
-public class ArmedTradeEntity extends AuditableEntity
-{
+        name = "armed_trade",
+        indexes = {
+            @Index(name = "idx_armed_trade_event_id", columnList = "funding_event_id"),
+            @Index(name = "idx_armed_trade_state", columnList = "state")
+        })
+public class ArmedTradeEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -114,248 +111,199 @@ public class ArmedTradeEntity extends AuditableEntity
     @Column(name = "warmup_done_at")
     private Instant warmupDoneAt;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public Long getFundingEventId()
-    {
+    public Long getFundingEventId() {
         return fundingEventId;
     }
 
-    public void setFundingEventId( Long fundingEventId )
-    {
+    public void setFundingEventId(Long fundingEventId) {
         this.fundingEventId = fundingEventId;
     }
 
-    public BigDecimal getNotionalUsd()
-    {
+    public BigDecimal getNotionalUsd() {
         return notionalUsd;
     }
 
-    public void setNotionalUsd( BigDecimal notionalUsd )
-    {
+    public void setNotionalUsd(BigDecimal notionalUsd) {
         this.notionalUsd = notionalUsd;
     }
 
-    public TradeSide getIntendedSide()
-    {
+    public TradeSide getIntendedSide() {
         return intendedSide;
     }
 
-    public void setIntendedSide( TradeSide intendedSide )
-    {
+    public void setIntendedSide(TradeSide intendedSide) {
         this.intendedSide = intendedSide;
     }
 
-    public Instant getPlannedEntryAt()
-    {
+    public Instant getPlannedEntryAt() {
         return plannedEntryAt;
     }
 
-    public void setPlannedEntryAt( Instant plannedEntryAt )
-    {
+    public void setPlannedEntryAt(Instant plannedEntryAt) {
         this.plannedEntryAt = plannedEntryAt;
     }
 
-    public Instant getPlannedExitAt()
-    {
+    public Instant getPlannedExitAt() {
         return plannedExitAt;
     }
 
-    public void setPlannedExitAt( Instant plannedExitAt )
-    {
+    public void setPlannedExitAt(Instant plannedExitAt) {
         this.plannedExitAt = plannedExitAt;
     }
 
-    public Instant getArmedAt()
-    {
+    public Instant getArmedAt() {
         return armedAt;
     }
 
-    public void setArmedAt( Instant armedAt )
-    {
+    public void setArmedAt(Instant armedAt) {
         this.armedAt = armedAt;
     }
 
-    public Long getEventAgeMsAtArm()
-    {
+    public Long getEventAgeMsAtArm() {
         return eventAgeMsAtArm;
     }
 
-    public void setEventAgeMsAtArm( Long eventAgeMsAtArm )
-    {
+    public void setEventAgeMsAtArm(Long eventAgeMsAtArm) {
         this.eventAgeMsAtArm = eventAgeMsAtArm;
     }
 
-    public Long getEntryLeadMs()
-    {
+    public Long getEntryLeadMs() {
         return entryLeadMs;
     }
 
-    public void setEntryLeadMs( Long entryLeadMs )
-    {
+    public void setEntryLeadMs(Long entryLeadMs) {
         this.entryLeadMs = entryLeadMs;
     }
 
-    public Long getExitLeadMs()
-    {
+    public Long getExitLeadMs() {
         return exitLeadMs;
     }
 
-    public void setExitLeadMs( Long exitLeadMs )
-    {
+    public void setExitLeadMs(Long exitLeadMs) {
         this.exitLeadMs = exitLeadMs;
     }
 
-    public Integer getEntryAttemptCount()
-    {
+    public Integer getEntryAttemptCount() {
         return entryAttemptCount == null ? 1 : entryAttemptCount;
     }
 
-    public void setEntryAttemptCount( Integer entryAttemptCount )
-    {
+    public void setEntryAttemptCount(Integer entryAttemptCount) {
         this.entryAttemptCount = entryAttemptCount == null ? 1 : entryAttemptCount;
     }
 
-    public Long getEntrySpacingMs()
-    {
+    public Long getEntrySpacingMs() {
         return entrySpacingMs == null ? 0L : entrySpacingMs;
     }
 
-    public void setEntrySpacingMs( Long entrySpacingMs )
-    {
+    public void setEntrySpacingMs(Long entrySpacingMs) {
         this.entrySpacingMs = entrySpacingMs == null ? 0L : entrySpacingMs;
     }
 
-    public Long getMeasuredEntryLatencyMs()
-    {
+    public Long getMeasuredEntryLatencyMs() {
         return measuredEntryLatencyMs;
     }
 
-    public void setMeasuredEntryLatencyMs( Long measuredEntryLatencyMs )
-    {
+    public void setMeasuredEntryLatencyMs(Long measuredEntryLatencyMs) {
         this.measuredEntryLatencyMs = measuredEntryLatencyMs;
     }
 
-    public Long getManualLatencyAdjustmentMs()
-    {
+    public Long getManualLatencyAdjustmentMs() {
         return manualLatencyAdjustmentMs;
     }
 
-    public void setManualLatencyAdjustmentMs( Long manualLatencyAdjustmentMs )
-    {
+    public void setManualLatencyAdjustmentMs(Long manualLatencyAdjustmentMs) {
         this.manualLatencyAdjustmentMs = manualLatencyAdjustmentMs;
     }
 
-    public Long getEffectiveEntryLatencyMs()
-    {
+    public Long getEffectiveEntryLatencyMs() {
         return effectiveEntryLatencyMs;
     }
 
-    public void setEffectiveEntryLatencyMs( Long effectiveEntryLatencyMs )
-    {
+    public void setEffectiveEntryLatencyMs(Long effectiveEntryLatencyMs) {
         this.effectiveEntryLatencyMs = effectiveEntryLatencyMs;
     }
 
-    public TradeArmSource getArmSource()
-    {
+    public TradeArmSource getArmSource() {
         return armSource;
     }
 
-    public void setArmSource( TradeArmSource armSource )
-    {
+    public void setArmSource(TradeArmSource armSource) {
         this.armSource = armSource;
     }
 
-    public ArmedTradeState getState()
-    {
+    public ArmedTradeState getState() {
         return state;
     }
 
-    public void setState( ArmedTradeState state )
-    {
+    public void setState(ArmedTradeState state) {
         this.state = state;
     }
 
-    public String getNotes()
-    {
+    public String getNotes() {
         return notes;
     }
 
-    public void setNotes( String notes )
-    {
+    public void setNotes(String notes) {
         this.notes = notes;
     }
 
-    public VenueAccessMode getMode()
-    {
+    public VenueAccessMode getMode() {
         return mode;
     }
 
-    public void setMode( VenueAccessMode mode )
-    {
+    public void setMode(VenueAccessMode mode) {
         this.mode = mode;
     }
 
-    public BigDecimal getStopLossUsd()
-    {
+    public BigDecimal getStopLossUsd() {
         return stopLossUsd;
     }
 
-    public void setStopLossUsd( BigDecimal stopLossUsd )
-    {
+    public void setStopLossUsd(BigDecimal stopLossUsd) {
         this.stopLossUsd = stopLossUsd;
     }
 
-    public BigDecimal getTakeProfitUsd()
-    {
+    public BigDecimal getTakeProfitUsd() {
         return takeProfitUsd;
     }
 
-    public void setTakeProfitUsd( BigDecimal takeProfitUsd )
-    {
+    public void setTakeProfitUsd(BigDecimal takeProfitUsd) {
         this.takeProfitUsd = takeProfitUsd;
     }
 
-    public Long getWarmupP50Ms()
-    {
+    public Long getWarmupP50Ms() {
         return warmupP50Ms;
     }
 
-    public void setWarmupP50Ms( Long warmupP50Ms )
-    {
+    public void setWarmupP50Ms(Long warmupP50Ms) {
         this.warmupP50Ms = warmupP50Ms;
     }
 
-    public Long getWarmupP95Ms()
-    {
+    public Long getWarmupP95Ms() {
         return warmupP95Ms;
     }
 
-    public void setWarmupP95Ms( Long warmupP95Ms )
-    {
+    public void setWarmupP95Ms(Long warmupP95Ms) {
         this.warmupP95Ms = warmupP95Ms;
     }
 
-    public Boolean getWarmupFallbackUsed()
-    {
+    public Boolean getWarmupFallbackUsed() {
         return warmupFallbackUsed;
     }
 
-    public void setWarmupFallbackUsed( Boolean warmupFallbackUsed )
-    {
+    public void setWarmupFallbackUsed(Boolean warmupFallbackUsed) {
         this.warmupFallbackUsed = warmupFallbackUsed;
     }
 
-    public Instant getWarmupDoneAt()
-    {
+    public Instant getWarmupDoneAt() {
         return warmupDoneAt;
     }
 
-    public void setWarmupDoneAt( Instant warmupDoneAt )
-    {
+    public void setWarmupDoneAt(Instant warmupDoneAt) {
         this.warmupDoneAt = warmupDoneAt;
     }
 }

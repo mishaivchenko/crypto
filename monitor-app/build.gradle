@@ -34,6 +34,27 @@ tasks.register('frontendTest', Exec) {
     commandLine(['node', '--test'] + testFiles)
 }
 
+tasks.register('frontendLint', Exec) {
+    group = 'verification'
+    description = 'Run ESLint for monitor static UI sources'
+    workingDir projectDir
+    commandLine 'npm', 'run', 'lint'
+}
+
+tasks.register('frontendFormat', Exec) {
+    group = 'formatting'
+    description = 'Format monitor static UI sources with Prettier'
+    workingDir projectDir
+    commandLine 'npm', 'run', 'format'
+}
+
+tasks.register('frontendFormatCheck', Exec) {
+    group = 'verification'
+    description = 'Check monitor static UI sources with Prettier'
+    workingDir projectDir
+    commandLine 'npm', 'run', 'format:check'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('frontendTest')
 }

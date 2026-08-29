@@ -20,7 +20,12 @@
 - `./gradlew bootRunEngine` runs the engine runtime locally (uses Java 25 toolchain).
 - `./gradlew test` runs the multi-module backend and UI verification suite.
 - `./gradlew build` builds all application jars and runs the full verification lifecycle.
-- `./gradlew spotlessCheck` runs the active Spotless formatter/linter (Gradle, Markdown, YAML).
+- `./gradlew quality` runs fast blocking quality gates (Spotless Java/text, monitor UI ESLint, monitor UI Prettier check).
+- `./gradlew spotlessCheck` runs the active Spotless formatter/linter (Java, Gradle, Markdown, YAML).
+- `npm --prefix monitor-app run lint` runs ESLint for the static monitor UI.
+- `npm --prefix monitor-app run format:check` checks static monitor UI formatting with Prettier.
+- `./gradlew qualityReport` runs report-only PMD, SpotBugs/FindSecBugs, and dependency-analysis reports.
+- `./gradlew build -PerrorProneEnabled=false` temporarily disables Error Prone if a Java toolchain/plugin compatibility issue blocks compilation.
 - `./gradlew security` runs OWASP dependency-check with a CVSS threshold of 7.0.
 - `./gradlew engineTddGate` runs engine mutation + coverage gate (100% PIT, 95% line / 90% branch).
 - `./gradlew engineTddDocsCheck` verifies requirement IDs in `docs/engine-tdd/gap-matrix.md`.
@@ -28,6 +33,7 @@
 ## Coding Style & Naming Conventions
 - Java: 4-space indentation, standard Spring Boot conventions, packages under `com.crypto.funding`.
 - Spotless IS active — run `./gradlew spotlessCheck` before committing; CI enforces it.
+- Java is formatted by Palantir Java Format via Spotless; do not mix format-only churn with semantic changes.
 
 ## Testing Guidelines
 - Backend tests use JUnit 5 with AssertJ and Mockito; keep tests alongside the owning module under `*/src/test/java`.

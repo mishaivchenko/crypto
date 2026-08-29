@@ -15,14 +15,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(
-    name = "trade_journal",
-    indexes = {
-        @Index(name = "idx_trade_journal_entity", columnList = "entity_type,entity_id"),
-        @Index(name = "idx_trade_journal_event_code", columnList = "event_code")
-    }
-)
-public class TradeJournalEntryEntity extends AuditableEntity
-{
+        name = "trade_journal",
+        indexes = {
+            @Index(name = "idx_trade_journal_entity", columnList = "entity_type,entity_id"),
+            @Index(name = "idx_trade_journal_event_code", columnList = "event_code")
+        })
+public class TradeJournalEntryEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -55,88 +53,71 @@ public class TradeJournalEntryEntity extends AuditableEntity
     @Column(name = "note", length = 2000)
     private String note;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public TradeJournalEntityType getEntityType()
-    {
+    public TradeJournalEntityType getEntityType() {
         return entityType;
     }
 
-    public void setEntityType( TradeJournalEntityType entityType )
-    {
+    public void setEntityType(TradeJournalEntityType entityType) {
         this.entityType = entityType;
     }
 
-    public Long getEntityId()
-    {
+    public Long getEntityId() {
         return entityId;
     }
 
-    public void setEntityId( Long entityId )
-    {
+    public void setEntityId(Long entityId) {
         this.entityId = entityId;
     }
 
-    public TradeJournalEventCode getEventCode()
-    {
+    public TradeJournalEventCode getEventCode() {
         return eventCode;
     }
 
-    public void setEventCode( TradeJournalEventCode eventCode )
-    {
+    public void setEventCode(TradeJournalEventCode eventCode) {
         this.eventCode = eventCode;
     }
 
-    public String getOldState()
-    {
+    public String getOldState() {
         return oldState;
     }
 
-    public void setOldState( String oldState )
-    {
+    public void setOldState(String oldState) {
         this.oldState = oldState;
     }
 
-    public String getNewState()
-    {
+    public String getNewState() {
         return newState;
     }
 
-    public void setNewState( String newState )
-    {
+    public void setNewState(String newState) {
         this.newState = newState;
     }
 
-    public TradeJournalActorType getActorType()
-    {
+    public TradeJournalActorType getActorType() {
         return actorType;
     }
 
-    public void setActorType( TradeJournalActorType actorType )
-    {
+    public void setActorType(TradeJournalActorType actorType) {
         this.actorType = actorType;
     }
 
-    public String getActorRef()
-    {
+    public String getActorRef() {
         return actorRef;
     }
 
-    public void setActorRef( String actorRef )
-    {
+    public void setActorRef(String actorRef) {
         this.actorRef = actorRef;
     }
 
-    public String getNote()
-    {
+    public String getNote() {
         return note;
     }
 
-    public void setNote( String note )
-    {
+    public void setNote(String note) {
         this.note = note;
     }
 }

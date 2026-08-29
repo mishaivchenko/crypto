@@ -1,68 +1,61 @@
 package com.crypto.funding.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.SpringApplication;
 import org.springframework.mock.env.MockEnvironment;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-
-class SqliteDataDirectoryEnvironmentPostProcessorTest
-{
+class SqliteDataDirectoryEnvironmentPostProcessorTest {
     @TempDir
     Path tempDir;
 
     @Test
-    void createsMissingParentDirectoryForSqliteDatasource()
-    {
-        Path dbPath = tempDir.resolve( "runtime/data/fundingarb.db" );
+    void createsMissingParentDirectoryForSqliteDatasource() {
+        Path dbPath = tempDir.resolve("runtime/data/fundingarb.db");
         MockEnvironment environment = new MockEnvironment()
-            .withProperty( "spring.datasource.url", "jdbc:sqlite:" + dbPath + "?busy_timeout=5000" );
+                .withProperty("spring.datasource.url", "jdbc:sqlite:" + dbPath + "?busy_timeout=5000");
 
         SqliteDataDirectoryEnvironmentPostProcessor processor = new SqliteDataDirectoryEnvironmentPostProcessor();
 
-        assertThatCode( () -> processor.postProcessEnvironment( environment, new SpringApplication() ) ).doesNotThrowAnyException();
-        assertThat( Files.isDirectory( dbPath.getParent() ) ).isTrue();
+        assertThatCode(() -> processor.postProcessEnvironment(environment, new SpringApplication()))
+                .doesNotThrowAnyException();
+        assertThat(Files.isDirectory(dbPath.getParent())).isTrue();
     }
 
     @Test
-    void ignoresNonSqliteDatasource()
-    {
-        MockEnvironment environment = new MockEnvironment()
-            .withProperty( "spring.datasource.url", "jdbc:h2:mem:testdb" );
+    void ignoresNonSqliteDatasource() {
+        MockEnvironment environment = new MockEnvironment().withProperty("spring.datasource.url", "jdbc:h2:mem:testdb");
 
         SqliteDataDirectoryEnvironmentPostProcessor processor = new SqliteDataDirectoryEnvironmentPostProcessor();
 
-        assertThatCode( () -> processor.postProcessEnvironment( environment, new SpringApplication() ) ).doesNotThrowAnyException();
+        assertThatCode(() -> processor.postProcessEnvironment(environment, new SpringApplication()))
+                .doesNotThrowAnyException();
     }
 
     @Test
-    void supportsRelativeFileStyleSqliteUrls()
-    {
+    void supportsRelativeFileStyleSqliteUrls() {
         MockEnvironment environment = new MockEnvironment()
-            .withProperty( "spring.datasource.url", "jdbc:sqlite:file:./build/test-relative.db?busy_timeout=5000" );
+                .withProperty("spring.datasource.url", "jdbc:sqlite:file:./build/test-relative.db?busy_timeout=5000");
 
         SqliteDataDirectoryEnvironmentPostProcessor processor = new SqliteDataDirectoryEnvironmentPostProcessor();
 
-        assertThatCode( () -> processor.postProcessEnvironment( environment, new SpringApplication() ) ).doesNotThrowAnyException();
-        assertThat( Files.isDirectory( Path.of( "./build" ) ) ).isTrue();
+        assertThatCode(() -> processor.postProcessEnvironment(environment, new SpringApplication()))
+                .doesNotThrowAnyException();
+        assertThat(Files.isDirectory(Path.of("./build"))).isTrue();
     }
 
     @Test
-    void rewritesRelativeDatasourceUrlsAgainstProjectRoot()
-    {
-        Path root = tempDir.resolve( "repo" );
+    void rewritesRelativeDatasourceUrlsAgainstProjectRoot() {
+        Path root = tempDir.resolve("repo");
         String rewritten = SqliteDataDirectoryEnvironmentPostProcessor.rewriteRelativeSqliteUrl(
-            "jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000",
-            root
-        );
+                "jdbc:sqlite:./data/fundingarb.db?busy_timeout=5000", root);
 
-        assertThat( rewritten ).isEqualTo(
-            "jdbc:sqlite:" + root.resolve( "data/fundingarb.db" ).normalize() + "?busy_timeout=5000"
-        );
+        assertThat(rewritten)
+                .isEqualTo("jdbc:sqlite:" + root.resolve("data/fundingarb.db").normalize() + "?busy_timeout=5000");
     }
 }

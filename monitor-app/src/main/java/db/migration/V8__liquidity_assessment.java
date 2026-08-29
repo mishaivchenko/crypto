@@ -1,25 +1,20 @@
 package db.migration;
 
-import org.flywaydb.core.api.migration.BaseJavaMigration;
-import org.flywaydb.core.api.migration.Context;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import org.flywaydb.core.api.migration.BaseJavaMigration;
+import org.flywaydb.core.api.migration.Context;
 
-public class V8__liquidity_assessment extends BaseJavaMigration
-{
+public class V8__liquidity_assessment extends BaseJavaMigration {
     @Override
-    public void migrate( Context context ) throws Exception
-    {
+    public void migrate(Context context) throws Exception {
         Connection connection = context.getConnection();
-        if( tableExists( connection ) )
-        {
+        if (tableExists(connection)) {
             return;
         }
-        try( Statement statement = connection.createStatement() )
-        {
-            statement.execute( """
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
                 CREATE TABLE liquidity_assessment (
                     id INTEGER PRIMARY KEY,
                     assessment_id VARCHAR(64) NOT NULL UNIQUE,
@@ -43,18 +38,18 @@ public class V8__liquidity_assessment extends BaseJavaMigration
                     created_at BIGINT NOT NULL,
                     updated_at BIGINT NOT NULL
                 )
-                """ );
-            statement.execute( "CREATE INDEX idx_liquidity_assessment_trade_id ON liquidity_assessment (trade_id)" );
-            statement.execute( "CREATE INDEX idx_liquidity_assessment_venue_symbol ON liquidity_assessment (venue, symbol)" );
-            statement.execute( "CREATE INDEX idx_liquidity_assessment_sampled_at ON liquidity_assessment (sampled_at)" );
+                """);
+            statement.execute("CREATE INDEX idx_liquidity_assessment_trade_id ON liquidity_assessment (trade_id)");
+            statement.execute(
+                    "CREATE INDEX idx_liquidity_assessment_venue_symbol ON liquidity_assessment (venue, symbol)");
+            statement.execute("CREATE INDEX idx_liquidity_assessment_sampled_at ON liquidity_assessment (sampled_at)");
         }
     }
 
-    private static boolean tableExists( Connection connection ) throws Exception
-    {
-        try( Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery( "SELECT name FROM sqlite_master WHERE type='table' AND name='liquidity_assessment'" ) )
-        {
+    private static boolean tableExists(Connection connection) throws Exception {
+        try (Statement statement = connection.createStatement();
+                ResultSet rs = statement.executeQuery(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name='liquidity_assessment'")) {
             return rs.next();
         }
     }

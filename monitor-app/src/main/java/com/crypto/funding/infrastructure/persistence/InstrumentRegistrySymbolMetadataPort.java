@@ -4,80 +4,64 @@ import com.crypto.funding.application.port.SymbolMetadata;
 import com.crypto.funding.application.port.SymbolMetadataPort;
 import com.crypto.funding.domain.venue.InstrumentStatus;
 import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
+import java.util.Locale;
+import java.util.Optional;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
-import java.util.Locale;
-import java.util.Optional;
-
 @Component
 @Primary
-public class InstrumentRegistrySymbolMetadataPort implements SymbolMetadataPort
-{
+public class InstrumentRegistrySymbolMetadataPort implements SymbolMetadataPort {
     private final InstrumentMetadataJpaRepository repository;
 
-    public InstrumentRegistrySymbolMetadataPort( InstrumentMetadataJpaRepository repository )
-    {
+    public InstrumentRegistrySymbolMetadataPort(InstrumentMetadataJpaRepository repository) {
         this.repository = repository;
     }
 
     @Override
-    public Optional<SymbolMetadata> findSymbolMetadata( String venue, String symbol )
-    {
-        if( venue == null || symbol == null )
-        {
+    public Optional<SymbolMetadata> findSymbolMetadata(String venue, String symbol) {
+        if (venue == null || symbol == null) {
             return Optional.empty();
         }
 
-        return repository.findByVenueAndCanonicalSymbolAndStatus(
-                             venue.trim().toLowerCase( Locale.ROOT ),
-                             symbol.trim().toUpperCase( Locale.ROOT ),
-                             InstrumentStatus.ACTIVE
-                         )
-                         .map( entity -> new SymbolMetadata(
-                             entity.getVenue(),
-                             entity.getCanonicalSymbol(),
-                             entity.getMinOrderQty(),
-                             entity.getQtyStep(),
-                             entity.getMinNotionalValue()
-                         ) );
+        return repository
+                .findByVenueAndCanonicalSymbolAndStatus(
+                        venue.trim().toLowerCase(Locale.ROOT),
+                        symbol.trim().toUpperCase(Locale.ROOT),
+                        InstrumentStatus.ACTIVE)
+                .map(entity -> new SymbolMetadata(
+                        entity.getVenue(),
+                        entity.getCanonicalSymbol(),
+                        entity.getMinOrderQty(),
+                        entity.getQtyStep(),
+                        entity.getMinNotionalValue()));
     }
 
     @Override
-    public Optional<SymbolMetadata> findByVenueSymbol( String venue, String venueSymbol )
-    {
-        if( venue == null || venueSymbol == null )
-        {
+    public Optional<SymbolMetadata> findByVenueSymbol(String venue, String venueSymbol) {
+        if (venue == null || venueSymbol == null) {
             return Optional.empty();
         }
 
-        String normalizedVenue = venue.trim().toLowerCase( Locale.ROOT );
-        String normalizedVenueSymbol = normalizeVenueSymbol( venueSymbol );
+        String normalizedVenue = venue.trim().toLowerCase(Locale.ROOT);
+        String normalizedVenueSymbol = normalizeVenueSymbol(venueSymbol);
 
-        return repository.findAllByVenueOrderByCanonicalSymbolAsc( normalizedVenue )
-                         .stream()
-                         .filter( entity -> entity.getStatus() == InstrumentStatus.ACTIVE )
-                         .filter( entity -> normalizeVenueSymbol( entity.getVenueSymbol() ).equals( normalizedVenueSymbol ) )
-                         .findFirst()
-                         .map( entity -> new SymbolMetadata(
-                             entity.getVenue(),
-                             entity.getCanonicalSymbol(),
-                             entity.getMinOrderQty(),
-                             entity.getQtyStep(),
-                             entity.getMinNotionalValue()
-                         ) );
+        return repository.findAllByVenueOrderByCanonicalSymbolAsc(normalizedVenue).stream()
+                .filter(entity -> entity.getStatus() == InstrumentStatus.ACTIVE)
+                .filter(entity -> normalizeVenueSymbol(entity.getVenueSymbol()).equals(normalizedVenueSymbol))
+                .findFirst()
+                .map(entity -> new SymbolMetadata(
+                        entity.getVenue(),
+                        entity.getCanonicalSymbol(),
+                        entity.getMinOrderQty(),
+                        entity.getQtyStep(),
+                        entity.getMinNotionalValue()));
     }
 
-    private static String normalizeVenueSymbol( String value )
-    {
-        if( value == null )
-        {
+    private static String normalizeVenueSymbol(String value) {
+        if (value == null) {
             return "";
         }
-        return value.replace( "-", "" )
-                    .replace( "_", "" )
-                    .replace( "/", "" )
-                    .trim()
-                    .toUpperCase( Locale.ROOT );
+        return value.replace("-", "").replace("_", "").replace("/", "").trim().toUpperCase(Locale.ROOT);
     }
 }

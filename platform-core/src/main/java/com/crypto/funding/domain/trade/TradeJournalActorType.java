@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.trade;
 
-public enum TradeJournalActorType
-{
+public enum TradeJournalActorType {
     SYSTEM,
     OPERATOR
 }

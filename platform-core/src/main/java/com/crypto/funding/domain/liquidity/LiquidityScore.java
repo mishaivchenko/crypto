@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.liquidity;
 
-public enum LiquidityScore
-{
+public enum LiquidityScore {
     UNTRADABLE,
     THIN,
     MEDIUM,

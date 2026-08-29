@@ -7,7 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 ./gradlew test                # Run all backend + UI tests (multi-module)
 ./gradlew build               # Full build with verification (includes tests)
-./gradlew spotlessCheck       # Format/lint check (Gradle, Markdown, YAML)
+./gradlew quality             # Fast blocking quality gates
+./gradlew qualityReport       # Report-only PMD, SpotBugs/FindSecBugs, dependency analysis
+./gradlew spotlessCheck       # Format/lint check (Java, Gradle, Markdown, YAML)
+npm --prefix monitor-app run lint
+npm --prefix monitor-app run format:check
 ./gradlew security            # OWASP dependency-check (CVSS ≥ 7.0 fails build)
 ./gradlew bootRunMonitor      # Start monitor-app on :8090 (local-safe profile)
 ./gradlew bootRunEngine       # Start engine-app on :8091 (local-safe profile)
@@ -16,6 +20,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 
 Requires JDK 25. `bootRun*` tasks automatically set `SPRING_PROFILES_ACTIVE=local-safe` and `INTERNAL_ENGINE_TOKEN=funding-local-internal-token` unless overridden via ENV.
+
+Use `-PerrorProneEnabled=false` only as a temporary compiler compatibility escape hatch; production `compileJava` runs Error Prone by default.
 
 To run tests for a single module: `./gradlew :engine-app:test` or `./gradlew :platform-core:test`.
 

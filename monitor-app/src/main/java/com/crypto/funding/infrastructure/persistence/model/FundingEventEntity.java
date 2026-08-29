@@ -13,20 +13,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "funding_event",
-    indexes = {
-        @Index(name = "idx_funding_event_venue_symbol", columnList = "venue,symbol"),
-        @Index(name = "idx_funding_event_funding_time", columnList = "funding_time")
-    }
-)
-public class FundingEventEntity extends AuditableEntity
-{
+        name = "funding_event",
+        indexes = {
+            @Index(name = "idx_funding_event_venue_symbol", columnList = "venue,symbol"),
+            @Index(name = "idx_funding_event_funding_time", columnList = "funding_time")
+        })
+public class FundingEventEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -63,106 +60,85 @@ public class FundingEventEntity extends AuditableEntity
     private Instant discoveredAt;
 
     @PrePersist
-    void beforePersist()
-    {
-        if( discoveredAt == null )
-        {
+    void beforePersist() {
+        if (discoveredAt == null) {
             discoveredAt = Instant.now();
         }
     }
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public String getSymbol()
-    {
+    public String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol( String symbol )
-    {
+    public void setSymbol(String symbol) {
         this.symbol = symbol;
     }
 
-    public Instant getFundingTime()
-    {
+    public Instant getFundingTime() {
         return fundingTime;
     }
 
-    public void setFundingTime( Instant fundingTime )
-    {
+    public void setFundingTime(Instant fundingTime) {
         this.fundingTime = fundingTime;
     }
 
-    public BigDecimal getFundingRatePct()
-    {
+    public BigDecimal getFundingRatePct() {
         return fundingRatePct;
     }
 
-    public void setFundingRatePct( BigDecimal fundingRatePct )
-    {
+    public void setFundingRatePct(BigDecimal fundingRatePct) {
         this.fundingRatePct = fundingRatePct;
     }
 
-    public FundingEventStatus getStatus()
-    {
+    public FundingEventStatus getStatus() {
         return status;
     }
 
-    public void setStatus( FundingEventStatus status )
-    {
+    public void setStatus(FundingEventStatus status) {
         this.status = status;
     }
 
-    public String getSourceType()
-    {
+    public String getSourceType() {
         return sourceType;
     }
 
-    public void setSourceType( String sourceType )
-    {
+    public void setSourceType(String sourceType) {
         this.sourceType = sourceType;
     }
 
-    public String getSourceRef()
-    {
+    public String getSourceRef() {
         return sourceRef;
     }
 
-    public void setSourceRef( String sourceRef )
-    {
+    public void setSourceRef(String sourceRef) {
         this.sourceRef = sourceRef;
     }
 
-    public Long getSignalCandidateId()
-    {
+    public Long getSignalCandidateId() {
         return signalCandidateId;
     }
 
-    public void setSignalCandidateId( Long signalCandidateId )
-    {
+    public void setSignalCandidateId(Long signalCandidateId) {
         this.signalCandidateId = signalCandidateId;
     }
 
-    public Instant getDiscoveredAt()
-    {
+    public Instant getDiscoveredAt() {
         return discoveredAt;
     }
 
-    public void setDiscoveredAt( Instant discoveredAt )
-    {
+    public void setDiscoveredAt(Instant discoveredAt) {
         this.discoveredAt = discoveredAt;
     }
 }

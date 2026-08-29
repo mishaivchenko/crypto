@@ -12,19 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/internal/v1/engine")
 @ConditionalOnProperty(prefix = "monitor.engine-metrics", name = "enabled", havingValue = "true")
-public class InternalEngineMetricsController
-{
+public class InternalEngineMetricsController {
     private final EngineMetricsIngestService ingestService;
 
-    public InternalEngineMetricsController( EngineMetricsIngestService ingestService )
-    {
+    public InternalEngineMetricsController(EngineMetricsIngestService ingestService) {
         this.ingestService = ingestService;
     }
 
     @PostMapping("/metrics-snapshot")
-    public ResponseEntity<Void> ingestSnapshot( @RequestBody EngineMetricsSnapshot snapshot )
-    {
-        ingestService.ingest( snapshot );
+    public ResponseEntity<Void> ingestSnapshot(@RequestBody EngineMetricsSnapshot snapshot) {
+        ingestService.ingest(snapshot);
         return ResponseEntity.accepted().build();
     }
 }

@@ -12,20 +12,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "instrument_metadata",
-    indexes = {
-        @Index(name = "idx_instrument_metadata_venue_symbol", columnList = "venue,canonical_symbol", unique = true),
-        @Index(name = "idx_instrument_metadata_status", columnList = "status")
-    }
-)
-public class InstrumentMetadataEntity extends AuditableEntity
-{
+        name = "instrument_metadata",
+        indexes = {
+            @Index(name = "idx_instrument_metadata_venue_symbol", columnList = "venue,canonical_symbol", unique = true),
+            @Index(name = "idx_instrument_metadata_status", columnList = "status")
+        })
+public class InstrumentMetadataEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -69,128 +66,103 @@ public class InstrumentMetadataEntity extends AuditableEntity
     @Column(name = "last_synced_at", nullable = false)
     private Instant lastSyncedAt;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public String getCanonicalSymbol()
-    {
+    public String getCanonicalSymbol() {
         return canonicalSymbol;
     }
 
-    public void setCanonicalSymbol( String canonicalSymbol )
-    {
+    public void setCanonicalSymbol(String canonicalSymbol) {
         this.canonicalSymbol = canonicalSymbol;
     }
 
-    public String getVenueSymbol()
-    {
+    public String getVenueSymbol() {
         return venueSymbol;
     }
 
-    public void setVenueSymbol( String venueSymbol )
-    {
+    public void setVenueSymbol(String venueSymbol) {
         this.venueSymbol = venueSymbol;
     }
 
-    public String getBaseAsset()
-    {
+    public String getBaseAsset() {
         return baseAsset;
     }
 
-    public void setBaseAsset( String baseAsset )
-    {
+    public void setBaseAsset(String baseAsset) {
         this.baseAsset = baseAsset;
     }
 
-    public String getQuoteAsset()
-    {
+    public String getQuoteAsset() {
         return quoteAsset;
     }
 
-    public void setQuoteAsset( String quoteAsset )
-    {
+    public void setQuoteAsset(String quoteAsset) {
         this.quoteAsset = quoteAsset;
     }
 
-    public String getInstrumentType()
-    {
+    public String getInstrumentType() {
         return instrumentType;
     }
 
-    public void setInstrumentType( String instrumentType )
-    {
+    public void setInstrumentType(String instrumentType) {
         this.instrumentType = instrumentType;
     }
 
-    public InstrumentStatus getStatus()
-    {
+    public InstrumentStatus getStatus() {
         return status;
     }
 
-    public void setStatus( InstrumentStatus status )
-    {
+    public void setStatus(InstrumentStatus status) {
         this.status = status;
     }
 
-    public BigDecimal getMinOrderQty()
-    {
+    public BigDecimal getMinOrderQty() {
         return minOrderQty;
     }
 
-    public void setMinOrderQty( BigDecimal minOrderQty )
-    {
+    public void setMinOrderQty(BigDecimal minOrderQty) {
         this.minOrderQty = minOrderQty;
     }
 
-    public BigDecimal getQtyStep()
-    {
+    public BigDecimal getQtyStep() {
         return qtyStep;
     }
 
-    public void setQtyStep( BigDecimal qtyStep )
-    {
+    public void setQtyStep(BigDecimal qtyStep) {
         this.qtyStep = qtyStep;
     }
 
-    public BigDecimal getMinNotionalValue()
-    {
+    public BigDecimal getMinNotionalValue() {
         return minNotionalValue;
     }
 
-    public void setMinNotionalValue( BigDecimal minNotionalValue )
-    {
+    public void setMinNotionalValue(BigDecimal minNotionalValue) {
         this.minNotionalValue = minNotionalValue;
     }
 
-    public Integer getQuantityPrecision()
-    {
+    public Integer getQuantityPrecision() {
         return quantityPrecision;
     }
 
-    public void setQuantityPrecision( Integer quantityPrecision )
-    {
+    public void setQuantityPrecision(Integer quantityPrecision) {
         this.quantityPrecision = quantityPrecision;
     }
 
-    public Instant getLastSyncedAt()
-    {
+    public Instant getLastSyncedAt() {
         return lastSyncedAt;
     }
 
-    public void setLastSyncedAt( Instant lastSyncedAt )
-    {
+    public void setLastSyncedAt(Instant lastSyncedAt) {
         this.lastSyncedAt = lastSyncedAt;
     }
 }

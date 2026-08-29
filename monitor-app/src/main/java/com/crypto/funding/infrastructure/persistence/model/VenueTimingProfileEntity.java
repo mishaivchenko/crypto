@@ -9,18 +9,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "venue_timing_profile",
-    indexes = {
-        @Index(name = "idx_venue_timing_profile_venue_symbol", columnList = "venue,symbol")
-    }
-)
-public class VenueTimingProfileEntity extends AuditableEntity
-{
+        name = "venue_timing_profile",
+        indexes = {@Index(name = "idx_venue_timing_profile_venue_symbol", columnList = "venue,symbol")})
+public class VenueTimingProfileEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -48,78 +43,63 @@ public class VenueTimingProfileEntity extends AuditableEntity
     @Column(name = "notes", length = 1000)
     private String notes;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public String getSymbol()
-    {
+    public String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol( String symbol )
-    {
+    public void setSymbol(String symbol) {
         this.symbol = symbol;
     }
 
-    public Long getObservedLagMs()
-    {
+    public Long getObservedLagMs() {
         return observedLagMs;
     }
 
-    public void setObservedLagMs( Long observedLagMs )
-    {
+    public void setObservedLagMs(Long observedLagMs) {
         this.observedLagMs = observedLagMs;
     }
 
-    public Long getEntryLatencyMs()
-    {
+    public Long getEntryLatencyMs() {
         return entryLatencyMs;
     }
 
-    public void setEntryLatencyMs( Long entryLatencyMs )
-    {
+    public void setEntryLatencyMs(Long entryLatencyMs) {
         this.entryLatencyMs = entryLatencyMs;
     }
 
-    public Long getExitLatencyMs()
-    {
+    public Long getExitLatencyMs() {
         return exitLatencyMs;
     }
 
-    public void setExitLatencyMs( Long exitLatencyMs )
-    {
+    public void setExitLatencyMs(Long exitLatencyMs) {
         this.exitLatencyMs = exitLatencyMs;
     }
 
-    public Instant getSampledAt()
-    {
+    public Instant getSampledAt() {
         return sampledAt;
     }
 
-    public void setSampledAt( Instant sampledAt )
-    {
+    public void setSampledAt(Instant sampledAt) {
         this.sampledAt = sampledAt;
     }
 
-    public String getNotes()
-    {
+    public String getNotes() {
         return notes;
     }
 
-    public void setNotes( String notes )
-    {
+    public void setNotes(String notes) {
         this.notes = notes;
     }
 }

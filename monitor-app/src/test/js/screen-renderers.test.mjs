@@ -23,35 +23,44 @@ test("candidates screen renders empty and loaded states", () => {
                 sourceVenue: "gate",
                 sourceType: "FUNDING_API",
                 status: "NORMALIZED",
-                detectedAt: "2030-01-01T00:00:00.000Z"
-            }
-        ]
+                detectedAt: "2030-01-01T00:00:00.000Z",
+            },
+        ],
     });
 
     assert.match(compact, /analyzing|анализируются/);
     assert.doesNotMatch(compact, /WET\/USDT/);
     assert.doesNotMatch(compact, /quick-approve-candidate/);
 
-    const full = candidatesListMarkup({
-        content: [
-            {
-                id: 13,
-                normalizedSymbol: "BTC/USDT",
-                rawSymbol: "BTCUSDT",
-                sourceVenue: "gate",
-                sourceType: "FUNDING_API",
-                status: "NORMALIZED",
-                sourceFundingTime: "2030-01-01T08:00:00.000Z",
-                sourceFundingRatePct: 0.025,
-                detectedAt: "2030-01-01T00:00:00.000Z",
-                aiAdvice: { recommendation: "GO", confidence: 0.85, reasoning: "Good rate", modelUsed: "deepseek-chat", analyzedAt: "2030-01-01T00:01:00.000Z" }
-            }
-        ]
-    }, {
-        liquidityMap: {
-            13: { score: "GOOD", recommendedMaxOrderNotional: 5000, spreadBps: 3.5 }
-        }
-    });
+    const full = candidatesListMarkup(
+        {
+            content: [
+                {
+                    id: 13,
+                    normalizedSymbol: "BTC/USDT",
+                    rawSymbol: "BTCUSDT",
+                    sourceVenue: "gate",
+                    sourceType: "FUNDING_API",
+                    status: "NORMALIZED",
+                    sourceFundingTime: "2030-01-01T08:00:00.000Z",
+                    sourceFundingRatePct: 0.025,
+                    detectedAt: "2030-01-01T00:00:00.000Z",
+                    aiAdvice: {
+                        recommendation: "GO",
+                        confidence: 0.85,
+                        reasoning: "Good rate",
+                        modelUsed: "deepseek-chat",
+                        analyzedAt: "2030-01-01T00:01:00.000Z",
+                    },
+                },
+            ],
+        },
+        {
+            liquidityMap: {
+                13: { score: "GOOD", recommendedMaxOrderNotional: 5000, spreadBps: 3.5 },
+            },
+        },
+    );
 
     assert.match(full, /BTC\/USDT/);
     assert.match(full, /quick-approve-candidate/);
@@ -78,15 +87,13 @@ test("history screen renders filtered count and rows", () => {
                 entrySpacingMs: 150,
                 effectiveEntryLatencyMs: 50,
                 manualLatencyAdjustmentMs: 10,
-                state: "ARMED"
-            }
+                state: "ARMED",
+            },
         ],
         attemptsByTrade: {
-            42: [
-                { attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" }
-            ]
+            42: [{ attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" }],
         },
-        filters: {}
+        filters: {},
     });
 
     assert.equal(markup.countLabel, "1 / 1 trades");
@@ -104,7 +111,7 @@ test("event drawer content renders decorator sections conditionally", () => {
         status: "DISCOVERED",
         sourceType: "FUNDING_API",
         signalCandidateId: null,
-        armedTradeId: null
+        armedTradeId: null,
     };
 
     const discovered = buildEventDrawerContent({ event, journal: [] });
@@ -132,21 +139,35 @@ test("event drawer content renders decorator sections conditionally", () => {
         warmupP95Ms: 60,
         entryLeadMs: 55,
         exitLeadMs: 200,
-        armedAt: "2030-01-01T07:00:00.000Z"
+        armedAt: "2030-01-01T07:00:00.000Z",
     };
 
     const armed = buildEventDrawerContent({
         event: { ...event, status: "ARMED", armedTradeId: 10 },
         journal: [],
-        trade
+        trade,
     });
     assert.match(armed, /Latency Chain/);
     assert.doesNotMatch(armed, /Arm Prepared Trade/);
     assert.doesNotMatch(armed, /Outcome/);
 
-    const outcome = { netPnlUsd: 1.23, grossPnlUsd: 1.50, feesUsd: 0.27, outcomeCode: "PROFIT", evaluatedAt: "2030-01-01T08:02:00.000Z" };
-    const position = { entryPrice: 50000, exitPrice: 50100, quantity: 0.001, openedAt: "2030-01-01T07:59:30.000Z", closedAt: "2030-01-01T08:01:00.000Z" };
-    const attempts = [{ attemptNumber: 1, status: "FILLED", symbol: "BTCUSDT", side: "Sell", triggerAt: "2030-01-01T07:59:15.000Z" }];
+    const outcome = {
+        netPnlUsd: 1.23,
+        grossPnlUsd: 1.5,
+        feesUsd: 0.27,
+        outcomeCode: "PROFIT",
+        evaluatedAt: "2030-01-01T08:02:00.000Z",
+    };
+    const position = {
+        entryPrice: 50000,
+        exitPrice: 50100,
+        quantity: 0.001,
+        openedAt: "2030-01-01T07:59:30.000Z",
+        closedAt: "2030-01-01T08:01:00.000Z",
+    };
+    const attempts = [
+        { attemptNumber: 1, status: "FILLED", symbol: "BTCUSDT", side: "Sell", triggerAt: "2030-01-01T07:59:15.000Z" },
+    ];
 
     const closed = buildEventDrawerContent({
         event: { ...event, status: "CANCELLED", armedTradeId: 10 },
@@ -154,7 +175,7 @@ test("event drawer content renders decorator sections conditionally", () => {
         trade: { ...trade, state: "CLOSED" },
         attempts,
         outcome,
-        position
+        position,
     });
     assert.match(closed, /Latency Chain/);
     assert.match(closed, /Execution Attempts/);
@@ -175,8 +196,8 @@ test("venues screen renders empty and loaded states", () => {
             connectionStatus: "CONNECTED",
             lastSyncedAt: "2030-01-01T00:00:00.000Z",
             averageRequestTimeMs: 42,
-            requests: 7
-        }
+            requests: 7,
+        },
     ]);
 
     assert.match(loaded, /bybit/);

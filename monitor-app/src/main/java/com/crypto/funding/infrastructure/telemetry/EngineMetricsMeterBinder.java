@@ -9,214 +9,297 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.MeterBinder;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(prefix = "monitor.engine-metrics", name = "enabled", havingValue = "true")
-public class EngineMetricsMeterBinder implements MeterBinder
-{
+public class EngineMetricsMeterBinder implements MeterBinder {
     private final EngineMetricsSnapshotView snapshotView;
     private final MetadataSyncProperties metadataSyncProperties;
 
-    public EngineMetricsMeterBinder( EngineMetricsSnapshotView snapshotView, MetadataSyncProperties metadataSyncProperties )
-    {
+    public EngineMetricsMeterBinder(
+            EngineMetricsSnapshotView snapshotView, MetadataSyncProperties metadataSyncProperties) {
         this.snapshotView = snapshotView;
         this.metadataSyncProperties = metadataSyncProperties;
     }
 
     @Override
-    public void bindTo( MeterRegistry registry )
-    {
-        Gauge.builder( "funding_engine_up", snapshotView, EngineMetricsSnapshotView::engineUp )
-             .description( "Last reported engine availability." )
-             .register( registry );
+    public void bindTo(MeterRegistry registry) {
+        Gauge.builder("funding_engine_up", snapshotView, EngineMetricsSnapshotView::engineUp)
+                .description("Last reported engine availability.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_execution_loop_enabled", snapshotView, EngineMetricsSnapshotView::executionLoopEnabled )
-             .description( "Last reported engine execution loop flag." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_execution_loop_enabled",
+                        snapshotView,
+                        EngineMetricsSnapshotView::executionLoopEnabled)
+                .description("Last reported engine execution loop flag.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_execution_loop_interval_ms", snapshotView, EngineMetricsSnapshotView::executionLoopIntervalMs )
-             .description( "Current engine execution loop interval in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_execution_loop_interval_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::executionLoopIntervalMs)
+                .description("Current engine execution loop interval in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_plans", snapshotView, EngineMetricsSnapshotView::totalPlans )
-             .description( "Total execution plans in the last engine snapshot." )
-             .register( registry );
+        Gauge.builder("funding_engine_plans", snapshotView, EngineMetricsSnapshotView::totalPlans)
+                .description("Total execution plans in the last engine snapshot.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_actionable_plans", snapshotView, EngineMetricsSnapshotView::actionablePlans )
-             .description( "Actionable execution plans in the last engine snapshot." )
-             .register( registry );
+        Gauge.builder("funding_engine_actionable_plans", snapshotView, EngineMetricsSnapshotView::actionablePlans)
+                .description("Actionable execution plans in the last engine snapshot.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_snapshot_age_seconds", snapshotView, EngineMetricsSnapshotView::snapshotAgeSeconds )
-             .description( "Age of the last ingested engine snapshot in seconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_snapshot_age_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::snapshotAgeSeconds)
+                .description("Age of the last ingested engine snapshot in seconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_snapshot_captured_at_epoch_seconds", snapshotView, EngineMetricsSnapshotView::snapshotCapturedAtEpochSeconds )
-             .description( "Unix epoch seconds when the last engine snapshot was captured." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_snapshot_captured_at_epoch_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::snapshotCapturedAtEpochSeconds)
+                .description("Unix epoch seconds when the last engine snapshot was captured.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_runtime_updated_at_epoch_seconds", snapshotView, EngineMetricsSnapshotView::runtimeUpdatedAtEpochSeconds )
-             .description( "Unix epoch seconds when the engine runtime controls were last changed." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_runtime_updated_at_epoch_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::runtimeUpdatedAtEpochSeconds)
+                .description("Unix epoch seconds when the engine runtime controls were last changed.")
+                .register(registry);
 
-        FunctionCounter.builder( "funding_engine_execution_runs", snapshotView, EngineMetricsSnapshotView::executionRuns )
-                       .description( "Total engine execution runs reported by the engine runtime." )
-                       .register( registry );
+        FunctionCounter.builder("funding_engine_execution_runs", snapshotView, EngineMetricsSnapshotView::executionRuns)
+                .description("Total engine execution runs reported by the engine runtime.")
+                .register(registry);
 
-        FunctionCounter.builder( "funding_engine_execution_runs_by_mode", snapshotView, EngineMetricsSnapshotView::forcedExecutionRuns )
-                       .description( "Total forced engine execution runs reported by the engine runtime." )
-                       .tags( List.of( Tag.of( "mode", "forced" ) ) )
-                       .register( registry );
+        FunctionCounter.builder(
+                        "funding_engine_execution_runs_by_mode",
+                        snapshotView,
+                        EngineMetricsSnapshotView::forcedExecutionRuns)
+                .description("Total forced engine execution runs reported by the engine runtime.")
+                .tags(List.of(Tag.of("mode", "forced")))
+                .register(registry);
 
-        FunctionCounter.builder( "funding_engine_execution_runs_by_mode", snapshotView, EngineMetricsSnapshotView::scheduledExecutionRuns )
-                       .description( "Total scheduled engine execution runs reported by the engine runtime." )
-                       .tags( List.of( Tag.of( "mode", "scheduled" ) ) )
-                       .register( registry );
+        FunctionCounter.builder(
+                        "funding_engine_execution_runs_by_mode",
+                        snapshotView,
+                        EngineMetricsSnapshotView::scheduledExecutionRuns)
+                .description("Total scheduled engine execution runs reported by the engine runtime.")
+                .tags(List.of(Tag.of("mode", "scheduled")))
+                .register(registry);
 
-        Gauge.builder( "funding_engine_execution_run_duration_avg_ms", snapshotView, EngineMetricsSnapshotView::averageExecutionRunDurationMs )
-             .description( "Average engine execution run duration in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_execution_run_duration_avg_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::averageExecutionRunDurationMs)
+                .description("Average engine execution run duration in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_execution_run_duration_last_ms", snapshotView, EngineMetricsSnapshotView::lastExecutionRunDurationMs )
-             .description( "Last engine execution run duration in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_execution_run_duration_last_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastExecutionRunDurationMs)
+                .description("Last engine execution run duration in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_started_at_epoch_seconds", snapshotView, EngineMetricsSnapshotView::lastRunStartedAtEpochSeconds )
-             .description( "Unix epoch seconds when the last engine run started." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_run_started_at_epoch_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastRunStartedAtEpochSeconds)
+                .description("Unix epoch seconds when the last engine run started.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_finished_at_epoch_seconds", snapshotView, EngineMetricsSnapshotView::lastRunFinishedAtEpochSeconds )
-             .description( "Unix epoch seconds when the last engine run finished." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_run_finished_at_epoch_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastRunFinishedAtEpochSeconds)
+                .description("Unix epoch seconds when the last engine run finished.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_age_seconds", snapshotView, EngineMetricsSnapshotView::lastRunAgeSeconds )
-             .description( "Age of the last engine run in seconds." )
-             .register( registry );
+        Gauge.builder("funding_engine_last_run_age_seconds", snapshotView, EngineMetricsSnapshotView::lastRunAgeSeconds)
+                .description("Age of the last engine run in seconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_forced", snapshotView, EngineMetricsSnapshotView::lastRunForced )
-             .description( "Whether the last engine run was forced by an operator action." )
-             .register( registry );
+        Gauge.builder("funding_engine_last_run_forced", snapshotView, EngineMetricsSnapshotView::lastRunForced)
+                .description("Whether the last engine run was forced by an operator action.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_plans_scanned", snapshotView, EngineMetricsSnapshotView::lastPlansScanned )
-             .description( "Plans scanned during the last engine run." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_run_plans_scanned",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastPlansScanned)
+                .description("Plans scanned during the last engine run.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_attempts_submitted", snapshotView, EngineMetricsSnapshotView::lastAttemptsSubmitted )
-             .description( "Attempts submitted during the last engine run." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_run_attempts_submitted",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastAttemptsSubmitted)
+                .description("Attempts submitted during the last engine run.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_run_attempts_skipped", snapshotView, EngineMetricsSnapshotView::lastAttemptsSkipped )
-             .description( "Attempts skipped during the last engine run." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_run_attempts_skipped",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastAttemptsSkipped)
+                .description("Attempts skipped during the last engine run.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_started_at_epoch_seconds", snapshotView, EngineMetricsSnapshotView::lastForcedRunStartedAtEpochSeconds )
-             .description( "Unix epoch seconds when the last forced engine run started." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_started_at_epoch_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedRunStartedAtEpochSeconds)
+                .description("Unix epoch seconds when the last forced engine run started.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_finished_at_epoch_seconds", snapshotView, EngineMetricsSnapshotView::lastForcedRunFinishedAtEpochSeconds )
-             .description( "Unix epoch seconds when the last forced engine run finished." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_finished_at_epoch_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedRunFinishedAtEpochSeconds)
+                .description("Unix epoch seconds when the last forced engine run finished.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_age_seconds", snapshotView, EngineMetricsSnapshotView::lastForcedRunAgeSeconds )
-             .description( "Age of the last forced engine run in seconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_age_seconds",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedRunAgeSeconds)
+                .description("Age of the last forced engine run in seconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_plans_scanned", snapshotView, EngineMetricsSnapshotView::lastForcedPlansScanned )
-             .description( "Plans scanned during the last forced engine run." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_plans_scanned",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedPlansScanned)
+                .description("Plans scanned during the last forced engine run.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_attempts_submitted", snapshotView, EngineMetricsSnapshotView::lastForcedAttemptsSubmitted )
-             .description( "Attempts submitted during the last forced engine run." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_attempts_submitted",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedAttemptsSubmitted)
+                .description("Attempts submitted during the last forced engine run.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_attempts_skipped", snapshotView, EngineMetricsSnapshotView::lastForcedAttemptsSkipped )
-             .description( "Attempts skipped during the last forced engine run." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_attempts_skipped",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedAttemptsSkipped)
+                .description("Attempts skipped during the last forced engine run.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_last_forced_run_duration_ms", snapshotView, EngineMetricsSnapshotView::lastForcedRunDurationMs )
-             .description( "Duration of the last forced engine run in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_last_forced_run_duration_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastForcedRunDurationMs)
+                .description("Duration of the last forced engine run in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_plan_fetch_duration_avg_ms", snapshotView, EngineMetricsSnapshotView::averagePlanFetchDurationMs )
-             .description( "Average duration of fetching engine plans from monitor in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_plan_fetch_duration_avg_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::averagePlanFetchDurationMs)
+                .description("Average duration of fetching engine plans from monitor in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_plan_fetch_duration_last_ms", snapshotView, EngineMetricsSnapshotView::lastPlanFetchDurationMs )
-             .description( "Last duration of fetching engine plans from monitor in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_plan_fetch_duration_last_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastPlanFetchDurationMs)
+                .description("Last duration of fetching engine plans from monitor in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_attempt_record_duration_avg_ms", snapshotView, EngineMetricsSnapshotView::averageAttemptRecordDurationMs )
-             .description( "Average duration of recording order attempts back to monitor in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_attempt_record_duration_avg_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::averageAttemptRecordDurationMs)
+                .description("Average duration of recording order attempts back to monitor in milliseconds.")
+                .register(registry);
 
-        Gauge.builder( "funding_engine_attempt_record_duration_last_ms", snapshotView, EngineMetricsSnapshotView::lastAttemptRecordDurationMs )
-             .description( "Last duration of recording order attempts back to monitor in milliseconds." )
-             .register( registry );
+        Gauge.builder(
+                        "funding_engine_attempt_record_duration_last_ms",
+                        snapshotView,
+                        EngineMetricsSnapshotView::lastAttemptRecordDurationMs)
+                .description("Last duration of recording order attempts back to monitor in milliseconds.")
+                .register(registry);
 
-        for( EnginePlanStatus status : EnginePlanStatus.values() )
-        {
-            Gauge.builder( "funding_engine_plan_status", snapshotView, view -> view.planCount( status ) )
-                 .description( "Execution plan count by engine status from the last snapshot." )
-                 .tags( List.of( Tag.of( "status", status.name() ) ) )
-                 .register( registry );
+        for (EnginePlanStatus status : EnginePlanStatus.values()) {
+            Gauge.builder("funding_engine_plan_status", snapshotView, view -> view.planCount(status))
+                    .description("Execution plan count by engine status from the last snapshot.")
+                    .tags(List.of(Tag.of("status", status.name())))
+                    .register(registry);
         }
 
-        for( OrderAttemptStatus status : OrderAttemptStatus.values() )
-        {
-            FunctionCounter.builder( "funding_engine_attempt_status", snapshotView, view -> view.attemptStatusCount( status.name() ) )
-                           .description( "Order attempts recorded by engine status from the latest snapshot." )
-                           .tags( List.of( Tag.of( "status", status.name().toLowerCase( Locale.ROOT ) ) ) )
-                           .register( registry );
+        for (OrderAttemptStatus status : OrderAttemptStatus.values()) {
+            FunctionCounter.builder(
+                            "funding_engine_attempt_status",
+                            snapshotView,
+                            view -> view.attemptStatusCount(status.name()))
+                    .description("Order attempts recorded by engine status from the latest snapshot.")
+                    .tags(List.of(Tag.of("status", status.name().toLowerCase(Locale.ROOT))))
+                    .register(registry);
         }
 
-        for( String venue : venues() )
-        {
-            Gauge.builder( "funding_engine_plan_venue", snapshotView, view -> view.planCountForVenue( venue ) )
-                 .description( "Execution plan count by venue from the latest engine snapshot." )
-                 .tags( List.of( Tag.of( "venue", venue ) ) )
-                 .register( registry );
+        for (String venue : venues()) {
+            Gauge.builder("funding_engine_plan_venue", snapshotView, view -> view.planCountForVenue(venue))
+                    .description("Execution plan count by venue from the latest engine snapshot.")
+                    .tags(List.of(Tag.of("venue", venue)))
+                    .register(registry);
 
-            Gauge.builder( "funding_engine_actionable_plan_venue", snapshotView, view -> view.actionablePlanCountForVenue( venue ) )
-                 .description( "Actionable execution plan count by venue from the latest engine snapshot." )
-                 .tags( List.of( Tag.of( "venue", venue ) ) )
-                 .register( registry );
+            Gauge.builder(
+                            "funding_engine_actionable_plan_venue",
+                            snapshotView,
+                            view -> view.actionablePlanCountForVenue(venue))
+                    .description("Actionable execution plan count by venue from the latest engine snapshot.")
+                    .tags(List.of(Tag.of("venue", venue)))
+                    .register(registry);
 
-            FunctionCounter.builder( "funding_engine_attempt_by_venue", snapshotView, view -> view.attemptCountForVenue( venue ) )
-                           .description( "Order attempts recorded by venue from the latest engine snapshot." )
-                           .tags( List.of( Tag.of( "venue", venue ) ) )
-                           .register( registry );
+            FunctionCounter.builder(
+                            "funding_engine_attempt_by_venue", snapshotView, view -> view.attemptCountForVenue(venue))
+                    .description("Order attempts recorded by venue from the latest engine snapshot.")
+                    .tags(List.of(Tag.of("venue", venue)))
+                    .register(registry);
 
-            FunctionCounter.builder( "funding_engine_failed_attempt_by_venue", snapshotView, view -> view.failedAttemptCountForVenue( venue ) )
-                           .description( "Failed order attempts recorded by venue from the latest engine snapshot." )
-                           .tags( List.of( Tag.of( "venue", venue ) ) )
-                           .register( registry );
+            FunctionCounter.builder(
+                            "funding_engine_failed_attempt_by_venue",
+                            snapshotView,
+                            view -> view.failedAttemptCountForVenue(venue))
+                    .description("Failed order attempts recorded by venue from the latest engine snapshot.")
+                    .tags(List.of(Tag.of("venue", venue)))
+                    .register(registry);
 
-            Gauge.builder( "funding_engine_submit_duration_avg_ms", snapshotView, view -> view.averageSubmitDurationMs( venue ) )
-                 .description( "Average execution port submit duration in milliseconds by venue." )
-                 .tags( List.of( Tag.of( "venue", venue ) ) )
-                 .register( registry );
+            Gauge.builder(
+                            "funding_engine_submit_duration_avg_ms",
+                            snapshotView,
+                            view -> view.averageSubmitDurationMs(venue))
+                    .description("Average execution port submit duration in milliseconds by venue.")
+                    .tags(List.of(Tag.of("venue", venue)))
+                    .register(registry);
 
-            Gauge.builder( "funding_engine_submit_duration_last_ms", snapshotView, view -> view.lastSubmitDurationMs( venue ) )
-                 .description( "Last execution port submit duration in milliseconds by venue." )
-                 .tags( List.of( Tag.of( "venue", venue ) ) )
-                 .register( registry );
+            Gauge.builder(
+                            "funding_engine_submit_duration_last_ms",
+                            snapshotView,
+                            view -> view.lastSubmitDurationMs(venue))
+                    .description("Last execution port submit duration in milliseconds by venue.")
+                    .tags(List.of(Tag.of("venue", venue)))
+                    .register(registry);
         }
     }
 
-    private Set<String> venues()
-    {
+    private Set<String> venues() {
         Set<String> venues = new LinkedHashSet<>();
-        metadataSyncProperties.getEnabledVenues()
-                              .stream()
-                              .map( venue -> venue.trim().toLowerCase( Locale.ROOT ) )
-                              .filter( value -> !value.isBlank() )
-                              .forEach( venues::add );
+        metadataSyncProperties.getEnabledVenues().stream()
+                .map(venue -> venue.trim().toLowerCase(Locale.ROOT))
+                .filter(value -> !value.isBlank())
+                .forEach(venues::add);
         return venues;
     }
 }

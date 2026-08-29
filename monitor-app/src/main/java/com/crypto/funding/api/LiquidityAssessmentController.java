@@ -7,6 +7,7 @@ import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.domain.candidate.SignalCandidate;
 import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import com.crypto.funding.domain.liquidity.LiquidityScore;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,22 +16,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/v1")
-public class LiquidityAssessmentController
-{
+public class LiquidityAssessmentController {
     private final LiquidityAssessmentService liquidityAssessmentService;
     private final SignalLiquidityService signalLiquidityService;
     private final SignalCandidateQueryService signalCandidateQueryService;
 
     public LiquidityAssessmentController(
-        LiquidityAssessmentService liquidityAssessmentService,
-        SignalLiquidityService signalLiquidityService,
-        SignalCandidateQueryService signalCandidateQueryService
-    )
-    {
+            LiquidityAssessmentService liquidityAssessmentService,
+            SignalLiquidityService signalLiquidityService,
+            SignalCandidateQueryService signalCandidateQueryService) {
         this.liquidityAssessmentService = liquidityAssessmentService;
         this.signalLiquidityService = signalLiquidityService;
         this.signalCandidateQueryService = signalCandidateQueryService;
@@ -38,92 +35,81 @@ public class LiquidityAssessmentController
 
     @PostMapping("/venues/{venue}/symbols/{venueSymbol}/liquidity-assessment")
     public LiquidityAssessmentResponse assess(
-        @PathVariable String venue,
-        @PathVariable String venueSymbol,
-        @RequestParam(required = false) Long tradeId
-    )
-    {
-        LiquidityAssessment assessment = liquidityAssessmentService.assess( venue, venueSymbol, tradeId );
-        return toResponse( assessment );
+            @PathVariable String venue,
+            @PathVariable String venueSymbol,
+            @RequestParam(required = false) Long tradeId) {
+        LiquidityAssessment assessment = liquidityAssessmentService.assess(venue, venueSymbol, tradeId);
+        return toResponse(assessment);
     }
 
     @PostMapping("/candidates/{candidateId}/liquidity")
     public LiquidityAssessmentResponse assessForCandidate(
-        @PathVariable Long candidateId,
-        @RequestParam String venue,
-        @RequestParam String venueSymbol
-    )
-    {
-        LiquidityAssessment assessment = liquidityAssessmentService.assessForCandidate( venue, venueSymbol, candidateId );
-        return toResponse( assessment );
+            @PathVariable Long candidateId, @RequestParam String venue, @RequestParam String venueSymbol) {
+        LiquidityAssessment assessment = liquidityAssessmentService.assessForCandidate(venue, venueSymbol, candidateId);
+        return toResponse(assessment);
     }
 
     @PostMapping("/candidates/{candidateId}/liquidity/refresh")
-    public LiquidityAssessmentResponse refreshForCandidate( @PathVariable Long candidateId )
-    {
-        SignalCandidate candidate = signalCandidateQueryService.getCandidate( candidateId );
-        LiquidityAssessment assessment = signalLiquidityService.assess( candidate )
-            .orElseThrow( () -> new ResponseStatusException( HttpStatus.UNPROCESSABLE_ENTITY, "Cannot resolve venue symbol for candidate " + candidateId ) );
-        return toResponse( assessment );
+    public LiquidityAssessmentResponse refreshForCandidate(@PathVariable Long candidateId) {
+        SignalCandidate candidate = signalCandidateQueryService.getCandidate(candidateId);
+        LiquidityAssessment assessment = signalLiquidityService
+                .assess(candidate)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNPROCESSABLE_ENTITY, "Cannot resolve venue symbol for candidate " + candidateId));
+        return toResponse(assessment);
     }
 
     @GetMapping("/liquidity-assessments/{assessmentId}")
-    public ResponseEntity<LiquidityAssessmentResponse> getById( @PathVariable String assessmentId )
-    {
-        return liquidityAssessmentService.findByAssessmentId( assessmentId )
-                                         .map( a -> ResponseEntity.ok( toResponse( a ) ) )
-                                         .orElse( ResponseEntity.notFound().build() );
+    public ResponseEntity<LiquidityAssessmentResponse> getById(@PathVariable String assessmentId) {
+        return liquidityAssessmentService
+                .findByAssessmentId(assessmentId)
+                .map(a -> ResponseEntity.ok(toResponse(a)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/candidates/{candidateId}/liquidity")
-    public ResponseEntity<LiquidityAssessmentResponse> getForCandidate( @PathVariable Long candidateId )
-    {
-        return liquidityAssessmentService.findLatestForCandidate( candidateId )
-                                         .map( a -> ResponseEntity.ok( toResponse( a ) ) )
-                                         .orElse( ResponseEntity.notFound().build() );
+    public ResponseEntity<LiquidityAssessmentResponse> getForCandidate(@PathVariable Long candidateId) {
+        return liquidityAssessmentService
+                .findLatestForCandidate(candidateId)
+                .map(a -> ResponseEntity.ok(toResponse(a)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/trades/{tradeId}/liquidity")
-    public ResponseEntity<LiquidityAssessmentResponse> getForTrade( @PathVariable Long tradeId )
-    {
-        return liquidityAssessmentService.findLatestForTrade( tradeId )
-                                         .map( a -> ResponseEntity.ok( toResponse( a ) ) )
-                                         .orElse( ResponseEntity.notFound().build() );
+    public ResponseEntity<LiquidityAssessmentResponse> getForTrade(@PathVariable Long tradeId) {
+        return liquidityAssessmentService
+                .findLatestForTrade(tradeId)
+                .map(a -> ResponseEntity.ok(toResponse(a)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/trades/{tradeId}/refresh-liquidity")
     public ResponseEntity<LiquidityAssessmentResponse> refreshForTrade(
-        @PathVariable Long tradeId,
-        @RequestParam String venue,
-        @RequestParam String venueSymbol
-    )
-    {
-        LiquidityAssessment assessment = liquidityAssessmentService.assess( venue, venueSymbol, tradeId );
-        return ResponseEntity.ok( toResponse( assessment ) );
+            @PathVariable Long tradeId, @RequestParam String venue, @RequestParam String venueSymbol) {
+        LiquidityAssessment assessment = liquidityAssessmentService.assess(venue, venueSymbol, tradeId);
+        return ResponseEntity.ok(toResponse(assessment));
     }
 
-    private static LiquidityAssessmentResponse toResponse( LiquidityAssessment a )
-    {
+    private static LiquidityAssessmentResponse toResponse(LiquidityAssessment a) {
         boolean warning = a.score() == LiquidityScore.THIN || a.score() == LiquidityScore.UNTRADABLE;
         return new LiquidityAssessmentResponse(
-            a.id(),
-            a.tradeId(),
-            a.venue(),
-            a.symbol(),
-            a.side(),
-            a.bestBid(),
-            a.bestAsk(),
-            a.spreadBps(),
-            a.maxSlippageBps(),
-            a.entryBidDepthNotional(),
-            a.exitAskDepthNotional(),
-            a.roundTripSafeNotional(),
-            a.safetyHaircut(),
-            a.recommendedMaxOrderNotional(),
-            a.score(),
-            warning,
-            a.sampledAt(),
-            a.expiresAt()
-        );
+                a.id(),
+                a.tradeId(),
+                a.venue(),
+                a.symbol(),
+                a.side(),
+                a.bestBid(),
+                a.bestAsk(),
+                a.spreadBps(),
+                a.maxSlippageBps(),
+                a.entryBidDepthNotional(),
+                a.exitAskDepthNotional(),
+                a.roundTripSafeNotional(),
+                a.safetyHaircut(),
+                a.recommendedMaxOrderNotional(),
+                a.score(),
+                warning,
+                a.sampledAt(),
+                a.expiresAt());
     }
 }

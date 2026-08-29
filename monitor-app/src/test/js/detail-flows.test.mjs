@@ -22,7 +22,7 @@ test("candidate drawer exposes review actions", () => {
         detectedAt: "2029-12-31T23:50:00.000Z",
         suggestedVenue: "gate",
         suggestedFundingTime: "2030-01-01T00:00:00.000Z",
-        suggestedFundingRatePct: -0.0125
+        suggestedFundingRatePct: -0.0125,
     });
 
     assert.match(markup, /Approve to Funding Event/);
@@ -40,9 +40,9 @@ test("event drawer keeps arm-trade workflow", () => {
             fundingRatePct: -0.0125,
             status: "DISCOVERED",
             sourceType: "FUNDING_API",
-            signalCandidateId: 3
+            signalCandidateId: 3,
         },
-        journal: []
+        journal: [],
     });
 
     assert.match(markup, /Create Prepared Trade/);
@@ -70,10 +70,10 @@ test("trade and history drawers keep source-to-outcome narrative", () => {
             effectiveEntryLatencyMs: 50,
             armSource: "EVENT_API",
             state: "ARMED",
-            armedAt: "2029-12-31T23:30:00.000Z"
+            armedAt: "2029-12-31T23:30:00.000Z",
         },
         journal: [],
-        attempts: []
+        attempts: [],
     });
     const historyMarkup = buildHistoryTradeDrawerContent({
         trade: {
@@ -93,7 +93,7 @@ test("trade and history drawers keep source-to-outcome narrative", () => {
             manualLatencyAdjustmentMs: 10,
             effectiveEntryLatencyMs: 50,
             armSource: "EVENT_API",
-            state: "ARMED"
+            state: "ARMED",
         },
         event: {
             id: 7,
@@ -102,17 +102,17 @@ test("trade and history drawers keep source-to-outcome narrative", () => {
             fundingTime: "2030-01-01T00:00:00.000Z",
             fundingRatePct: -0.0125,
             status: "ARMED",
-            sourceType: "FUNDING_API"
+            sourceType: "FUNDING_API",
         },
         candidate: {
             id: 3,
             sourceType: "FUNDING_API",
             rawSymbol: "WETUSDT",
             normalizedSymbol: "WET/USDT",
-            detectedAt: "2029-12-31T23:50:00.000Z"
+            detectedAt: "2029-12-31T23:50:00.000Z",
         },
         journal: [],
-        attempts: []
+        attempts: [],
     });
 
     assert.match(tradeMarkup, /Liquidity Layer/);
@@ -131,10 +131,10 @@ test("venue drawer keeps actions and diagnostics", () => {
             connectionMessage: "ready",
             activeInstrumentCount: 10,
             lastSyncedAt: "2030-01-01T00:00:00.000Z",
-            lastCheckedAt: "2030-01-01T00:00:00.000Z"
+            lastCheckedAt: "2030-01-01T00:00:00.000Z",
         },
         instruments: [],
-        timings: []
+        timings: [],
     });
 
     assert.match(markup, /Check keys/);

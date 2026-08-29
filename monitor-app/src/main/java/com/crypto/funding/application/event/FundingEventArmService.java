@@ -15,20 +15,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class FundingEventArmService
-{
+public class FundingEventArmService {
     private final FundingEventJpaRepository fundingEventRepository;
     private final ArmedTradeCommandService armedTradeCommandService;
     private final FundingEventLifecycleService fundingEventLifecycleService;
     private final LiquidityAutoAssessService liquidityAutoAssessService;
 
     public FundingEventArmService(
-        FundingEventJpaRepository fundingEventRepository,
-        ArmedTradeCommandService armedTradeCommandService,
-        FundingEventLifecycleService fundingEventLifecycleService,
-        LiquidityAutoAssessService liquidityAutoAssessService
-    )
-    {
+            FundingEventJpaRepository fundingEventRepository,
+            ArmedTradeCommandService armedTradeCommandService,
+            FundingEventLifecycleService fundingEventLifecycleService,
+            LiquidityAutoAssessService liquidityAutoAssessService) {
         this.fundingEventRepository = fundingEventRepository;
         this.armedTradeCommandService = armedTradeCommandService;
         this.fundingEventLifecycleService = fundingEventLifecycleService;
@@ -36,50 +33,45 @@ public class FundingEventArmService
     }
 
     @Transactional
-    public ArmedTrade arm( Long fundingEventId, ArmFundingEventCommand command )
-    {
-        return arm( fundingEventId, command, TradeArmSource.EVENT_API, TradeJournalActorType.OPERATOR, "api" );
+    public ArmedTrade arm(Long fundingEventId, ArmFundingEventCommand command) {
+        return arm(fundingEventId, command, TradeArmSource.EVENT_API, TradeJournalActorType.OPERATOR, "api");
     }
 
     @Transactional
     public ArmedTrade arm(
-        Long fundingEventId,
-        ArmFundingEventCommand command,
-        TradeArmSource armSource,
-        TradeJournalActorType actorType,
-        String actorRef
-    )
-    {
+            Long fundingEventId,
+            ArmFundingEventCommand command,
+            TradeArmSource armSource,
+            TradeJournalActorType actorType,
+            String actorRef) {
         fundingEventLifecycleService.expirePastEvents();
-        FundingEventEntity fundingEvent = fundingEventRepository.findById( fundingEventId )
-                                                               .orElseThrow( () -> new ResourceNotFoundException(
-                                                                   "Событие фандинга не найдено: " + fundingEventId
-                                                               ) );
+        FundingEventEntity fundingEvent = fundingEventRepository
+                .findById(fundingEventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Событие фандинга не найдено: " + fundingEventId));
 
-        if( fundingEvent.getStatus() == FundingEventStatus.CANCELLED || fundingEvent.getStatus() == FundingEventStatus.EXPIRED )
-        {
-            throw new DomainValidationException( "Событие " + fundingEventId + " нельзя подготовить из статуса " + fundingEvent.getStatus() );
+        if (fundingEvent.getStatus() == FundingEventStatus.CANCELLED
+                || fundingEvent.getStatus() == FundingEventStatus.EXPIRED) {
+            throw new DomainValidationException(
+                    "Событие " + fundingEventId + " нельзя подготовить из статуса " + fundingEvent.getStatus());
         }
 
         ArmedTrade armedTrade = armedTradeCommandService.create(
-            new CreateArmedTradeCommand(
-                fundingEventId,
-                command.notionalUsd(),
-                command.intendedSide(),
-                command.plannedEntryAt(),
-                command.plannedExitAt(),
-                command.entryAttemptCount(),
-                command.entrySpacingMs(),
-                command.manualLatencyAdjustmentMs(),
-                command.notes(),
-                null,
-                null
-            ),
-            armSource,
-            actorType,
-            actorRef
-        );
-        liquidityAutoAssessService.assessAfterArm( armedTrade.id(), fundingEvent.getVenue(), fundingEvent.getSymbol() );
+                new CreateArmedTradeCommand(
+                        fundingEventId,
+                        command.notionalUsd(),
+                        command.intendedSide(),
+                        command.plannedEntryAt(),
+                        command.plannedExitAt(),
+                        command.entryAttemptCount(),
+                        command.entrySpacingMs(),
+                        command.manualLatencyAdjustmentMs(),
+                        command.notes(),
+                        null,
+                        null),
+                armSource,
+                actorType,
+                actorRef);
+        liquidityAutoAssessService.assessAfterArm(armedTrade.id(), fundingEvent.getVenue(), fundingEvent.getSymbol());
         return armedTrade;
     }
 }

@@ -1,7 +1,6 @@
 package com.crypto.funding.contract.engine;
 
-public enum EngineExecutionTargetPhase
-{
+public enum EngineExecutionTargetPhase {
     ENTRY,
     EXIT
 }

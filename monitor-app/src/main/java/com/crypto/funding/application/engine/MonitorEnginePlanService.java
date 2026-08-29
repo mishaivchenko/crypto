@@ -9,13 +9,13 @@ import com.crypto.funding.application.liquidity.LiquidityAssessmentService;
 import com.crypto.funding.application.query.TradeQueryService;
 import com.crypto.funding.application.venue.VenueLatencyProbeService;
 import com.crypto.funding.application.venue.VenueProfileService;
-import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import com.crypto.funding.config.MonitorEnginePlanProperties;
 import com.crypto.funding.config.MonitorRiskProperties;
 import com.crypto.funding.contract.engine.EngineEntryAttemptPlan;
 import com.crypto.funding.contract.engine.EngineExecutionPlan;
 import com.crypto.funding.contract.engine.EnginePlanStatus;
 import com.crypto.funding.contract.engine.EngineSummaryResponse;
+import com.crypto.funding.domain.liquidity.LiquidityAssessment;
 import com.crypto.funding.domain.trade.ArmedTrade;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.venue.InstrumentStatus;
@@ -27,10 +27,6 @@ import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaR
 import com.crypto.funding.infrastructure.persistence.repository.InstrumentMetadataJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.PositionJpaRepository;
 import com.crypto.funding.infrastructure.persistence.repository.VenueTimingProfileJpaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
@@ -42,17 +38,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class MonitorEnginePlanService
-{
+public class MonitorEnginePlanService {
     private static final Set<ArmedTradeState> ACTIVE_STATES = Set.of(
-        ArmedTradeState.ARMED,
-        ArmedTradeState.ENTRY_PENDING,
-        ArmedTradeState.ENTRY_ATTEMPTED,
-        ArmedTradeState.OPEN,
-        ArmedTradeState.EXIT_PENDING
-    );
+            ArmedTradeState.ARMED,
+            ArmedTradeState.ENTRY_PENDING,
+            ArmedTradeState.ENTRY_ATTEMPTED,
+            ArmedTradeState.OPEN,
+            ArmedTradeState.EXIT_PENDING);
 
     private final TradeQueryService tradeQueryService;
     private final FundingEventJpaRepository fundingEventRepository;
@@ -72,59 +69,54 @@ public class MonitorEnginePlanService
 
     @Autowired
     public MonitorEnginePlanService(
-        TradeQueryService tradeQueryService,
-        FundingEventJpaRepository fundingEventRepository,
-        InstrumentMetadataJpaRepository instrumentMetadataRepository,
-        PositionJpaRepository positionRepository,
-        VenueTimingProfileJpaRepository timingProfileRepository,
-        MonitorEnginePlanProperties engineProperties,
-        MonitorRiskProperties riskProperties,
-        EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
-        EnginePlanStatusCalculator statusCalculator,
-        EnginePlanLookaheadFilter lookaheadFilter,
-        EnginePlanSummaryFormatter summaryFormatter,
-        VenueLatencyProbeService latencyProbeService,
-        VenueProfileService venueProfileService,
-        LiquidityAssessmentService liquidityAssessmentService
-    )
-    {
+            TradeQueryService tradeQueryService,
+            FundingEventJpaRepository fundingEventRepository,
+            InstrumentMetadataJpaRepository instrumentMetadataRepository,
+            PositionJpaRepository positionRepository,
+            VenueTimingProfileJpaRepository timingProfileRepository,
+            MonitorEnginePlanProperties engineProperties,
+            MonitorRiskProperties riskProperties,
+            EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
+            EnginePlanStatusCalculator statusCalculator,
+            EnginePlanLookaheadFilter lookaheadFilter,
+            EnginePlanSummaryFormatter summaryFormatter,
+            VenueLatencyProbeService latencyProbeService,
+            VenueProfileService venueProfileService,
+            LiquidityAssessmentService liquidityAssessmentService) {
         this(
-            tradeQueryService,
-            fundingEventRepository,
-            instrumentMetadataRepository,
-            positionRepository,
-            timingProfileRepository,
-            engineProperties,
-            riskProperties,
-            attemptScheduleBuilder,
-            statusCalculator,
-            lookaheadFilter,
-            summaryFormatter,
-            latencyProbeService,
-            venueProfileService,
-            liquidityAssessmentService,
-            Clock.systemUTC()
-        );
+                tradeQueryService,
+                fundingEventRepository,
+                instrumentMetadataRepository,
+                positionRepository,
+                timingProfileRepository,
+                engineProperties,
+                riskProperties,
+                attemptScheduleBuilder,
+                statusCalculator,
+                lookaheadFilter,
+                summaryFormatter,
+                latencyProbeService,
+                venueProfileService,
+                liquidityAssessmentService,
+                Clock.systemUTC());
     }
 
     MonitorEnginePlanService(
-        TradeQueryService tradeQueryService,
-        FundingEventJpaRepository fundingEventRepository,
-        InstrumentMetadataJpaRepository instrumentMetadataRepository,
-        PositionJpaRepository positionRepository,
-        VenueTimingProfileJpaRepository timingProfileRepository,
-        MonitorEnginePlanProperties engineProperties,
-        MonitorRiskProperties riskProperties,
-        EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
-        EnginePlanStatusCalculator statusCalculator,
-        EnginePlanLookaheadFilter lookaheadFilter,
-        EnginePlanSummaryFormatter summaryFormatter,
-        VenueLatencyProbeService latencyProbeService,
-        VenueProfileService venueProfileService,
-        LiquidityAssessmentService liquidityAssessmentService,
-        Clock clock
-    )
-    {
+            TradeQueryService tradeQueryService,
+            FundingEventJpaRepository fundingEventRepository,
+            InstrumentMetadataJpaRepository instrumentMetadataRepository,
+            PositionJpaRepository positionRepository,
+            VenueTimingProfileJpaRepository timingProfileRepository,
+            MonitorEnginePlanProperties engineProperties,
+            MonitorRiskProperties riskProperties,
+            EngineEntryAttemptScheduleBuilder attemptScheduleBuilder,
+            EnginePlanStatusCalculator statusCalculator,
+            EnginePlanLookaheadFilter lookaheadFilter,
+            EnginePlanSummaryFormatter summaryFormatter,
+            VenueLatencyProbeService latencyProbeService,
+            VenueProfileService venueProfileService,
+            LiquidityAssessmentService liquidityAssessmentService,
+            Clock clock) {
         this.tradeQueryService = tradeQueryService;
         this.fundingEventRepository = fundingEventRepository;
         this.instrumentMetadataRepository = instrumentMetadataRepository;
@@ -143,188 +135,209 @@ public class MonitorEnginePlanService
     }
 
     @Transactional(readOnly = true)
-    public List<EngineExecutionPlan> listPlans()
-    {
-        return listPlans( false );
+    public List<EngineExecutionPlan> listPlans() {
+        return listPlans(false);
     }
 
     @Transactional(readOnly = true)
-    public List<EngineExecutionPlan> listPlans( boolean includeAll )
-    {
-        Instant now = Instant.now( clock );
+    public List<EngineExecutionPlan> listPlans(boolean includeAll) {
+        Instant now = Instant.now(clock);
         Predicate<ArmedTrade> stateFilter = engineProperties.isIncludeClosedTrades()
-                                            ? trade -> true
-                                            : trade -> ACTIVE_STATES.contains( trade.state() );
+                ? trade -> true
+                : trade -> ACTIVE_STATES.contains(trade.state());
 
-        return tradeQueryService.listArmedTrades( true )
-                                .stream()
-                                .filter( stateFilter )
-                                .map( trade -> withLiquidity( toPlan( trade, now ), trade.id() ) )
-                                .filter( plan -> lookaheadFilter.shouldInclude( plan, includeAll ) )
-                                .sorted( Comparator.comparing( EngineExecutionPlan::nextActionAt, Comparator.nullsLast( Comparator.naturalOrder() ) )
-                                                   .thenComparing( EngineExecutionPlan::armedTradeId ) )
-                                .toList();
+        return tradeQueryService.listArmedTrades(true).stream()
+                .filter(stateFilter)
+                .map(trade -> withLiquidity(toPlan(trade, now), trade.id()))
+                .filter(plan -> lookaheadFilter.shouldInclude(plan, includeAll))
+                .sorted(Comparator.comparing(
+                                EngineExecutionPlan::nextActionAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(EngineExecutionPlan::armedTradeId))
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public EngineExecutionPlan getPlan( Long armedTradeId )
-    {
-        Instant now = Instant.now( clock );
-        ArmedTrade trade = tradeQueryService.getArmedTrade( armedTradeId );
-        return withLiquidity( toPlan( trade, now ), armedTradeId );
+    public EngineExecutionPlan getPlan(Long armedTradeId) {
+        Instant now = Instant.now(clock);
+        ArmedTrade trade = tradeQueryService.getArmedTrade(armedTradeId);
+        return withLiquidity(toPlan(trade, now), armedTradeId);
     }
 
     @Transactional(readOnly = true)
-    public EngineSummaryResponse summary()
-    {
+    public EngineSummaryResponse summary() {
         List<EngineExecutionPlan> plans = listPlans();
-        Map<EnginePlanStatus, Long> breakdown = new EnumMap<>( EnginePlanStatus.class );
-        for( EnginePlanStatus status : EnginePlanStatus.values() )
-        {
-            breakdown.put( status, 0L );
+        Map<EnginePlanStatus, Long> breakdown = new EnumMap<>(EnginePlanStatus.class);
+        for (EnginePlanStatus status : EnginePlanStatus.values()) {
+            breakdown.put(status, 0L);
         }
-        for( EngineExecutionPlan plan : plans )
-        {
-            breakdown.computeIfPresent( plan.status(), ( ignored, count ) -> count + 1L );
+        for (EngineExecutionPlan plan : plans) {
+            breakdown.computeIfPresent(plan.status(), (ignored, count) -> count + 1L);
         }
 
         long actionable = plans.stream()
-                               .filter( plan -> plan.status() == EnginePlanStatus.ENTRY_WINDOW || plan.status() == EnginePlanStatus.EXIT_WINDOW )
-                               .count();
+                .filter(plan ->
+                        plan.status() == EnginePlanStatus.ENTRY_WINDOW || plan.status() == EnginePlanStatus.EXIT_WINDOW)
+                .count();
 
         return new EngineSummaryResponse(
-            "monitor-engine-plans",
-            "2.0.0",
-            plans.size(),
-            (int) actionable,
-            Instant.now( clock ),
-            breakdown
-        );
+                "monitor-engine-plans", "2.0.0", plans.size(), (int) actionable, Instant.now(clock), breakdown);
     }
 
-    private EngineExecutionPlan toPlan( ArmedTrade trade, Instant now )
-    {
-        FundingEventEntity fundingEvent = fundingEventRepository.findById( trade.fundingEventId() )
-                                                               .orElseThrow( () -> new ResourceNotFoundException(
-                                                                   "Событие фандинга не найдено для подготовленной сделки: " + trade.id()
-                                                               ) );
+    private EngineExecutionPlan toPlan(ArmedTrade trade, Instant now) {
+        FundingEventEntity fundingEvent = fundingEventRepository
+                .findById(trade.fundingEventId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Событие фандинга не найдено для подготовленной сделки: " + trade.id()));
 
-        String venueNormalized = fundingEvent.getVenue() == null ? "" : fundingEvent.getVenue().trim().toLowerCase( Locale.ROOT );
-        EnginePlanStatus status = riskProperties.disabledVenues().contains( venueNormalized )
-                                  ? EnginePlanStatus.INVALID
-                                  : statusCalculator.deriveStatus( trade, now );
-        List<EngineEntryAttemptPlan> entryAttempts = attemptScheduleBuilder.build( trade, now );
-        Instant nextActionAt = nextActionAt( trade, status, entryAttempts, now );
-        Long millisUntilAction = nextActionAt == null ? null : Duration.between( now, nextActionAt ).toMillis();
-        Long millisUntilFunding = Duration.between( now, fundingEvent.getFundingTime() ).toMillis();
+        String venueNormalized = fundingEvent.getVenue() == null
+                ? ""
+                : fundingEvent.getVenue().trim().toLowerCase(Locale.ROOT);
+        EnginePlanStatus status = riskProperties.disabledVenues().contains(venueNormalized)
+                ? EnginePlanStatus.INVALID
+                : statusCalculator.deriveStatus(trade, now);
+        List<EngineEntryAttemptPlan> entryAttempts = attemptScheduleBuilder.build(trade, now);
+        Instant nextActionAt = nextActionAt(trade, status, entryAttempts, now);
+        Long millisUntilAction = nextActionAt == null
+                ? null
+                : Duration.between(now, nextActionAt).toMillis();
+        Long millisUntilFunding =
+                Duration.between(now, fundingEvent.getFundingTime()).toMillis();
         InstrumentMetadataEntity metadata = instrumentMetadataRepository
-            .findByVenueAndCanonicalSymbolAndStatus( fundingEvent.getVenue(), fundingEvent.getSymbol(), InstrumentStatus.ACTIVE )
-            .orElse( null );
-        PositionEntity position = positionRepository.findFirstByArmedTradeIdOrderByCreatedAtDesc( trade.id() ).orElse( null );
+                .findByVenueAndCanonicalSymbolAndStatus(
+                        fundingEvent.getVenue(), fundingEvent.getSymbol(), InstrumentStatus.ACTIVE)
+                .orElse(null);
+        PositionEntity position = positionRepository
+                .findFirstByArmedTradeIdOrderByCreatedAtDesc(trade.id())
+                .orElse(null);
         VenueTimingProfileEntity timing = timingProfileRepository
-            .findFirstByVenueAndSymbolOrderBySampledAtDesc( fundingEvent.getVenue(), fundingEvent.getSymbol() )
-            .orElse( null );
+                .findFirstByVenueAndSymbolOrderBySampledAtDesc(fundingEvent.getVenue(), fundingEvent.getSymbol())
+                .orElse(null);
 
-        VenueProfileService.VenueAccessProfile venueProfile = venueProfileService.getProfile( fundingEvent.getVenue() );
-        String probeUrl = latencyProbeService.probeUrlFor( fundingEvent.getVenue(), venueProfile.mode() );
+        VenueProfileService.VenueAccessProfile venueProfile = venueProfileService.getProfile(fundingEvent.getVenue());
+        String probeUrl = latencyProbeService.probeUrlFor(fundingEvent.getVenue(), venueProfile.mode());
 
         return new EngineExecutionPlan(
-            trade.id(),
-            trade.fundingEventId(),
-            fundingEvent.getVenue(),
-            fundingEvent.getSymbol(),
-            trade.intendedSide(),
-            trade.notionalUsd(),
-            trade.state(),
-            fundingEvent.getFundingTime(),
-            trade.plannedEntryAt(),
-            trade.plannedExitAt(),
-            trade.entryAttemptCount(),
-            trade.entrySpacingMs(),
-            trade.measuredEntryLatencyMs(),
-            trade.manualLatencyAdjustmentMs(),
-            trade.effectiveEntryLatencyMs(),
-            entryAttempts,
-            status,
-            nextActionAt,
-            millisUntilAction,
-            millisUntilFunding,
-            summaryFormatter.format( trade, fundingEvent, status ),
-            metadata == null ? null : metadata.getVenueSymbol(),
-            metadata == null ? null : metadata.getMinOrderQty(),
-            metadata == null ? null : metadata.getQtyStep(),
-            metadata == null ? null : metadata.getMinNotionalValue(),
-            metadata == null ? null : metadata.getLastSyncedAt(),
-            timing == null ? null : timing.getSampledAt(),
-            positionQuantity( position ),
-            position == null ? null : position.getEntryPrice(),
-            trade.stopLossUsd(),
-            trade.takeProfitUsd(),
-            probeUrl,
-            3,
-            500L,
-            null,
-            null,
-            null,
-            null,
-            trade.warmupP50Ms(),
-            trade.warmupP95Ms(),
-            trade.warmupFallbackUsed(),
-            trade.warmupDoneAt()
-        );
+                trade.id(),
+                trade.fundingEventId(),
+                fundingEvent.getVenue(),
+                fundingEvent.getSymbol(),
+                trade.intendedSide(),
+                trade.notionalUsd(),
+                trade.state(),
+                fundingEvent.getFundingTime(),
+                trade.plannedEntryAt(),
+                trade.plannedExitAt(),
+                trade.entryAttemptCount(),
+                trade.entrySpacingMs(),
+                trade.measuredEntryLatencyMs(),
+                trade.manualLatencyAdjustmentMs(),
+                trade.effectiveEntryLatencyMs(),
+                entryAttempts,
+                status,
+                nextActionAt,
+                millisUntilAction,
+                millisUntilFunding,
+                summaryFormatter.format(trade, fundingEvent, status),
+                metadata == null ? null : metadata.getVenueSymbol(),
+                metadata == null ? null : metadata.getMinOrderQty(),
+                metadata == null ? null : metadata.getQtyStep(),
+                metadata == null ? null : metadata.getMinNotionalValue(),
+                metadata == null ? null : metadata.getLastSyncedAt(),
+                timing == null ? null : timing.getSampledAt(),
+                positionQuantity(position),
+                position == null ? null : position.getEntryPrice(),
+                trade.stopLossUsd(),
+                trade.takeProfitUsd(),
+                probeUrl,
+                3,
+                500L,
+                null,
+                null,
+                null,
+                null,
+                trade.warmupP50Ms(),
+                trade.warmupP95Ms(),
+                trade.warmupFallbackUsed(),
+                trade.warmupDoneAt());
     }
 
-    private EngineExecutionPlan withLiquidity( EngineExecutionPlan plan, Long tradeId )
-    {
-        LiquidityAssessment liq = liquidityAssessmentService.findLatestForTrade( tradeId )
-                                                             .filter( a -> !liquidityAssessmentService.isExpired( a ) )
-                                                             .orElse( null );
-        if( liq == null )
-        {
+    private EngineExecutionPlan withLiquidity(EngineExecutionPlan plan, Long tradeId) {
+        LiquidityAssessment liq = liquidityAssessmentService
+                .findLatestForTrade(tradeId)
+                .filter(a -> !liquidityAssessmentService.isExpired(a))
+                .orElse(null);
+        if (liq == null) {
             return plan;
         }
         return new EngineExecutionPlan(
-            plan.armedTradeId(), plan.fundingEventId(), plan.venue(), plan.symbol(),
-            plan.intendedSide(), plan.notionalUsd(), plan.tradeState(), plan.fundingTime(),
-            plan.plannedEntryAt(), plan.plannedExitAt(), plan.entryAttemptCount(), plan.entrySpacingMs(),
-            plan.measuredEntryLatencyMs(), plan.manualLatencyAdjustmentMs(), plan.effectiveEntryLatencyMs(),
-            plan.entryAttempts(), plan.status(), plan.nextActionAt(), plan.millisUntilAction(),
-            plan.millisUntilFunding(), plan.summary(), plan.venueSymbol(),
-            plan.minOrderQty(), plan.qtyStep(), plan.minNotionalValue(),
-            plan.metadataLastSyncedAt(), plan.latencySampledAt(),
-            plan.positionQuantity(), plan.positionEntryPrice(),
-            plan.stopLossUsd(), plan.takeProfitUsd(),
-            plan.probeUrl(), plan.warmupProbeCount(), plan.warmupProbeLeadMs(),
-            liq.recommendedMaxOrderNotional(), liq.id(), liq.score(), liq.sampledAt(),
-            plan.warmupP50Ms(), plan.warmupP95Ms(), plan.warmupFallbackUsed(), plan.warmupDoneAt()
-        );
+                plan.armedTradeId(),
+                plan.fundingEventId(),
+                plan.venue(),
+                plan.symbol(),
+                plan.intendedSide(),
+                plan.notionalUsd(),
+                plan.tradeState(),
+                plan.fundingTime(),
+                plan.plannedEntryAt(),
+                plan.plannedExitAt(),
+                plan.entryAttemptCount(),
+                plan.entrySpacingMs(),
+                plan.measuredEntryLatencyMs(),
+                plan.manualLatencyAdjustmentMs(),
+                plan.effectiveEntryLatencyMs(),
+                plan.entryAttempts(),
+                plan.status(),
+                plan.nextActionAt(),
+                plan.millisUntilAction(),
+                plan.millisUntilFunding(),
+                plan.summary(),
+                plan.venueSymbol(),
+                plan.minOrderQty(),
+                plan.qtyStep(),
+                plan.minNotionalValue(),
+                plan.metadataLastSyncedAt(),
+                plan.latencySampledAt(),
+                plan.positionQuantity(),
+                plan.positionEntryPrice(),
+                plan.stopLossUsd(),
+                plan.takeProfitUsd(),
+                plan.probeUrl(),
+                plan.warmupProbeCount(),
+                plan.warmupProbeLeadMs(),
+                liq.recommendedMaxOrderNotional(),
+                liq.id(),
+                liq.score(),
+                liq.sampledAt(),
+                plan.warmupP50Ms(),
+                plan.warmupP95Ms(),
+                plan.warmupFallbackUsed(),
+                plan.warmupDoneAt());
     }
 
-    private static BigDecimal positionQuantity( PositionEntity position )
-    {
-        if( position == null )
-        {
+    private static BigDecimal positionQuantity(PositionEntity position) {
+        if (position == null) {
             return null;
         }
         return position.getQuantity();
     }
 
-    private Instant nextActionAt( ArmedTrade trade, EnginePlanStatus status, List<EngineEntryAttemptPlan> entryAttempts, Instant now )
-    {
-        return switch( status )
-        {
-            case WAITING_ENTRY, OVERDUE -> entryAttempts.stream()
-                                                        .map( EngineEntryAttemptPlan::triggerAt )
-                                                        .min( Instant::compareTo )
-                                                        .orElse( attemptScheduleBuilder.firstTriggerAt( trade ) );
-            case ENTRY_WINDOW -> entryAttempts.stream()
-                                              .map( EngineEntryAttemptPlan::triggerAt )
-                                              .filter( trigger -> !trigger.isBefore( now ) )
-                                              .min( Instant::compareTo )
-                                              .orElseGet( () -> entryAttempts.stream()
-                                                                              .map( EngineEntryAttemptPlan::triggerAt )
-                                                                              .max( Instant::compareTo )
-                                                                              .orElse( attemptScheduleBuilder.firstTriggerAt( trade ) ) );
+    private Instant nextActionAt(
+            ArmedTrade trade, EnginePlanStatus status, List<EngineEntryAttemptPlan> entryAttempts, Instant now) {
+        return switch (status) {
+            case WAITING_ENTRY, OVERDUE ->
+                entryAttempts.stream()
+                        .map(EngineEntryAttemptPlan::triggerAt)
+                        .min(Instant::compareTo)
+                        .orElse(attemptScheduleBuilder.firstTriggerAt(trade));
+            case ENTRY_WINDOW ->
+                entryAttempts.stream()
+                        .map(EngineEntryAttemptPlan::triggerAt)
+                        .filter(trigger -> !trigger.isBefore(now))
+                        .min(Instant::compareTo)
+                        .orElseGet(() -> entryAttempts.stream()
+                                .map(EngineEntryAttemptPlan::triggerAt)
+                                .max(Instant::compareTo)
+                                .orElse(attemptScheduleBuilder.firstTriggerAt(trade)));
             case WAITING_EXIT, EXIT_WINDOW -> trade.plannedExitAt();
             case CLOSED, INVALID -> null;
         };

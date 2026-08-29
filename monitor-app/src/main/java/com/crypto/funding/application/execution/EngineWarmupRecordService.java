@@ -7,26 +7,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class EngineWarmupRecordService
-{
+public class EngineWarmupRecordService {
     private final ArmedTradeJpaRepository armedTradeRepository;
 
-    public EngineWarmupRecordService( ArmedTradeJpaRepository armedTradeRepository )
-    {
+    public EngineWarmupRecordService(ArmedTradeJpaRepository armedTradeRepository) {
         this.armedTradeRepository = armedTradeRepository;
     }
 
     @Transactional
-    public void record( Long armedTradeId, WarmupCalibrationRequest request )
-    {
-        var entity = armedTradeRepository.findById( armedTradeId )
-                                         .orElseThrow( () -> new ResourceNotFoundException(
-                                             "Подготовленная сделка не найдена: " + armedTradeId
-                                         ) );
-        entity.setWarmupP50Ms( request.p50Ms() );
-        entity.setWarmupP95Ms( request.p95Ms() );
-        entity.setWarmupFallbackUsed( request.fallbackUsed() );
-        entity.setWarmupDoneAt( request.doneAt() );
-        armedTradeRepository.save( entity );
+    public void record(Long armedTradeId, WarmupCalibrationRequest request) {
+        var entity = armedTradeRepository
+                .findById(armedTradeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Подготовленная сделка не найдена: " + armedTradeId));
+        entity.setWarmupP50Ms(request.p50Ms());
+        entity.setWarmupP95Ms(request.p95Ms());
+        entity.setWarmupFallbackUsed(request.fallbackUsed());
+        entity.setWarmupDoneAt(request.doneAt());
+        armedTradeRepository.save(entity);
     }
 }

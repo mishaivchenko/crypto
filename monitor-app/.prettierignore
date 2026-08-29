@@ -1,0 +1,7 @@
+.claude/**
+.agents/**
+.codex/**
+.gradle/**
+.maestro/**
+**/build/**
+**/node_modules/**

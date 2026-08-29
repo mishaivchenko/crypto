@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.venue;
 
-public enum InstrumentStatus
-{
+public enum InstrumentStatus {
     ACTIVE,
     INACTIVE,
     UNSUPPORTED

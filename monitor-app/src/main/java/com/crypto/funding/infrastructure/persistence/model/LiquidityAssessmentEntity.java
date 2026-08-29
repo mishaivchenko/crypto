@@ -13,21 +13,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "liquidity_assessment",
-    indexes = {
-        @Index(name = "idx_liquidity_assessment_trade_id", columnList = "trade_id"),
-        @Index(name = "idx_liquidity_assessment_venue_symbol", columnList = "venue,symbol"),
-        @Index(name = "idx_liquidity_assessment_sampled_at", columnList = "sampled_at")
-    }
-)
-public class LiquidityAssessmentEntity extends AuditableEntity
-{
+        name = "liquidity_assessment",
+        indexes = {
+            @Index(name = "idx_liquidity_assessment_trade_id", columnList = "trade_id"),
+            @Index(name = "idx_liquidity_assessment_venue_symbol", columnList = "venue,symbol"),
+            @Index(name = "idx_liquidity_assessment_sampled_at", columnList = "sampled_at")
+        })
+public class LiquidityAssessmentEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -91,188 +88,151 @@ public class LiquidityAssessmentEntity extends AuditableEntity
     @Column(name = "expires_at")
     private Instant expiresAt;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getAssessmentId()
-    {
+    public String getAssessmentId() {
         return assessmentId;
     }
 
-    public void setAssessmentId( String assessmentId )
-    {
+    public void setAssessmentId(String assessmentId) {
         this.assessmentId = assessmentId;
     }
 
-    public Long getTradeId()
-    {
+    public Long getTradeId() {
         return tradeId;
     }
 
-    public void setTradeId( Long tradeId )
-    {
+    public void setTradeId(Long tradeId) {
         this.tradeId = tradeId;
     }
 
-    public Long getSignalCandidateId()
-    {
+    public Long getSignalCandidateId() {
         return signalCandidateId;
     }
 
-    public void setSignalCandidateId( Long signalCandidateId )
-    {
+    public void setSignalCandidateId(Long signalCandidateId) {
         this.signalCandidateId = signalCandidateId;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public String getSymbol()
-    {
+    public String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol( String symbol )
-    {
+    public void setSymbol(String symbol) {
         this.symbol = symbol;
     }
 
-    public TradeSide getSide()
-    {
+    public TradeSide getSide() {
         return side;
     }
 
-    public void setSide( TradeSide side )
-    {
+    public void setSide(TradeSide side) {
         this.side = side;
     }
 
-    public BigDecimal getBestBid()
-    {
+    public BigDecimal getBestBid() {
         return bestBid;
     }
 
-    public void setBestBid( BigDecimal bestBid )
-    {
+    public void setBestBid(BigDecimal bestBid) {
         this.bestBid = bestBid;
     }
 
-    public BigDecimal getBestAsk()
-    {
+    public BigDecimal getBestAsk() {
         return bestAsk;
     }
 
-    public void setBestAsk( BigDecimal bestAsk )
-    {
+    public void setBestAsk(BigDecimal bestAsk) {
         this.bestAsk = bestAsk;
     }
 
-    public BigDecimal getSpreadBps()
-    {
+    public BigDecimal getSpreadBps() {
         return spreadBps;
     }
 
-    public void setSpreadBps( BigDecimal spreadBps )
-    {
+    public void setSpreadBps(BigDecimal spreadBps) {
         this.spreadBps = spreadBps;
     }
 
-    public BigDecimal getMaxSlippageBps()
-    {
+    public BigDecimal getMaxSlippageBps() {
         return maxSlippageBps;
     }
 
-    public void setMaxSlippageBps( BigDecimal maxSlippageBps )
-    {
+    public void setMaxSlippageBps(BigDecimal maxSlippageBps) {
         this.maxSlippageBps = maxSlippageBps;
     }
 
-    public BigDecimal getEntryBidDepthNotional()
-    {
+    public BigDecimal getEntryBidDepthNotional() {
         return entryBidDepthNotional;
     }
 
-    public void setEntryBidDepthNotional( BigDecimal entryBidDepthNotional )
-    {
+    public void setEntryBidDepthNotional(BigDecimal entryBidDepthNotional) {
         this.entryBidDepthNotional = entryBidDepthNotional;
     }
 
-    public BigDecimal getExitAskDepthNotional()
-    {
+    public BigDecimal getExitAskDepthNotional() {
         return exitAskDepthNotional;
     }
 
-    public void setExitAskDepthNotional( BigDecimal exitAskDepthNotional )
-    {
+    public void setExitAskDepthNotional(BigDecimal exitAskDepthNotional) {
         this.exitAskDepthNotional = exitAskDepthNotional;
     }
 
-    public BigDecimal getRoundTripSafeNotional()
-    {
+    public BigDecimal getRoundTripSafeNotional() {
         return roundTripSafeNotional;
     }
 
-    public void setRoundTripSafeNotional( BigDecimal roundTripSafeNotional )
-    {
+    public void setRoundTripSafeNotional(BigDecimal roundTripSafeNotional) {
         this.roundTripSafeNotional = roundTripSafeNotional;
     }
 
-    public BigDecimal getSafetyHaircut()
-    {
+    public BigDecimal getSafetyHaircut() {
         return safetyHaircut;
     }
 
-    public void setSafetyHaircut( BigDecimal safetyHaircut )
-    {
+    public void setSafetyHaircut(BigDecimal safetyHaircut) {
         this.safetyHaircut = safetyHaircut;
     }
 
-    public BigDecimal getRecommendedMaxOrderNotional()
-    {
+    public BigDecimal getRecommendedMaxOrderNotional() {
         return recommendedMaxOrderNotional;
     }
 
-    public void setRecommendedMaxOrderNotional( BigDecimal recommendedMaxOrderNotional )
-    {
+    public void setRecommendedMaxOrderNotional(BigDecimal recommendedMaxOrderNotional) {
         this.recommendedMaxOrderNotional = recommendedMaxOrderNotional;
     }
 
-    public LiquidityScore getScore()
-    {
+    public LiquidityScore getScore() {
         return score;
     }
 
-    public void setScore( LiquidityScore score )
-    {
+    public void setScore(LiquidityScore score) {
         this.score = score;
     }
 
-    public Instant getSampledAt()
-    {
+    public Instant getSampledAt() {
         return sampledAt;
     }
 
-    public void setSampledAt( Instant sampledAt )
-    {
+    public void setSampledAt(Instant sampledAt) {
         this.sampledAt = sampledAt;
     }
 
-    public Instant getExpiresAt()
-    {
+    public Instant getExpiresAt() {
         return expiresAt;
     }
 
-    public void setExpiresAt( Instant expiresAt )
-    {
+    public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
     }
 }

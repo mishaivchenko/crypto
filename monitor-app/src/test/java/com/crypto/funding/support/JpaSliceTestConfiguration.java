@@ -9,6 +9,4 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableAutoConfiguration
 @EntityScan(basePackages = "com.crypto.funding.infrastructure.persistence.model")
 @EnableJpaRepositories(basePackages = "com.crypto.funding.infrastructure.persistence.repository")
-public class JpaSliceTestConfiguration
-{
-}
+public class JpaSliceTestConfiguration {}

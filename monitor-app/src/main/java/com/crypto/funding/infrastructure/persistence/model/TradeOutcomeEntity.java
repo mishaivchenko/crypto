@@ -9,19 +9,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "trade_outcome",
-    indexes = {
-        @Index(name = "idx_trade_outcome_trade_id", columnList = "armed_trade_id")
-    }
-)
-public class TradeOutcomeEntity extends AuditableEntity
-{
+        name = "trade_outcome",
+        indexes = {@Index(name = "idx_trade_outcome_trade_id", columnList = "armed_trade_id")})
+public class TradeOutcomeEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -49,78 +44,63 @@ public class TradeOutcomeEntity extends AuditableEntity
     @Column(name = "evaluated_at", nullable = false)
     private Instant evaluatedAt;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public Long getArmedTradeId()
-    {
+    public Long getArmedTradeId() {
         return armedTradeId;
     }
 
-    public void setArmedTradeId( Long armedTradeId )
-    {
+    public void setArmedTradeId(Long armedTradeId) {
         this.armedTradeId = armedTradeId;
     }
 
-    public BigDecimal getGrossPnlUsd()
-    {
+    public BigDecimal getGrossPnlUsd() {
         return grossPnlUsd;
     }
 
-    public void setGrossPnlUsd( BigDecimal grossPnlUsd )
-    {
+    public void setGrossPnlUsd(BigDecimal grossPnlUsd) {
         this.grossPnlUsd = grossPnlUsd;
     }
 
-    public BigDecimal getNetPnlUsd()
-    {
+    public BigDecimal getNetPnlUsd() {
         return netPnlUsd;
     }
 
-    public void setNetPnlUsd( BigDecimal netPnlUsd )
-    {
+    public void setNetPnlUsd(BigDecimal netPnlUsd) {
         this.netPnlUsd = netPnlUsd;
     }
 
-    public BigDecimal getFeesUsd()
-    {
+    public BigDecimal getFeesUsd() {
         return feesUsd;
     }
 
-    public void setFeesUsd( BigDecimal feesUsd )
-    {
+    public void setFeesUsd(BigDecimal feesUsd) {
         this.feesUsd = feesUsd;
     }
 
-    public String getOutcomeCode()
-    {
+    public String getOutcomeCode() {
         return outcomeCode;
     }
 
-    public void setOutcomeCode( String outcomeCode )
-    {
+    public void setOutcomeCode(String outcomeCode) {
         this.outcomeCode = outcomeCode;
     }
 
-    public String getNotes()
-    {
+    public String getNotes() {
         return notes;
     }
 
-    public void setNotes( String notes )
-    {
+    public void setNotes(String notes) {
         this.notes = notes;
     }
 
-    public Instant getEvaluatedAt()
-    {
+    public Instant getEvaluatedAt() {
         return evaluatedAt;
     }
 
-    public void setEvaluatedAt( Instant evaluatedAt )
-    {
+    public void setEvaluatedAt(Instant evaluatedAt) {
         this.evaluatedAt = evaluatedAt;
     }
 }

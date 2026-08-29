@@ -2,8 +2,6 @@ package com.crypto.funding.application.venue;
 
 import com.crypto.funding.application.execution.EngineLatencyRecordService;
 import com.crypto.funding.contract.engine.EngineLatencySampleRequest;
-import org.springframework.stereotype.Service;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -12,120 +10,96 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
+import org.springframework.stereotype.Service;
 
 @Service
-public class VenueLatencyProbeService
-{
+public class VenueLatencyProbeService {
     static final String OPERATION = "latency-probe";
 
     private static final Map<String, String> PROBE_PATHS = Map.of(
-        "gate",   "/futures/usdt/tickers?contract=BTC_USDT",
-        "bybit",  "/v5/market/time",
-        "okx",    "/api/v5/public/time",
-        "kucoin", "/api/v1/timestamp",
-        "bitget", "/api/v2/public/time"
-    );
+            "gate", "/futures/usdt/tickers?contract=BTC_USDT",
+            "bybit", "/v5/market/time",
+            "okx", "/api/v5/public/time",
+            "kucoin", "/api/v1/timestamp",
+            "bitget", "/api/v2/public/time");
 
     private static final Map<String, String> TESTNET_BASE_URLS = Map.of(
-        "gate",   "https://api-testnet.gateapi.io/api/v4",
-        "bybit",  "https://api-testnet.bybit.com",
-        "okx",    "https://www.okx.com",
-        "kucoin", "https://api-sandbox.kucoin.com",
-        "bitget", "https://api.bitget.com"
-    );
+            "gate", "https://api-testnet.gateapi.io/api/v4",
+            "bybit", "https://api-testnet.bybit.com",
+            "okx", "https://www.okx.com",
+            "kucoin", "https://api-sandbox.kucoin.com",
+            "bitget", "https://api.bitget.com");
 
     private static final Map<String, String> PRODUCTION_BASE_URLS = Map.of(
-        "gate",   "https://fx-api.gateio.ws/api/v4",
-        "bybit",  "https://api.bybit.com",
-        "okx",    "https://www.okx.com",
-        "kucoin", "https://api.kucoin.com",
-        "bitget", "https://api.bitget.com"
-    );
+            "gate", "https://fx-api.gateio.ws/api/v4",
+            "bybit", "https://api.bybit.com",
+            "okx", "https://www.okx.com",
+            "kucoin", "https://api.kucoin.com",
+            "bitget", "https://api.bitget.com");
 
     private final VenueProfileService venueProfileService;
     private final EngineLatencyRecordService latencyRecordService;
     private final HttpClient httpClient;
 
     public VenueLatencyProbeService(
-        VenueProfileService venueProfileService,
-        EngineLatencyRecordService latencyRecordService
-    )
-    {
+            VenueProfileService venueProfileService, EngineLatencyRecordService latencyRecordService) {
         this.venueProfileService = venueProfileService;
         this.latencyRecordService = latencyRecordService;
-        this.httpClient = HttpClient.newBuilder()
-                                    .connectTimeout( Duration.ofSeconds( 5 ) )
-                                    .build();
+        this.httpClient =
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 
-    public record ProbeResult( String venue, long durationMs, Instant sampledAt )
-    {
-    }
+    public record ProbeResult(String venue, long durationMs, Instant sampledAt) {}
 
-    public ProbeResult probe( String rawVenue )
-    {
-        String venue = rawVenue == null ? "" : rawVenue.trim().toLowerCase( Locale.ROOT );
-        String probePath = PROBE_PATHS.get( venue );
-        if( probePath == null )
-        {
-            throw new IllegalArgumentException( "Latency probe not supported for venue: " + venue );
+    public ProbeResult probe(String rawVenue) {
+        String venue = rawVenue == null ? "" : rawVenue.trim().toLowerCase(Locale.ROOT);
+        String probePath = PROBE_PATHS.get(venue);
+        if (probePath == null) {
+            throw new IllegalArgumentException("Latency probe not supported for venue: " + venue);
         }
 
-        VenueProfileService.ResolvedCredentials credentials = venueProfileService.resolveCredentials( venue );
-        String baseUrl = resolveBaseUrl( venue, credentials );
+        VenueProfileService.ResolvedCredentials credentials = venueProfileService.resolveCredentials(venue);
+        String baseUrl = resolveBaseUrl(venue, credentials);
         String url = baseUrl + probePath;
 
         Instant sampledAt = Instant.now();
         long startNanos = System.nanoTime();
-        try
-        {
+        try {
             HttpRequest request = HttpRequest.newBuilder()
-                                             .uri( URI.create( url ) )
-                                             .GET()
-                                             .timeout( Duration.ofSeconds( 8 ) )
-                                             .build();
-            httpClient.send( request, HttpResponse.BodyHandlers.discarding() );
+                    .uri(URI.create(url))
+                    .GET()
+                    .timeout(Duration.ofSeconds(8))
+                    .build();
+            httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+        } catch (Exception e) {
+            throw new RuntimeException("Latency probe failed for " + venue + ": " + e.getMessage(), e);
         }
-        catch( Exception e )
-        {
-            throw new RuntimeException( "Latency probe failed for " + venue + ": " + e.getMessage(), e );
-        }
-        long durationMs = ( System.nanoTime() - startNanos ) / 1_000_000L;
+        long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
 
-        latencyRecordService.record( new EngineLatencySampleRequest(
-            venue,
-            "_all_",
-            OPERATION,
-            durationMs,
-            sampledAt
-        ) );
+        latencyRecordService.record(new EngineLatencySampleRequest(venue, "_all_", OPERATION, durationMs, sampledAt));
 
-        return new ProbeResult( venue, durationMs, sampledAt );
+        return new ProbeResult(venue, durationMs, sampledAt);
     }
 
-    public String probeUrlFor( String rawVenue, com.crypto.funding.domain.venue.VenueAccessMode mode )
-    {
-        String venue = rawVenue == null ? "" : rawVenue.trim().toLowerCase( Locale.ROOT );
-        String probePath = PROBE_PATHS.get( venue );
-        if( probePath == null )
-        {
+    public String probeUrlFor(String rawVenue, com.crypto.funding.domain.venue.VenueAccessMode mode) {
+        String venue = rawVenue == null ? "" : rawVenue.trim().toLowerCase(Locale.ROOT);
+        String probePath = PROBE_PATHS.get(venue);
+        if (probePath == null) {
             return null;
         }
-        boolean testnet = mode != null && mode.propertyValue().equals( "testnet" );
+        boolean testnet = mode != null && mode.propertyValue().equals("testnet");
         String baseUrl = testnet
-                         ? TESTNET_BASE_URLS.getOrDefault( venue, PRODUCTION_BASE_URLS.getOrDefault( venue, "" ) )
-                         : PRODUCTION_BASE_URLS.getOrDefault( venue, "" );
+                ? TESTNET_BASE_URLS.getOrDefault(venue, PRODUCTION_BASE_URLS.getOrDefault(venue, ""))
+                : PRODUCTION_BASE_URLS.getOrDefault(venue, "");
         return baseUrl + probePath;
     }
 
-    private String resolveBaseUrl( String venue, VenueProfileService.ResolvedCredentials credentials )
-    {
-        if( credentials.baseUrl() != null && !credentials.baseUrl().isBlank() )
-        {
+    private String resolveBaseUrl(String venue, VenueProfileService.ResolvedCredentials credentials) {
+        if (credentials.baseUrl() != null && !credentials.baseUrl().isBlank()) {
             return credentials.baseUrl();
         }
-        return credentials.mode() != null && credentials.mode().propertyValue().equals( "testnet" )
-               ? TESTNET_BASE_URLS.getOrDefault( venue, PRODUCTION_BASE_URLS.getOrDefault( venue, "" ) )
-               : PRODUCTION_BASE_URLS.getOrDefault( venue, "" );
+        return credentials.mode() != null && credentials.mode().propertyValue().equals("testnet")
+                ? TESTNET_BASE_URLS.getOrDefault(venue, PRODUCTION_BASE_URLS.getOrDefault(venue, ""))
+                : PRODUCTION_BASE_URLS.getOrDefault(venue, "");
     }
 }

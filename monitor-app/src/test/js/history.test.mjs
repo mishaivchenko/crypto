@@ -10,7 +10,7 @@ import {
     deriveTradeHealth,
     filterHistoryTrades,
     historyTradeRow,
-    tradeHistoryDetailMarkup
+    tradeHistoryDetailMarkup,
 } from "../../main/resources/static/history.js";
 
 const baseTrade = {
@@ -31,7 +31,7 @@ const baseTrade = {
     effectiveEntryLatencyMs: 50,
     armSource: "EVENT_API",
     state: "ARMED",
-    notes: "burst entry"
+    notes: "burst entry",
 };
 
 test("buildAttemptPlan creates latency-adjusted burst attempts", () => {
@@ -49,7 +49,7 @@ test("deriveTradeHealth prioritizes failed and manual override states", () => {
     assert.deepEqual(deriveTradeHealth({ ...baseTrade, state: "FAILED" }), {
         label: "failed",
         tone: "bad",
-        reason: "Trade state failed"
+        reason: "Trade state failed",
     });
 
     assert.equal(deriveTradeHealth(baseTrade).label, "manual override");
@@ -59,7 +59,7 @@ test("deriveTradeHealth prioritizes failed and manual override states", () => {
 test("deriveHistoryStage marks failed recorded attempts ahead of raw armed state", () => {
     const stage = deriveHistoryStage(baseTrade, { status: "EXPIRED" }, [
         { attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" },
-        { attemptNumber: 2, status: "FAILED", createdAt: "2030-01-01T00:00:01.100Z" }
+        { attemptNumber: 2, status: "FAILED", createdAt: "2030-01-01T00:00:01.100Z" },
     ]);
 
     assert.equal(stage.code, "ATTEMPTS_FAILED");
@@ -69,23 +69,33 @@ test("filterHistoryTrades applies operator filters", () => {
     const trades = [
         baseTrade,
         { ...baseTrade, id: 43, venue: "bybit", symbol: "NOM/USDT", state: "FAILED", manualLatencyAdjustmentMs: 0 },
-        { ...baseTrade, id: 44, venue: "gate", symbol: "EDGE/USDT", state: "CLOSED", manualLatencyAdjustmentMs: 0 }
+        { ...baseTrade, id: 44, venue: "gate", symbol: "EDGE/USDT", state: "CLOSED", manualLatencyAdjustmentMs: 0 },
     ];
     const attemptsByTrade = {
-        42: [
-            { attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" }
-        ]
+        42: [{ attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" }],
     };
 
-    assert.deepEqual(filterHistoryTrades(trades, { venue: "gate" }).map((trade) => trade.id), [42, 44]);
-    assert.deepEqual(filterHistoryTrades(trades, { onlyFailed: true }, attemptsByTrade).map((trade) => trade.id), [42, 43]);
-    assert.deepEqual(filterHistoryTrades(trades, { onlyManual: true }).map((trade) => trade.id), [42]);
-    assert.deepEqual(filterHistoryTrades(trades, { symbol: "nom" }).map((trade) => trade.id), [43]);
+    assert.deepEqual(
+        filterHistoryTrades(trades, { venue: "gate" }).map((trade) => trade.id),
+        [42, 44],
+    );
+    assert.deepEqual(
+        filterHistoryTrades(trades, { onlyFailed: true }, attemptsByTrade).map((trade) => trade.id),
+        [42, 43],
+    );
+    assert.deepEqual(
+        filterHistoryTrades(trades, { onlyManual: true }).map((trade) => trade.id),
+        [42],
+    );
+    assert.deepEqual(
+        filterHistoryTrades(trades, { symbol: "nom" }).map((trade) => trade.id),
+        [43],
+    );
 });
 
 test("history row exposes key trading context", () => {
     const row = historyTradeRow(baseTrade, [
-        { attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" }
+        { attemptNumber: 1, status: "FAILED", createdAt: "2030-01-01T00:00:01.000Z" },
     ]);
 
     assert.match(row, /WET\/USDT/);
@@ -105,7 +115,7 @@ test("detail markup tells the full source-to-outcome story", () => {
             fundingTime: "2030-01-01T00:00:00.000Z",
             fundingRatePct: -0.0125,
             status: "ARMED",
-            sourceType: "FUNDING_API"
+            sourceType: "FUNDING_API",
         },
         candidate: {
             id: 3,
@@ -113,7 +123,7 @@ test("detail markup tells the full source-to-outcome story", () => {
             rawSymbol: "WETUSDT",
             normalizedSymbol: "WET/USDT",
             detectedAt: "2029-12-31T23:50:00.000Z",
-            reviewNotes: "valid"
+            reviewNotes: "valid",
         },
         journal: [],
         attempts: [
@@ -123,9 +133,9 @@ test("detail markup tells the full source-to-outcome story", () => {
                 symbol: "WET/USDT",
                 failureReason: "Missing credentials",
                 triggerAt: "2029-12-31T23:59:50.000Z",
-                createdAt: "2030-01-01T00:00:01.000Z"
-            }
-        ]
+                createdAt: "2030-01-01T00:00:01.000Z",
+            },
+        ],
     });
 
     assert.match(markup, /1\. Source/);

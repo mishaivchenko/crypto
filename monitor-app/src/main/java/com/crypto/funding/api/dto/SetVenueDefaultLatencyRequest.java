@@ -1,7 +1,3 @@
 package com.crypto.funding.api.dto;
 
-public record SetVenueDefaultLatencyRequest(
-    Long defaultManualLatencyAdjustmentMs
-)
-{
-}
+public record SetVenueDefaultLatencyRequest(Long defaultManualLatencyAdjustmentMs) {}

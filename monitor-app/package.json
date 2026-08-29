@@ -1,3 +1,15 @@
 {
-  "type": "module"
+    "type": "module",
+    "scripts": {
+        "lint": "eslint src/main/resources/static/**/*.js src/test/js/**/*.mjs --max-warnings 0",
+        "format": "prettier --write src/main/resources/static/**/*.js src/main/resources/static/**/*.css src/main/resources/static/**/*.html src/test/js/**/*.mjs",
+        "format:check": "prettier --check src/main/resources/static/**/*.js src/main/resources/static/**/*.css src/main/resources/static/**/*.html src/test/js/**/*.mjs",
+        "test": "node --test src/test/js/**/*.test.mjs"
+    },
+    "devDependencies": {
+        "@eslint/js": "9.39.1",
+        "eslint": "9.39.1",
+        "globals": "16.5.0",
+        "prettier": "3.6.2"
+    }
 }

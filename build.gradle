@@ -4,7 +4,10 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7' apply false
     id 'org.owasp.dependencycheck' version '12.1.8' apply false
     id 'info.solidsoft.pitest' version '1.19.0' apply false
-    id 'com.diffplug.spotless' version '6.25.0'
+    id 'com.diffplug.spotless' version '8.10.0'
+    id 'com.github.spotbugs' version '6.5.11' apply false
+    id 'com.autonomousapps.dependency-analysis' version '3.19.1'
+    id 'net.ltgt.errorprone' version '5.1.0' apply false
 }
 
 ext {
@@ -27,6 +30,10 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
     apply plugin: 'org.owasp.dependencycheck'
+    apply plugin: 'pmd'
+    apply plugin: 'com.github.spotbugs'
+    apply plugin: 'com.autonomousapps.dependency-analysis'
+    apply plugin: 'net.ltgt.errorprone'
 
     java {
         toolchain {
@@ -38,6 +45,7 @@ subprojects {
         imports {
             mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+            mavenBom 'org.junit:junit-bom:5.14.4'
         }
         dependencies {
             dependency 'commons-fileupload:commons-fileupload:1.6.0'
@@ -47,16 +55,35 @@ subprojects {
     }
 
     dependencies {
+        testImplementation enforcedPlatform( 'org.junit:junit-bom:5.14.4' )
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         testImplementation 'org.awaitility:awaitility:4.2.2'
         testImplementation 'org.assertj:assertj-core:3.25.3'
         testImplementation 'org.mockito:mockito-core:5.12.0'
         testImplementation 'org.wiremock:wiremock-standalone:3.0.1'
+        testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.0'
+        spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0'
+        errorprone 'com.google.errorprone:error_prone_core:2.50.0'
     }
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+    }
+
+    configurations.matching { configuration -> configuration.name.toLowerCase().contains( 'test' ) }.configureEach {
+        resolutionStrategy.eachDependency { details ->
+            if( details.requested.group == 'org.junit.jupiter' )
+            {
+                details.useVersion '5.14.4'
+                details.because 'ArchUnit 1.5.0 requires the matching JUnit Platform 1.14.x runtime'
+            }
+            if( details.requested.group == 'org.junit.platform' )
+            {
+                details.useVersion '1.14.4'
+                details.because 'ArchUnit 1.5.0 requires org.junit.platform.engine.OutputDirectoryCreator'
+            }
+        }
     }
 
     tasks.withType(JavaCompile).configureEach {
@@ -64,11 +91,85 @@ subprojects {
         options.compilerArgs += ['-parameters']
     }
 
+    tasks.named( 'compileJava' ).configure {
+        options.errorprone.enabled = providers.gradleProperty( 'errorProneEnabled' )
+            .map { it.toBoolean() }
+            .orElse( true )
+    }
+
+    tasks.named( 'compileTestJava' ).configure {
+        options.errorprone.enabled = false
+    }
+
+    if( project.name == 'platform-core' )
+    {
+        dependencies {
+            compileOnly 'org.jspecify:jspecify:1.0.1'
+            errorprone 'com.uber.nullaway:nullaway:0.13.8'
+        }
+
+        tasks.named( 'compileJava' ).configure {
+            options.errorprone {
+                check( 'NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR )
+                option( 'NullAway:OnlyNullMarked', 'true' )
+                option( 'NullAway:JSpecifyMode', 'true' )
+            }
+        }
+    }
+
     dependencyCheck {
         failBuildOnCVSS = 7.0
         scanConfigurations = ['compileClasspath', 'runtimeClasspath']
         analyzers.assemblyEnabled = false
         nvd.apiKey = System.getenv( 'NVD_API_KEY' )
+    }
+
+    pmd {
+        toolVersion = '7.24.0'
+        ignoreFailures = true
+        ruleSets = []
+        ruleSetFiles = rootProject.files( 'config/pmd/ruleset.xml' )
+    }
+
+    tasks.withType( org.gradle.api.plugins.quality.Pmd ).configureEach {
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    tasks.matching { it.name == 'pmdTest' }.configureEach {
+        enabled = false
+    }
+
+    spotbugs {
+        ignoreFailures = true
+        effort = 'max'
+        reportLevel = 'low'
+    }
+
+    tasks.withType( com.github.spotbugs.snom.SpotBugsTask ).configureEach {
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    tasks.matching { it.name == 'spotbugsTest' }.configureEach {
+        enabled = false
+    }
+}
+
+dependencyAnalysis {
+    reporting {
+        printBuildHealth( true )
+    }
+    issues {
+        all {
+            onAny {
+                severity( 'warn' )
+            }
+        }
     }
 }
 
@@ -129,10 +230,46 @@ tasks.register('security') {
 spotless {
     format 'misc', {
         target '*.gradle', '**/*.gradle', '**/*.md', '**/*.yml', '**/*.yaml'
-        targetExclude '**/build/**', '**/.gradle/**'
+        targetExclude '.claude/**', '.agents/**', '.codex/**', '.maestro/**', '**/build/**', '**/.gradle/**', '**/node_modules/**'
         trimTrailingWhitespace()
         endWithNewline()
     }
+    java {
+        target(
+            'platform-core/src/**/*.java',
+            'monitor-app/src/**/*.java',
+            'engine-app/src/**/*.java',
+            'telegram-bot-app/src/**/*.java'
+        )
+        targetExclude(
+            '.claude/**',
+            '.agents/**',
+            '.codex/**',
+            '.maestro/**',
+            '**/build/**',
+            '**/.gradle/**',
+            '**/node_modules/**'
+        )
+        palantirJavaFormat('2.97.0')
+        removeUnusedImports()
+        forbidWildcardImports()
+    }
+}
+
+tasks.register('quality') {
+    group = 'verification'
+    description = 'Run fast blocking code quality checks'
+    dependsOn 'spotlessCheck', ':monitor-app:frontendLint', ':monitor-app:frontendFormatCheck'
+}
+
+tasks.register('qualityReport') {
+    group = 'verification'
+    description = 'Run report-only static analysis and dependency health checks'
+    dependsOn(
+        subprojects.collect { project -> project.tasks.named( 'pmdMain' ) },
+        subprojects.collect { project -> project.tasks.named( 'spotbugsMain' ) },
+        'buildHealth'
+    )
 }
 
 tasks.register('engineTddDocsCheck') {

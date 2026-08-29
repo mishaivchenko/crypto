@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.execution;
 
-public enum OrderAttemptStatus
-{
+public enum OrderAttemptStatus {
     CREATED,
     SUBMITTED,
     ACKNOWLEDGED,

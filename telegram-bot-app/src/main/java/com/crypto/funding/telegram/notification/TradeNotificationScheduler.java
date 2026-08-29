@@ -6,19 +6,17 @@ import com.crypto.funding.telegram.client.MonitorApiClient;
 import com.crypto.funding.telegram.client.dto.ArmedTradeSummary;
 import com.crypto.funding.telegram.config.MonitorProperties;
 import com.crypto.funding.telegram.config.TelegramBotProperties;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
 @Component
 @ConditionalOnProperty(name = "telegram.bot.token", matchIfMissing = false)
-public class TradeNotificationScheduler
-{
-    private static final Logger log = LoggerFactory.getLogger( TradeNotificationScheduler.class );
+public class TradeNotificationScheduler {
+    private static final Logger log = LoggerFactory.getLogger(TradeNotificationScheduler.class);
 
     private final MonitorApiClient monitorApiClient;
     private final FundingBot fundingBot;
@@ -27,13 +25,11 @@ public class TradeNotificationScheduler
     private final MonitorProperties monitorProperties;
 
     public TradeNotificationScheduler(
-        MonitorApiClient monitorApiClient,
-        FundingBot fundingBot,
-        NotificationState state,
-        TelegramBotProperties botProperties,
-        MonitorProperties monitorProperties
-    )
-    {
+            MonitorApiClient monitorApiClient,
+            FundingBot fundingBot,
+            NotificationState state,
+            TelegramBotProperties botProperties,
+            MonitorProperties monitorProperties) {
         this.monitorApiClient = monitorApiClient;
         this.fundingBot = fundingBot;
         this.state = state;
@@ -42,42 +38,33 @@ public class TradeNotificationScheduler
     }
 
     @Scheduled(fixedDelayString = "${telegram.bot.signal-poll-interval-ms:30000}")
-    public void pollAndNotify()
-    {
-        if( !botProperties.hasNotificationTarget() )
-        {
+    public void pollAndNotify() {
+        if (!botProperties.hasNotificationTarget()) {
             return;
         }
 
-        try
-        {
-            List<ArmedTradeSummary> trades = monitorApiClient.getArmedTrades( false );
-            if( trades == null )
-            {
+        try {
+            List<ArmedTradeSummary> trades = monitorApiClient.getArmedTrades(false);
+            if (trades == null) {
                 return;
             }
-            for( ArmedTradeSummary trade : trades )
-            {
+            for (ArmedTradeSummary trade : trades) {
                 String tradeKey = "trade:" + trade.id();
-                if( state.isNew( tradeKey ) )
-                {
-                    sendAlert( trade );
-                    state.markSeen( tradeKey );
+                if (state.isNew(tradeKey)) {
+                    sendAlert(trade);
+                    state.markSeen(tradeKey);
                 }
             }
-        }
-        catch( Exception e )
-        {
-            log.warn( "Could not poll monitor for new trades: {}", e.getMessage() );
+        } catch (Exception e) {
+            log.warn("Could not poll monitor for new trades: {}", e.getMessage());
         }
     }
 
-    private void sendAlert( ArmedTradeSummary trade )
-    {
+    private void sendAlert(ArmedTradeSummary trade) {
         String uiUrl = monitorProperties.publicUrl();
-        String text = MessageFormatter.newTradeAlert( trade, uiUrl );
+        String text = MessageFormatter.newTradeAlert(trade, uiUrl);
         long chatId = botProperties.notificationChatIdLong();
-        fundingBot.sendAlert( chatId, text );
-        log.info( "Sent trade alert for armed trade {} ({}/{})", trade.id(), trade.venue(), trade.displaySymbol() );
+        fundingBot.sendAlert(chatId, text);
+        log.info("Sent trade alert for armed trade {} ({}/{})", trade.id(), trade.venue(), trade.displaySymbol());
     }
 }

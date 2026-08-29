@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.ai;
 
-public enum AiRecommendation
-{
+public enum AiRecommendation {
     GO,
     WATCH,
     PASS

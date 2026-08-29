@@ -39,6 +39,48 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: bash scripts/ci-failure-analysis.sh /tmp/build-output.txt
 
+  code_quality:
+    name: Code Quality
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: monitor-app/package-lock.json
+
+      - run: chmod +x gradlew
+
+      - name: Install monitor UI tooling
+        run: npm ci --prefix monitor-app
+
+      - name: Run blocking quality gates
+        run: ./gradlew quality --no-daemon
+
+      - name: Run report-only quality analysis
+        run: ./gradlew qualityReport --no-daemon
+
+      - name: Upload quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports
+          path: |
+            build/reports/dependency-analysis/**
+            */build/reports/pmd/**
+            */build/reports/spotbugs/**
+            .semgrep/**
+          if-no-files-found: ignore
+
 
 
   # ── 2. Engine TDD gate (PR only, skipped if engine-app unchanged) ────────────
@@ -129,7 +171,7 @@ jobs:
   # ── 4. Docker build & push ───────────────────────────────────────────────────
   docker:
     name: Docker (${{ matrix.app.image_suffix }})
-    needs: build
+    needs: [ build, code_quality ]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: crypto
@@ -190,7 +232,7 @@ jobs:
   # Depends on `build` (not `docker`) so it runs in parallel with Docker push.
   deploy-staging:
     name: Deploy → Staging (Mac mini)
-    needs: build
+    needs: [ build, code_quality ]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: [ self-hosted, mac-mini, staging ]
     environment: staging

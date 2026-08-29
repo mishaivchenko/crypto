@@ -14,21 +14,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "order_attempt",
-    indexes = {
-        @Index(name = "idx_order_attempt_trade_id", columnList = "armed_trade_id"),
-        @Index(name = "idx_order_attempt_key", columnList = "attempt_key", unique = true),
-        @Index(name = "idx_order_attempt_status", columnList = "status")
-    }
-)
-public class OrderAttemptEntity extends AuditableEntity
-{
+        name = "order_attempt",
+        indexes = {
+            @Index(name = "idx_order_attempt_trade_id", columnList = "armed_trade_id"),
+            @Index(name = "idx_order_attempt_key", columnList = "attempt_key", unique = true),
+            @Index(name = "idx_order_attempt_status", columnList = "status")
+        })
+public class OrderAttemptEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -103,208 +100,167 @@ public class OrderAttemptEntity extends AuditableEntity
     @Column(name = "request_duration_ms")
     private Long requestDurationMs;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getAttemptKey()
-    {
+    public String getAttemptKey() {
         return attemptKey;
     }
 
-    public void setAttemptKey( String attemptKey )
-    {
+    public void setAttemptKey(String attemptKey) {
         this.attemptKey = attemptKey;
     }
 
-    public Long getArmedTradeId()
-    {
+    public Long getArmedTradeId() {
         return armedTradeId;
     }
 
-    public void setArmedTradeId( Long armedTradeId )
-    {
+    public void setArmedTradeId(Long armedTradeId) {
         this.armedTradeId = armedTradeId;
     }
 
-    public Integer getAttemptNumber()
-    {
+    public Integer getAttemptNumber() {
         return attemptNumber;
     }
 
-    public void setAttemptNumber( Integer attemptNumber )
-    {
+    public void setAttemptNumber(Integer attemptNumber) {
         this.attemptNumber = attemptNumber;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public String getSymbol()
-    {
+    public String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol( String symbol )
-    {
+    public void setSymbol(String symbol) {
         this.symbol = symbol;
     }
 
-    public TradeSide getSide()
-    {
+    public TradeSide getSide() {
         return side;
     }
 
-    public void setSide( TradeSide side )
-    {
+    public void setSide(TradeSide side) {
         this.side = side;
     }
 
-    public ExecutionType getExecutionType()
-    {
+    public ExecutionType getExecutionType() {
         return executionType;
     }
 
-    public void setExecutionType( ExecutionType executionType )
-    {
+    public void setExecutionType(ExecutionType executionType) {
         this.executionType = executionType;
     }
 
-    public BigDecimal getQuantity()
-    {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity( BigDecimal quantity )
-    {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
-    public BigDecimal getLimitPrice()
-    {
+    public BigDecimal getLimitPrice() {
         return limitPrice;
     }
 
-    public void setLimitPrice( BigDecimal limitPrice )
-    {
+    public void setLimitPrice(BigDecimal limitPrice) {
         this.limitPrice = limitPrice;
     }
 
-    public OrderAttemptStatus getStatus()
-    {
+    public OrderAttemptStatus getStatus() {
         return status;
     }
 
-    public void setStatus( OrderAttemptStatus status )
-    {
+    public void setStatus(OrderAttemptStatus status) {
         this.status = status;
     }
 
-    public String getExternalOrderId()
-    {
+    public String getExternalOrderId() {
         return externalOrderId;
     }
 
-    public void setExternalOrderId( String externalOrderId )
-    {
+    public void setExternalOrderId(String externalOrderId) {
         this.externalOrderId = externalOrderId;
     }
 
-    public Instant getTargetEntryAt()
-    {
+    public Instant getTargetEntryAt() {
         return targetEntryAt;
     }
 
-    public void setTargetEntryAt( Instant targetEntryAt )
-    {
+    public void setTargetEntryAt(Instant targetEntryAt) {
         this.targetEntryAt = targetEntryAt;
     }
 
-    public Instant getTriggerAt()
-    {
+    public Instant getTriggerAt() {
         return triggerAt;
     }
 
-    public void setTriggerAt( Instant triggerAt )
-    {
+    public void setTriggerAt(Instant triggerAt) {
         this.triggerAt = triggerAt;
     }
 
-    public Instant getSubmittedAt()
-    {
+    public Instant getSubmittedAt() {
         return submittedAt;
     }
 
-    public void setSubmittedAt( Instant submittedAt )
-    {
+    public void setSubmittedAt(Instant submittedAt) {
         this.submittedAt = submittedAt;
     }
 
-    public Instant getExchangeTimestamp()
-    {
+    public Instant getExchangeTimestamp() {
         return exchangeTimestamp;
     }
 
-    public void setExchangeTimestamp( Instant exchangeTimestamp )
-    {
+    public void setExchangeTimestamp(Instant exchangeTimestamp) {
         this.exchangeTimestamp = exchangeTimestamp;
     }
 
-    public String getFailureReason()
-    {
+    public String getFailureReason() {
         return failureReason;
     }
 
-    public void setFailureReason( String failureReason )
-    {
+    public void setFailureReason(String failureReason) {
         this.failureReason = failureReason;
     }
 
-    public BigDecimal getAverageFillPrice()
-    {
+    public BigDecimal getAverageFillPrice() {
         return averageFillPrice;
     }
 
-    public void setAverageFillPrice( BigDecimal averageFillPrice )
-    {
+    public void setAverageFillPrice(BigDecimal averageFillPrice) {
         this.averageFillPrice = averageFillPrice;
     }
 
-    public BigDecimal getFilledQuantity()
-    {
+    public BigDecimal getFilledQuantity() {
         return filledQuantity;
     }
 
-    public void setFilledQuantity( BigDecimal filledQuantity )
-    {
+    public void setFilledQuantity(BigDecimal filledQuantity) {
         this.filledQuantity = filledQuantity;
     }
 
-    public BigDecimal getFeeUsd()
-    {
+    public BigDecimal getFeeUsd() {
         return feeUsd;
     }
 
-    public void setFeeUsd( BigDecimal feeUsd )
-    {
+    public void setFeeUsd(BigDecimal feeUsd) {
         this.feeUsd = feeUsd;
     }
 
-    public Long getRequestDurationMs()
-    {
+    public Long getRequestDurationMs() {
         return requestDurationMs;
     }
 
-    public void setRequestDurationMs( Long requestDurationMs )
-    {
+    public void setRequestDurationMs(Long requestDurationMs) {
         this.requestDurationMs = requestDurationMs;
     }
 }

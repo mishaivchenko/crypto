@@ -13,20 +13,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "trade_position",
-    indexes = {
-        @Index(name = "idx_trade_position_trade_id", columnList = "armed_trade_id"),
-        @Index(name = "idx_trade_position_state", columnList = "state")
-    }
-)
-public class PositionEntity extends AuditableEntity
-{
+        name = "trade_position",
+        indexes = {
+            @Index(name = "idx_trade_position_trade_id", columnList = "armed_trade_id"),
+            @Index(name = "idx_trade_position_state", columnList = "state")
+        })
+public class PositionEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -66,108 +63,87 @@ public class PositionEntity extends AuditableEntity
     @Column(name = "closed_at")
     private Instant closedAt;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public Long getArmedTradeId()
-    {
+    public Long getArmedTradeId() {
         return armedTradeId;
     }
 
-    public void setArmedTradeId( Long armedTradeId )
-    {
+    public void setArmedTradeId(Long armedTradeId) {
         this.armedTradeId = armedTradeId;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public String getSymbol()
-    {
+    public String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol( String symbol )
-    {
+    public void setSymbol(String symbol) {
         this.symbol = symbol;
     }
 
-    public TradeSide getSide()
-    {
+    public TradeSide getSide() {
         return side;
     }
 
-    public void setSide( TradeSide side )
-    {
+    public void setSide(TradeSide side) {
         this.side = side;
     }
 
-    public BigDecimal getQuantity()
-    {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity( BigDecimal quantity )
-    {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
-    public BigDecimal getEntryPrice()
-    {
+    public BigDecimal getEntryPrice() {
         return entryPrice;
     }
 
-    public void setEntryPrice( BigDecimal entryPrice )
-    {
+    public void setEntryPrice(BigDecimal entryPrice) {
         this.entryPrice = entryPrice;
     }
 
-    public BigDecimal getExitPrice()
-    {
+    public BigDecimal getExitPrice() {
         return exitPrice;
     }
 
-    public void setExitPrice( BigDecimal exitPrice )
-    {
+    public void setExitPrice(BigDecimal exitPrice) {
         this.exitPrice = exitPrice;
     }
 
-    public PositionState getState()
-    {
+    public PositionState getState() {
         return state;
     }
 
-    public void setState( PositionState state )
-    {
+    public void setState(PositionState state) {
         this.state = state;
     }
 
-    public Instant getOpenedAt()
-    {
+    public Instant getOpenedAt() {
         return openedAt;
     }
 
-    public void setOpenedAt( Instant openedAt )
-    {
+    public void setOpenedAt(Instant openedAt) {
         this.openedAt = openedAt;
     }
 
-    public Instant getClosedAt()
-    {
+    public Instant getClosedAt() {
         return closedAt;
     }
 
-    public void setClosedAt( Instant closedAt )
-    {
+    public void setClosedAt(Instant closedAt) {
         this.closedAt = closedAt;
     }
 }

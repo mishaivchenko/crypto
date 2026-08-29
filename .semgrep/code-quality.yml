@@ -1,0 +1,30 @@
+rules:
+  - id: funding-no-raw-secret-response
+    languages: [java]
+    severity: ERROR
+    message: Raw credential material must not be returned by API DTOs or controllers.
+    patterns:
+      - pattern-either:
+          - pattern: return $SECRET;
+          - pattern: new $DTO(..., $SECRET, ...)
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: (?i).*(secret|apiKey|token|passphrase|credential).*
+
+  - id: funding-thread-sleep-outside-tests
+    languages: [java]
+    severity: WARNING
+    message: Prefer injectable clocks, schedulers, or explicit backoff components over Thread.sleep outside tests.
+    pattern: Thread.sleep(...)
+    paths:
+      exclude:
+        - "**/src/test/**"
+
+  - id: funding-current-time-millis-in-services
+    languages: [java]
+    severity: WARNING
+    message: Prefer an injectable Clock in testable services.
+    pattern: System.currentTimeMillis()
+    paths:
+      include:
+        - "**/src/main/java/**Service.java"

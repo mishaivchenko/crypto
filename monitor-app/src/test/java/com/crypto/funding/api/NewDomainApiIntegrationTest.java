@@ -1,5 +1,12 @@
 package com.crypto.funding.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.crypto.funding.application.candidate.IngestSignalCandidateCommand;
 import com.crypto.funding.application.candidate.SignalCandidateIngestService;
 import com.crypto.funding.application.event.CreateFundingEventCommand;
@@ -8,7 +15,6 @@ import com.crypto.funding.application.trade.ArmedTradeCommandService;
 import com.crypto.funding.application.trade.CreateArmedTradeCommand;
 import com.crypto.funding.domain.event.FundingEvent;
 import com.crypto.funding.domain.event.FundingEventStatus;
-import com.crypto.funding.domain.trade.TradeSide;
 import com.crypto.funding.domain.trade.ArmedTradeState;
 import com.crypto.funding.domain.trade.TradeArmSource;
 import com.crypto.funding.domain.trade.TradeSide;
@@ -19,6 +25,8 @@ import com.crypto.funding.infrastructure.persistence.repository.FundingEventJpaR
 import com.crypto.funding.infrastructure.persistence.repository.SignalCandidateJpaRepository;
 import com.crypto.funding.infrastructure.telemetry.VenueRequestTimingService;
 import com.crypto.funding.support.ManualSignalTestSupport;
+import java.math.BigDecimal;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,30 +35,20 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-
-@SpringBootTest(properties = {
-    "spring.jpa.hibernate.ddl-auto=create-drop",
-    "spring.datasource.url=jdbc:sqlite:./build/test-new-domain-api.sqlite",
-    "spring.datasource.driver-class-name=org.sqlite.JDBC",
-    "spring.datasource.hikari.maximum-pool-size=1",
-    "spring.jpa.properties.hibernate.dialect=org.hibernate.community.dialect.SQLiteDialect",
-    "trading.metadata.sync-on-startup=false",
-    "trading.metadata.schedule-enabled=false",
-    "trading.metadata.require-credentials-on-startup=false",
-    "security.operators.auth-enabled=false"
-})
+@SpringBootTest(
+        properties = {
+            "spring.jpa.hibernate.ddl-auto=create-drop",
+            "spring.datasource.url=jdbc:sqlite:./build/test-new-domain-api.sqlite",
+            "spring.datasource.driver-class-name=org.sqlite.JDBC",
+            "spring.datasource.hikari.maximum-pool-size=1",
+            "spring.jpa.properties.hibernate.dialect=org.hibernate.community.dialect.SQLiteDialect",
+            "trading.metadata.sync-on-startup=false",
+            "trading.metadata.schedule-enabled=false",
+            "trading.metadata.require-credentials-on-startup=false",
+            "security.operators.auth-enabled=false"
+        })
 @AutoConfigureMockMvc
-class NewDomainApiIntegrationTest
-{
+class NewDomainApiIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
@@ -76,8 +74,7 @@ class NewDomainApiIntegrationTest
     private VenueRequestTimingService venueRequestTimingService;
 
     @BeforeEach
-    void clean()
-    {
+    void clean() {
         armedTradeRepository.deleteAll();
         fundingEventRepository.deleteAll();
         signalCandidateRepository.deleteAll();
@@ -85,24 +82,27 @@ class NewDomainApiIntegrationTest
     }
 
     @Test
-    void createsFundingEventAndArmedTrade() throws Exception
-    {
-        FundingEvent created = fundingEventCommandService.create( new CreateFundingEventCommand(
-            "gate", "BTC/USDT", Instant.parse( "2030-01-01T00:00:00Z" ),
-            new BigDecimal( "0.015" ), "telegram", "@funding_watchdog", null
-        ) );
+    void createsFundingEventAndArmedTrade() throws Exception {
+        FundingEvent created = fundingEventCommandService.create(new CreateFundingEventCommand(
+                "gate",
+                "BTC/USDT",
+                Instant.parse("2030-01-01T00:00:00Z"),
+                new BigDecimal("0.015"),
+                "telegram",
+                "@funding_watchdog",
+                null));
         Long fundingEventId = created.id();
 
-        mockMvc.perform( get( "/api/v1/funding-events" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.content[0].id" ).value( fundingEventId ) )
-            .andExpect( jsonPath( "$.content[0].status" ).value( "DISCOVERED" ) );
+        mockMvc.perform(get("/api/v1/funding-events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(fundingEventId))
+                .andExpect(jsonPath("$.content[0].status").value("DISCOVERED"));
 
-        venueRequestTimingService.recordSuccess( "gate", "credential-check", 50_000_000L, 0L, 200 );
+        venueRequestTimingService.recordSuccess("gate", "credential-check", 50_000_000L, 0L, 200);
 
-        mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/funding-events/{id}/arm", fundingEventId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "notionalUsd": 25,
                       "intendedSide": "SHORT",
@@ -113,130 +113,139 @@ class NewDomainApiIntegrationTest
                       "manualLatencyAdjustmentMs": 15,
                       "notes": "manual arm"
                     }
-                    """ ) )
-            .andExpect( status().isCreated() )
-            .andExpect( jsonPath( "$.state" ).value( "ARMED" ) )
-            .andExpect( jsonPath( "$.fundingEventId" ).value( fundingEventId ) )
-            .andExpect( jsonPath( "$.venue" ).value( "gate" ) )
-            .andExpect( jsonPath( "$.symbol" ).value( "BTC/USDT" ) )
-            .andExpect( jsonPath( "$.armSource" ).value( "EVENT_API" ) )
-            .andExpect( jsonPath( "$.intendedSide" ).value( "SHORT" ) )
-            .andExpect( jsonPath( "$.entryAttemptCount" ).value( 4 ) )
-            .andExpect( jsonPath( "$.entrySpacingMs" ).value( 125 ) )
-            .andExpect( jsonPath( "$.measuredEntryLatencyMs" ).value( 50 ) )
-            .andExpect( jsonPath( "$.manualLatencyAdjustmentMs" ).value( 15 ) )
-            .andExpect( jsonPath( "$.effectiveEntryLatencyMs" ).value( 65 ) )
-            .andExpect( jsonPath( "$.entryLeadMs" ).value( 10000 ) )
-            .andExpect( jsonPath( "$.exitLeadMs" ).value( -60000 ) );
+                    """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.state").value("ARMED"))
+                .andExpect(jsonPath("$.fundingEventId").value(fundingEventId))
+                .andExpect(jsonPath("$.venue").value("gate"))
+                .andExpect(jsonPath("$.symbol").value("BTC/USDT"))
+                .andExpect(jsonPath("$.armSource").value("EVENT_API"))
+                .andExpect(jsonPath("$.intendedSide").value("SHORT"))
+                .andExpect(jsonPath("$.entryAttemptCount").value(4))
+                .andExpect(jsonPath("$.entrySpacingMs").value(125))
+                .andExpect(jsonPath("$.measuredEntryLatencyMs").value(50))
+                .andExpect(jsonPath("$.manualLatencyAdjustmentMs").value(15))
+                .andExpect(jsonPath("$.effectiveEntryLatencyMs").value(65))
+                .andExpect(jsonPath("$.entryLeadMs").value(10000))
+                .andExpect(jsonPath("$.exitLeadMs").value(-60000));
 
-        mockMvc.perform( get( "/api/v1/armed-trades" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$[0].fundingEventId" ).value( fundingEventId ) )
-            .andExpect( jsonPath( "$[0].venue" ).value( "gate" ) )
-            .andExpect( jsonPath( "$[0].symbol" ).value( "BTC/USDT" ) );
+        mockMvc.perform(get("/api/v1/armed-trades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fundingEventId").value(fundingEventId))
+                .andExpect(jsonPath("$[0].venue").value("gate"))
+                .andExpect(jsonPath("$[0].symbol").value("BTC/USDT"));
 
         Long armedTradeId = armedTradeRepository.findAll().getFirst().getId();
-        mockMvc.perform( get( "/api/v1/funding-events/{id}/journal", fundingEventId ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$[0].eventCode" ).value( "FUNDING_EVENT_CREATED" ) )
-            .andExpect( jsonPath( "$[1].eventCode" ).value( "FUNDING_EVENT_ARMED" ) );
+        mockMvc.perform(get("/api/v1/funding-events/{id}/journal", fundingEventId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].eventCode").value("FUNDING_EVENT_CREATED"))
+                .andExpect(jsonPath("$[1].eventCode").value("FUNDING_EVENT_ARMED"));
 
-        mockMvc.perform( get( "/api/v1/armed-trades/{id}/journal", armedTradeId ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$[0].eventCode" ).value( "ARMED_TRADE_CREATED" ) );
+        mockMvc.perform(get("/api/v1/armed-trades/{id}/journal", armedTradeId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].eventCode").value("ARMED_TRADE_CREATED"));
 
-        assertThat( armedTradeRepository.findAll() ).hasSize( 1 );
-        assertThat( fundingEventRepository.findById( fundingEventId ) ).get().extracting( "status" ).isEqualTo( com.crypto.funding.domain.event.FundingEventStatus.ARMED );
+        assertThat(armedTradeRepository.findAll()).hasSize(1);
+        assertThat(fundingEventRepository.findById(fundingEventId))
+                .get()
+                .extracting("status")
+                .isEqualTo(com.crypto.funding.domain.event.FundingEventStatus.ARMED);
     }
 
     @Test
-    void rejectsLongFundingArmedTrade() throws Exception
-    {
-        FundingEvent created = fundingEventCommandService.create( new CreateFundingEventCommand(
-            "gate", "BTC/USDT", Instant.parse( "2030-01-01T00:00:00Z" ),
-            new BigDecimal( "0.015" ), "manual", "long-rejection-test", null
-        ) );
+    void rejectsLongFundingArmedTrade() throws Exception {
+        FundingEvent created = fundingEventCommandService.create(new CreateFundingEventCommand(
+                "gate",
+                "BTC/USDT",
+                Instant.parse("2030-01-01T00:00:00Z"),
+                new BigDecimal("0.015"),
+                "manual",
+                "long-rejection-test",
+                null));
         Long fundingEventId = created.id();
 
-        mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/funding-events/{id}/arm", fundingEventId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "notionalUsd": 25,
                       "intendedSide": "LONG",
                       "plannedEntryAt": "2029-12-31T23:59:50Z",
                       "plannedExitAt": "2030-01-01T00:01:00Z"
                     }
-                    """ ) )
-            .andExpect( status().isConflict() )
-            .andExpect( jsonPath( "$.message" ).value( "Funding trades support SHORT side only." ) );
+                    """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Funding trades support SHORT side only."));
     }
 
     @Test
-    void returnsValidationAndNotFoundErrors()
-    {
+    void returnsValidationAndNotFoundErrors() {
         org.junit.jupiter.api.Assertions.assertThrows(
-            com.crypto.funding.application.DomainValidationException.class,
-            () -> fundingEventCommandService.create( new CreateFundingEventCommand(
-                "gate", "BTC/USDT", Instant.parse( "2020-01-01T00:00:00Z" ), null, "manual", null, null
-            ) )
-        );
+                com.crypto.funding.application.DomainValidationException.class,
+                () -> fundingEventCommandService.create(new CreateFundingEventCommand(
+                        "gate", "BTC/USDT", Instant.parse("2020-01-01T00:00:00Z"), null, "manual", null, null)));
 
         org.junit.jupiter.api.Assertions.assertThrows(
-            com.crypto.funding.application.ResourceNotFoundException.class,
-            () -> armedTradeCommandService.create( new CreateArmedTradeCommand(
-                999L, new BigDecimal( "25" ), TradeSide.SHORT,
-                Instant.parse( "2029-12-31T23:59:50Z" ), Instant.parse( "2030-01-01T00:01:00Z" ),
-                null, null, null, null, null, null
-            ) )
-        );
+                com.crypto.funding.application.ResourceNotFoundException.class,
+                () -> armedTradeCommandService.create(new CreateArmedTradeCommand(
+                        999L,
+                        new BigDecimal("25"),
+                        TradeSide.SHORT,
+                        Instant.parse("2029-12-31T23:59:50Z"),
+                        Instant.parse("2030-01-01T00:01:00Z"),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)));
     }
 
     @Test
-    void listsAndReviewsCandidatesViaApi() throws Exception
-    {
-        Long candidateId = signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
-            "FUNDING_API",
-            123L,
-            456L,
-            "coin: KERNEL/USDT:USDT",
-            "gate",
-            "KERNEL/USDT",
-            java.time.Instant.parse( "2030-01-01T00:00:00Z" ),
-            Instant.parse( "2030-01-01T08:00:00Z" ),
-            BigDecimal.valueOf( 0.0125 )
-        ) ).id();
+    void listsAndReviewsCandidatesViaApi() throws Exception {
+        Long candidateId = signalCandidateIngestService
+                .ingest(new IngestSignalCandidateCommand(
+                        "FUNDING_API",
+                        123L,
+                        456L,
+                        "coin: KERNEL/USDT:USDT",
+                        "gate",
+                        "KERNEL/USDT",
+                        java.time.Instant.parse("2030-01-01T00:00:00Z"),
+                        Instant.parse("2030-01-01T08:00:00Z"),
+                        BigDecimal.valueOf(0.0125)))
+                .id();
 
-        mockMvc.perform( get( "/api/v1/candidates" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.content[0].id" ).value( candidateId ) )
-            .andExpect( jsonPath( "$.content[0].status" ).value( "NORMALIZED" ) );
+        mockMvc.perform(get("/api/v1/candidates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(candidateId))
+                .andExpect(jsonPath("$.content[0].status").value("NORMALIZED"));
 
-        mockMvc.perform( get( "/api/v1/candidates/{id}", candidateId ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.suggestedVenue" ).value( "gate" ) )
-            .andExpect( jsonPath( "$.suggestedFundingTime" ).value( "2030-01-01T08:00:00Z" ) )
-            .andExpect( jsonPath( "$.suggestedFundingRatePct" ).value( 0.0125 ) );
+        mockMvc.perform(get("/api/v1/candidates/{id}", candidateId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.suggestedVenue").value("gate"))
+                .andExpect(jsonPath("$.suggestedFundingTime").value("2030-01-01T08:00:00Z"))
+                .andExpect(jsonPath("$.suggestedFundingRatePct").value(0.0125));
 
-        mockMvc.perform( post( "/api/v1/candidates/{id}/approve", candidateId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/candidates/{id}/approve", candidateId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "venue":"gate",
                       "fundingTime":"2030-01-01T08:00:00Z",
                       "fundingRatePct":0.0125,
                       "reviewNotes":"looks valid"
                     }
-                    """ ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.status" ).value( "EVENT_CREATED" ) )
-            .andExpect( jsonPath( "$.fundingEventId" ).isNumber() );
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EVENT_CREATED"))
+                .andExpect(jsonPath("$.fundingEventId").isNumber());
 
         Long fundingEventId = fundingEventRepository.findAll().getFirst().getId();
 
-        mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/funding-events/{id}/arm", fundingEventId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "notionalUsd": 15,
                       "intendedSide": "SHORT",
@@ -244,78 +253,78 @@ class NewDomainApiIntegrationTest
                       "plannedExitAt": "2030-01-01T08:00:15Z",
                       "notes": "reviewed and armed"
                     }
-                    """ ) )
-            .andExpect( status().isCreated() )
-            .andExpect( jsonPath( "$.fundingEventId" ).value( fundingEventId ) )
-            .andExpect( jsonPath( "$.venue" ).value( "gate" ) )
-            .andExpect( jsonPath( "$.symbol" ).value( "KERNEL/USDT" ) )
-            .andExpect( jsonPath( "$.state" ).value( "ARMED" ) )
-            .andExpect( jsonPath( "$.entryAttemptCount" ).value( 1 ) )
-            .andExpect( jsonPath( "$.entrySpacingMs" ).value( 0 ) )
-            .andExpect( jsonPath( "$.manualLatencyAdjustmentMs" ).value( 0 ) )
-            .andExpect( jsonPath( "$.effectiveEntryLatencyMs" ).value( 0 ) );
+                    """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fundingEventId").value(fundingEventId))
+                .andExpect(jsonPath("$.venue").value("gate"))
+                .andExpect(jsonPath("$.symbol").value("KERNEL/USDT"))
+                .andExpect(jsonPath("$.state").value("ARMED"))
+                .andExpect(jsonPath("$.entryAttemptCount").value(1))
+                .andExpect(jsonPath("$.entrySpacingMs").value(0))
+                .andExpect(jsonPath("$.manualLatencyAdjustmentMs").value(0))
+                .andExpect(jsonPath("$.effectiveEntryLatencyMs").value(0));
 
-        mockMvc.perform( get( "/api/v1/funding-events" ).param( "candidateId", candidateId.toString() ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.content[0].signalCandidateId" ).value( candidateId ) )
-            .andExpect( jsonPath( "$.content[0].venue" ).value( "gate" ) );
+        mockMvc.perform(get("/api/v1/funding-events").param("candidateId", candidateId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].signalCandidateId").value(candidateId))
+                .andExpect(jsonPath("$.content[0].venue").value("gate"));
 
-        Long rejectedCandidateId = signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
-            "FUNDING_API",
-            123L,
-            789L,
-            "coin: ME/USDT:USDT",
-            "gate",
-            "ME/USDT",
-            java.time.Instant.parse( "2030-01-01T00:01:00Z" ),
-            Instant.parse( "2030-01-01T08:00:00Z" ),
-            BigDecimal.valueOf( 0.01 )
-        ) ).id();
+        Long rejectedCandidateId = signalCandidateIngestService
+                .ingest(new IngestSignalCandidateCommand(
+                        "FUNDING_API",
+                        123L,
+                        789L,
+                        "coin: ME/USDT:USDT",
+                        "gate",
+                        "ME/USDT",
+                        java.time.Instant.parse("2030-01-01T00:01:00Z"),
+                        Instant.parse("2030-01-01T08:00:00Z"),
+                        BigDecimal.valueOf(0.01)))
+                .id();
 
-        mockMvc.perform( post( "/api/v1/candidates/{id}/reject", rejectedCandidateId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/candidates/{id}/reject", rejectedCandidateId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "reviewNotes":"low confidence"
                     }
-                    """ ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.status" ).value( "REJECTED" ) )
-            .andExpect( jsonPath( "$.reviewDecision" ).value( "REJECT" ) );
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.reviewDecision").value("REJECT"));
     }
 
     @Test
-    void deletingCandidateCleansLinkedEventAndPreparedTrade()
-        throws Exception
-    {
-        Long candidateId = signalCandidateIngestService.ingest( ManualSignalTestSupport.manualSignal(
-            999L,
-            1001L,
-            "gate",
-            "DRIFT/USDT",
-            Instant.parse( "2030-01-01T08:00:00Z" ),
-            Instant.parse( "2030-01-01T09:00:00Z" ),
-            BigDecimal.valueOf( -0.021 )
-        ) ).id();
+    void deletingCandidateCleansLinkedEventAndPreparedTrade() throws Exception {
+        Long candidateId = signalCandidateIngestService
+                .ingest(ManualSignalTestSupport.manualSignal(
+                        999L,
+                        1001L,
+                        "gate",
+                        "DRIFT/USDT",
+                        Instant.parse("2030-01-01T08:00:00Z"),
+                        Instant.parse("2030-01-01T09:00:00Z"),
+                        BigDecimal.valueOf(-0.021)))
+                .id();
 
-        mockMvc.perform( post( "/api/v1/candidates/{id}/approve", candidateId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/candidates/{id}/approve", candidateId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "venue":"gate",
                       "fundingTime":"2030-01-01T09:00:00Z",
                       "fundingRatePct":-0.021,
                       "reviewNotes":"manual flow"
                     }
-                    """ ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.status" ).value( "EVENT_CREATED" ) );
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EVENT_CREATED"));
 
         Long fundingEventId = fundingEventRepository.findAll().getFirst().getId();
 
-        mockMvc.perform( post( "/api/v1/funding-events/{id}/arm", fundingEventId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/funding-events/{id}/arm", fundingEventId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {
                       "notionalUsd": 30,
                       "intendedSide": "SHORT",
@@ -323,113 +332,116 @@ class NewDomainApiIntegrationTest
                       "plannedExitAt": "2030-01-01T09:00:20Z",
                       "notes": "delete cascade"
                     }
-                    """ ) )
-            .andExpect( status().isCreated() )
-            .andExpect( jsonPath( "$.signalCandidateId" ).value( candidateId ) );
+                    """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.signalCandidateId").value(candidateId));
 
-        mockMvc.perform( delete( "/api/v1/candidates/{id}", candidateId ).param( "note", "operator cleanup" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.status" ).value( "DELETED" ) )
-            .andExpect( jsonPath( "$.reviewNotes" ).value( "operator cleanup" ) );
+        mockMvc.perform(delete("/api/v1/candidates/{id}", candidateId).param("note", "operator cleanup"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELETED"))
+                .andExpect(jsonPath("$.reviewNotes").value("operator cleanup"));
 
-        assertThat( fundingEventRepository.findById( fundingEventId ) ).isEmpty();
-        assertThat( armedTradeRepository.findAll() ).isEmpty();
+        assertThat(fundingEventRepository.findById(fundingEventId)).isEmpty();
+        assertThat(armedTradeRepository.findAll()).isEmpty();
 
-        mockMvc.perform( get( "/api/v1/candidates" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.content[?(@.id==" + candidateId + ")]" ).isEmpty() );
+        mockMvc.perform(get("/api/v1/candidates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id==" + candidateId + ")]").isEmpty());
     }
 
     @Test
-    void hidesExpiredFundingEventsFromDefaultListAndMarksThemExpired() throws Exception
-    {
+    void hidesExpiredFundingEventsFromDefaultListAndMarksThemExpired() throws Exception {
         FundingEventEntity staleEvent = new FundingEventEntity();
-        staleEvent.setVenue( "gate" );
-        staleEvent.setSymbol( "EDGE/USDT" );
-        staleEvent.setFundingTime( java.time.Instant.parse( "2020-01-01T00:00:00Z" ) );
-        staleEvent.setFundingRatePct( java.math.BigDecimal.valueOf( -0.05 ) );
-        staleEvent.setStatus( FundingEventStatus.DISCOVERED );
-        staleEvent.setSourceType( "funding_api" );
-        staleEvent.setSourceRef( "stale" );
-        staleEvent.setDiscoveredAt( java.time.Instant.parse( "2019-12-31T23:00:00Z" ) );
-        staleEvent = fundingEventRepository.save( staleEvent );
+        staleEvent.setVenue("gate");
+        staleEvent.setSymbol("EDGE/USDT");
+        staleEvent.setFundingTime(java.time.Instant.parse("2020-01-01T00:00:00Z"));
+        staleEvent.setFundingRatePct(java.math.BigDecimal.valueOf(-0.05));
+        staleEvent.setStatus(FundingEventStatus.DISCOVERED);
+        staleEvent.setSourceType("funding_api");
+        staleEvent.setSourceRef("stale");
+        staleEvent.setDiscoveredAt(java.time.Instant.parse("2019-12-31T23:00:00Z"));
+        staleEvent = fundingEventRepository.save(staleEvent);
 
-        mockMvc.perform( get( "/api/v1/funding-events" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.content" ).isArray() )
-            .andExpect( jsonPath( "$.content[?(@.id==" + staleEvent.getId() + ")]" ).isEmpty() );
+        mockMvc.perform(get("/api/v1/funding-events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[?(@.id==" + staleEvent.getId() + ")]")
+                        .isEmpty());
 
-        assertThat( fundingEventRepository.findById( staleEvent.getId() ) )
-            .get()
-            .extracting( FundingEventEntity::getStatus )
-            .isEqualTo( FundingEventStatus.EXPIRED );
+        assertThat(fundingEventRepository.findById(staleEvent.getId()))
+                .get()
+                .extracting(FundingEventEntity::getStatus)
+                .isEqualTo(FundingEventStatus.EXPIRED);
     }
 
     @Test
-    void hidesPreparedTradesLinkedToExpiredFundingEvents() throws Exception
-    {
+    void hidesPreparedTradesLinkedToExpiredFundingEvents() throws Exception {
         FundingEventEntity staleEvent = new FundingEventEntity();
-        staleEvent.setVenue( "gate" );
-        staleEvent.setSymbol( "NOM/USDT" );
-        staleEvent.setFundingTime( java.time.Instant.parse( "2020-01-01T00:00:00Z" ) );
-        staleEvent.setFundingRatePct( java.math.BigDecimal.valueOf( -0.01 ) );
-        staleEvent.setStatus( FundingEventStatus.ARMED );
-        staleEvent.setSourceType( "funding_api" );
-        staleEvent.setSourceRef( "stale-trade" );
-        staleEvent.setDiscoveredAt( java.time.Instant.parse( "2019-12-31T23:00:00Z" ) );
-        staleEvent = fundingEventRepository.save( staleEvent );
+        staleEvent.setVenue("gate");
+        staleEvent.setSymbol("NOM/USDT");
+        staleEvent.setFundingTime(java.time.Instant.parse("2020-01-01T00:00:00Z"));
+        staleEvent.setFundingRatePct(java.math.BigDecimal.valueOf(-0.01));
+        staleEvent.setStatus(FundingEventStatus.ARMED);
+        staleEvent.setSourceType("funding_api");
+        staleEvent.setSourceRef("stale-trade");
+        staleEvent.setDiscoveredAt(java.time.Instant.parse("2019-12-31T23:00:00Z"));
+        staleEvent = fundingEventRepository.save(staleEvent);
 
         ArmedTradeEntity staleTrade = new ArmedTradeEntity();
-        staleTrade.setFundingEventId( staleEvent.getId() );
-        staleTrade.setNotionalUsd( java.math.BigDecimal.valueOf( 25 ) );
-        staleTrade.setIntendedSide( TradeSide.SHORT );
-        staleTrade.setPlannedEntryAt( java.time.Instant.parse( "2019-12-31T23:59:30Z" ) );
-        staleTrade.setPlannedExitAt( java.time.Instant.parse( "2020-01-01T00:00:30Z" ) );
-        staleTrade.setArmedAt( java.time.Instant.parse( "2019-12-31T22:00:00Z" ) );
-        staleTrade.setArmSource( TradeArmSource.EVENT_API );
-        staleTrade.setState( ArmedTradeState.ARMED );
-        staleTrade.setNotes( "stale" );
-        armedTradeRepository.save( staleTrade );
+        staleTrade.setFundingEventId(staleEvent.getId());
+        staleTrade.setNotionalUsd(java.math.BigDecimal.valueOf(25));
+        staleTrade.setIntendedSide(TradeSide.SHORT);
+        staleTrade.setPlannedEntryAt(java.time.Instant.parse("2019-12-31T23:59:30Z"));
+        staleTrade.setPlannedExitAt(java.time.Instant.parse("2020-01-01T00:00:30Z"));
+        staleTrade.setArmedAt(java.time.Instant.parse("2019-12-31T22:00:00Z"));
+        staleTrade.setArmSource(TradeArmSource.EVENT_API);
+        staleTrade.setState(ArmedTradeState.ARMED);
+        staleTrade.setNotes("stale");
+        armedTradeRepository.save(staleTrade);
 
-        mockMvc.perform( get( "/api/v1/armed-trades" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$" ).isArray() )
-            .andExpect( jsonPath( "$[?(@.fundingEventId==" + staleEvent.getId() + ")]" ).isEmpty() );
+        mockMvc.perform(get("/api/v1/armed-trades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[?(@.fundingEventId==" + staleEvent.getId() + ")]")
+                        .isEmpty());
 
-        mockMvc.perform( get( "/api/v1/armed-trades" ).param( "includeHistorical", "true" ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$[0].fundingEventId" ).value( staleEvent.getId() ) )
-            .andExpect( jsonPath( "$[0].state" ).value( "ARMED" ) );
+        mockMvc.perform(get("/api/v1/armed-trades").param("includeHistorical", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fundingEventId").value(staleEvent.getId()))
+                .andExpect(jsonPath("$[0].state").value("ARMED"));
 
-        assertThat( fundingEventRepository.findById( staleEvent.getId() ) )
-            .get()
-            .extracting( FundingEventEntity::getStatus )
-            .isEqualTo( FundingEventStatus.EXPIRED );
+        assertThat(fundingEventRepository.findById(staleEvent.getId()))
+                .get()
+                .extracting(FundingEventEntity::getStatus)
+                .isEqualTo(FundingEventStatus.EXPIRED);
     }
 
     @Test
-    void rejectWithNullReviewNotesSucceeds() throws Exception
-    {
-        Long candidateId = signalCandidateIngestService.ingest( new IngestSignalCandidateCommand(
-            "FUNDING_API", null, null, "NULLNOTEUSDT", "gate", "NULLNOTE/USDT",
-            Instant.parse( "2030-06-01T00:00:00Z" ),
-            Instant.parse( "2030-06-01T08:00:00Z" ),
-            BigDecimal.valueOf( 0.01 )
-        ) ).id();
+    void rejectWithNullReviewNotesSucceeds() throws Exception {
+        Long candidateId = signalCandidateIngestService
+                .ingest(new IngestSignalCandidateCommand(
+                        "FUNDING_API",
+                        null,
+                        null,
+                        "NULLNOTEUSDT",
+                        "gate",
+                        "NULLNOTE/USDT",
+                        Instant.parse("2030-06-01T00:00:00Z"),
+                        Instant.parse("2030-06-01T08:00:00Z"),
+                        BigDecimal.valueOf(0.01)))
+                .id();
 
-        mockMvc.perform( post( "/api/v1/candidates/{id}/reject", candidateId )
-                .contentType( MediaType.APPLICATION_JSON )
-                .content( """
+        mockMvc.perform(post("/api/v1/candidates/{id}/reject", candidateId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
                     {"reviewNotes":null}
-                    """ ) )
-            .andExpect( status().isOk() )
-            .andExpect( jsonPath( "$.status" ).value( "REJECTED" ) );
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"));
     }
 
     @Test
-    void refreshLiquidityForUnknownCandidateReturns404() throws Exception
-    {
-        mockMvc.perform( post( "/api/v1/candidates/999999/liquidity/refresh" ) )
-            .andExpect( status().isNotFound() );
+    void refreshLiquidityForUnknownCandidateReturns404() throws Exception {
+        mockMvc.perform(post("/api/v1/candidates/999999/liquidity/refresh")).andExpect(status().isNotFound());
     }
 }

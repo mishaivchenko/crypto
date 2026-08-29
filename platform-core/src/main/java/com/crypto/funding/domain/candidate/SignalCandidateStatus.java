@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.candidate;
 
-public enum SignalCandidateStatus
-{
+public enum SignalCandidateStatus {
     NEW,
     NORMALIZED,
     REJECTED,

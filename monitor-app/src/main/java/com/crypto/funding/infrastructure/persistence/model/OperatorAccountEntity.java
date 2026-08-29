@@ -10,14 +10,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(
-    name = "operator_account",
-    indexes = {
-        @Index(name = "idx_operator_account_username", columnList = "username", unique = true),
-        @Index(name = "idx_operator_account_token_hash", columnList = "token_hash", unique = true)
-    }
-)
-public class OperatorAccountEntity extends AuditableEntity
-{
+        name = "operator_account",
+        indexes = {
+            @Index(name = "idx_operator_account_username", columnList = "username", unique = true),
+            @Index(name = "idx_operator_account_token_hash", columnList = "token_hash", unique = true)
+        })
+public class OperatorAccountEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -32,38 +30,31 @@ public class OperatorAccountEntity extends AuditableEntity
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public String getUsername()
-    {
+    public String getUsername() {
         return username;
     }
 
-    public void setUsername( String username )
-    {
+    public void setUsername(String username) {
         this.username = username;
     }
 
-    public String getTokenHash()
-    {
+    public String getTokenHash() {
         return tokenHash;
     }
 
-    public void setTokenHash( String tokenHash )
-    {
+    public void setTokenHash(String tokenHash) {
         this.tokenHash = tokenHash;
     }
 
-    public boolean isEnabled()
-    {
+    public boolean isEnabled() {
         return enabled;
     }
 
-    public void setEnabled( boolean enabled )
-    {
+    public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
 }

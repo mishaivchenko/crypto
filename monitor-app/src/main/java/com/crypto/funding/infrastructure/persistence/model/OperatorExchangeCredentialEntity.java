@@ -13,18 +13,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-
 import java.time.Instant;
 
 @Entity
 @Table(
-    name = "operator_exchange_credential",
-    indexes = {
-        @Index(name = "idx_operator_credential_unique", columnList = "operator_id,venue,mode", unique = true)
-    }
-)
-public class OperatorExchangeCredentialEntity extends AuditableEntity
-{
+        name = "operator_exchange_credential",
+        indexes = {@Index(name = "idx_operator_credential_unique", columnList = "operator_id,venue,mode", unique = true)
+        })
+public class OperatorExchangeCredentialEntity extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", columnDefinition = "integer")
@@ -72,138 +68,111 @@ public class OperatorExchangeCredentialEntity extends AuditableEntity
     @Column(name = "last_checked_at")
     private Instant lastCheckedAt;
 
-    public Long getId()
-    {
+    public Long getId() {
         return id;
     }
 
-    public Long getOperatorId()
-    {
+    public Long getOperatorId() {
         return operatorId;
     }
 
-    public void setOperatorId( Long operatorId )
-    {
+    public void setOperatorId(Long operatorId) {
         this.operatorId = operatorId;
     }
 
-    public String getVenue()
-    {
+    public String getVenue() {
         return venue;
     }
 
-    public void setVenue( String venue )
-    {
+    public void setVenue(String venue) {
         this.venue = venue;
     }
 
-    public VenueAccessMode getMode()
-    {
+    public VenueAccessMode getMode() {
         return mode;
     }
 
-    public void setMode( VenueAccessMode mode )
-    {
+    public void setMode(VenueAccessMode mode) {
         this.mode = mode;
     }
 
-    public String getApiKeyCiphertext()
-    {
+    public String getApiKeyCiphertext() {
         return apiKeyCiphertext;
     }
 
-    public void setApiKeyCiphertext( String apiKeyCiphertext )
-    {
+    public void setApiKeyCiphertext(String apiKeyCiphertext) {
         this.apiKeyCiphertext = apiKeyCiphertext;
     }
 
-    public String getSecretKeyCiphertext()
-    {
+    public String getSecretKeyCiphertext() {
         return secretKeyCiphertext;
     }
 
-    public void setSecretKeyCiphertext( String secretKeyCiphertext )
-    {
+    public void setSecretKeyCiphertext(String secretKeyCiphertext) {
         this.secretKeyCiphertext = secretKeyCiphertext;
     }
 
-    public String getPassphraseCiphertext()
-    {
+    public String getPassphraseCiphertext() {
         return passphraseCiphertext;
     }
 
-    public void setPassphraseCiphertext( String passphraseCiphertext )
-    {
+    public void setPassphraseCiphertext(String passphraseCiphertext) {
         this.passphraseCiphertext = passphraseCiphertext;
     }
 
-    public String getApiKeyMask()
-    {
+    public String getApiKeyMask() {
         return apiKeyMask;
     }
 
-    public void setApiKeyMask( String apiKeyMask )
-    {
+    public void setApiKeyMask(String apiKeyMask) {
         this.apiKeyMask = apiKeyMask;
     }
 
-    public String getSecretKeyMask()
-    {
+    public String getSecretKeyMask() {
         return secretKeyMask;
     }
 
-    public void setSecretKeyMask( String secretKeyMask )
-    {
+    public void setSecretKeyMask(String secretKeyMask) {
         this.secretKeyMask = secretKeyMask;
     }
 
-    public String getPassphraseMask()
-    {
+    public String getPassphraseMask() {
         return passphraseMask;
     }
 
-    public void setPassphraseMask( String passphraseMask )
-    {
+    public void setPassphraseMask(String passphraseMask) {
         this.passphraseMask = passphraseMask;
     }
 
-    public VenueConnectionStatus getConnectionStatus()
-    {
+    public VenueConnectionStatus getConnectionStatus() {
         return connectionStatus;
     }
 
-    public void setConnectionStatus( VenueConnectionStatus connectionStatus )
-    {
+    public void setConnectionStatus(VenueConnectionStatus connectionStatus) {
         this.connectionStatus = connectionStatus;
     }
 
-    public String getConnectionMessage()
-    {
+    public String getConnectionMessage() {
         return connectionMessage;
     }
 
-    public void setConnectionMessage( String connectionMessage )
-    {
+    public void setConnectionMessage(String connectionMessage) {
         this.connectionMessage = connectionMessage;
     }
 
-    public Integer getLastConnectionHttpStatus()
-    {
+    public Integer getLastConnectionHttpStatus() {
         return lastConnectionHttpStatus;
     }
 
-    public void setLastConnectionHttpStatus( Integer lastConnectionHttpStatus )
-    {
+    public void setLastConnectionHttpStatus(Integer lastConnectionHttpStatus) {
         this.lastConnectionHttpStatus = lastConnectionHttpStatus;
     }
 
-    public Instant getLastCheckedAt()
-    {
+    public Instant getLastCheckedAt() {
         return lastCheckedAt;
     }
 
-    public void setLastCheckedAt( Instant lastCheckedAt )
-    {
+    public void setLastCheckedAt(Instant lastCheckedAt) {
         this.lastCheckedAt = lastCheckedAt;
     }
 }

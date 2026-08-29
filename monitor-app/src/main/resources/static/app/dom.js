@@ -40,6 +40,6 @@ export function createNodes(doc = document) {
         modalContent: doc.getElementById("modal-content"),
         modalClose: doc.getElementById("modal-close"),
         aiToggleCheckbox: doc.getElementById("ai-toggle-checkbox"),
-        aiToggleLabel: doc.getElementById("ai-toggle-label")
+        aiToggleLabel: doc.getElementById("ai-toggle-label"),
     };
 }

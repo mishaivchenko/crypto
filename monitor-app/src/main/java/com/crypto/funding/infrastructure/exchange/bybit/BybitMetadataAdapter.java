@@ -8,9 +8,6 @@ import com.crypto.funding.domain.venue.InstrumentStatus;
 import com.crypto.funding.symbol.SymbolMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -23,10 +20,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
 
 @Component
-public class BybitMetadataAdapter implements VenueMetadataPort
-{
+public class BybitMetadataAdapter implements VenueMetadataPort {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final VenueHttpProperties venueHttpProperties;
@@ -34,12 +32,10 @@ public class BybitMetadataAdapter implements VenueMetadataPort
     private final VenueProfileService venueProfileService;
 
     public BybitMetadataAdapter(
-        HttpClient httpClient,
-        VenueHttpProperties venueHttpProperties,
-        Environment environment,
-        VenueProfileService venueProfileService
-    )
-    {
+            HttpClient httpClient,
+            VenueHttpProperties venueHttpProperties,
+            Environment environment,
+            VenueProfileService venueProfileService) {
         this.httpClient = httpClient;
         this.venueHttpProperties = venueHttpProperties;
         this.environment = environment;
@@ -47,92 +43,88 @@ public class BybitMetadataAdapter implements VenueMetadataPort
     }
 
     @Override
-    public String venue()
-    {
+    public String venue() {
         return "bybit";
     }
 
     @Override
-    public List<InstrumentMetadata> fetchPerpetualInstruments() throws IOException, InterruptedException
-    {
+    public List<InstrumentMetadata> fetchPerpetualInstruments() throws IOException, InterruptedException {
         List<InstrumentMetadata> instruments = new ArrayList<>();
         String cursor = null;
         Instant syncedAt = Instant.now();
 
-        while( true )
-        {
+        while (true) {
             String url = baseUrl() + "/v5/market/instruments-info?category=linear&limit=1000";
-            if( cursor != null && !cursor.isBlank() )
-            {
-                url += "&cursor=" + URLEncoder.encode( cursor, StandardCharsets.UTF_8 );
+            if (cursor != null && !cursor.isBlank()) {
+                url += "&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8);
             }
 
             HttpRequest request = HttpRequest.newBuilder()
-                                             .uri( URI.create( url ) )
-                                             .timeout( Duration.ofMillis( venueHttpProperties.getRequestTimeoutMs() ) )
-                                             .GET()
-                                             .build();
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofMillis(venueHttpProperties.getRequestTimeoutMs()))
+                    .GET()
+                    .build();
 
-            HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
-            if( response.statusCode() >= 300 )
-            {
-                throw new IOException( "Bybit instruments-info failed: " + response.statusCode() + " body=" + response.body() );
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 300) {
+                throw new IOException(
+                        "Bybit instruments-info failed: " + response.statusCode() + " body=" + response.body());
             }
 
-            JsonNode root = objectMapper.readTree( response.body() );
-            if( root.path( "retCode" ).asInt( -1 ) != 0 )
-            {
-                throw new IOException( "Bybit instruments-info retCode=" + root.path( "retCode" ).asInt() +
-                                       " retMsg=" + root.path( "retMsg" ).asText() );
+            JsonNode root = objectMapper.readTree(response.body());
+            if (root.path("retCode").asInt(-1) != 0) {
+                throw new IOException(
+                        "Bybit instruments-info retCode=" + root.path("retCode").asInt() + " retMsg="
+                                + root.path("retMsg").asText());
             }
 
-            JsonNode result = root.path( "result" );
-            JsonNode list = result.path( "list" );
-            for( JsonNode item : list )
-            {
-                String status = item.path( "status" ).asText( "" );
-                if( !"Trading".equalsIgnoreCase( status ) )
-                {
+            JsonNode result = root.path("result");
+            JsonNode list = result.path("list");
+            for (JsonNode item : list) {
+                String status = item.path("status").asText("");
+                if (!"Trading".equalsIgnoreCase(status)) {
                     continue;
                 }
 
-                String exchangeSymbol = item.path( "symbol" ).asText( null );
-                String baseAsset = item.path( "baseCoin" ).asText( null );
-                String quoteAsset = item.path( "quoteCoin" ).asText( null );
-                if( exchangeSymbol == null || baseAsset == null || quoteAsset == null )
-                {
+                String exchangeSymbol = item.path("symbol").asText(null);
+                String baseAsset = item.path("baseCoin").asText(null);
+                String quoteAsset = item.path("quoteCoin").asText(null);
+                if (exchangeSymbol == null || baseAsset == null || quoteAsset == null) {
                     continue;
                 }
 
-                JsonNode lot = item.path( "lotSizeFilter" );
-                BigDecimal minQty = lot.hasNonNull( "minOrderQty" ) ? new BigDecimal( lot.get( "minOrderQty" ).asText() ) : null;
-                BigDecimal qtyStep = lot.hasNonNull( "qtyStep" ) ? new BigDecimal( lot.get( "qtyStep" ).asText() ) : null;
-                BigDecimal minNotional = lot.hasNonNull( "minNotionalValue" ) && !lot.get( "minNotionalValue" ).asText().isBlank()
-                                         ? new BigDecimal( lot.get( "minNotionalValue" ).asText() )
-                                         : null;
+                JsonNode lot = item.path("lotSizeFilter");
+                BigDecimal minQty = lot.hasNonNull("minOrderQty")
+                        ? new BigDecimal(lot.get("minOrderQty").asText())
+                        : null;
+                BigDecimal qtyStep = lot.hasNonNull("qtyStep")
+                        ? new BigDecimal(lot.get("qtyStep").asText())
+                        : null;
+                BigDecimal minNotional = lot.hasNonNull("minNotionalValue")
+                                && !lot.get("minNotionalValue").asText().isBlank()
+                        ? new BigDecimal(lot.get("minNotionalValue").asText())
+                        : null;
 
-                instruments.add( new InstrumentMetadata(
-                    null,
-                    venue(),
-                    SymbolMapper.toUnified( exchangeSymbol ),
-                    exchangeSymbol,
-                    baseAsset,
-                    quoteAsset,
-                    "PERPETUAL",
-                    InstrumentStatus.ACTIVE,
-                    minQty,
-                    qtyStep,
-                    minNotional,
-                    null,
-                    syncedAt,
-                    null,
-                    null
-                ) );
+                instruments.add(new InstrumentMetadata(
+                        null,
+                        venue(),
+                        SymbolMapper.toUnified(exchangeSymbol),
+                        exchangeSymbol,
+                        baseAsset,
+                        quoteAsset,
+                        "PERPETUAL",
+                        InstrumentStatus.ACTIVE,
+                        minQty,
+                        qtyStep,
+                        minNotional,
+                        null,
+                        syncedAt,
+                        null,
+                        null));
             }
 
-            cursor = result.path( "nextPageCursor" ).asText( "" );
-            if( cursor == null || cursor.isBlank() )
-            {
+            cursor = result.path("nextPageCursor").asText("");
+            if (cursor == null || cursor.isBlank()) {
                 break;
             }
         }
@@ -140,11 +132,9 @@ public class BybitMetadataAdapter implements VenueMetadataPort
         return instruments;
     }
 
-    private String baseUrl()
-    {
+    private String baseUrl() {
         return environment.getProperty(
-            "trading.bybit.metadata-base-url",
-            venueProfileService.resolveCredentials( venue() ).baseUrl()
-        );
+                "trading.bybit.metadata-base-url",
+                venueProfileService.resolveCredentials(venue()).baseUrl());
     }
 }

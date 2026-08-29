@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.trade;
 
-public enum ArmedTradeState
-{
+public enum ArmedTradeState {
     ARMED,
     ENTRY_PENDING,
     ENTRY_ATTEMPTED,

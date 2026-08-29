@@ -69,6 +69,15 @@ Running `./gradlew bootRunMonitor` or `bootRunEngine` locally with no extra ENV 
 # Full build
 ./gradlew build
 
+# Temporary compiler compatibility escape hatch
+./gradlew build -PerrorProneEnabled=false
+
+# Fast blocking quality gates
+./gradlew quality
+
+# Report-only static analysis
+./gradlew qualityReport
+
 # Start monitor (port 8090)
 ./gradlew bootRunMonitor
 
@@ -77,6 +86,8 @@ Running `./gradlew bootRunMonitor` or `bootRunEngine` locally with no extra ENV 
 
 # Lint / format check
 ./gradlew spotlessCheck
+npm --prefix monitor-app run lint
+npm --prefix monitor-app run format:check
 
 # OWASP dependency audit
 ./gradlew security

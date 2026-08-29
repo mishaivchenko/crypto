@@ -12,32 +12,25 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/internal/v1/engine")
-public class InternalEngineCredentialController
-{
+public class InternalEngineCredentialController {
     private final OperatorCredentialService credentialService;
 
-    public InternalEngineCredentialController( OperatorCredentialService credentialService )
-    {
+    public InternalEngineCredentialController(OperatorCredentialService credentialService) {
         this.credentialService = credentialService;
     }
 
     @GetMapping("/credentials/{venue}")
     public ResponseEntity<EngineVenueCredentials> credentials(
-        @PathVariable String venue,
-        @RequestParam(defaultValue = "testnet") String mode
-    )
-    {
+            @PathVariable String venue, @RequestParam(defaultValue = "testnet") String mode) {
         VenueAccessMode accessMode;
-        try
-        {
-            accessMode = VenueAccessMode.valueOf( mode.toUpperCase() );
-        }
-        catch( IllegalArgumentException e )
-        {
+        try {
+            accessMode = VenueAccessMode.valueOf(mode.toUpperCase());
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
-        return credentialService.resolveDecryptedForEngine( venue, accessMode )
-                                .map( ResponseEntity::ok )
-                                .orElseGet( () -> ResponseEntity.notFound().build() );
+        return credentialService
+                .resolveDecryptedForEngine(venue, accessMode)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

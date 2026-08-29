@@ -10,10 +10,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @ConfigurationPropertiesScan(basePackages = "com.crypto.funding.telegram.config")
 @EnableFeignClients(basePackages = "com.crypto.funding.telegram.client")
 @EnableScheduling
-public class TelegramBotApplication
-{
-    public static void main( String[] args )
-    {
-        SpringApplication.run( TelegramBotApplication.class, args );
+public class TelegramBotApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(TelegramBotApplication.class, args);
     }
 }

@@ -1,76 +1,62 @@
 package com.crypto.funding.config;
 
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.util.List;
-
 @ConfigurationProperties(prefix = "trading.metadata")
-public class MetadataSyncProperties
-{
+public class MetadataSyncProperties {
     private boolean syncOnStartup = true;
     private boolean scheduleEnabled = false;
     private int syncIntervalMinutes = 240;
     private boolean requireCredentialsOnStartup = true;
     private boolean bootstrapFallbackEnabled = false;
-    private List<String> enabledVenues = List.of( "bybit", "gate", "bitget", "okx", "kucoin" );
+    private List<String> enabledVenues = List.of("bybit", "gate", "bitget", "okx", "kucoin");
 
-    public boolean isSyncOnStartup()
-    {
+    public boolean isSyncOnStartup() {
         return syncOnStartup;
     }
 
-    public void setSyncOnStartup( boolean syncOnStartup )
-    {
+    public void setSyncOnStartup(boolean syncOnStartup) {
         this.syncOnStartup = syncOnStartup;
     }
 
-    public boolean isScheduleEnabled()
-    {
+    public boolean isScheduleEnabled() {
         return scheduleEnabled;
     }
 
-    public void setScheduleEnabled( boolean scheduleEnabled )
-    {
+    public void setScheduleEnabled(boolean scheduleEnabled) {
         this.scheduleEnabled = scheduleEnabled;
     }
 
-    public int getSyncIntervalMinutes()
-    {
+    public int getSyncIntervalMinutes() {
         return syncIntervalMinutes;
     }
 
-    public void setSyncIntervalMinutes( int syncIntervalMinutes )
-    {
+    public void setSyncIntervalMinutes(int syncIntervalMinutes) {
         this.syncIntervalMinutes = syncIntervalMinutes;
     }
 
-    public boolean isRequireCredentialsOnStartup()
-    {
+    public boolean isRequireCredentialsOnStartup() {
         return requireCredentialsOnStartup;
     }
 
-    public void setRequireCredentialsOnStartup( boolean requireCredentialsOnStartup )
-    {
+    public void setRequireCredentialsOnStartup(boolean requireCredentialsOnStartup) {
         this.requireCredentialsOnStartup = requireCredentialsOnStartup;
     }
 
-    public boolean isBootstrapFallbackEnabled()
-    {
+    public boolean isBootstrapFallbackEnabled() {
         return bootstrapFallbackEnabled;
     }
 
-    public void setBootstrapFallbackEnabled( boolean bootstrapFallbackEnabled )
-    {
+    public void setBootstrapFallbackEnabled(boolean bootstrapFallbackEnabled) {
         this.bootstrapFallbackEnabled = bootstrapFallbackEnabled;
     }
 
-    public List<String> getEnabledVenues()
-    {
+    public List<String> getEnabledVenues() {
         return enabledVenues;
     }
 
-    public void setEnabledVenues( List<String> enabledVenues )
-    {
+    public void setEnabledVenues(List<String> enabledVenues) {
         this.enabledVenues = enabledVenues;
     }
 }

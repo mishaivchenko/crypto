@@ -18,3 +18,4 @@
 12. `11-observability-isolated.md` — отдельный observability-контур без влияния на default runtime.
 13. `12-engine-tdd-migration-prompt.md` — repo-specific prompt для следующей engine TDD migration сессии на Java 25.
 14. `13-engine-tdd-migration-plan.md` — decision-complete phased plan для перевода `engine-app` к TDD-oriented test structure.
+15. `14-code-quality-modernization-plan.md` — phased plan для deterministic formatting, linting, static-analysis reports, architecture guards и cleanup waves.

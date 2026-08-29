@@ -1,262 +1,286 @@
 <!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Funding Desk 2.0.0</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-<div class="shell">
-    <header class="topbar">
-        <div class="brand">
-            <p class="eyebrow">Funding Desk 2.0.0</p>
-            <h1>Funding Desk</h1>
-        </div>
-        <div class="topbar-meta">
-            <button id="settings-toggle" class="icon-button" type="button" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">⚙</button>
-            <button id="refresh-all-button" class="button secondary" type="button">Refresh</button>
-            <button id="lang-toggle" class="button secondary" type="button" aria-label="Switch language">EN</button>
-            <div id="settings-panel" class="settings-panel" hidden>
-                <form id="operator-token-form" class="topbar-form">
-                    <label class="field compact-field">
-                        <span>Operator token</span>
-                        <input id="operator-token-input" type="password" autocomplete="off" placeholder="X-Operator-Token">
-                    </label>
-                    <button class="button secondary" type="submit">Save token</button>
-                </form>
-                <form id="global-mode-form" class="topbar-form">
-                    <label class="field compact-field">
-                        <span>Access mode</span>
-                        <select id="global-mode-select" name="mode">
-                            <option value="TESTNET">Testnet</option>
-                            <option value="PRODUCTION">Production</option>
-                        </select>
-                    </label>
-                    <button class="button secondary" type="submit">Apply mode</button>
-                </form>
-                <div class="topbar-form">
-                    <label class="toggle-row" id="ai-toggle-row">
-                        <input id="ai-toggle-checkbox" type="checkbox">
-                        <span id="ai-toggle-label">AI Advisor</span>
-                    </label>
-                    <div id="ai-performance-container" class="ai-performance"></div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Funding Desk 2.0.0</title>
+        <link rel="stylesheet" href="/styles.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <header class="topbar">
+                <div class="brand">
+                    <p class="eyebrow">Funding Desk 2.0.0</p>
+                    <h1>Funding Desk</h1>
                 </div>
-            </div>
-        </div>
-    </header>
-
-    <main class="layout">
-        <aside class="sidebar">
-            <nav class="nav" id="nav">
-                <button class="nav-link is-active" data-screen="dashboard">Overview</button>
-                <button class="nav-link" data-screen="candidates">Signal Queue</button>
-                <button class="nav-link" data-screen="events">Funding Events</button>
-                <button class="nav-link" data-screen="trades">Prepared Trades</button>
-                <button class="nav-link" data-screen="history">Trade History</button>
-                <button class="nav-link" data-screen="venues">Venue Access</button>
-                <button class="nav-link" data-screen="settings">Settings</button>
-            </nav>
-        </aside>
-
-        <section class="content">
-            <section id="global-error" class="banner hidden"></section>
-            <section id="global-success" class="banner success hidden"></section>
-
-            <section class="screen is-visible" id="screen-dashboard">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Overview</p>
-                        <h2>Operations snapshot</h2>
-                    </div>
-                </div>
-                <div id="dashboard-summary" class="summary-grid"></div>
-                <div id="dashboard-venues" style="display:none"></div>
-                <div id="dashboard-metrics" class="panel"></div>
-                <div id="dashboard-waterfall" class="panel" style="display:none"></div>
-            </section>
-
-            <section class="screen" id="screen-candidates">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Signal Queue</p>
-                        <h2>Signals</h2>
-                    </div>
-                    <form id="candidate-filters" class="filters">
-                        <input name="symbol" type="text" placeholder="Symbol">
-                        <input name="venue" type="text" placeholder="Venue">
-                        <input name="detectedFrom" type="datetime-local" placeholder="Detected from">
-                        <select name="status">
-                            <option value="">All statuses</option>
-                            <option value="NEW">New signal</option>
-                            <option value="NORMALIZED">Ready for review</option>
-                            <option value="FAILED">Normalization error</option>
-                            <option value="REJECTED">Rejected</option>
-                            <option value="EVENT_CREATED">Event created</option>
-                            <option value="DELETED">Deleted</option>
-                        </select>
-                        <button class="button secondary" type="submit">Apply</button>
-                    </form>
-                </div>
-                <div id="candidates-list" class="list-stack"></div>
-            </section>
-
-            <section class="screen" id="screen-events">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Funding Events</p>
-                        <h2>Events</h2>
-                    </div>
-                    <form id="event-filters" class="filters">
-                        <input name="symbol" type="text" placeholder="Symbol">
-                        <input name="venue" type="text" placeholder="Venue">
-                        <select name="status">
-                            <option value="">Active statuses</option>
-                            <option value="DISCOVERED">Discovered</option>
-                            <option value="ARMED">Armed</option>
-                            <option value="EXPIRED">Expired</option>
-                            <option value="CANCELLED">Cancelled</option>
-                        </select>
-                        <button class="button secondary" type="submit">Apply</button>
-                    </form>
-                </div>
-                <div id="events-list" class="list-stack"></div>
-            </section>
-
-            <section class="screen" id="screen-trades">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Prepared Trades</p>
-                        <h2>Trades</h2>
-                    </div>
-                </div>
-                <div id="trades-list" class="list-stack"></div>
-            </section>
-
-            <section class="screen" id="screen-history">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Trade History</p>
-                        <h2>Trade History</h2>
-                    </div>
-                    <span id="history-count" class="chip">0 trades</span>
-                </div>
-                <div class="history-rail-controls">
-                    <button id="history-filter-toggle" class="button secondary" type="button" aria-expanded="true" aria-controls="history-filter-rail">Filters ▸</button>
-                </div>
-                <div class="history-board">
-                    <aside class="history-filter-rail" id="history-filter-rail">
-                        <form id="history-filters" class="history-filters">
-                            <label class="field">
-                                <span>Symbol</span>
-                                <input name="symbol" type="text" placeholder="WET/USDT">
+                <div class="topbar-meta">
+                    <button
+                        id="settings-toggle"
+                        class="icon-button"
+                        type="button"
+                        aria-label="Settings"
+                        aria-expanded="false"
+                        aria-controls="settings-panel"
+                    >
+                        ⚙
+                    </button>
+                    <button id="refresh-all-button" class="button secondary" type="button">Refresh</button>
+                    <button id="lang-toggle" class="button secondary" type="button" aria-label="Switch language">
+                        EN
+                    </button>
+                    <div id="settings-panel" class="settings-panel" hidden>
+                        <form id="operator-token-form" class="topbar-form">
+                            <label class="field compact-field">
+                                <span>Operator token</span>
+                                <input
+                                    id="operator-token-input"
+                                    type="password"
+                                    autocomplete="off"
+                                    placeholder="X-Operator-Token"
+                                />
                             </label>
-                            <label class="field">
-                                <span>Venue</span>
-                                <input name="venue" type="text" placeholder="gate">
-                            </label>
-                            <label class="field">
-                                <span>State</span>
-                                <select name="state">
-                                    <option value="">All states</option>
-                                    <option value="PREPARED">Prepared</option>
-                                    <option value="ENTRY_PENDING">Entry pending</option>
-                                    <option value="ENTRY_ATTEMPTED">Entry attempted</option>
-                                    <option value="ATTEMPTS_FAILED">Attempts failed</option>
-                                    <option value="MISSED_WINDOW">Missed window</option>
-                                    <option value="OPEN">Open</option>
-                                    <option value="EXIT_PENDING">Exit pending</option>
-                                    <option value="CLOSED">Closed</option>
-                                    <option value="CANCELLED">Cancelled</option>
-                                    <option value="FAILED">Failed</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>Health</span>
-                                <select name="health">
-                                    <option value="">All health</option>
-                                    <option value="clean">clean</option>
-                                    <option value="burst plan">burst plan</option>
-                                    <option value="latency watch">latency watch</option>
-                                    <option value="manual override">manual override</option>
-                                    <option value="missed window">missed window</option>
-                                    <option value="failed">failed</option>
-                                    <option value="cancelled">cancelled</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>Funding from</span>
-                                <input name="dateFrom" type="datetime-local">
-                            </label>
-                            <label class="field">
-                                <span>Funding to</span>
-                                <input name="dateTo" type="datetime-local">
-                            </label>
-                            <label class="toggle-row">
-                                <input name="onlyFailed" type="checkbox">
-                                <span>Only failed/cancelled</span>
-                            </label>
-                            <label class="toggle-row">
-                                <input name="onlyManual" type="checkbox">
-                                <span>Only manual latency</span>
-                            </label>
-                            <button class="button" type="submit">Apply filters</button>
+                            <button class="button secondary" type="submit">Save token</button>
                         </form>
-                    </aside>
-                    <div id="history-list" class="history-list"></div>
-                </div>
-            </section>
-
-            <section class="screen" id="screen-venues">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Venue Access</p>
-                        <h2>Venues</h2>
+                        <form id="global-mode-form" class="topbar-form">
+                            <label class="field compact-field">
+                                <span>Access mode</span>
+                                <select id="global-mode-select" name="mode">
+                                    <option value="TESTNET">Testnet</option>
+                                    <option value="PRODUCTION">Production</option>
+                                </select>
+                            </label>
+                            <button class="button secondary" type="submit">Apply mode</button>
+                        </form>
+                        <div class="topbar-form">
+                            <label class="toggle-row" id="ai-toggle-row">
+                                <input id="ai-toggle-checkbox" type="checkbox" />
+                                <span id="ai-toggle-label">AI Advisor</span>
+                            </label>
+                            <div id="ai-performance-container" class="ai-performance"></div>
+                        </div>
                     </div>
                 </div>
-                <div id="venues-list" class="list-stack"></div>
-            </section>
+            </header>
 
-            <section class="screen" id="screen-settings">
-                <div class="section-header">
-                    <div>
-                        <p class="eyebrow">Settings</p>
-                        <h2>Settings</h2>
+            <main class="layout">
+                <aside class="sidebar">
+                    <nav class="nav" id="nav">
+                        <button class="nav-link is-active" data-screen="dashboard">Overview</button>
+                        <button class="nav-link" data-screen="candidates">Signal Queue</button>
+                        <button class="nav-link" data-screen="events">Funding Events</button>
+                        <button class="nav-link" data-screen="trades">Prepared Trades</button>
+                        <button class="nav-link" data-screen="history">Trade History</button>
+                        <button class="nav-link" data-screen="venues">Venue Access</button>
+                        <button class="nav-link" data-screen="settings">Settings</button>
+                    </nav>
+                </aside>
+
+                <section class="content">
+                    <section id="global-error" class="banner hidden"></section>
+                    <section id="global-success" class="banner success hidden"></section>
+
+                    <section class="screen is-visible" id="screen-dashboard">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Overview</p>
+                                <h2>Operations snapshot</h2>
+                            </div>
+                        </div>
+                        <div id="dashboard-summary" class="summary-grid"></div>
+                        <div id="dashboard-venues" style="display: none"></div>
+                        <div id="dashboard-metrics" class="panel"></div>
+                        <div id="dashboard-waterfall" class="panel" style="display: none"></div>
+                    </section>
+
+                    <section class="screen" id="screen-candidates">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Signal Queue</p>
+                                <h2>Signals</h2>
+                            </div>
+                            <form id="candidate-filters" class="filters">
+                                <input name="symbol" type="text" placeholder="Symbol" />
+                                <input name="venue" type="text" placeholder="Venue" />
+                                <input name="detectedFrom" type="datetime-local" placeholder="Detected from" />
+                                <select name="status">
+                                    <option value="">All statuses</option>
+                                    <option value="NEW">New signal</option>
+                                    <option value="NORMALIZED">Ready for review</option>
+                                    <option value="FAILED">Normalization error</option>
+                                    <option value="REJECTED">Rejected</option>
+                                    <option value="EVENT_CREATED">Event created</option>
+                                    <option value="DELETED">Deleted</option>
+                                </select>
+                                <button class="button secondary" type="submit">Apply</button>
+                            </form>
+                        </div>
+                        <div id="candidates-list" class="list-stack"></div>
+                    </section>
+
+                    <section class="screen" id="screen-events">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Funding Events</p>
+                                <h2>Events</h2>
+                            </div>
+                            <form id="event-filters" class="filters">
+                                <input name="symbol" type="text" placeholder="Symbol" />
+                                <input name="venue" type="text" placeholder="Venue" />
+                                <select name="status">
+                                    <option value="">Active statuses</option>
+                                    <option value="DISCOVERED">Discovered</option>
+                                    <option value="ARMED">Armed</option>
+                                    <option value="EXPIRED">Expired</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>
+                                <button class="button secondary" type="submit">Apply</button>
+                            </form>
+                        </div>
+                        <div id="events-list" class="list-stack"></div>
+                    </section>
+
+                    <section class="screen" id="screen-trades">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Prepared Trades</p>
+                                <h2>Trades</h2>
+                            </div>
+                        </div>
+                        <div id="trades-list" class="list-stack"></div>
+                    </section>
+
+                    <section class="screen" id="screen-history">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Trade History</p>
+                                <h2>Trade History</h2>
+                            </div>
+                            <span id="history-count" class="chip">0 trades</span>
+                        </div>
+                        <div class="history-rail-controls">
+                            <button
+                                id="history-filter-toggle"
+                                class="button secondary"
+                                type="button"
+                                aria-expanded="true"
+                                aria-controls="history-filter-rail"
+                            >
+                                Filters ▸
+                            </button>
+                        </div>
+                        <div class="history-board">
+                            <aside class="history-filter-rail" id="history-filter-rail">
+                                <form id="history-filters" class="history-filters">
+                                    <label class="field">
+                                        <span>Symbol</span>
+                                        <input name="symbol" type="text" placeholder="WET/USDT" />
+                                    </label>
+                                    <label class="field">
+                                        <span>Venue</span>
+                                        <input name="venue" type="text" placeholder="gate" />
+                                    </label>
+                                    <label class="field">
+                                        <span>State</span>
+                                        <select name="state">
+                                            <option value="">All states</option>
+                                            <option value="PREPARED">Prepared</option>
+                                            <option value="ENTRY_PENDING">Entry pending</option>
+                                            <option value="ENTRY_ATTEMPTED">Entry attempted</option>
+                                            <option value="ATTEMPTS_FAILED">Attempts failed</option>
+                                            <option value="MISSED_WINDOW">Missed window</option>
+                                            <option value="OPEN">Open</option>
+                                            <option value="EXIT_PENDING">Exit pending</option>
+                                            <option value="CLOSED">Closed</option>
+                                            <option value="CANCELLED">Cancelled</option>
+                                            <option value="FAILED">Failed</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span>Health</span>
+                                        <select name="health">
+                                            <option value="">All health</option>
+                                            <option value="clean">clean</option>
+                                            <option value="burst plan">burst plan</option>
+                                            <option value="latency watch">latency watch</option>
+                                            <option value="manual override">manual override</option>
+                                            <option value="missed window">missed window</option>
+                                            <option value="failed">failed</option>
+                                            <option value="cancelled">cancelled</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span>Funding from</span>
+                                        <input name="dateFrom" type="datetime-local" />
+                                    </label>
+                                    <label class="field">
+                                        <span>Funding to</span>
+                                        <input name="dateTo" type="datetime-local" />
+                                    </label>
+                                    <label class="toggle-row">
+                                        <input name="onlyFailed" type="checkbox" />
+                                        <span>Only failed/cancelled</span>
+                                    </label>
+                                    <label class="toggle-row">
+                                        <input name="onlyManual" type="checkbox" />
+                                        <span>Only manual latency</span>
+                                    </label>
+                                    <button class="button" type="submit">Apply filters</button>
+                                </form>
+                            </aside>
+                            <div id="history-list" class="history-list"></div>
+                        </div>
+                    </section>
+
+                    <section class="screen" id="screen-venues">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Venue Access</p>
+                                <h2>Venues</h2>
+                            </div>
+                        </div>
+                        <div id="venues-list" class="list-stack"></div>
+                    </section>
+
+                    <section class="screen" id="screen-settings">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Settings</p>
+                                <h2>Settings</h2>
+                            </div>
+                        </div>
+                        <div id="settings-content"></div>
+                    </section>
+                </section>
+
+                <aside class="drawer" id="detail-drawer">
+                    <div class="drawer-header">
+                        <div>
+                            <p class="eyebrow" id="drawer-type">Inspector</p>
+                            <h2 id="drawer-title">Select an object</h2>
+                        </div>
+                        <button id="drawer-close" class="icon-button" type="button">×</button>
                     </div>
-                </div>
-                <div id="settings-content"></div>
-            </section>
-        </section>
-
-        <aside class="drawer" id="detail-drawer">
-            <div class="drawer-header">
-                <div>
-                    <p class="eyebrow" id="drawer-type">Inspector</p>
-                    <h2 id="drawer-title">Select an object</h2>
-                </div>
-                <button id="drawer-close" class="icon-button" type="button">×</button>
-            </div>
-            <div id="drawer-content" class="drawer-body">
-                <p class="muted">Select an object from the list.</p>
-            </div>
-        </aside>
-    </main>
-</div>
-
-<div id="inspector-modal" class="inspector-modal" role="dialog" aria-modal="true" hidden>
-    <div class="inspector-backdrop"></div>
-    <div class="inspector-panel">
-        <div class="inspector-header">
-            <div class="inspector-header-left">
-                <p class="eyebrow" id="modal-type">Inspector</p>
-                <h2 id="modal-title">—</h2>
-            </div>
-            <button id="modal-close" class="icon-button" type="button" aria-label="Close">×</button>
+                    <div id="drawer-content" class="drawer-body">
+                        <p class="muted">Select an object from the list.</p>
+                    </div>
+                </aside>
+            </main>
         </div>
-        <div id="modal-content" class="inspector-body"></div>
-    </div>
-</div>
 
-<script type="module" src="/app.js"></script>
-</body>
+        <div id="inspector-modal" class="inspector-modal" role="dialog" aria-modal="true" hidden>
+            <div class="inspector-backdrop"></div>
+            <div class="inspector-panel">
+                <div class="inspector-header">
+                    <div class="inspector-header-left">
+                        <p class="eyebrow" id="modal-type">Inspector</p>
+                        <h2 id="modal-title">—</h2>
+                    </div>
+                    <button id="modal-close" class="icon-button" type="button" aria-label="Close">×</button>
+                </div>
+                <div id="modal-content" class="inspector-body"></div>
+            </div>
+        </div>
+
+        <script type="module" src="/app.js"></script>
+    </body>
 </html>

@@ -1,7 +1,6 @@
 package com.crypto.funding.domain.trade;
 
-public enum TradeJournalEventCode
-{
+public enum TradeJournalEventCode {
     CANDIDATE_APPROVED,
     CANDIDATE_REJECTED,
     CANDIDATE_DELETED,
