@@ -27,8 +27,8 @@ operator desk for the 1–5s window **before** funding
 | **real size** | — | `NO` |
 
 ```
-Phase 0 ██████████░░░░  foundation
-Phase 1 ░░░░░░░░░░░░░░  harden
+Phase 0 ██████████████  foundation closed
+Phase 1 ██░░░░░░░░░░░░  hardening next
 Phase 2 ░░░░░░░░░░░░░░  go-live SG + capital
 ```
 
@@ -164,6 +164,13 @@ Local `bootRun*` is dead on exchanges.
 ```bash
 ./gradlew bootRunMonitor   # :8090
 ./gradlew bootRunEngine    # :8091
+```
+
+```bash
+./gradlew quality
+./gradlew qualityReport
+./gradlew build
+./gradlew engineTddGate
 ```
 
 ```bash

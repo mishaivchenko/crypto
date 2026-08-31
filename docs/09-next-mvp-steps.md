@@ -47,19 +47,30 @@ DeepSeek анализирует каждый сигнал асинхронно. 
 
 ---
 
-## Что остаётся
+## Что остаётся после MVP
 
-### Production Deployment Shape (Step 7)
-- Деплой `monitor-app` на control-plane VPS.
-- Деплой `engine-app` в Singapore (low-latency path к биржам).
+GitHub Issues and milestones are the source of truth for execution. This page is a narrative overview only.
+
+### Phase 1: Production Hardening
+
 - Secrets из ENV / secret manager.
+- Telegram prod-like profile.
 - Observability: Prometheus + Grafana (конфигурация в `deploy/observability/`, не часть основного flow).
+- SQLite lock validation.
 
-### Autonomous Loop Hardening
+### Phase 1: Autonomous Loop Hardening
+
 - Тестирование нескольких одновременных сделок на testnet.
 - Latency SLA — отказ исполнения если latency profile устарел.
 - Kill switch через runtime API.
 
+### Phase 2: Go-Live
+
+- Деплой `monitor-app` на control-plane VPS.
+- Деплой `engine-app` в Singapore (low-latency path к биржам).
+- Real-capital rollout after human approval.
+
 ### AI Advisor Quality Loop
+
 - Сбор фактических результатов сделок обратно в историю советника.
 - Возможность дообучить пороги GO/WATCH/PASS на реальных данных выходов.

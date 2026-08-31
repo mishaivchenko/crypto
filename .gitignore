@@ -43,6 +43,7 @@ __pycache__/
 # Gradle cache / daemon logs
 .gradle-cache/
 **/.gradletasknamecache
+.maestro/
 
 ############################################
 # Spring Boot / JVM
