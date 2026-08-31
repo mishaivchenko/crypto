@@ -5,17 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Test Commands
 
 ```bash
-./gradlew test                # Run all backend + UI tests (multi-module)
-./gradlew build               # Full build with verification (includes tests)
 ./gradlew quality             # Fast blocking quality gates
 ./gradlew qualityReport       # Report-only PMD, SpotBugs/FindSecBugs, dependency analysis
+./gradlew build               # Full build with verification (includes tests)
+./gradlew engineTddGate       # Engine TDD mutation + coverage gate
+./gradlew test                # Run all backend + UI tests (multi-module)
 ./gradlew spotlessCheck       # Format/lint check (Java, Gradle, Markdown, YAML)
 npm --prefix monitor-app run lint
 npm --prefix monitor-app run format:check
 ./gradlew security            # OWASP dependency-check (CVSS ≥ 7.0 fails build)
 ./gradlew bootRunMonitor      # Start monitor-app on :8090 (local-safe profile)
 ./gradlew bootRunEngine       # Start engine-app on :8091 (local-safe profile)
-./gradlew engineTddGate       # Engine TDD mutation + coverage gate
 ./gradlew engineTddDocsCheck  # Verify engine TDD requirement IDs consistency
 ```
 
@@ -24,6 +24,12 @@ Requires JDK 25. `bootRun*` tasks automatically set `SPRING_PROFILES_ACTIVE=loca
 Use `-PerrorProneEnabled=false` only as a temporary compiler compatibility escape hatch; production `compileJava` runs Error Prone by default.
 
 To run tests for a single module: `./gradlew :engine-app:test` or `./gradlew :platform-core:test`.
+
+## Workflow Policy
+
+GitHub Issues and milestones are the authoritative task tracker. GitHub Projects/boards are optional views only.
+
+Never push directly to `main`. All changes go through pull requests, and pull requests require human approval before merge.
 
 ## Architecture
 

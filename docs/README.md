@@ -1,21 +1,22 @@
 # Funding Platform Docs
 
-Эта папка описывает актуальную линию приложения: split на `monitor-app` и `engine-app`, Funding API candidate source, venue-aware review flow, encrypted operator credentials и latency-aware armed trade planning.
+Narrative docs were intentionally reset during Phase 0 cleanup so they can be
+rewritten deliberately from the current codebase and GitHub issue state.
 
-## Читать в таком порядке
+GitHub Issues and milestones are the authoritative task tracker. GitHub
+Projects/boards are optional views only.
 
-1. `00-current-state.md` — что приложение умеет сейчас.
-2. `01-system-flow.md` — текущий бизнес-flow и границы.
-3. `02-modules.md` — модули и ответственность.
-4. `03-runtime-config.md` — runtime ENV и safety defaults.
-5. `04-api-surface.md` — основные REST endpoints.
-6. `05-venue-metadata-and-latency.md` — venues, metadata, timing и burst-entry.
-7. `06-data-model.md` — актуальная persistence model.
-8. `07-runbook.md` — запуск и smoke-check.
-9. `08-safety.md` — почему текущий runtime safe-by-default.
-10. `09-next-mvp-steps.md` — что осталось до MVP.
-11. `10-trade-history-ui-vision.md` — видение UI истории сделок.
-12. `11-observability-isolated.md` — отдельный observability-контур без влияния на default runtime.
-13. `12-engine-tdd-migration-prompt.md` — repo-specific prompt для следующей engine TDD migration сессии на Java 25.
-14. `13-engine-tdd-migration-plan.md` — decision-complete phased plan для перевода `engine-app` к TDD-oriented test structure.
-15. `14-code-quality-modernization-plan.md` — phased plan для deterministic formatting, linting, static-analysis reports, architecture guards и cleanup waves.
+## Current Index
+
+1. `PROJECT_STATUS.md` - process-only Phase 0/1/2 status stub.
+2. `engine-tdd/` - retained executable specification for engine requirements,
+   gap mapping, coverage, and mutation gates.
+
+## Removed In Phase 0 Cleanup
+
+The old current-state, architecture, API, runbook, safety, MVP, observability,
+quality-plan, wiki, and local memory documents were removed because they were
+stale, duplicate, or at risk of becoming parallel sources of truth.
+
+Rewrite the narrative docs from code and GitHub Issues/milestones before using
+them for planning or operational decisions.

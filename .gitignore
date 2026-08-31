@@ -32,6 +32,7 @@ out/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 
 ############################################
 # Java / Gradle
@@ -43,6 +44,7 @@ __pycache__/
 # Gradle cache / daemon logs
 .gradle-cache/
 **/.gradletasknamecache
+.maestro/
 
 ############################################
 # Spring Boot / JVM
@@ -56,6 +58,17 @@ hs_err_pid*
 replay_pid*
 
 !gradle/wrapper/gradle-wrapper.jar
+
+############################################
+# Accidental archives / packaged binaries
+############################################
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.7z
+*.rar
 
 ############################################
 # Env / Secrets
@@ -72,20 +85,34 @@ replay_pid*
 ############################################
 # Node / Frontend (Vite + TS)
 ############################################
+node_modules/
 frontend/node_modules/
 monitor-app/node_modules/
 frontend/dist/
+monitor-app/dist/
 frontend/.vite/
+monitor-app/.vite/
 frontend/.cache/
+monitor-app/.cache/
 frontend/.turbo/
 frontend/.parcel-cache/
 frontend/coverage/
+monitor-app/coverage/
 
 # npm/yarn/pnpm debug logs
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/pnpm-debug.log*
+monitor-app/npm-debug.log*
+monitor-app/yarn-debug.log*
+monitor-app/yarn-error.log*
+monitor-app/pnpm-debug.log*
+
+# Root frontend lockfiles are stale unless a root package.json is introduced.
+/package-lock.json
+/yarn.lock
+/pnpm-lock.yaml
 
 ############################################
 # Tests / Coverage (if any)
@@ -102,6 +129,17 @@ data/
 data-container/
 *.db
 *.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
 config/local/
 
 .claude/
+
+############################################
+# Local knowledge/editor state
+############################################
+.obsidian/
+memory/
+funding-memory/
+wiki/

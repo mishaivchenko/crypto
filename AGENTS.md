@@ -13,7 +13,7 @@
 - `monitor-app/src/main/resources` and `engine-app/src/main/resources` hold runtime configuration and static assets.
 - `config/` contains runtime config overrides (for deployments).
 - `data/` is used for runtime data like the SQLite database.
-- `docs/` contains architecture docs (00–11), runbook, and Engine TDD program (`docs/engine-tdd/`).
+- `docs/` contains the Phase 0 docs-reset stubs and the Engine TDD program (`docs/engine-tdd/`); narrative docs are intentionally removed until rewritten.
 
 ## Build, Test, and Development Commands
 - `./gradlew bootRunMonitor` runs the monitor runtime locally (uses Java 25 toolchain).
@@ -21,13 +21,13 @@
 - `./gradlew test` runs the multi-module backend and UI verification suite.
 - `./gradlew build` builds all application jars and runs the full verification lifecycle.
 - `./gradlew quality` runs fast blocking quality gates (Spotless Java/text, monitor UI ESLint, monitor UI Prettier check).
+- `./gradlew qualityReport` runs report-only PMD, SpotBugs/FindSecBugs, and dependency-analysis reports.
+- `./gradlew engineTddGate` runs engine mutation + coverage gate (100% PIT, 95% line / 90% branch).
 - `./gradlew spotlessCheck` runs the active Spotless formatter/linter (Java, Gradle, Markdown, YAML).
 - `npm --prefix monitor-app run lint` runs ESLint for the static monitor UI.
 - `npm --prefix monitor-app run format:check` checks static monitor UI formatting with Prettier.
-- `./gradlew qualityReport` runs report-only PMD, SpotBugs/FindSecBugs, and dependency-analysis reports.
 - `./gradlew build -PerrorProneEnabled=false` temporarily disables Error Prone if a Java toolchain/plugin compatibility issue blocks compilation.
 - `./gradlew security` runs OWASP dependency-check with a CVSS threshold of 7.0.
-- `./gradlew engineTddGate` runs engine mutation + coverage gate (100% PIT, 95% line / 90% branch).
 - `./gradlew engineTddDocsCheck` verifies requirement IDs in `docs/engine-tdd/gap-matrix.md`.
 
 ## Coding Style & Naming Conventions
@@ -44,6 +44,9 @@
 ## Commit & Pull Request Guidelines
 - Prefer short, imperative subjects (e.g., "fix AI prompt strategy description").
 - PRs should include: summary, testing notes, and UI screenshots if frontend changes are involved.
+- GitHub Issues and milestones are the source of truth for tracked work; Projects/boards are optional views only.
+- Never push directly to `main`; all changes go through pull requests.
+- Pull requests require human approval before merge. Do not self-merge automation or agent-authored PRs.
 
 ## Security & Configuration Tips
 - Runtime secrets come from environment variables (see each module's `src/main/resources/application.yml`).

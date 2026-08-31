@@ -27,8 +27,8 @@ operator desk for the 1–5s window **before** funding
 | **real size** | — | `NO` |
 
 ```
-Phase 0 ██████████░░░░  foundation
-Phase 1 ░░░░░░░░░░░░░░  harden
+Phase 0 ██████████████  closing, pending human approval
+Phase 1 ██░░░░░░░░░░░░  next after approval
 Phase 2 ░░░░░░░░░░░░░░  go-live SG + capital
 ```
 
@@ -167,6 +167,13 @@ Local `bootRun*` is dead on exchanges.
 ```
 
 ```bash
+./gradlew quality
+./gradlew qualityReport
+./gradlew build
+./gradlew engineTddGate
+```
+
+```bash
 cp deploy/.env.example .env && docker compose up --build
 ```
 
@@ -174,15 +181,20 @@ JDK 25. Commands → [`AGENTS.md`](AGENTS.md)
 
 ---
 
+## docs reset
+
+Narrative docs were intentionally removed in Phase 0 cleanup and will be
+rewritten deliberately. GitHub Issues and milestones remain the source of truth;
+`docs/engine-tdd/` remains the executable engine specification.
+
+---
+
 ## map
 
 | want | go |
 | --- | --- |
-| now | [docs/00-current-state.md](docs/00-current-state.md) |
-| phases | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) |
-| safety | [docs/08-safety.md](docs/08-safety.md) |
-| runbook | [docs/07-runbook.md](docs/07-runbook.md) |
-| API | [docs/04-api-surface.md](docs/04-api-surface.md) |
+| docs reset | [docs/README.md](docs/README.md) |
+| process status | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) |
 | engine spec | [docs/engine-tdd/](docs/engine-tdd/) |
 
 Private desk. Staging is on. Capital is not.

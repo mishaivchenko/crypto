@@ -1,30 +1,35 @@
 # Project Status
 
-_Updated: 2026-08-22 (Phase 0 — Foundation Restoration)_
+_Updated: 2026-08-31 (Phase 0 cleanup reset)_
 
-## Where the project is
+This file is a process-only stub. It intentionally does not describe product
+capabilities; those narrative docs were removed in Phase 0 cleanup and should be
+rewritten deliberately from the codebase and GitHub issue state.
 
-Modular monolith (Java 25, Spring Boot 3.5.14): `monitor-app` (8090), `engine-app` (8091), `telegram-bot-app` (8092), `platform-core`.
+## Source Of Truth
 
-- **MVP Steps 1-6 complete** (execution ports, engine loop, latency calibration, position/exit lifecycle, trade outcome, risk guardrails).
-- **Live order submission works** — Gate testnet confirmed (ACT/USDT SHORT FILLED 2026-05-09). All 5 venues implemented.
-- **AI Signal Advisor**, **Telegram bot**, **Trade History UI**, **Unified Settings** shipped.
-- **Staging deployment live** on Mac mini via Cloudflare Tunnel (crypto-monitor.org). monitor/engine run `prod-like`, telegram-bot runs `staging`.
-- **Phase 0 (this)**: tracker migration, docs revision, cleanup.
+GitHub Issues and milestones are the authoritative task tracker. GitHub
+Projects/boards are optional views only.
 
-## Active work
+Legacy local trackers such as `tasks/`, `BACKLOG.md`, wiki memory dumps, and
+Obsidian vault state are not authoritative repository artifacts.
 
-- Milestone: **Phase 0 — Foundation Restoration** ([issues](https://github.com/mishaivchenko/crypto/issues?q=milestone%3A%22Phase+0+%E2%80%94+Foundation+Restoration%22))
+## Active Work
 
-## Tracked work (issues)
+- **Phase 0 - Foundation Restoration**: cleanup/reset is pending human approval
+  in PR #186. Do not close issue #185 or the Phase 0 milestone without explicit
+  human approval.
+- **Phase 1 - Production Hardening**: next after Phase 0 approval.
+- **Phase 2 - Go-Live**: planned after Phase 1 hardening.
 
-- Open bugs/features tracked as GitHub issues (see link above).
-- Legacy `tasks/` and `BACKLOG.md` removed in Phase 0 — history preserved in git.
+## Retained Executable Docs
 
-## Phase map
+`docs/engine-tdd/` remains part of the verification system. It is retained as
+the executable engine requirement mapping used by `engineTddDocsCheck` and
+`engineTddGate`.
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 0 | Foundation restoration (tracker, docs, cleanup) | **in progress** |
-| 1 | Production hardening: secrets, telegram prod-like, observability/logs, SQLite lock | planned |
-| 2 | Go-live: real capital, engine in Singapore, tag-based releases | planned |
+## Cleanup Boundary
+
+Phase 0 cleanup is docs/status/repository hygiene only. It must not change
+runtime behavior, implement Phase 1 work, add product features, or mix in remote
+CLI/UI contract work.
