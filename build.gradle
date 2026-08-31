@@ -1,5 +1,6 @@
 plugins {
     id 'base'
+    id 'org.sonarqube' version '7.4.0.8496'
     id 'org.springframework.boot' version '3.5.14' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
     id 'org.owasp.dependencycheck' version '12.1.8' apply false
@@ -30,6 +31,7 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
     apply plugin: 'org.owasp.dependencycheck'
+    apply plugin: 'jacoco'
     apply plugin: 'pmd'
     apply plugin: 'com.github.spotbugs'
     apply plugin: 'com.autonomousapps.dependency-analysis'
@@ -69,6 +71,29 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+    }
+
+    tasks.named( 'jacocoTestReport' ).configure {
+        dependsOn tasks.named( 'test' )
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    sonar {
+        properties {
+            def sonarSources = ['src/main/java']
+            def sonarTests = ['src/test/java']
+            if( project.name == 'monitor-app' )
+            {
+                sonarSources += 'src/main/resources/static'
+                sonarTests += 'src/test/js'
+            }
+
+            property 'sonar.sources', sonarSources.findAll { file( it ).exists() }.join( ',' )
+            property 'sonar.tests', sonarTests.findAll { file( it ).exists() }.join( ',' )
+        }
     }
 
     configurations.matching { configuration -> configuration.name.toLowerCase().contains( 'test' ) }.configureEach {
@@ -270,6 +295,49 @@ tasks.register('qualityReport') {
         subprojects.collect { project -> project.tasks.named( 'spotbugsMain' ) },
         'buildHealth'
     )
+}
+
+tasks.register('jacocoTestReports') {
+    group = 'verification'
+    description = 'Generate JaCoCo XML coverage reports for SonarQube analysis'
+    dependsOn subprojects.collect { project -> project.tasks.named( 'jacocoTestReport' ) }
+}
+
+sonar {
+    properties {
+        property 'sonar.projectKey', 'funding-platform'
+        property 'sonar.projectName', 'Funding Platform'
+        property 'sonar.host.url', System.getenv( 'SONAR_HOST_URL' ) ?: 'http://127.0.0.1:9000'
+
+        def sonarToken = System.getenv( 'SONAR_TOKEN' )
+        if( sonarToken != null && !sonarToken.isBlank() )
+        {
+            property 'sonar.token', sonarToken
+        }
+
+        property 'sonar.exclusions', [
+            '**/build/**',
+            '**/.gradle/**',
+            '**/node_modules/**',
+            '**/.cache/**',
+            '.claude/**',
+            '.agents/**',
+            '.codex/**',
+            '.maestro/**'
+        ].join( ',' )
+        property 'sonar.coverage.exclusions', [
+            '**/src/test/**',
+            '**/db/migration/**'
+        ].join( ',' )
+        property 'sonar.javascript.exclusions', '**/node_modules/**'
+        property 'sonar.coverage.jacoco.xmlReportPaths', subprojects.collect {
+            "${it.name}/build/reports/jacoco/test/jacocoTestReport.xml"
+        }.join( ',' )
+    }
+}
+
+tasks.named( 'sonar' ).configure {
+    dependsOn tasks.named( 'jacocoTestReports' )
 }
 
 tasks.register('engineTddDocsCheck') {
