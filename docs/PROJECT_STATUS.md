@@ -1,49 +1,35 @@
 # Project Status
 
-_Updated: 2026-08-31 (Phase 0 closure)_
+_Updated: 2026-08-31 (Phase 0 cleanup reset)_
 
-## Where the project is
-
-Modular monolith (Java 25, Spring Boot 3.5.14): `monitor-app` (8090), `engine-app` (8091), `telegram-bot-app` (8092), `platform-core`.
-
-- **MVP Steps 1-6 complete**: execution ports, engine loop, latency calibration, position/exit lifecycle, trade outcome, and risk guardrails.
-- **Live order submission works**: Gate testnet confirmed (ACT/USDT SHORT FILLED 2026-05-09). All 5 venues are implemented.
-- **AI Signal Advisor**, **Telegram bot**, **Trade History UI**, and **Unified Settings** are shipped.
-- **Staging deployment live** on Mac mini via Cloudflare Tunnel (crypto-monitor.org). monitor/engine run `prod-like`; telegram-bot runs `staging`.
-- **Quality foundation implemented**: `quality`, `qualityReport`, `build`, and branch-protection checks are the active verification path.
-- **Engine TDD foundation implemented**: `engineTddGate` and `engineTddDocsCheck` guard engine coverage, mutation, and requirement mapping.
+This file is a process-only stub. It intentionally does not describe product
+capabilities; those narrative docs were removed in Phase 0 cleanup and should be
+rewritten deliberately from the codebase and GitHub issue state.
 
 ## Source Of Truth
 
-GitHub Issues and milestones are the authoritative task tracker. GitHub Projects/boards may be used as optional views, but they are not the source of truth.
+GitHub Issues and milestones are the authoritative task tracker. GitHub
+Projects/boards are optional views only.
 
-Legacy local trackers (`tasks/`, `BACKLOG.md`) are removed; history remains available through git.
+Legacy local trackers such as `tasks/`, `BACKLOG.md`, wiki memory dumps, and
+Obsidian vault state are not authoritative repository artifacts.
 
 ## Active Work
 
-- **Phase 0 — Foundation Restoration**: closing/complete after the Phase 0 closure PR passes gates and receives human approval.
-- **Phase 1 — Production Hardening**: next active milestone after Phase 0 approval.
+- **Phase 0 - Foundation Restoration**: cleanup/reset is pending human approval
+  in PR #186. Do not close issue #185 or the Phase 0 milestone without explicit
+  human approval.
+- **Phase 1 - Production Hardening**: next after Phase 0 approval.
+- **Phase 2 - Go-Live**: planned after Phase 1 hardening.
 
-## Phase Map
+## Retained Executable Docs
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 0 | Foundation restoration: tracker, docs/status, stale clutter cleanup, quality/TDD verification | **closing / complete** |
-| 1 | Production hardening: secrets, Telegram prod-like, observability/logs, SQLite lock validation, autonomous loop testing | **next / active** |
-| 2 | Go-live: VPS/Singapore production deployment, real-capital rollout, tag-based releases | planned |
+`docs/engine-tdd/` remains part of the verification system. It is retained as
+the executable engine requirement mapping used by `engineTddDocsCheck` and
+`engineTddGate`.
 
-## Definition Of Done Gates
+## Cleanup Boundary
 
-- `./gradlew quality`
-- `./gradlew qualityReport`
-- `./gradlew build`
-- `./gradlew engineTddGate`
-
-## Phase 0 Closure Audit
-
-- Phase 0 milestone contains only issue `#185`.
-- Phase 1 milestone contains `#172`, `#174`, `#175`, `#176`, and `#177`.
-- Phase 2 milestone contains `#171` and `#173`.
-- Issues `#170`, `#136`, and `#140` are closed.
-- Old empty sprint milestones are closed.
-- `main` is protected: PR required, admins enforced, and required checks are Build & Test, Code Quality, and Engine TDD Gate.
+Phase 0 cleanup is docs/status/repository hygiene only. It must not change
+runtime behavior, implement Phase 1 work, add product features, or mix in remote
+CLI/UI contract work.

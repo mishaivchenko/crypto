@@ -13,7 +13,7 @@
 - `monitor-app/src/main/resources` and `engine-app/src/main/resources` hold runtime configuration and static assets.
 - `config/` contains runtime config overrides (for deployments).
 - `data/` is used for runtime data like the SQLite database.
-- `docs/` contains the current status, architecture docs, runbook, quality foundation plan, and Engine TDD program (`docs/engine-tdd/`).
+- `docs/` contains the Phase 0 docs-reset stubs and the Engine TDD program (`docs/engine-tdd/`); narrative docs are intentionally removed until rewritten.
 
 ## Build, Test, and Development Commands
 - `./gradlew bootRunMonitor` runs the monitor runtime locally (uses Java 25 toolchain).
