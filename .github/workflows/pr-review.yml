@@ -76,6 +76,16 @@ jobs:
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
+          gh run view "${RUN_ID}" --repo "${REPO}" --json jobs > /tmp/ci-jobs.json \
+            || echo '{"jobs":[]}' > /tmp/ci-jobs.json
+          python3 scripts/pr_review/ci_summary.py \
+            --run-json /tmp/ci-jobs.json \
+            --artifacts-dir /tmp/ci-artifacts \
+            --run-id "${RUN_ID}" \
+            --run-url "${RUN_URL}" \
+            --conclusion "${RUN_CONCLUSION}" \
+            --output /tmp/ci-summary.json \
+            --markdown /tmp/ci-summary.md
           {
             echo "CI-CD workflow run:"
             echo "- conclusion: ${RUN_CONCLUSION}"
@@ -101,6 +111,12 @@ jobs:
                 fi
               done
             fi
+
+            if [ -f /tmp/ci-summary.md ]; then
+              echo ""
+              echo "--- Structured CI summary ---"
+              cat /tmp/ci-summary.md
+            fi
           } > /tmp/ci-context.txt
 
       - name: Run PR review
@@ -113,5 +129,8 @@ jobs:
         run: |
           if [ -f /tmp/ci-context.txt ]; then
             export CI_CONTEXT="$(cat /tmp/ci-context.txt)"
+          fi
+          if [ -f /tmp/ci-summary.json ]; then
+            export CI_SUMMARY_JSON="$(cat /tmp/ci-summary.json)"
           fi
           python3 scripts/pr_review/main.py

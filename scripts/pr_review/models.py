@@ -40,6 +40,32 @@ class ReviewResult:
 
 
 @dataclass(frozen=True)
+class CheckResult:
+    name: str
+    status: str
+    conclusion: str
+    duration_seconds: int
+
+
+@dataclass(frozen=True)
+class QualityMetric:
+    key: str
+    label: str
+    value: float
+    unit: str
+    lower_is_better: bool
+
+
+@dataclass(frozen=True)
+class CiSummary:
+    run_id: str
+    run_url: str
+    conclusion: str
+    checks: tuple[CheckResult, ...] = ()
+    metrics: tuple[QualityMetric, ...] = ()
+
+
+@dataclass(frozen=True)
 class PullRequestContext:
     pr_number: int
     repo: str
@@ -47,3 +73,4 @@ class PullRequestContext:
     changed_files: tuple[str, ...]
     diff_truncated: bool
     ci_context: str                  # optional: build/test output snippet
+    ci_summary: CiSummary | None = None

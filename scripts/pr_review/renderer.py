@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import hashlib
 
-from pr_review.models import Concern, ReviewResult
+from pr_review.ci_summary import hidden_snapshot
+from pr_review.models import CiSummary, Concern, QualityMetric, ReviewResult
 
 _SUMMARY_MARKER = "<!-- ai-pr-review-summary -->"
 _MAX_INLINE_TOTAL = 10
@@ -37,7 +38,13 @@ def concern_fingerprint(concern: Concern) -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:12]
 
 
-def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool) -> str:
+def render_summary(
+    result: ReviewResult,
+    enforced_decision: str,
+    truncated: bool,
+    ci_summary: CiSummary | None = None,
+    previous_ci_summary: CiSummary | None = None,
+) -> str:
     """Render the top-level summary comment body."""
     dec_emoji, dec_label = _DECISION_BANNER.get(enforced_decision, ("💬", enforced_decision))
     risk_emoji = _RISK_EMOJI.get(result.risk_level, "⚪")
@@ -64,6 +71,9 @@ def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool
     if truncated:
         lines.append("\n> ⚠️ Дифф был обрезан — проверка охватывает только часть изменений. Полная картина недоступна даже Партии.")
 
+    if ci_summary:
+        lines.extend(_render_ci_summary(ci_summary, previous_ci_summary))
+
     # Group concerns by category
     by_category: dict[str, list[Concern]] = {}
     for c in all_concerns:
@@ -89,7 +99,90 @@ def render_summary(result: ReviewResult, enforced_decision: str, truncated: bool
         "_Проверено товарищем DeepSeek-V3 · модель `deepseek-chat` · "
         "Пролетарии всех стран, соединяйтесь! 🚩_"
     )
+    if ci_summary:
+        lines.append(hidden_snapshot(ci_summary))
     return "\n".join(lines)
+
+
+def _render_ci_summary(summary: CiSummary, previous: CiSummary | None) -> list[str]:
+    lines = [
+        "",
+        "### ✅ CI/CD факт-чек",
+        "",
+        "| Проверка | Статус | Время |",
+        "|---|---:|---:|",
+    ]
+    for check in summary.checks:
+        lines.append(
+            f"| {check.name} | {_format_check_conclusion(check.conclusion)} | "
+            f"{_format_duration(check.duration_seconds)} |"
+        )
+    if summary.run_url:
+        lines.append(f"\n[Открыть CI run]({summary.run_url})")
+
+    if summary.metrics:
+        previous_by_key = {
+            metric.key: metric
+            for metric in previous.metrics
+        } if previous else {}
+        lines.extend([
+            "",
+            "### 📊 Качество и дельта",
+            "",
+            "| Отчет | Сейчас | Изменение | Оценка |",
+            "|---|---:|---:|---|",
+        ])
+        for metric in summary.metrics:
+            previous_metric = previous_by_key.get(metric.key)
+            direction, verdict = _metric_delta(metric, previous_metric)
+            lines.append(
+                f"| {metric.label} | {_format_metric_value(metric)} | "
+                f"{direction} | {verdict} |"
+            )
+    return lines
+
+
+def _format_check_conclusion(conclusion: str) -> str:
+    normalized = conclusion.lower()
+    if normalized == "success":
+        return "✅ pass"
+    if normalized == "failure":
+        return "❌ fail"
+    if normalized == "cancelled":
+        return "⚪ cancelled"
+    if normalized == "skipped":
+        return "⏭️ skipped"
+    return f"⚪ {conclusion or 'unknown'}"
+
+
+def _format_duration(seconds: int) -> str:
+    if seconds <= 0:
+        return "—"
+    minutes, remainder = divmod(seconds, 60)
+    if minutes:
+        return f"{minutes}m {remainder}s"
+    return f"{remainder}s"
+
+
+def _format_metric_value(metric: QualityMetric) -> str:
+    if metric.unit == "%":
+        return f"{metric.value:.1f}%"
+    if metric.value.is_integer():
+        return str(int(metric.value))
+    return f"{metric.value:.2f}{metric.unit}"
+
+
+def _metric_delta(metric: QualityMetric, previous: QualityMetric | None) -> tuple[str, str]:
+    if previous is None:
+        return "🆕 первый замер", "baseline"
+    delta = metric.value - previous.value
+    if abs(delta) < 0.005:
+        return "→ ровно", "без изменений"
+    arrow = "↑ выросло" if delta > 0 else "↓ упало"
+    signed = f"{delta:+.1f}{metric.unit}" if metric.unit == "%" else f"{delta:+g}{metric.unit}"
+    improved = delta < 0 if metric.lower_is_better else delta > 0
+    verdict = "лучше" if improved else "хуже"
+    return f"{arrow} ({signed})", verdict
 
 
 def select_inline_concerns(result: ReviewResult) -> list[Concern]:

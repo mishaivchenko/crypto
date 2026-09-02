@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pr_review.models import PullRequestContext
+from pr_review.ci_summary import dumps_summary
 
 _SYSTEM_PROMPT = """\
 Comrade! You are the all-seeing eye of the Collective — a senior engineer and loyal Party inspector \
@@ -73,10 +74,14 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose, no 
 
 Rules — follow them as you would follow Party doctrine:
 - Only report concerns about files in the diff. Do not hallucinate files not present.
-- Treat CI CONTEXT as observed evidence from GitHub Actions. Use it to confirm which checks ran, which failed,
-  and which generated reports were available.
-- If CI CONTEXT shows a validator passed, do not claim the same configuration is invalid unless the diff contains
-  a concrete, line-specific defect not covered by that validator.
+	- Treat CI CONTEXT as observed evidence from GitHub Actions. Use it to confirm which checks ran, which failed,
+	  and which generated reports were available.
+	- Treat CI SUMMARY JSON as the authoritative check/quality metric snapshot. If it says a check passed, do not
+	  claim that same check or generated workflow is broken.
+	- If CI CONTEXT shows a validator passed, do not claim the same configuration is invalid unless the diff contains
+	  a concrete, line-specific defect not covered by that validator.
+	- Separate factual CI evidence from diff-based hypotheses. Never report sanitized placeholders like "*** secrets.X }}"
+	  as source-code defects.
 - Prefer actionable CI/CD concerns backed by job results or logs over speculative availability/fallback complaints.
 - If a concern list has no items, return an empty array [].
 - confidence must reflect how certain you are that the concerns are real and correctly scoped.
@@ -104,5 +109,9 @@ def build(ctx: PullRequestContext) -> tuple[str, str]:
     if ctx.ci_context:
         user_lines.append("\n--- CI CONTEXT (GitHub Actions job results, logs, and analyzer output) ---\n")
         user_lines.append(ctx.ci_context)
+
+    if ctx.ci_summary:
+        user_lines.append("\n--- CI SUMMARY JSON (authoritative checks and metrics) ---\n")
+        user_lines.append(dumps_summary(ctx.ci_summary))
 
     return _SYSTEM_PROMPT, "\n".join(user_lines)

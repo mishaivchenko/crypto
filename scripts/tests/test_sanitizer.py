@@ -53,6 +53,29 @@ class TestSanitizer(unittest.TestCase):
         self.assertIn("***", result)
         self.assertIn("password", result)
 
+    def test_preserves_github_actions_secret_expression_syntax(self):
+        line = "DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}"
+        result = sanitize(line)
+        self.assertEqual(line, result)
+
+    def test_preserves_github_actions_expression_with_secret_like_text(self):
+        line = "VALUE: ${{ format('api_key={0}', secrets.EXCHANGE_API_KEY) }}"
+        result = sanitize(line)
+        self.assertEqual(line, result)
+
+    def test_preserves_literal_placeholder_collision_text(self):
+        line = (
+            "__SANITIZER_PROTECTED_GITHUB_ACTIONS_EXPR_0__ "
+            "DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}"
+        )
+        result = sanitize(line)
+        self.assertEqual(line, result)
+
+    def test_masks_secret_value_that_starts_like_placeholder(self):
+        line = "api_key=__SANITIZER_PROTECTED_GITHUB_ACTIONS_EXPR_real_secret__"
+        result = sanitize(line)
+        self.assertEqual("api_key=***", result)
+
     def test_preserves_stack_traces(self):
         stack = (
             "java.lang.NullPointerException: null\n"

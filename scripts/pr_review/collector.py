@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 
 from pr_review.models import PullRequestContext
+from pr_review.ci_summary import load_summary
 from sanitizer import sanitize as _sanitize
 
 _TIMEOUT = 30
@@ -96,7 +97,13 @@ def _filter_diff(raw_diff: str) -> str:
     return "".join(result)
 
 
-def collect(repo: str, pr_number: int, token: str, ci_context: str = "") -> PullRequestContext:
+def collect(
+    repo: str,
+    pr_number: int,
+    token: str,
+    ci_context: str = "",
+    ci_summary_json: str = "",
+) -> PullRequestContext:
     """Fetch and prepare PR context for AI review."""
     raw_diff = _get_diff(repo, pr_number, token) or ""
     changed_files = _get_changed_files(repo, pr_number, token)
@@ -116,6 +123,7 @@ def collect(repo: str, pr_number: int, token: str, ci_context: str = "") -> Pull
     ]
 
     ci_sanitized = _sanitize(ci_context) if ci_context else ""
+    ci_summary = load_summary(ci_summary_json)
 
     print(f"[collector] PR #{pr_number}: {len(meaningful_files)} meaningful files, "
           f"{len(sanitized)} diff chars, truncated={truncated}")
@@ -127,4 +135,5 @@ def collect(repo: str, pr_number: int, token: str, ci_context: str = "") -> Pull
         changed_files=tuple(meaningful_files),
         diff_truncated=truncated,
         ci_context=ci_sanitized,
+        ci_summary=ci_summary,
     )
