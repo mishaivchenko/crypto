@@ -57,35 +57,49 @@ jobs:
           fi
           echo "number=$pr_number" >> "$GITHUB_OUTPUT"
 
-      - name: Download build log artifact (if present)
-        id: build_log
+      - name: Download CI artifacts
         if: steps.pr.outputs.number != ''
         continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          run_id="${{ github.event.workflow_run.id }}"
-          artifact=$(gh api "repos/${{ github.repository }}/actions/runs/${run_id}/artifacts" \
-            --jq '.artifacts[] | select(.name == "build-log") | .id' | head -1)
-          if [ -n "$artifact" ]; then
-            gh api "repos/${{ github.repository }}/actions/artifacts/${artifact}/zip" > /tmp/build-log.zip
-            unzip -p /tmp/build-log.zip > /tmp/build-output.txt
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: /tmp/ci-artifacts
 
       - name: Compose CI context
         id: ci_ctx
         if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
-          conclusion="${{ github.event.workflow_run.conclusion }}"
           {
-            echo "CI-CD result: ${conclusion}"
-            if [ -f /tmp/build-output.txt ]; then
+            echo "CI-CD workflow run:"
+            echo "- conclusion: ${RUN_CONCLUSION}"
+            echo "- run id: ${RUN_ID}"
+            echo "- url: ${RUN_URL}"
+            echo ""
+            echo "Job results:"
+            gh run view "${RUN_ID}" --repo "${REPO}" --json jobs \
+              --jq '.jobs[] | "- \(.name): \(.conclusion // "unknown")"' \
+              || echo "- unable to fetch job results"
+
+            if [ -d /tmp/ci-artifacts ]; then
               echo ""
-              echo "--- Last 120 lines of build output ---"
-              tail -120 /tmp/build-output.txt
+              echo "Downloaded CI artifacts:"
+              find /tmp/ci-artifacts -type f | sort | sed 's#^#- #'
+
+              for log_name in build-output.txt code-quality-output.txt sonarqube-output.txt; do
+                log_file="$(find /tmp/ci-artifacts -name "${log_name}" -type f | head -1)"
+                if [ -n "${log_file}" ]; then
+                  echo ""
+                  echo "--- Last 160 lines of ${log_name} ---"
+                  tail -160 "${log_file}"
+                fi
+              done
             fi
           } > /tmp/ci-context.txt
 
@@ -96,7 +110,6 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
-          CI_CONTEXT: ""
         run: |
           if [ -f /tmp/ci-context.txt ]; then
             export CI_CONTEXT="$(cat /tmp/ci-context.txt)"
