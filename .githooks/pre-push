@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+if [ "${SKIP_LOCAL_VERIFY:-}" = "1" ]; then
+    echo "Skipping local verification because SKIP_LOCAL_VERIFY=1"
+    exit 0
+fi
+
+./gradlew localVerify --no-daemon

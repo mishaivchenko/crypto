@@ -303,6 +303,12 @@ tasks.register('jacocoTestReports') {
     dependsOn subprojects.collect { project -> project.tasks.named( 'jacocoTestReport' ) }
 }
 
+tasks.register('localVerify') {
+    group = 'verification'
+    description = 'Run local pre-push verification: quality gates, full build, and JaCoCo XML reports'
+    dependsOn 'quality', 'build', 'jacocoTestReports'
+}
+
 sonar {
     properties {
         property 'sonar.projectKey', 'funding-platform'

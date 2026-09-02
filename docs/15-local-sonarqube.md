@@ -52,6 +52,26 @@ No SonarQube token or database password should be committed to the repository.
 
 ## Local analysis
 
+Before pushing feature work, run the local verification task:
+
+```bash
+./gradlew localVerify --no-daemon
+```
+
+It runs the blocking quality checks, the full Gradle build, and JaCoCo XML coverage reports. It does not run SonarQube analysis, so it does not require `SONAR_TOKEN`.
+
+To make this run automatically before every `git push`, enable the repository hook path once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The tracked `.githooks/pre-push` hook runs `./gradlew localVerify --no-daemon`. For an emergency push only, bypass it with:
+
+```bash
+SKIP_LOCAL_VERIFY=1 git push
+```
+
 With SonarQube running and a local token available:
 
 ```bash
