@@ -44,9 +44,10 @@ SonarQube is bound to `127.0.0.1:9000` on the Mac mini. From the Mac mini, open 
 Create a SonarQube token after the first login:
 
 1. Open `http://127.0.0.1:9000`.
-2. Go to **My Account > Security**.
-3. Generate a user token for CI analysis.
-4. Add it to this GitHub repository as an Actions secret named `SONAR_TOKEN`.
+2. Create or open the local project with project key `crypto`.
+3. Go to **My Account > Security**.
+4. Generate a token that can analyze the `crypto` project.
+5. Add it to this GitHub repository as an Actions secret named `SONAR_TOKEN`.
 
 No SonarQube token or database password should be committed to the repository.
 
@@ -80,7 +81,7 @@ export SONAR_TOKEN=<local-token>
 ./gradlew test jacocoTestReports sonar --no-daemon
 ```
 
-`SONAR_HOST_URL` defaults to `http://127.0.0.1:9000` when omitted.
+`SONAR_HOST_URL` defaults to `http://127.0.0.1:9000` when omitted. The Gradle scanner uploads analysis to the SonarQube project key `crypto`.
 
 ## CI behavior
 

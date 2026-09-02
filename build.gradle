@@ -311,8 +311,8 @@ tasks.register('localVerify') {
 
 sonar {
     properties {
-        property 'sonar.projectKey', 'funding-platform'
-        property 'sonar.projectName', 'Funding Platform'
+        property 'sonar.projectKey', 'crypto'
+        property 'sonar.projectName', 'crypto'
         property 'sonar.host.url', System.getenv( 'SONAR_HOST_URL' ) ?: 'http://127.0.0.1:9000'
 
         def sonarToken = System.getenv( 'SONAR_TOKEN' )
