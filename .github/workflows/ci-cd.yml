@@ -28,7 +28,17 @@ jobs:
       - run: chmod +x gradlew
 
       - name: Build & test
-        run: ./gradlew clean build --no-daemon 2>&1 | tee /tmp/build-output.txt; exit "${PIPESTATUS[0]}"
+        run: |
+          set -o pipefail
+          ./gradlew clean build --no-daemon 2>&1 | tee /tmp/build-output.txt
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build-output.txt
+          if-no-files-found: ignore
 
       - name: Analyze build failure
         if: failure() && github.event_name == 'pull_request'
@@ -63,11 +73,26 @@ jobs:
       - name: Install monitor UI tooling
         run: npm ci --prefix monitor-app
 
+      - name: Validate SonarQube compose config
+        run: docker compose --env-file deploy/sonarqube/.env.example -f deploy/sonarqube/docker-compose.yml config
+
       - name: Run blocking quality gates
-        run: ./gradlew quality --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew quality --no-daemon 2>&1 | tee /tmp/code-quality-output.txt
 
       - name: Run report-only quality analysis
-        run: ./gradlew qualityReport --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew qualityReport --no-daemon 2>&1 | tee -a /tmp/code-quality-output.txt
+
+      - name: Upload code quality log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-log
+          path: /tmp/code-quality-output.txt
+          if-no-files-found: ignore
 
       - name: Upload quality reports
         if: always()
@@ -79,6 +104,71 @@ jobs:
             */build/reports/pmd/**
             */build/reports/spotbugs/**
             .semgrep/**
+          if-no-files-found: ignore
+
+  sonar:
+    name: SonarQube
+    needs: [ build, code_quality ]
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: [ self-hosted, mac-mini, staging ]
+    env:
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'http://127.0.0.1:9000' }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: monitor-app/package-lock.json
+
+      - run: chmod +x gradlew
+
+      - name: Ensure Sonar token is configured
+        run: |
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "::error::SONAR_TOKEN GitHub Actions secret is required for local SonarQube analysis"
+            exit 1
+          fi
+
+      - name: Check local SonarQube Server
+        run: |
+          for attempt in {1..12}; do
+            status="$(curl -fsS "${SONAR_HOST_URL}/api/system/status" || true)"
+            echo "${status}"
+            if echo "${status}" | grep -q '"status":"UP"'; then
+              exit 0
+            fi
+            echo "SonarQube is not UP yet; retry ${attempt}/12"
+            sleep 5
+          done
+          echo "::error::Local SonarQube Server did not report status UP at ${SONAR_HOST_URL}"
+          exit 1
+
+      - name: Install monitor UI tooling
+        run: npm ci --prefix monitor-app
+
+      - name: Run tests, coverage, and SonarQube analysis
+        run: |
+          set -o pipefail
+          ./gradlew test jacocoTestReports sonar --no-daemon 2>&1 | tee /tmp/sonarqube-output.txt
+
+      - name: Upload SonarQube log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarqube-log
+          path: |
+            /tmp/sonarqube-output.txt
+            **/build/sonar/report-task.txt
+            .scannerwork/report-task.txt
           if-no-files-found: ignore
 
 

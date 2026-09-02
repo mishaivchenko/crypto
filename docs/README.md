@@ -11,6 +11,7 @@ Projects/boards are optional views only.
 1. `PROJECT_STATUS.md` - process-only Phase 0/1/2 status stub.
 2. `engine-tdd/` - retained executable specification for engine requirements,
    gap mapping, coverage, and mutation gates.
+3. `15-local-sonarqube.md` - local SonarQube Server setup and CI analysis runbook.
 
 ## Removed In Phase 0 Cleanup
 

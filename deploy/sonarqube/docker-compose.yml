@@ -1,0 +1,42 @@
+name: funding-sonarqube
+
+services:
+  postgres:
+    image: ${SONARQUBE_POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: funding-sonarqube-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SONARQUBE_POSTGRES_DB:-sonarqube}
+      POSTGRES_USER: ${SONARQUBE_POSTGRES_USER:-sonarqube}
+      POSTGRES_PASSWORD: "${SONARQUBE_POSTGRES_PASSWORD:?Set SONARQUBE_POSTGRES_PASSWORD in deploy/sonarqube/.env}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - sonarqube_postgres_data:/var/lib/postgresql/data
+
+  sonarqube:
+    image: ${SONARQUBE_IMAGE:-sonarqube:lts-community}
+    container_name: funding-sonarqube
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${SONARQUBE_PORT:-9000}:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/${SONARQUBE_POSTGRES_DB:-sonarqube}
+      SONAR_JDBC_USERNAME: ${SONARQUBE_POSTGRES_USER:-sonarqube}
+      SONAR_JDBC_PASSWORD: "${SONARQUBE_POSTGRES_PASSWORD:?Set SONARQUBE_POSTGRES_PASSWORD in deploy/sonarqube/.env}"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube_postgres_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

@@ -73,6 +73,11 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose, no 
 
 Rules — follow them as you would follow Party doctrine:
 - Only report concerns about files in the diff. Do not hallucinate files not present.
+- Treat CI CONTEXT as observed evidence from GitHub Actions. Use it to confirm which checks ran, which failed,
+  and which generated reports were available.
+- If CI CONTEXT shows a validator passed, do not claim the same configuration is invalid unless the diff contains
+  a concrete, line-specific defect not covered by that validator.
+- Prefer actionable CI/CD concerns backed by job results or logs over speculative availability/fallback complaints.
 - If a concern list has no items, return an empty array [].
 - confidence must reflect how certain you are that the concerns are real and correctly scoped.
 - reviewDecision: APPROVE only if no meaningful concerns; COMMENT if LOW/MEDIUM only; REQUEST_CHANGES only if HIGH/CRITICAL with confidence >= 0.75.
@@ -97,7 +102,7 @@ def build(ctx: PullRequestContext) -> tuple[str, str]:
     user_lines.append(ctx.diff or "(empty diff)")
 
     if ctx.ci_context:
-        user_lines.append("\n--- CI CONTEXT (build/test output) ---\n")
+        user_lines.append("\n--- CI CONTEXT (GitHub Actions job results, logs, and analyzer output) ---\n")
         user_lines.append(ctx.ci_context)
 
     return _SYSTEM_PROMPT, "\n".join(user_lines)
