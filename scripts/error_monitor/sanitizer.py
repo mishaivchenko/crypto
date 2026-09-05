@@ -4,11 +4,17 @@ All regexes are compiled once at module load for efficiency.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 
 # ---------------------------------------------------------------------------
 # Compiled patterns (module-level — never inside functions)
 # ---------------------------------------------------------------------------
+
+# GitHub Actions expressions contain secret names, not secret values.
+_RE_GITHUB_EXPRESSION = re.compile(r"\$\{\{.*?}}")
+_GITHUB_EXPRESSION_PLACEHOLDER_PREFIX = "__SANITIZER_PROTECTED_GITHUB_ACTIONS_EXPR_"
+_GITHUB_EXPRESSION_PLACEHOLDER = "'" + _GITHUB_EXPRESSION_PLACEHOLDER_PREFIX + "{}_{}__'"
 
 # Bearer / Authorization header values
 _RE_BEARER = re.compile(
@@ -56,12 +62,20 @@ _RE_HEX_VALUE = re.compile(
     re.IGNORECASE,
 )
 
-
 def sanitize(text: str) -> str:
     """Return a copy of *text* with all secrets masked.
 
     Does NOT alter stack trace class names, line numbers, or log timestamps.
     """
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    protected_expressions: dict[str, str] = {}
+
+    def protect_expression(match: re.Match) -> str:
+        placeholder = _GITHUB_EXPRESSION_PLACEHOLDER.format(digest, len(protected_expressions))
+        protected_expressions[placeholder] = match.group(0)
+        return placeholder
+
+    text = _RE_GITHUB_EXPRESSION.sub(protect_expression, text)
     text = _RE_BEARER.sub(r"\1***", text)
     text = _RE_API_KEY.sub(r"\1***", text)
     text = _RE_SECRET_KEY.sub(r"\1***", text)
@@ -73,4 +87,6 @@ def sanitize(text: str) -> str:
     text = _RE_GITHUB_PAT.sub("github_pat_***", text)
     text = _RE_URL_CREDS.sub("[REDACTED]://", text)
     text = _RE_HEX_VALUE.sub(r"\1[REDACTED]", text)
+    for placeholder, expression in protected_expressions.items():
+        text = text.replace(placeholder, expression)
     return text

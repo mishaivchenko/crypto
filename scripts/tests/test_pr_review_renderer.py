@@ -5,7 +5,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from pr_review.models import Concern, ReviewResult
+from pr_review.models import CheckResult, CiSummary, Concern, QualityMetric, ReviewResult
 from pr_review.renderer import (
     render_summary,
     render_inline_comment,
@@ -76,6 +76,36 @@ class TestRenderSummary(unittest.TestCase):
     def test_request_changes_emoji_present(self):
         body = render_summary(_result(), "REQUEST_CHANGES", False)
         self.assertIn("❌", body)
+
+    def test_renders_ci_checks_and_metric_deltas(self):
+        current = CiSummary(
+            run_id="2",
+            run_url="https://github.example/run/2",
+            conclusion="success",
+            checks=(CheckResult("SonarQube", "completed", "success", 112),),
+            metrics=(
+                QualityMetric("pmd.violations", "PMD замечания", 3, "", True),
+                QualityMetric("jacoco.line", "JaCoCo line coverage", 81.5, "%", False),
+            ),
+        )
+        previous = CiSummary(
+            run_id="1",
+            run_url="https://github.example/run/1",
+            conclusion="success",
+            checks=(),
+            metrics=(
+                QualityMetric("pmd.violations", "PMD замечания", 5, "", True),
+                QualityMetric("jacoco.line", "JaCoCo line coverage", 81.5, "%", False),
+            ),
+        )
+
+        body = render_summary(_result(), "COMMENT", False, current, previous)
+
+        self.assertIn("CI/CD факт-чек", body)
+        self.assertIn("SonarQube", body)
+        self.assertIn("↓ упало (-2)", body)
+        self.assertIn("→ ровно", body)
+        self.assertIn("ai-pr-review-ci-summary", body)
 
 
 class TestRenderInlineComment(unittest.TestCase):

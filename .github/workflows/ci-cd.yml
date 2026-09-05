@@ -37,7 +37,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: /tmp/build-output.txt
+          path: |
+            /tmp/build-output.txt
+            */build/test-results/test/TEST-*.xml
+            */build/reports/jacoco/test/jacocoTestReport.xml
           if-no-files-found: ignore
 
       - name: Analyze build failure
@@ -160,6 +163,16 @@ jobs:
           set -o pipefail
           ./gradlew test jacocoTestReports sonar --no-daemon 2>&1 | tee /tmp/sonarqube-output.txt
 
+      - name: Export SonarQube findings summary
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 scripts/quality_backlog/main.py \
+            --mode dry-run \
+            --limit 50 \
+            --no-include-ai-summary \
+            --output-dir build/quality-backlog
+
       - name: Upload SonarQube log
         if: always()
         uses: actions/upload-artifact@v4
@@ -169,6 +182,7 @@ jobs:
             /tmp/sonarqube-output.txt
             **/build/sonar/report-task.txt
             .scannerwork/report-task.txt
+            build/quality-backlog/**
           if-no-files-found: ignore
 
 

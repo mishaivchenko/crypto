@@ -27,6 +27,7 @@ for _p in (_EM_DIR, _SCRIPTS_DIR):
         sys.path.insert(0, _p)
 
 import pr_review.client as client
+import pr_review.ci_summary as ci_summary
 import pr_review.collector as collector
 import pr_review.decision_policy as decision_policy
 import pr_review.deduplicator as deduplicator
@@ -61,12 +62,13 @@ def main() -> None:
         sys.exit(1)
 
     ci_context = os.environ.get("CI_CONTEXT", "").strip()
+    ci_summary_json = os.environ.get("CI_SUMMARY_JSON", "").strip()
 
     print(f"[pr-review] Starting review for PR #{pr_number} in {repo}")
 
     # Step 1: Collect
     try:
-        ctx = collector.collect(repo, pr_number, token, ci_context)
+        ctx = collector.collect(repo, pr_number, token, ci_context, ci_summary_json)
     except Exception as exc:
         print(f"[pr-review] ERROR: failed to collect PR context: {exc}")
         sys.exit(1)
@@ -105,12 +107,19 @@ def main() -> None:
     enforced = decision_policy.enforce(result)
     print(f"[pr-review] Decision: model={result.review_decision} enforced={enforced}")
 
-    # Step 6: Fetch existing issue comments for dedup/update
+    # Step 6: Fetch existing issue comments for dedup/update and CI deltas
     existing_issue_comments = github_client.get_pr_comments(repo, pr_number)
     summary_exists = deduplicator.has_summary_comment(existing_issue_comments)
+    previous_ci_summary = ci_summary.extract_latest_from_comments(existing_issue_comments)
 
     # Post summary only — no inline comments to avoid noise
-    summary_body = renderer.render_summary(result, enforced, ctx.diff_truncated)
+    summary_body = renderer.render_summary(
+        result,
+        enforced,
+        ctx.diff_truncated,
+        ctx.ci_summary,
+        previous_ci_summary,
+    )
     _post_or_update_summary(repo, pr_number, summary_body, existing_issue_comments, summary_exists)
 
     print("[pr-review] Done.")

@@ -1,0 +1,129 @@
+name: Quality Backlog
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run writes reports only; create-issues opens/updates GitHub issues"
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - create-issues
+      limit:
+        description: "Maximum grouped issues to create or update"
+        required: true
+        default: "10"
+        type: string
+      include_ai_summary:
+        description: "Use DeepSeek to improve grouped issue summaries when the secret exists"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: quality-backlog-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    name: SonarQube Quality Backlog
+    runs-on: [ self-hosted, mac-mini, staging ]
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+    env:
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'http://127.0.0.1:9000' }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Homebrew to PATH
+        run: echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: monitor-app/package-lock.json
+
+      - run: chmod +x gradlew
+
+      - name: Ensure Sonar token is configured
+        run: |
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "::error::SONAR_TOKEN GitHub Actions secret is required for quality backlog triage"
+            exit 1
+          fi
+
+      - name: Check local SonarQube Server
+        timeout-minutes: 2
+        run: |
+          for attempt in {1..12}; do
+            status="$(curl -fsS "${SONAR_HOST_URL}/api/system/status" || true)"
+            echo "${status}"
+            if echo "${status}" | grep -q '"status":"UP"'; then
+              exit 0
+            fi
+            echo "SonarQube is not UP yet; retry ${attempt}/12"
+            sleep 5
+          done
+          echo "::error::Local SonarQube Server did not report status UP at ${SONAR_HOST_URL}"
+          exit 1
+
+      - name: Install monitor UI tooling
+        timeout-minutes: 5
+        run: npm ci --prefix monitor-app
+
+      - name: Run quality checks
+        timeout-minutes: 25
+        run: |
+          set -o pipefail
+          ./gradlew quality qualityReport --no-daemon 2>&1 | tee /tmp/quality-backlog-gradle.txt
+
+      - name: Build quality backlog report
+        timeout-minutes: 10
+        env:
+          QUALITY_BACKLOG_MODE: ${{ inputs.mode }}
+          QUALITY_BACKLOG_LIMIT: ${{ inputs.limit }}
+          QUALITY_BACKLOG_INCLUDE_AI: ${{ inputs.include_ai_summary }}
+        run: |
+          args=(--mode "${QUALITY_BACKLOG_MODE}" --limit "${QUALITY_BACKLOG_LIMIT}")
+          if [ "${QUALITY_BACKLOG_INCLUDE_AI}" = "true" ]; then
+            args+=(--include-ai-summary)
+          else
+            args+=(--no-include-ai-summary)
+          fi
+          python3 scripts/quality_backlog/main.py "${args[@]}"
+
+      - name: Publish quality backlog summary
+        if: always()
+        run: |
+          if [ -f build/quality-backlog/quality-backlog.md ]; then
+            cat build/quality-backlog/quality-backlog.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload quality backlog artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-backlog
+          path: |
+            build/quality-backlog/**
+            /tmp/quality-backlog-gradle.txt
+            build/reports/dependency-analysis/**
+            */build/reports/pmd/**
+            */build/reports/spotbugs/**
+            .semgrep/**
+          if-no-files-found: ignore
